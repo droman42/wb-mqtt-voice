@@ -332,4 +332,4 @@ Each provider supports unique parameters. Check the provider's `get_parameter_sc
 ## Related Documentation
 - [Universal Audio Plugin](universal_audio.md)
 - [Provider Development Guide](../examples/tts_provider_example.py)
-- [Migration Guide](migration_guide.md) 
+- [Migration Guide](../archive/plugins_migration_guide.md) 

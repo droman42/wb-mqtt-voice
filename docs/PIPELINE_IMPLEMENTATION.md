@@ -3,6 +3,12 @@
 
 ---
 
+> **⚠️ Частично устарело.** Описывает старую модель «цепочек плагинов». В v15 pipeline реализован
+> единым `UnifiedVoiceAssistantWorkflow` (`irene/workflows/voice_assistant.py`); актуальную картину
+> см. в [`architecture.md`](architecture.md).
+
+---
+
 ## 🎯 **Задача**
 
 Реализовать поток: **WebSocket stream → ASR → LLM → Custom Processing → TTS**

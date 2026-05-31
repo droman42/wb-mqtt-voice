@@ -1,5 +1,19 @@
 # Архитектура Голосового Ассистента Irene
-## Техническое описание системы v13.0.0
+## Техническое описание системы v15.0.0
+
+---
+
+> **⚠️ Статус документа (обновление к v15.0.0):** Это архитектурный документ эпохи v13, частично
+> приведённый к v15. Общая картина (ядро `AsyncVACore`, компонентная система, система интентов,
+> donation-driven NLU, динамическая загрузка через entry-points) актуальна, но при чтении учитывайте
+> следующие расхождения с текущим кодом:
+> - **Workflow** — реализован **единый** `UnifiedVoiceAssistantWorkflow` (`irene/workflows/voice_assistant.py`),
+>   а не три отдельных класса Voice/Text/APIService. Условные стадии pipeline включаются по контексту запроса.
+> - **Web API** — это **не компонент**, а FastAPI-роутер в `irene/runners/webapi_router.py` (+ `irene/web_api/`).
+> - **Entry-points** — фактически **58** записей `irene.*` (+ 10 console-scripts), а не «77».
+> - **Версия** — единый источник истины `irene/__version__.py` = `15.0.0`. Метки «v13/v14» ниже — историзм.
+>
+> Историю проектных решений см. в `docs/archive/`.
 
 ---
 
@@ -20,7 +34,7 @@
 
 ## ⚠️ **Архитектурные улучшения**
 
-### Ключевые улучшения v13.0.0:
+### Ключевые улучшения v15.0.0:
 1. **Завершенный Pipeline**: Добавлена система интентов - недостающее звено между ASR и обработкой команд
 2. **Voice Trigger System**: Полноценное обнаружение wake word с поддержкой OpenWakeWord и microWakeWord
 3. **Компонентная архитектура**: "Universal Plugins" переименованы в "Components" как фундаментальные строительные блоки
@@ -73,7 +87,7 @@ Fire-and-Forget Actions → Monitoring & Analytics → User Notifications → Me
 
 ## ✅ **Архитектурное решение**
 
-## 🏗️ **Общая архитектура системы v13.0.0**
+## 🏗️ **Общая архитектура системы v15.0.0**
 
 ```mermaid
 graph TB
@@ -191,7 +205,7 @@ graph TB
 
 ## 🎯 **1. ЯДРО СИСТЕМЫ**
 
-### 1.1 AsyncVACore - Главный движок v13.0.0
+### 1.1 AsyncVACore - Главный движок v15.0.0
 
 **Расположение**: `irene/core/engine.py`
 
@@ -199,7 +213,7 @@ graph TB
 
 ```python
 class AsyncVACore:
-    """Современный асинхронный движок голосового ассистента v13.0.0"""
+    """Современный асинхронный движок голосового ассистента v15.0.0"""
     
     def __init__(self, config: CoreConfig):
         # Фундаментальные компоненты с динамической загрузкой
@@ -223,7 +237,7 @@ class AsyncVACore:
         self.command_processor = CommandProcessor()
 ```
 
-**Последовательность запуска v13.0.0:**
+**Последовательность запуска v15.0.0:**
 1. **Динамическая загрузка компонентов** (entry-points discovery)
 2. **Инициализация компонентов** (voice trigger, ASR, NLU, TTS, audio)
 3. **Запуск системы интентов** (recognizer, orchestrator, registry, context)
@@ -231,7 +245,7 @@ class AsyncVACore:
 5. **Запуск менеджеров** (input, output, timers)
 6. **Готовность к обработке команд**
 
-### 1.2 Полный Pipeline обработки v13.0.0
+### 1.2 Полный Pipeline обработки v15.0.0
 
 ```mermaid
 sequenceDiagram
@@ -269,7 +283,7 @@ sequenceDiagram
     TTS->>AO: Audio response
     AO->>User: Голосовой ответ
     
-    Note over VT,AO: Полный асинхронный pipeline v13.0.0
+    Note over VT,AO: Полный асинхронный pipeline v15.0.0
     Note over NLU,IO: Система интентов с keyword donation
 ```
 
@@ -286,7 +300,7 @@ sequenceDiagram
 - **Конфигурационная фильтрация**: Загружаются только включенные провайдеры
 - **Внешняя расширяемость**: Сторонние пакеты добавляют провайдеров через entry-points
 
-**Компоненты v13.0.0:**
+**Компоненты v15.0.0:**
 
 | Компонент | Зависимости | Функциональность | Entry-Points |
 |-----------|-------------|------------------|--------------|
@@ -451,7 +465,7 @@ class TimerIntentHandler(IntentHandler):
         }
 ```
 
-### 2.6 Профили развертывания v13.0.0
+### 2.6 Профили развертывания v15.0.0
 
 ```mermaid
 graph LR
@@ -498,7 +512,7 @@ graph LR
     style H_CLI fill:#ffcdd2
 ```
 
-**Автоматическое определение профиля v13.0.0:**
+**Автоматическое определение профиля v15.0.0:**
 ```python
 def get_deployment_profile(self) -> str:
     available = set(self._components.keys())
@@ -524,10 +538,10 @@ def get_deployment_profile(self) -> str:
 
 ### 3.1 Архитектурные улучшения
 
-**Ключевое достижение v13.0.0**: Завершение полного pipeline голосового ассистента добавлением системы интентов.
+**Ключевое достижение v15.0.0**: Завершение полного pipeline голосового ассистента добавлением системы интентов.
 
-**Было (v13.0.0)**: `Audio → Voice Trigger → ASR → Text → CommandProcessor`  
-**Стало (v13.0.0)**: `Audio → Voice Trigger → ASR → Text Processing → Intent Recognition → Intent Execution → TTS → Audio`
+**Было (v15.0.0)**: `Audio → Voice Trigger → ASR → Text → CommandProcessor`  
+**Стало (v15.0.0)**: `Audio → Voice Trigger → ASR → Text Processing → Intent Recognition → Intent Execution → TTS → Audio`
 
 **Планируемые улучшения (TODO #4, #5):**
 - **Keyword donation**: Обработчики интентов донируют ключевые слова для NLU
@@ -745,7 +759,7 @@ class VoiceAssistantWorkflow(Workflow):
     """Complete voice assistant workflow with intent system"""
     
     async def process_audio_stream(self, audio_stream: AsyncIterator[AudioData], context: RequestContext):
-        """ГЛАВНЫЙ WORKFLOW - полный pipeline голосового ассистента v13.0.0"""
+        """ГЛАВНЫЙ WORKFLOW - полный pipeline голосового ассистента v15.0.0"""
         
         # Get conversation context
         session_id = context.session_id or "default"
@@ -843,7 +857,7 @@ graph LR
 
 ## 📥📤 **5. СИСТЕМА ВВОДА/ВЫВОДА**
 
-### 5.1 Многоканальная обработка v13.0.0
+### 5.1 Многоканальная обработка v15.0.0
 
 ```mermaid
 graph LR
@@ -899,7 +913,7 @@ graph LR
     style ESP32_Input fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
 ```
 
-### 5.2 Абстракция вывода v13.0.0
+### 5.2 Абстракция вывода v15.0.0
 
 **Особенности:**
 - **Интеллектуальная маршрутизация**: Автоматический выбор целей вывода на основе IntentResult
@@ -977,7 +991,7 @@ enabled = ["console"]  # Только console audio provider
 
 ### 6.2 Обновленная конфигурация
 
-**config.toml v13.0.0 с TODO улучшениями:**
+**config.toml v15.0.0 с TODO улучшениями:**
 ```toml
 [core]
 name = "Irene"
@@ -1094,7 +1108,7 @@ cache_root = "./cache"
 data_root = "./data"
 ```
 
-### 6.3 Переменные окружения v13.0.0
+### 6.3 Переменные окружения v15.0.0
 
 ```bash
 # Core System
@@ -1135,7 +1149,7 @@ export IRENE_ASSETS__CACHE_ROOT=/opt/irene/cache
 
 ---
 
-## 🌐 **7. WEB API ИНТЕГРАЦИЯ v13.0.0**
+## 🌐 **7. WEB API ИНТЕГРАЦИЯ v15.0.0**
 
 ### 7.1 Обновленные API эндпоинты
 
@@ -1310,7 +1324,7 @@ async def binary_audio_stream(websocket: WebSocket):
 
 ---
 
-## 🚀 **8. РЕЖИМЫ РАЗВЕРТЫВАНИЯ v13.0.0**
+## 🚀 **8. РЕЖИМЫ РАЗВЕРТЫВАНИЯ v15.0.0**
 
 ### 8.1 Обновленные точки входа
 
@@ -1391,7 +1405,7 @@ graph TB
     style Settings_Build fill:#e1f5fe,stroke:#01579b,stroke-width:2px
 ```
 
-### 8.2 Команды запуска v13.0.0
+### 8.2 Команды запуска v15.0.0
 
 ```bash
 # Voice Assistant режим с улучшениями
@@ -1421,7 +1435,7 @@ python -m irene.runners.settings_runner --train-nlu --keyword-donation  # TODO #
 
 ---
 
-## 🔄 **9. ПОТОКИ ОБРАБОТКИ ДАННЫХ v13.0.0**
+## 🔄 **9. ПОТОКИ ОБРАБОТКИ ДАННЫХ v15.0.0**
 
 ### 9.1 Полный цикл команды с планируемыми улучшениями
 
@@ -1468,7 +1482,7 @@ sequenceDiagram
     TTS->>AO: Audio data
     AO->>User: 🔊 "В Москве сейчас +5°C, облачно"
     
-    Note over VT,AO: Полный pipeline v13.0.0 с TODO улучшениями
+    Note over VT,AO: Полный pipeline v15.0.0 с TODO улучшениями
     Note over NLU,CM: Keyword donation + keyword-first NLU
 ```
 
@@ -1509,7 +1523,7 @@ sequenceDiagram
 
 ---
 
-## 🔧 **10. ПАТТЕРНЫ ИНТЕГРАЦИИ v13.0.0**
+## 🔧 **10. ПАТТЕРНЫ ИНТЕГРАЦИИ v15.0.0**
 
 ### 10.1 Dependency Injection с динамической загрузкой
 
@@ -1608,7 +1622,7 @@ class NLUProviderStrategy:
 
 ---
 
-## 📊 **11. МЕТРИКИ И МОНИТОРИНГ v13.0.0**
+## 📊 **11. МЕТРИКИ И МОНИТОРИНГ v15.0.0**
 
 ### 11.1 Ключевые метрики системы с TODO улучшениями
 
@@ -1625,7 +1639,7 @@ class NLUProviderStrategy:
 | **Pipeline Latency** | Время полного pipeline (voice → response) | Workflow | - |
 | **Component Availability** | Доступность компонентов | Component Manager | - |
 
-### 11.2 Health checks v13.0.0 с TODO мониторингом
+### 11.2 Health checks v15.0.0 с TODO мониторингом
 
 ```python
 @app.get("/health/intents")
@@ -1679,9 +1693,9 @@ async def intent_system_health():
 
 ---
 
-## 🎯 **ЗАКЛЮЧЕНИЕ v13.0.0**
+## 🎯 **ЗАКЛЮЧЕНИЕ v15.0.0**
 
-### Ключевые достижения архитектуры v13.0.0:
+### Ключевые достижения архитектуры v15.0.0:
 
 ✅ **Завершенный Pipeline**: Полный поток от voice trigger до intent execution  
 ✅ **Система интентов**: Понимание намерений пользователя через NLU  
@@ -1815,7 +1829,7 @@ async def execute_fire_and_forget_action(self, action_func, domain, action_name)
 /monitoring/dashboard/html  - Веб-панель аналитики
 ```
 
-### Принципы дизайна v13.0.0:
+### Принципы дизайна v15.0.0:
 
 🔹 **MECE**: Четкое разделение между компонентами, интентами, и workflow  
 🔹 **Intent-Driven**: Все взаимодействия проходят через систему интентов  
@@ -1827,11 +1841,11 @@ async def execute_fire_and_forget_action(self, action_func, domain, action_name)
 🔹 **Single Responsibility**: Каждый компонент имеет одну ответственность  
 🔹 **Open/Closed**: Открыт для расширения, закрыт для модификации  
 
-### Эволюция от v13.0.0 к v13.0.0:
+### Эволюция от v15.0.0 к v15.0.0:
 
-**v13.0.0**: Асинхронная архитектура с "Universal Plugins"  
-**v13.0.0**: Полноценный интеллектуальный ассистент с системой интентов и динамической загрузкой
+**v15.0.0**: Асинхронная архитектура с "Universal Plugins"  
+**v15.0.0**: Полноценный интеллектуальный ассистент с системой интентов и динамической загрузкой
 
 Данная архитектура обеспечивает создание современного, интеллектуального и высокопроизводительного голосового ассистента, способного понимать намерения пользователя, поддерживать контекстные разговоры, оптимизировать производительность через селективную загрузку и работать в различных конфигурациях от минимального CLI до полнофункционального голосового интерфейса с wake word detection и веб-доступом.
 
-**Irene Voice Assistant v13.0.0 представляет собой производственно-готовую платформу для интеллектуального голосового взаимодействия с возможностями масштабирования, оптимизации и расширения.** 
+**Irene Voice Assistant v15.0.0 представляет собой производственно-готовую платформу для интеллектуального голосового взаимодействия с возможностями масштабирования, оптимизации и расширения.** 

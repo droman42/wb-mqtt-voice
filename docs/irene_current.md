@@ -1,5 +1,11 @@
 # Comprehensive Codebase Analysis: Irene Voice Assistant
 
+> **⚠️ OUTDATED — describes the PRE-REFACTOR architecture (VACore + `Jaa.py` plugin framework).**
+> That design was replaced during the v13→v15 refactor. The current engine is `AsyncVACore`
+> (`irene/core/engine.py`) with the component system, intent system and donation-driven NLU.
+> For the current architecture see [`architecture.md`](architecture.md). This file is retained only
+> as a historical snapshot and is a candidate for `docs/archive/`.
+
 ## Project Overview
 
 **Irene Voice Assistant** is a sophisticated Russian offline voice assistant built in Python. The project is designed with modularity, extensibility, and offline-first operation as core principles. It features a robust plugin system, multiple deployment options, and comprehensive multi-modal interaction capabilities.
