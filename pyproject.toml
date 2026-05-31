@@ -114,7 +114,15 @@ config-writing = [
     # tomli-w moved to core dependencies
 ]
 
-# Text processing and multilingual support - Fixed: Reference specific commit with python-dateutil fix
+# Text processing and multilingual support
+# NOTE (tech debt): lingua-franca is pinned to a git commit on MycroftAI's repo, which is
+#   abandoned (Mycroft AI shut down in 2023). The commit below IS the tip of master (== 0.4.3),
+#   and it's used instead of the last PyPI release (0.4.2) because of a python-dateutil fix.
+#   Risk: this is a single point of failure on a dead upstream — if the MycroftAI org/repo ever
+#   disappears, `uv sync` for the text-multilingual/all extras breaks (no PyPI fallback). The URL
+#   is also duplicated in irene/providers/text_processing/{asr,general,number}_text_processor.py.
+#   Eventual fix: migrate to the maintained OpenVoiceOS successors (ovos-number-parser /
+#   ovos-date-parser), or mirror/vendor the package. Deferred for now (reachable + cached today).
 text-multilingual = [
     "lingua-franca @ git+https://github.com/MycroftAI/lingua-franca.git@5bfd75fe5996fd364102a0eec3f714c9ddc9275c",
     "runorm>=0.1.0",
