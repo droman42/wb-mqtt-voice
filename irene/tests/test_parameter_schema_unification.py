@@ -16,7 +16,12 @@ Tests:
 import pytest
 import os
 import subprocess
+from pathlib import Path
 from typing import Dict, Any, Type
+
+# Repo root (irene/tests/<file> → parents[2]). Replaces a hardcoded absolute path
+# to the old "Irene-Voice-Assistant" checkout so the subprocess greps run anywhere.
+_REPO_ROOT = str(Path(__file__).resolve().parents[2])
 from pydantic import BaseModel
 
 from irene.config.auto_registry import AutoSchemaRegistry
@@ -33,7 +38,7 @@ class TestParameterSchemaUnification:
         # Should only find base classes with auto-generated implementations
         result = subprocess.run([
             'grep', '-r', 'def get_parameter_schema', 'irene/providers/'
-        ], capture_output=True, text=True, cwd='/home/droman42/development/Irene-Voice-Assistant')
+        ], capture_output=True, text=True, cwd=_REPO_ROOT)
         
         # Should only find base classes, not individual provider implementations
         lines = result.stdout.strip().split('\n') if result.stdout.strip() else []
@@ -65,14 +70,14 @@ class TestParameterSchemaUnification:
         # Check for return statements with parameter schema dictionaries
         result = subprocess.run([
             'grep', '-r', '-E', 'return.*"type".*:', 'irene/providers/'
-        ], capture_output=True, text=True, cwd='/home/droman42/development/Irene-Voice-Assistant')
+        ], capture_output=True, text=True, cwd=_REPO_ROOT)
         
         assert result.returncode != 0 or not result.stdout.strip(), f"Manual parameter dictionaries found: {result.stdout}"
         
         # Check for hardcoded parameter validation patterns
         result = subprocess.run([
             'grep', '-r', '-E', 'parameter.*schema.*=', 'irene/providers/'
-        ], capture_output=True, text=True, cwd='/home/droman42/development/Irene-Voice-Assistant')
+        ], capture_output=True, text=True, cwd=_REPO_ROOT)
         
         assert result.returncode != 0 or not result.stdout.strip(), f"Hardcoded parameter schemas found: {result.stdout}"
     
@@ -350,7 +355,7 @@ class TestArchitecturalCompletion:
         
         for i, cmd in enumerate(verification_commands):
             result = subprocess.run(cmd, capture_output=True, text=True, 
-                                  cwd='/home/droman42/development/Irene-Voice-Assistant')
+                                  cwd=_REPO_ROOT)
             
             cmd_name = f"cmd_{i}"  # Use simple index-based naming
             results[cmd_name] = {

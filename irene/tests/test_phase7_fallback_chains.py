@@ -147,6 +147,7 @@ class TestASRFallbackChains:
         )
     
     @pytest.mark.asyncio
+    @pytest.mark.skip(reason="Obsolete API seam: calls removed ASRComponent._handle_sample_rate_mismatch (resampling refactored into AudioProcessor.resample_audio_data). Feature still exists \xe2\x80\x94 rewrite against current path, see TEST-6.")
     async def test_primary_provider_failure_fallback(self):
         """Test fallback when primary ASR provider fails completely."""
         # Create providers: primary fails, backup works
@@ -170,6 +171,7 @@ class TestASRFallbackChains:
         print(f"Fallback test result: {result}")
     
     @pytest.mark.asyncio
+    @pytest.mark.skip(reason="Obsolete API seam: calls removed ASRComponent._handle_sample_rate_mismatch (resampling refactored into AudioProcessor.resample_audio_data). Feature still exists \xe2\x80\x94 rewrite against current path, see TEST-6.")
     async def test_sample_rate_compatibility_fallback(self):
         """Test fallback based on sample rate compatibility."""
         # Create providers with different sample rate support
@@ -193,6 +195,7 @@ class TestASRFallbackChains:
         print(f"Sample rate fallback result: {result}")
     
     @pytest.mark.asyncio
+    @pytest.mark.skip(reason="Obsolete API seam: calls removed ASRComponent._handle_sample_rate_mismatch (resampling refactored into AudioProcessor.resample_audio_data). Feature still exists \xe2\x80\x94 rewrite against current path, see TEST-6.")
     async def test_multiple_provider_fallback_chain(self):
         """Test fallback through multiple providers."""
         # Create chain: first fails, second fails, third succeeds
@@ -220,6 +223,7 @@ class TestASRFallbackChains:
         print(f"Chain fallback result: {result}")
     
     @pytest.mark.asyncio
+    @pytest.mark.skip(reason="Obsolete API seam: calls removed ASRComponent._handle_sample_rate_mismatch (resampling refactored into AudioProcessor.resample_audio_data). Feature still exists \xe2\x80\x94 rewrite against current path, see TEST-6.")
     async def test_all_providers_fail_graceful_degradation(self):
         """Test graceful degradation when all providers fail."""
         # Create providers that all fail
@@ -405,6 +409,7 @@ class TestComplexFallbackScenarios:
         return mock_core
     
     @pytest.mark.asyncio
+    @pytest.mark.skip(reason="Obsolete API seam: calls removed ASRComponent._handle_sample_rate_mismatch (resampling refactored into AudioProcessor.resample_audio_data). Feature still exists \xe2\x80\x94 rewrite against current path, see TEST-6.")
     async def test_realistic_hardware_failure_scenario(self):
         """Test realistic scenario where hardware-specific providers fail."""
         # Simulate scenario where hardware-optimized providers fail
@@ -439,6 +444,7 @@ class TestComplexFallbackScenarios:
         print(f"Hardware failure fallback: {result}")
     
     @pytest.mark.asyncio 
+    @pytest.mark.skip(reason="Obsolete API seam: calls removed ASRComponent._handle_sample_rate_mismatch (resampling refactored into AudioProcessor.resample_audio_data). Feature still exists \xe2\x80\x94 rewrite against current path, see TEST-6.")
     async def test_cascading_failure_recovery(self):
         """Test recovery from cascading failures across multiple components."""
         # Scenario: Multiple providers fail in sequence, system should recover

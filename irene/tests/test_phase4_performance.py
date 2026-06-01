@@ -214,6 +214,7 @@ class TestPhase4CachingPerformance:
             latency_threshold_ms=5.0
         )
     
+    @pytest.mark.skip(reason="Obsolete: TTLCache was removed in the v13→v15 contextual-command unification (class no longer exists)")
     def test_ttl_cache_performance(self, cache_config):
         """Test TTL cache performance characteristics"""
         cache = TTLCache(max_size=100, ttl_seconds=60)
@@ -244,6 +245,7 @@ class TestPhase4CachingPerformance:
         
         print(f"Cache performance - Miss: {miss_time*1000:.3f}ms, Put: {put_time*1000:.3f}ms, Hit: {hit_time*1000:.3f}ms")
     
+    @pytest.mark.skip(reason="Obsolete: TTLCache was removed in the v13→v15 contextual-command unification (class no longer exists)")
     def test_cache_scalability(self, cache_config):
         """Test cache performance with many entries"""
         cache = TTLCache(max_size=1000, ttl_seconds=300)
@@ -302,6 +304,7 @@ class TestPhase4CachingPerformance:
         print(f"MetricsCollector integration - Avg record time: {avg_time_per_record:.3f}ms")
 
 
+@pytest.mark.skip(reason="Obsolete: tests removed TTLCache / ContextualCommandPerformanceManager (v13→v15 contextual-command unification)")
 class TestPhase4MemoryOptimization:
     """Test memory usage optimization"""
     
@@ -387,6 +390,7 @@ class TestPhase4MemoryOptimization:
         print(f"Performance manager memory usage: +{memory_increase:.1f}MB")
 
 
+@pytest.mark.skip(reason="Obsolete: tests removed initialize_performance_manager / TTLCache (v13→v15 contextual-command unification)")
 class TestPhase4ConcurrencyPerformance:
     """Test performance under concurrent load"""
     
