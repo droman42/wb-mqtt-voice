@@ -54,6 +54,9 @@ class ConfigManager:
     - Automatic default config generation
     """
     
+    # ARCH-2: schema-integrity validation runs once per process (was a config-import side effect)
+    _schemas_validated: bool = False
+
     def __init__(self):
         self._config_cache: dict[str, CoreConfig] = {}
         self._reload_callbacks: list[Callable[[CoreConfig], None]] = []
@@ -70,6 +73,13 @@ class ConfigManager:
         Returns:
             Loaded CoreConfig instance
         """
+        # ARCH-2: run schema-integrity validation once, explicitly (replaces the import-time side effect).
+        if not ConfigManager._schemas_validated:
+            ConfigManager._schemas_validated = True
+            from . import validate_schema_integrity, validate_master_config_completeness
+            validate_schema_integrity()
+            validate_master_config_completeness()
+
         # Auto-detect config file if not specified
         if config_path is None:
             config_path = self._find_config_file()

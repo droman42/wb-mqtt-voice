@@ -68,9 +68,9 @@ def validate_master_config_completeness() -> None:
         # Non-fatal - don't block startup, but log the issue
 
 
-# Validate schemas on module import
-validate_schema_integrity()
-validate_master_config_completeness()
+# ARCH-2: schema validation is NOT run at import time anymore — that import-time side effect
+# pulled auto_registry -> configuration_component (SCC-1) and spammed "Schema warning" on every
+# `import config`. It now runs once, explicitly, from ConfigManager.load_config (startup).
 
 # Core configuration models
 from .models import (

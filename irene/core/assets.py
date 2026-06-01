@@ -13,20 +13,19 @@ import hashlib
 import logging
 import pickle
 from pathlib import Path
-from typing import Dict, Any, Optional, List, TYPE_CHECKING
+from typing import Dict, Any, Optional, List
 import json
+
+# ARCH-2: real import now that config no longer runs schema validation at import time
+# (and no longer reaches up into core), so core->config.models is a clean downward edge.
+from ..config.models import AssetConfig
 
 logger = logging.getLogger(__name__)
 
 
-# AssetConfig lives in config.models; imported under TYPE_CHECKING to avoid a circular import
-if TYPE_CHECKING:
-    from ..config.models import AssetConfig
-
-
 class AssetManager:
     """Centralized asset manager for models, cache, and credentials"""
-    
+
     def __init__(self, config: "AssetConfig"):
         self.config = config
         self._download_locks: Dict[str, asyncio.Lock] = {}
@@ -35,7 +34,6 @@ class AssetManager:
     @classmethod
     def from_env(cls) -> "AssetManager":
         """Create AssetManager from environment variables"""
-        from ..config.models import AssetConfig
         config = AssetConfig()
         return cls(config)
     

@@ -219,13 +219,15 @@ class ConfigValidator:
     def _validate_provider_availability(self, config: CoreConfig) -> None:
         """Validate provider configuration and availability"""
         try:
-            from ..core.components import discover_providers
-            
+            # ARCH-2: use the low-level loader directly (config -> utils, downward) instead of
+            # reaching up into core.components (which doesn't even export discover_providers).
+            from ..utils.loader import dynamic_loader
+
             # Discover available providers for each component type
             available_providers = {}
             for component_type in ["tts", "audio", "asr", "llm", "voice_trigger", "nlu"]:
                 try:
-                    providers = discover_providers(f"irene.providers.{component_type}")
+                    providers = dynamic_loader.discover_providers(f"irene.providers.{component_type}")
                     available_providers[component_type] = set(providers.keys())
                 except Exception as e:
                     logger.debug(f"Could not discover {component_type} providers: {e}")
