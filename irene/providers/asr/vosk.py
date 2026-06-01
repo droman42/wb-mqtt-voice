@@ -106,8 +106,8 @@ class VoskASRProvider(ASRProvider):
                 "extract": True
             },
             "en_us": {
-                "url": "https://alphacephei.com/vosk/models/vosk-model-en-us-0.22.zip",
-                "size": "42MB", 
+                "url": "https://alphacephei.com/vosk/models/vosk-model-small-en-us-0.15.zip",
+                "size": "40MB",
                 "extract": True
             },
             # Full-size models for higher accuracy (optional)
@@ -118,7 +118,7 @@ class VoskASRProvider(ASRProvider):
             },
             "en": {
                 "url": "https://alphacephei.com/vosk/models/vosk-model-en-us-0.22.zip",
-                "size": "42MB",
+                "size": "1.8GB",
                 "extract": True
             },
             "de": {
