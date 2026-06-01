@@ -31,12 +31,17 @@ The single active tracker for the road to release. Supersedes the legacy `docs/T
    - **REST API endpoints / parameter schemas / analysis endpoints** → `src/utils/apiClient.ts`, the analysis components.
    - Definition-of-done addendum for such tasks: `cd config-ui && npm run type-check && npm run build` passes.
    - Directly-gated tasks: **DOC-5b, DOC-4, DOC-7, QUAL-7, QUAL-10/11, ARCH-1/2/3, BUILD-4.**
-5. **Review docs stay in sync (living, not write-once).** Detailed findings live in `docs/review/*` (and design
-   docs in `docs/design/*`); the plan links to them via the index below. When a task derived from a review doc is
-   completed or its finding changes, **update the corresponding review doc in the same change** — mark findings
-   resolved/obsolete and update status (as we did with "Remediation round 1" in `phase0_static_baseline.md`). A
-   contract-/finding-touching task is not *done* until its review doc reflects reality. Each new review adds a row
-   to the index below.
+5. **Review docs are read at start and updated at completion — AFFIRMATIVE & NON-NEGOTIABLE until the release plan
+   is complete.** Detailed findings live in `docs/review/*` (and design docs in `docs/design/*`); the plan links to
+   them via the index below. This is a **bidirectional** rule applying to **every** plan step:
+   - **At task START:** read **not only the plan item but also its related review doc(s)** (per the index below)
+     for full context before doing the work. The plan item is a spine entry; the review doc holds the evidence,
+     file:line refs, and ranked detail.
+   - **At task COMPLETION:** update **both** the plan **and** the respective review doc(s) in the same change —
+     mark findings resolved/obsolete, record what changed, update status (as with "Remediation round 1" in
+     `phase0_static_baseline.md`). A step is **not done** until both the plan and its review doc(s) reflect reality.
+   - Applies to **current and all future** review docs; each new review adds a row to the index below. No exceptions
+     while the release plan is in progress.
 
 ---
 
