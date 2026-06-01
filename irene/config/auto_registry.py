@@ -204,15 +204,216 @@ class AutoSchemaRegistry:
         
         return schema
     
+    # ARCH-2: schema-extraction cluster moved here from ConfigurationComponent
+    # (schema logic belongs in the schema registry; removes the auto_registry ->
+    # components.configuration_component upward import / SCC-1 edge).
     @classmethod
     def _extract_model_schema(cls, model_class: Type[BaseModel]) -> Dict[str, Any]:
         """Extract field metadata from Pydantic model for widget generation"""
-        from irene.components.configuration_component import ConfigurationComponent
+        if not model_class:
+            return {}
         
-        # Use existing implementation from ConfigurationComponent temporarily
-        # This will be moved to this class in a future refactoring
-        config_component = ConfigurationComponent()
-        return config_component._extract_model_schema(model_class)
+        try:
+            from pydantic_core import PydanticUndefined
+        except ImportError:
+            # Fallback for older Pydantic versions
+            PydanticUndefined = None
+            
+        schema = {
+            "fields": {},
+            "title": getattr(model_class, "__name__", "Configuration"),
+            "description": getattr(model_class, "__doc__", "").strip() if getattr(model_class, "__doc__", "") else ""
+        }
+        
+        # Get Pydantic model fields
+        model_fields = model_class.model_fields if hasattr(model_class, 'model_fields') else {}
+        
+        for field_name, field_info in model_fields.items():
+            try:
+                # Safely extract field information
+                field_type = cls._get_field_type(field_info)
+                
+                # Get field description - check multiple possible locations
+                description = ""
+                if hasattr(field_info, 'description') and field_info.description:
+                    description = field_info.description
+                elif hasattr(field_info, 'json_schema_extra') and field_info.json_schema_extra:
+                    description = field_info.json_schema_extra.get('description', '')
+                
+                # For Pydantic v2, check if field is required by looking at default value
+                is_required = True
+                default_value = None
+                
+                if hasattr(field_info, 'default') and PydanticUndefined is not None:
+                    if field_info.default is not PydanticUndefined:
+                        is_required = False
+                        default_value = field_info.default
+                elif hasattr(field_info, 'default'):
+                    # Fallback for when PydanticUndefined is not available
+                    try:
+                        if field_info.default is not ...:  # Ellipsis is often used as undefined
+                            is_required = False
+                            default_value = field_info.default
+                    except:
+                        pass
+                
+                field_schema = {
+                    "type": field_type,
+                    "description": description,
+                    "required": is_required,
+                    "default": default_value
+                }
+                
+                # For object types (nested models), extract nested schema
+                if field_type == "object" and hasattr(field_info, 'annotation'):
+                    model_name = getattr(model_class, "__name__", "")
+                    nested_schema = cls._extract_nested_object_schema(field_info.annotation, field_name, model_name)
+                    if nested_schema:
+                        field_schema["properties"] = nested_schema
+                
+                # Add constraints if available (from field annotations)
+                if hasattr(field_info, 'json_schema_extra') and field_info.json_schema_extra:
+                    field_schema.update(field_info.json_schema_extra)
+                
+                schema["fields"][field_name] = field_schema
+                
+            except Exception as e:
+                logger.warning(f"Failed to extract schema for field {field_name}: {e}")
+                # Add a basic fallback schema
+                schema["fields"][field_name] = {
+                    "type": "string",
+                    "description": f"Field {field_name}",
+                    "required": False,
+                    "default": None
+                }
+        
+        return schema
+    
+    @classmethod
+    def _get_field_type(cls, field_info) -> str:
+        """Determine field type for widget generation"""
+        try:
+            # Extract type from Pydantic field info
+            field_type = field_info.annotation if hasattr(field_info, 'annotation') else str
+            
+            return cls._get_field_type_from_annotation(field_type)
+        except Exception as e:
+            logger.warning(f"Failed to determine field type: {e}")
+            return "string"  # Safe fallback
+    
+    @classmethod
+    def _get_field_type_from_annotation(cls, annotation) -> str:
+        """Helper to get field type from type annotation"""
+        try:
+            # Handle direct types
+            if annotation == bool:
+                return "boolean"
+            elif annotation == int:
+                return "integer"
+            elif annotation == float:
+                return "number"
+            elif annotation == str:
+                return "string"
+            elif hasattr(annotation, '__origin__'):
+                # Handle generic types like List, Dict, Optional
+                from typing import Union
+                origin = annotation.__origin__
+                if origin == list:
+                    return "array"
+                elif origin == dict:
+                    return "object"
+                elif origin == Union:
+                    # Handle Optional types
+                    args = annotation.__args__
+                    if len(args) == 2 and type(None) in args:
+                        # Optional type - get the non-None type
+                        non_none_type = next(arg for arg in args if arg != type(None))
+                        return cls._get_field_type_from_annotation(non_none_type)
+            
+            # Check if it's a Pydantic BaseModel (nested configuration)
+            if hasattr(annotation, '__bases__') and any(
+                issubclass(base, BaseModel) for base in annotation.__bases__ 
+                if hasattr(base, '__name__')
+            ):
+                return "object"  # Nested Pydantic models should be objects
+            
+            # Check if it's an Enum
+            if hasattr(annotation, '__bases__') and any(base.__name__ == 'Enum' for base in annotation.__bases__):
+                return "string"  # Enums are represented as string choices
+                
+            return "string"  # Default fallback
+        except Exception as e:
+            logger.warning(f"Failed to parse annotation {annotation}: {e}")
+            return "string"
+    
+    @classmethod
+    def _extract_nested_object_schema(cls, annotation, field_name: str = "", parent_model_name: str = "") -> Optional[Dict[str, Any]]:
+        """Extract schema for nested Pydantic models"""
+        try:
+            # Handle Optional[Model] types
+            from typing import Union
+            if hasattr(annotation, '__origin__') and annotation.__origin__ == Union:
+                args = annotation.__args__
+                if len(args) == 2 and type(None) in args:
+                    # Optional type - get the non-None type
+                    annotation = next(arg for arg in args if arg != type(None))
+            
+            # Special handling for provider fields using AutoSchemaRegistry
+            if field_name == "providers" and parent_model_name:
+                return cls._extract_provider_schemas(parent_model_name)
+            
+            # Check if it's a Pydantic BaseModel
+            if (hasattr(annotation, '__bases__') and 
+                any(issubclass(base, BaseModel) for base in annotation.__bases__ if hasattr(base, '__name__'))):
+                
+                # Recursively extract schema for the nested model
+                nested_model_schema = cls._extract_model_schema(annotation)
+                return nested_model_schema.get("fields", {})
+            
+            return None
+        except Exception as e:
+            logger.warning(f"Failed to extract nested schema for {annotation}: {e}")
+            return None
+    
+    @classmethod
+    def _extract_provider_schemas(cls, component_type: str) -> Dict[str, Any]:
+        """Extract provider schemas for a specific component type using AutoSchemaRegistry"""
+        try:
+            # Map config model names to component types
+            component_type_mapping = {
+                "TTSConfig": "tts",
+                "AudioConfig": "audio", 
+                "ASRConfig": "asr",
+                "LLMConfig": "llm",
+                "VoiceTriggerConfig": "voice_trigger",
+                "NLUConfig": "nlu",
+                "TextProcessorConfig": "text_processor"
+            }
+            
+            component_name = component_type_mapping.get(component_type, component_type.lower().replace("config", ""))
+            
+            # Get provider schemas from AutoSchemaRegistry
+            provider_schemas = AutoSchemaRegistry.get_provider_schemas()
+            component_providers = provider_schemas.get(component_name, {})
+            
+            provider_properties = {}
+            for provider_name, schema_class in component_providers.items():
+                try:
+                    # Generate schema for this provider (no instantiation needed)
+                    provider_schema = cls._extract_model_schema(schema_class)
+                    provider_properties[provider_name] = {
+                        "type": "object",
+                        "description": f"{provider_name} provider configuration",
+                        "properties": provider_schema.get("fields", {})
+                    }
+                except Exception as e:
+                    logger.warning(f"Failed to extract schema for provider {provider_name}: {e}")
+                    
+            return provider_properties
+            
+        except Exception as e:
+            logger.warning(f"Failed to extract provider schemas for {component_type}: {e}")
+            return {}
     
     @classmethod
     def validate_schema_coverage(cls) -> Dict[str, Any]:
