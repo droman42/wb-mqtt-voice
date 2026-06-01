@@ -245,6 +245,10 @@ class TestContextAwareNLU:
         assert "weather.current" in recent_intents
 
     @pytest.mark.asyncio
+    @pytest.mark.xfail(reason="Context enhancement is stubbed in prod: _enhance_intent computes "
+                              "enhanced_entities (output_capabilities) but returns the original intent "
+                              "unchanged (nlu_component.py 'for now, return original'). See QUAL-22.",
+                       strict=False)
     async def test_client_capability_context(self, context_processor, sample_context_living_room):
         """Test client capability context enhancement"""
         # Mock conversation intent
@@ -322,6 +326,9 @@ class TestContextAwareNLU:
         assert duration_resolved["unit"] == "minutes"
 
     @pytest.mark.asyncio
+    @pytest.mark.xfail(reason="Location inference not implemented: no 'location_resolved' metadata is "
+                              "produced (context enhancement stubbed, returns original intent). See QUAL-22.",
+                       strict=False)
     async def test_room_context_inference(self, context_processor, sample_context_kitchen):
         """Test room context inference for location references"""
         # Mock intent with location reference

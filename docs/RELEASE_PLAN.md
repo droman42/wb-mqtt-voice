@@ -207,6 +207,14 @@ See `docs/review/phase1_architecture_map.md` §5.
       Not done in the TEST pass because the mic/web migration is non-trivial (needs the inputs/system split, not a
       rename). Verify `irene-settings` boots after.
 
+- [ ] **QUAL-22** [PEX] (P2) — **Stubbed feature found via TEST-2**: context-aware NLU enhancement is a no-op.
+      `NLUComponent._enhance_intent` (`nlu_component.py` ~170-187) computes `enhanced_entities`
+      (`output_capabilities`, `context_suggestion`, `preferred_output_device`) but then **returns the original
+      intent unchanged** (comment: "for now, return original"); location inference (`location_resolved`) is
+      unimplemented. Either finish the enhancement (apply enhanced_entities / wire capability + location context)
+      or remove the dead logic. Relates to QUAL-10 [PEX]. xfail tests: `test_client_capability_context`,
+      `test_room_context_inference`.
+
 ### Tests (TEST)
 - [x] **TEST-1** (P1) — Fix broken tests referencing removed/renamed symbols. **DONE 2026-06-01**:
       `ConversationContext`→`UnifiedConversationContext` (rename); `TTLCache`/`ContextualCommandPerformanceManager`/
