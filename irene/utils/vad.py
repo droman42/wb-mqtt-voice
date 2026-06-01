@@ -18,7 +18,7 @@ from typing import Optional, Union, Dict, List
 from functools import lru_cache
 import numpy as np
 
-from ..intents.models import AudioData
+from .audio_data import AudioData
 from ..core.metrics import get_metrics_collector
 
 logger = logging.getLogger(__name__)

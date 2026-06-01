@@ -7,6 +7,11 @@ from typing import Dict, List, Any, Optional, Set
 
 from rapidfuzz import fuzz, process
 
+# ARCH-1: AudioData/WakeWordResult moved to a foundational module (utils.audio_data)
+# so low-level producers/consumers stop importing up into the intent domain.
+# Re-exported here as a thin compatibility shim during migration.
+from ..utils.audio_data import AudioData, WakeWordResult  # noqa: F401
+
 
 class ConversationState(Enum):
     """Represents the current state of a conversation session"""
@@ -65,29 +70,7 @@ class IntentResult:
 
 
 # OLD ConversationContext class removed - replaced by UnifiedConversationContext
-
-
-@dataclass
-class WakeWordResult:
-    """Result of wake word detection."""
-    
-    detected: bool
-    confidence: float
-    word: Optional[str] = None
-    timestamp: float = field(default_factory=time.time)
-    audio_data: Optional[bytes] = None
-
-
-@dataclass
-class AudioData:
-    """Audio data container for processing pipeline."""
-    
-    data: bytes
-    timestamp: float
-    sample_rate: int = 16000
-    channels: int = 1
-    format: str = "pcm16"
-    metadata: Dict[str, Any] = field(default_factory=dict)
+# AudioData / WakeWordResult moved to utils.audio_data (ARCH-1); re-exported above.
 
 
 @dataclass

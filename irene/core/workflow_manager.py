@@ -13,7 +13,8 @@ from enum import Enum
 
 from .trace_context import TraceContext
 from ..workflows.base import Workflow, RequestContext
-from ..intents.models import AudioData, IntentResult
+from ..utils.audio_data import AudioData
+from ..intents.models import IntentResult
 from ..inputs.base import InputSource
 from ..utils.audio_helpers import validate_audio_file
 from ..config.manager import ConfigValidationError
@@ -490,7 +491,7 @@ class WorkflowManager:
         Returns:
             IntentResult from processing with optional action metadata
         """
-        from ..intents.models import AudioData
+        from ..utils.audio_data import AudioData
         
         # Use active workflow or create unified workflow on-demand
         if not self.active_workflow:

@@ -12,12 +12,12 @@ These utilities provide shared functionality for audio plugins:
 import asyncio
 import logging
 from pathlib import Path
-from typing import Optional, Union, Dict, Any, List, Tuple, TYPE_CHECKING
+from typing import Optional, Union, Dict, Any, List, Tuple
 from enum import Enum
 from dataclasses import dataclass
 
-if TYPE_CHECKING:
-    from ..intents.models import AudioData
+# ARCH-1: AudioData is now a foundational sibling module (no cycle, no TYPE_CHECKING band-aid).
+from .audio_data import AudioData
 
 logger = logging.getLogger(__name__)
 
@@ -586,7 +586,6 @@ class AudioProcessor:
         Returns:
             New AudioData object with resampled audio and updated metadata
         """
-        from ..intents.models import AudioData
         import time
         import hashlib
         
@@ -932,7 +931,6 @@ class AudioFormatConverter:
         Returns:
             New AudioData object with converted audio
         """
-        from ..intents.models import AudioData
         
         # Start with a copy of input data
         result_data = audio_data.data
@@ -1427,7 +1425,6 @@ async def load_audio_file_to_audiodata(
         ValueError: If audio format is not supported
         RuntimeError: If audio conversion fails
     """
-    from ..intents.models import AudioData
     import time
     
     file_path = Path(file_path)
