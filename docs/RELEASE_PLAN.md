@@ -50,7 +50,7 @@ Living findings behind the tasks (Invariant #5). `[x]` = exists; others are prod
 | `phase1_architecture_map.md` `[x]` | architecture map, doc-harmonization audit, hexagon target | ARCH-0 ✓, ARCH-1..8, DOC-4/5✓/5b/6✓ |
 | `fire_and_forget_review.md` | F&F lifecycle + gap analysis | QUAL-8/9, TEST-3 |
 | `parameter_extraction_review.md` `[x]` | text→parameters review + gaps | QUAL-10 ✓, QUAL-11, TEST-4, DOC-7, UI-1/2/3, QUAL-22 |
-| `text_processing_review.md` | text-processor subsystem review | QUAL-12/13, TEST-5 |
+| `text_processing_review.md` `[x]` | text-processor subsystem review + LLM-text-proc question | QUAL-12 ✓, QUAL-13, TEST-5 |
 | `llm_usage_review.md` `[x]` | LLM usage + offline-first + NLU-LLM decision | QUAL-14 ✓, QUAL-15, QUAL-16 |
 | `streaming_api_review.md` | AsyncAPI streaming-API tooling | QUAL-17/18 |
 | `esp32_wakeword_review.md` | ESP32 + wakeword keep/fix/cut | QUAL-19/20 |
@@ -166,15 +166,24 @@ See `docs/review/phase1_architecture_map.md` §5.
       (finish/delete the context-enhancement stub). **P1s:** typed `ParameterSpec`-driven entity accessor on
       `IntentHandler`; fix first-match span→value; default `_md` spaCy models for similarity; unify duplicate device
       resolution. Gated by Invariant #4 (config-ui).
-- [ ] **QUAL-12** [TXTPROC] (P2) — Text-processor subsystem review: role/functionality of the 4 providers
-      (`asr`/`general`/`tts`/`number_text_processor`), the 3 normalizers (`NumberNormalizer`/`PrepareNormalizer`/
-      `RunormNormalizer` in `utils/text_normalizers.py`), and the **double stage-routing** (provider-per-stage
-      classes vs config `[text_processor.normalizers.*].stages`). Decide what's justified vs legacy-from-old-Irene
-      (ASR & Number processors both compose only `NumberNormalizer` = likely redundant). Intersects ASSET-3
-      (`NumberNormalizer` uses lingua-franca). Done when: `docs/review/text_processing_review.md` exists with a
-      keep/merge/collapse recommendation + ranked remediation.
-- [ ] **QUAL-13** [TXTPROC] (P-TBD) — Refine per QUAL-12 (likely collapse the 4 providers into one config-driven
-      `TextProcessor` and unify stage routing).
+- [x] **QUAL-12** [TXTPROC] (P2) — Text-processor subsystem review. **DONE 2026-06-01** →
+      `docs/review/text_processing_review.md` (5×P0, 6×P1, 6×P2). Verdict: the subsystem is **mostly decorative at
+      runtime** — `process()` is hardcoded to stage `"general"`, so only `general_text_processor` ever runs (on ASR
+      output); the `asr_output`/`tts_input` stages are never routed; **TTS synthesizes raw text** (no normalization
+      call site); the `[text_processor.normalizers.*]` config tree is **dead** (never read); the WebAPI 500s on a
+      phantom `self.processor`; `number_text_processor` duplicates `asr_text_processor` and is unreachable;
+      `NumberTextProcessor.process()` calls a non-existent method. **LLM-for-text-processing answer:** architecturally
+      possible (open provider interface + DI), not wired today (only the dead `universal_llm` path), and should only
+      be an **opt-in online-only `asr_output` stage** augmenting the deterministic default — never on the default path.
+- [ ] **QUAL-13** [TXTPROC] (P1) — Refine per QUAL-12: **collapse + wire.** (1) Collapse the 4 providers into ONE
+      config-driven `TextProcessor` with ordered **per-stage normalizer chains** (make the config tree real, delete
+      the provider-per-stage classes + redundant `number` provider); (2) **actually wire the two real stages** —
+      `process()` must pass the caller's stage (`asr_output` at `voice_assistant.py:383`) and **add the missing
+      `tts_input` call before TTS synthesis** (`:707`) so Russian TTS normalization (RUNorm) actually runs; (3)
+      delete the dead (`self.processor` WebAPI bug, `NumberTextProcessor.process()`, `_stage_providers`, the
+      `number_options` keys that map to nothing); (4) document real deps (RUNorm runtime model download, lingua-franca
+      ru-only fallback); (5) optionally add a disabled-by-default online `llm_text_processor` (asr_output). Gated by
+      Invariant #4 (config-ui). Intersects ASSET-3, QUAL-15.
 - [x] **QUAL-14** [LLM] (P1) — LLM usage + offline-first review. **DONE 2026-06-01** →
       `docs/review/llm_usage_review.md` (3×P0, 9×P1, 12×P2). **NLU confirmed LLM-free**; offline-first is real for
       recognized intents but the **LLM stage's offline fallback is a phantom** — the configured `console` LLM
@@ -434,6 +443,17 @@ Governed by Invariant #4 (config-ui must stay functional).
   success (failed translation returns untranslated input), prompts are triplicated inline + provider-language-locked
   (→ QUAL-16). **NLU-LLM decision: keep NLU deterministic/offline; LLM assist only opt-in + LOCAL, gated on
   ARCH-9/10 [INFER] + QUAL-11.** Remediation → QUAL-15.
+
+- **QUAL-12 [TXTPROC] DONE** → `docs/review/text_processing_review.md` (3-layer parallel deep-read; 5×P0/6×P1/6×P2).
+  Verdict: the subsystem is **decorative** — `process()` is hardcoded to stage `"general"` (verified), so only
+  `general_text_processor` runs; `asr_output`/`tts_input` stages are never routed; **TTS gets raw text** (no call
+  site — verified); the `[text_processor.normalizers.*]` config tree is dead; the WebAPI 500s on an unassigned
+  `self.processor`; `number_text_processor` is a redundant unreachable dup of `asr_text_processor`. Recommendation →
+  QUAL-13 **collapse to one config-driven processor + actually wire the two real stages**. **Added question
+  answered:** LLM *can* back a text-processor (open interface + DI) but isn't wired (only the dead `universal_llm`
+  path); should be **opt-in online-only**, augmenting the deterministic default, never on the default path. Surfaced
+  a 3rd instance of the systemic **"configured names that don't resolve"** bug (dead stages here; phantom `console`
+  LLM in QUAL-14; phantom cascade names in QUAL-10) → a shared startup-assertion fix.
 
 ### 2026-05-31
 - **Revival analysis** — full doc + code + build + asset audit; established real version is 15.0.0, single
