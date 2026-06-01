@@ -88,7 +88,14 @@ problems are **directional violations**, not cycles.
 |---|---|---|
 | **`intents.models` misplacement** (audio/IO + context types live in the intent layer) | `utils.audio_helpers→intents.models`, `utils.vad→intents.models`, `core.{entity_resolver,trace_context,workflow_manager}→intents.models`, `core.engine→intents.context`, `intents.context→workflows.base` | **ARCH-1** split `intents.models` (§2.4) |
 | **config reaching up** | `config.validator→core.components`, `config.auto_registry→components.configuration_component`, `utils.logging→config.models` | **ARCH-2** invert config↔core / config↔components |
-| **components reaching into delivery/tooling** | `components.{asr,tts}→web_api.asyncapi`, `components.nlu_analysis→analysis.*` | move web schema generation behind a port; treat `analysis` as a peripheral adapter |
+| **components reaching into delivery/tooling** ✅ ARCH-3 | `components.{asr,tts}→web_api.asyncapi`, `components.nlu_analysis→analysis.*` | move web schema generation behind a port; treat `analysis` as a peripheral adapter |
+
+> **✅ ARCH-3 DONE (2026-06-01, `03fc44b`).** Edge 1: `web_api/asyncapi.py` → **`api/asyncapi.py`** (rank-0; the
+> `@websocket_api` decorator + spec generation is now a neutral port — components import it *downward*, not
+> `web_api`). **Components import no `web_api` module.** Edge 2: `analysis` verified as a **clean, self-contained
+> driven adapter** (no inward imports); `NLUAnalysisComponent` is its dedicated wrapper/adapter-boundary — a
+> legitimate application→driven-adapter relationship, so no port ceremony. **ARCH-5 linter:** forbid
+> `components → web_api`/`analysis`, except allow `nlu_analysis → analysis` (the boundary).
 | **core orchestrating outward** (engine/workflow_manager → inputs/workflows/components base) | `core.components→components.base`, `core.workflow_manager→workflows.base`, `core.{engine,workflow_manager}→inputs.base` | mostly composition-root behavior; legitimize via DI in the hexagon (§5) |
 | **utils→core.metrics** | `utils.vad→core.metrics` | metrics should be a port injected into utils, or vad shouldn't emit metrics directly |
 

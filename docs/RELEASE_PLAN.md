@@ -132,9 +132,18 @@ See `docs/review/phase1_architecture_map.md` §5.
       `AssetConfig` TYPE_CHECKING band-aid** — `from ..config.models import AssetConfig` is a clean downward
       import now. Verified: no cycle, bare `import config` silent, validation still runs once on load, full suite
       unchanged (176/55, zero regression). **Gate 1: ARCH-3/4/5 next.**
-- [ ] **ARCH-3** (P1) — Stop components importing delivery/tooling: put web-schema generation
-      (`components.{asr,tts}→web_api.asyncapi`) behind a port; treat `analysis` as a driven adapter
-      (`components.nlu_analysis→analysis.*`).
+- [x] **ARCH-3** (P1) — Stop components importing delivery/tooling. **DONE 2026-06-01** (`03fc44b`).
+      **Edge 1 (code fix):** `asr`/`tts` components imported `web_api.asyncapi` (the `@websocket_api` decorator +
+      `extract_websocket_specs_from_router`) — application→delivery. Moved `web_api/asyncapi.py` →
+      **`irene/api/asyncapi.py`** (rank-0; its only irene deps were `__version__` + `api.schemas`, and its fastapi
+      import was docstring-only), re-pointed all importers. **Components now import no `web_api` module** — the
+      AsyncAPI mechanism is a neutral rank-0 port both sides depend on downward. **Edge 2 (classification, no code):**
+      `components.nlu_analysis→analysis.*` — verified `analysis` is a **clean, self-contained driven adapter** (no
+      inward imports into components/workflows/web_api), and `NLUAnalysisComponent` is its dedicated wrapper (the
+      adapter boundary). Per the review's "treat analysis as a driven adapter", this is a legitimate
+      application→driven-adapter relationship; a port for one-consumer tooling would be over-engineering. **ARCH-5
+      import-linter rule:** forbid `components → web_api`/`analysis` generally, but **allow `nlu_analysis → analysis`**
+      as the adapter boundary. Verified: full suite unchanged (176/55, zero regression), TEST-0 green.
 - [ ] **ARCH-4** (P2) — Formalize ports: every provider category has an interface in `core/interfaces`; adapters depend only on it.
 - [ ] **ARCH-5** (P1) — Add an **import-linter** contract (layered + independence) wired into CI so the hexagon is enforced and can't regress. _Makes "follows the architecture" verifiable._ Folds in **QUAL-23** (startup name-resolution assertion) + **TEST-0** (smoke harness) as CI gates.
 - [ ] **ARCH-6** (P2) — Resolve the dead `InputManager._input_queue` seam (wire as driving port, or delete). Fix the contained `inputs.base ⇄ subclasses` cycle (SCC-2).
@@ -567,6 +576,12 @@ Governed by Invariant #4 (config-ui must stay functional).
   the `core/assets.py` AssetConfig TYPE_CHECKING band-aid dropped (clean downward import). config now has no upward
   imports. Verified: no cycle, full suite unchanged (176/55, zero regression). Per Invariant #5, synced
   `phase1_architecture_map.md` §2.1 (SCC-1 resolved). **Gate 1: ARCH-1 ✓, ARCH-2 ✓ — ARCH-3 next.**
+
+- **ARCH-3 DONE** (`03fc44b`) — stop components importing delivery/tooling. Moved `web_api/asyncapi.py` →
+  `api/asyncapi.py` (rank-0 port) so asr/tts components stop importing `web_api`; verified `analysis` is a clean
+  driven adapter wrapped by `nlu_analysis_component` (classification for the ARCH-5 linter, no code change).
+  Verified: full suite unchanged (176/55), TEST-0 green. Per Invariant #5, synced `phase1_architecture_map.md` §2.3.
+  **Gate 1: ARCH-1 ✓, ARCH-2 ✓, ARCH-3 ✓ — ARCH-4 (formalize ports) → ARCH-5 (import-linter) next.**
 
 ### 2026-05-31
 - **Revival analysis** — full doc + code + build + asset audit; established real version is 15.0.0, single
