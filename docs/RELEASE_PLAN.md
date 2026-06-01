@@ -48,7 +48,7 @@ Living findings behind the tasks (Invariant #5). `[x]` = exists; others are prod
 |---|---|---|
 | `phase0_static_baseline.md` `[x]` | static baseline: phantom refs, hidden type debt, dead code, layering | QUAL-1/2 ✓, QUAL-3/4/5/6, TEST-1 |
 | `phase1_architecture_map.md` `[x]` | architecture map, doc-harmonization audit, hexagon target | ARCH-0 ✓, ARCH-1..8, DOC-4/5✓/5b/6✓ |
-| `fire_and_forget_review.md` | F&F lifecycle + gap analysis | QUAL-8/9, TEST-3 |
+| `fire_and_forget_review.md` `[x]` | F&F lifecycle + gap analysis (6 legacy issues re-validated) | QUAL-8 ✓, QUAL-9, TEST-3, DOC-4 |
 | `parameter_extraction_review.md` `[x]` | text→parameters review + gaps | QUAL-10 ✓, QUAL-11, TEST-4, DOC-7, UI-1/2/3, QUAL-22 |
 | `text_processing_review.md` `[x]` | text-processor subsystem review + LLM-text-proc question | QUAL-12 ✓, QUAL-13, TEST-5 |
 | `llm_usage_review.md` `[x]` | LLM usage + offline-first + NLU-LLM decision | QUAL-14 ✓, QUAL-15, QUAL-16 |
@@ -138,17 +138,22 @@ See `docs/review/phase1_architecture_map.md` §5.
 - [ ] **QUAL-7** (P2) — `configs/config-master.toml` puts train-schedule under `[intent_system.handlers.train_schedule]`,
       but the model field is `IntentSystemConfig.train_schedule` (→ `[intent_system.train_schedule]`). The
       config-master section is orphaned/ignored. Reconcile config-master with the model. (Found during DOC-5.)
-- [ ] **QUAL-8** [FAF] (P1) — Fire-and-forget full review & gap analysis. Map the lifecycle end-to-end: launch
-      (`intents/handlers/base.py execute_fire_and_forget_with_context`, ~83 call sites), action metadata, context
-      state (`active_actions`/`recent_actions`/`failed_actions`/`action_error_count` + `add/remove_active_action`
-      in `UnifiedConversationContext`), completion/timeout/cleanup (`cleanup_timeout_tasks`), and monitoring/
-      metrics/notifications integration. **Re-validate the 6 issues in `docs/fire_forget_issues.md`** (Sep 2025,
-      pre-context-unification) against current code. Done when: `docs/review/fire_and_forget_review.md` exists with
-      each prior issue marked confirmed/fixed/changed, new gaps captured, and a ranked remediation list.
-- [ ] **QUAL-9** [FAF] (P-TBD) — Remediate confirmed F&F gaps (populated by QUAL-8). Candidates pending
-      confirmation: action-metadata key mismatch (`active_actions` plural vs `active_action` singular, issue #1),
-      completion write-back + context-manager/callback integration (#2, #6), error propagation (#5), cleanup/
-      memory leak (#3), error-handling consistency (#4).
+- [x] **QUAL-8** [FAF] (P1) — Fire-and-forget full review & gap analysis. **DONE 2026-06-01** →
+      `docs/review/fire_and_forget_review.md` (5×P0, 8×P1, 6×P2). Verdict: **F&F is broken end-to-end** and the
+      legacy `docs/fire_forget_issues.md` "✅ COMPLETED" is **materially false** (banner added). Legacy issues:
+      #4 FIXED, #6 FIXED-but-moot, #1 & #5 CHANGED-still-broken, #2 CHANGED-unreachable, #3 CONFIRMED. Plan
+      correction: ~13 call sites in 3 handlers, not "~83".
+- [ ] **QUAL-9** [FAF] (P1) — Remediate F&F (ranked in the review). **P0s:** (1) **timers crash on launch** —
+      duplicate `session_id` kwarg in `execute_fire_and_forget_with_context` (`base.py:125`+kwargs vs
+      `timer.py:228`) → `TypeError`, only `ValueError` caught → timer creation fails outright; (2) **domain vs
+      action_name key mismatch** — launch stores `active_actions[action_name]` (`base.py:500`), removal keys by
+      `domain` (`base.py:636`) → `remove_completed_action` always misses → leak + dead completion/metrics/
+      notifications; fix by keying everything on the unique `action_name` (also fixes same-domain clobber); (3)
+      **`get_or_create_context` doesn't exist** (only `get_context`) — called in `base.py:633`/`notifications.py:174,229`/
+      `debug_tools.py:101` → swallowed `AttributeError`; (4) **action tasks orphaned** (GC-cancellable) — hold strong
+      refs; (5) **`active_actions` unbounded** — bound + prune (MemoryManager skips it). **P1s:** timeout monitor
+      `wait_for` not flat-sleep; capture-before-pop; collapse the two write-back processors; per-action metrics keying;
+      finish timer-cancellation cleanup (`timer.py:631`). Then **TEST-3** lifecycle coverage. Gated by Invariant #4.
 - [x] **QUAL-10** [PEX] (P1) — Text→parameters (parameter extraction) full review. **DONE 2026-06-01** →
       `docs/review/parameter_extraction_review.md` (6×P0, 11×P1, 12×P2). Verdict: donation-driven extraction is
       largely **aspirational** — in practice it's spaCy NER + per-param regex + heuristics with **no contract
@@ -454,6 +459,16 @@ Governed by Invariant #4 (config-ui must stay functional).
   path); should be **opt-in online-only**, augmenting the deterministic default, never on the default path. Surfaced
   a 3rd instance of the systemic **"configured names that don't resolve"** bug (dead stages here; phantom `console`
   LLM in QUAL-14; phantom cascade names in QUAL-10) → a shared startup-assertion fix.
+
+- **QUAL-8 [FAF] DONE** → `docs/review/fire_and_forget_review.md` (3-layer parallel deep-read; 5×P0/8×P1/6×P2).
+  **F&F is broken end-to-end** (verified): **timers crash on launch** (duplicate `session_id` kwarg → TypeError, only
+  ValueError caught); the **domain-vs-action_name key mismatch** makes `remove_completed_action` always miss →
+  `active_actions` leaks unbounded and completion/metrics/notifications (all nested in the failing `if remove...`
+  block) never fire; completion callbacks call the **non-existent `get_or_create_context`**. Re-validated the 6
+  legacy issues (1 FIXED, 1 fixed-but-moot, 2 changed-still-broken, 1 unreachable, 1 confirmed) — the Sep-2025 doc's
+  "COMPLETED" is false (banner added). Remediation → **QUAL-9** (P0s first), then TEST-3. **This is the 4th
+  "plumbed-but-dead" subsystem** (with QUAL-10/12/14) — a cross-cutting wire-up integration test + startup
+  assertions would catch the whole class. **Review wave (QUAL-8/10/12/14) COMPLETE** — ARCH refactors unblocked.
 
 ### 2026-05-31
 - **Revival analysis** — full doc + code + build + asset audit; established real version is 15.0.0, single

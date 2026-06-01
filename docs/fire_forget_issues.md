@@ -1,5 +1,12 @@
 # Fire-and-Forget Functionality Issues
 
+> **⚠️ SUPERSEDED / partly inaccurate (2026-06-01).** This Sep-2025 doc's "✅ COMPLETED / FULLY IMPLEMENTED"
+> claims are **materially false** — the F&F lifecycle was re-validated in **QUAL-8** and is broken end-to-end
+> (timers crash on launch; a domain-vs-action_name key mismatch + a call to a non-existent `get_or_create_context`
+> make completion/metrics/notifications dead; `active_actions` leaks). See **`docs/review/fire_and_forget_review.md`**
+> for the current verdicts and ranked remediation. This file is retained for history only and will be retired by
+> DOC-4 once QUAL-9 lands.
+
 **Date**: 2025-09-13  
 **Status**: Documented - Requires Implementation  
 **Priority**: Medium  
