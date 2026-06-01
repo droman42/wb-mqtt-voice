@@ -196,7 +196,12 @@ See `docs/review/phase1_architecture_map.md` §5.
 
 ### Models & Assets (ASSET)
 - [x] **ASSET-1** — Refresh stale model IDs (Anthropic→Claude 4.x, Whisper large-v3, ElevenLabs multilingual_v2, spaCy 3.8, gpt-4→gpt-4o-mini). → fc85306
-- [ ] **ASSET-2** (P1) — Liveness-check all model download URLs after the pause (`models.silero.ai` flaky → prefer torch.hub; openWakeWord v0.5.1; alphacephei vosk).
+- [ ] **ASSET-2** (P1) — Liveness-check all model download URLs after the pause (`models.silero.ai` → prefer
+      torch.hub as a hedge; openWakeWord v0.5.1; alphacephei vosk). **Caveat:** test **off the VPN/proxy** before
+      declaring any host dead — this network uses fake-IP mode (every host resolves into `198.18.0.0/15`), which is
+      normal; the real failure signal is a connection **stall/ERR**, not the IP. Verified 2026-06-01: silero.ai,
+      alphacephei, github, whisper-CDN and PyPI all reachable and serving real bytes (silero served the real 40MB
+      `v4_ru.pt`), so the "silero flaky/dead" reputation was at least partly the proxy stall, not the host.
 - [ ] **ASSET-3** (P2) — DEFERRED — Migrate `lingua-franca` off the abandoned MycroftAI git pin to the OVOS
       successors (`ovos-number-parser`/`ovos-date-parser`), or mirror/vendor. Refs: `pyproject.toml` note.
 
