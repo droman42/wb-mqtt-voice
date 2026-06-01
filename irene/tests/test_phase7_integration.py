@@ -140,6 +140,8 @@ class TestHardwareScenarios:
         
         # Create ASR component with mock providers
         asr_component = ASRComponent()
+        asr_component.core = MagicMock()
+        asr_component.core.config.asr.model_dump.return_value = {}
         asr_component.providers = providers
         asr_component.default_provider = 'vosk'
         
@@ -200,6 +202,8 @@ class TestHardwareScenarios:
             
             # Create ASR component
             asr_component = ASRComponent()
+            asr_component.core = MagicMock()
+            asr_component.core.config.asr.model_dump.return_value = {}
             asr_component.providers = {'test_provider': provider}
             asr_component.default_provider = 'test_provider'
             
@@ -263,6 +267,8 @@ class TestHardwareScenarios:
         
         # Set up components with different configurations
         asr_component = ASRComponent()
+        asr_component.core = MagicMock()
+        asr_component.core.config.asr.model_dump.return_value = {}
         asr_component.providers = {'mock_asr': MockASRProvider('mock_asr', [16000, 44100])}
         asr_component.default_provider = 'mock_asr'
         
@@ -309,6 +315,8 @@ class TestProviderFallbacks:
         
         # Create ASR component with both providers
         asr_component = ASRComponent()
+        asr_component.core = MagicMock()
+        asr_component.core.config.asr.model_dump.return_value = {}
         asr_component.providers = {
             'primary': primary_provider,
             'fallback': fallback_provider

@@ -9,7 +9,7 @@ or don't support specific sample rates.
 import pytest
 import asyncio
 from typing import Dict, Any, List, Optional
-from unittest.mock import Mock, AsyncMock, patch
+from unittest.mock import Mock, AsyncMock, MagicMock, patch
 
 from irene.components.asr_component import ASRComponent
 from irene.components.voice_trigger_component import VoiceTriggerComponent
@@ -156,6 +156,8 @@ class TestASRFallbackChains:
         
         # Set up ASR component
         asr_component = ASRComponent()
+        asr_component.core = MagicMock()
+        asr_component.core.config.asr.model_dump.return_value = {}
         asr_component.providers = {"primary": primary, "backup": backup}
         asr_component.default_provider = "primary"
         
@@ -180,6 +182,8 @@ class TestASRFallbackChains:
         
         # Set up ASR component
         asr_component = ASRComponent()
+        asr_component.core = MagicMock()
+        asr_component.core.config.asr.model_dump.return_value = {}
         asr_component.providers = {"strict": strict_provider, "flexible": flexible_provider}
         asr_component.default_provider = "strict"
         
@@ -205,6 +209,8 @@ class TestASRFallbackChains:
         
         # Set up ASR component
         asr_component = ASRComponent()
+        asr_component.core = MagicMock()
+        asr_component.core.config.asr.model_dump.return_value = {}
         asr_component.providers = {
             "provider1": provider1,
             "provider2": provider2,
@@ -232,6 +238,8 @@ class TestASRFallbackChains:
         
         # Set up ASR component
         asr_component = ASRComponent()
+        asr_component.core = MagicMock()
+        asr_component.core.config.asr.model_dump.return_value = {}
         asr_component.providers = {"provider1": provider1, "provider2": provider2}
         asr_component.default_provider = "provider1"
         
@@ -254,6 +262,8 @@ class TestASRFallbackChains:
         
         # Set up ASR component
         asr_component = ASRComponent()
+        asr_component.core = MagicMock()
+        asr_component.core.config.asr.model_dump.return_value = {}
         asr_component.providers = {"intermittent": intermittent_provider, "reliable": reliable_backup}
         asr_component.default_provider = "intermittent"
         
@@ -423,6 +433,8 @@ class TestComplexFallbackScenarios:
         
         # Set up ASR component
         asr_component = ASRComponent()
+        asr_component.core = MagicMock()
+        asr_component.core.config.asr.model_dump.return_value = {}
         asr_component.providers = {"hw_optimized": hw_optimized, "sw_fallback": sw_fallback}
         asr_component.default_provider = "hw_optimized"
         
@@ -461,6 +473,8 @@ class TestComplexFallbackScenarios:
         
         # Set up component
         asr_component = ASRComponent()
+        asr_component.core = MagicMock()
+        asr_component.core.config.asr.model_dump.return_value = {}
         asr_component.providers = providers
         asr_component.default_provider = "provider_0"
         
