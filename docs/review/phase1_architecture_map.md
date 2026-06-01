@@ -106,6 +106,20 @@ inputs, components, workflows) imports *up* into `intents`.
 `irene/core/context_models.py`; intent types stay in `intents/`. Keep a thin re-export shim during migration.
 This removes the bulk of §2.3's backwards edges and the audio_helpers `TYPE_CHECKING` band-aid in one move.
 
+> **✅ ARCH-1 DONE (2026-06-01) — with two intentional placement changes from the sketch above (no TYPE_CHECKING).**
+> (a) `AudioData`/`WakeWordResult` → **`irene/utils/audio_data.py`** (not `core/audio.py`): a zero-dep leaf at
+> rank 0 so `utils.audio_helpers`/`utils.vad` import it **sideways** rather than creating the `utils→core` upward
+> edge this very review flags as a violation class (§2.3). The `audio_helpers` `TYPE_CHECKING` band-aid is gone
+> (real import; no cycle). (b) Conversation context → **`irene/intents/context_models.py`** (not
+> `core/context_models.py`): context references `Intent`/`IntentResult`, which are **domain peers**, so the clean
+> home is the *same domain package* — a real one-directional sideways import (`context_models → models`; `models`
+> does **not** import back), giving **no cycle and no `TYPE_CHECKING`**. Putting context in `core/` (as sketched)
+> would invert the domain reference (`core → intents`) and force a `TYPE_CHECKING` shim — rejected. Net: the
+> §2.3 **audio** backwards edges (utils→intents) are dissolved; the **context** edges
+> (`core.{entity_resolver,trace_context,workflow_manager} → intents.context_models`) are reclassified as
+> legitimate **application→domain** (inward) under the §5 hexagon, not violations. 45 importers re-pointed; full
+> suite unchanged (176/55, zero regression); TEST-0 green.
+
 ### 2.5 Other structural notes
 - **Dead input path:** `InputManager` pumps an internal `_input_queue` (`inputs/base.py:299-314`) that **nothing
   in the core loop consumes**; the audio stream is driven directly by the runner

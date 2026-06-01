@@ -110,10 +110,17 @@ Target pattern: **Hexagonal (Ports & Adapters)** — SIGNED OFF 2026-06-01. Code
 (interfaces=ports, providers=adapters, components=app services, entry-points=registry).
 See `docs/review/phase1_architecture_map.md` §5.
 - [x] **ARCH-0** (P1) — Architecture MAP & document (Goal 1 doc-sync findings + Goal 2 pattern). → `docs/review/phase1_architecture_map.md`
-- [ ] **ARCH-1** (P0) — Split the `intents/models.py` god-module (in-degree 67): move `AudioData`/`WakeWordResult`
-      to a foundational module and conversation-context types to their own; re-point importers downward; drop the
-      `audio_helpers.py` `TYPE_CHECKING` band-aid. Dissolves most backwards edges. Done when: domain has no
-      outward deps for these types; ruff/pyright clean; imports OK.
+- [x] **ARCH-1** (P0) — Split the `intents/models.py` god-module (in-degree 67). **DONE 2026-06-01** (`cdf8a81`
+      audio, `a996dba` context). (1) `AudioData`/`WakeWordResult` → **`irene/utils/audio_data.py`** (zero-dep
+      leaf), dropping the `audio_helpers.py` `TYPE_CHECKING` band-aid (real sideways import now). (2)
+      `UnifiedConversationContext`/`ConversationState`/`ContextLayer` → **`irene/intents/context_models.py`**, with
+      45 importers re-pointed; `Intent`/`IntentResult` stay in `intents/models.py` (thin audio shim retained).
+      **Placement deviates from the review sketch (core/) on purpose — NO TYPE_CHECKING:** audio went to `utils`
+      (not `core`) to avoid a `utils→core` upward edge; context stayed in the `intents` **domain** package (not
+      `core`) because it references `Intent`/`IntentResult` (domain peers) — a real one-directional sideways import
+      (`context_models→models`), no cycle, no band-aid. The remaining `core.{entity_resolver,trace_context,
+      workflow_manager}→intents.context_models` edges are legitimate **application→domain** (inward) under the
+      hexagon, not violations. Verified: no cycle, full suite unchanged (176/55, zero regression), TEST-0 green.
 - [ ] **ARCH-2** (P0) — Break config↔core / config↔components: schema auto-registry must not import
       `configuration_component`; `config/validator.py:222` must not import `core.components` (inject/move
       `discover_providers`); remove import-time schema-validation side-effects; drop the `core/assets.py`
@@ -538,6 +545,14 @@ Governed by Invariant #4 (config-ui must stay functional).
   zero false positives. TEST-0 still green. **Gate 0 (TEST-0 + QUAL-23) is now complete → Gate 1 (ARCH-1/2/4/5)
   unblocked.** Per Invariant #5, synced llm_usage/parameter_extraction/text_processing review docs (each now notes
   the startup guard; QUAL-15 not *done* until the startup ERROR clears).
+
+- **ARCH-1 DONE** (`cdf8a81` + `a996dba`) — split the `intents/models.py` god-module (in-degree 67). IO primitives
+  → `utils/audio_data.py` (dropped the `audio_helpers` TYPE_CHECKING band-aid); context types →
+  `intents/context_models.py`; 45 importers re-pointed. **User-directed clean solution: NO TYPE_CHECKING** — context
+  stays in the `intents` domain package (peer of `Intent`) with a real one-directional sideways import, so no cycle
+  and no band-aid (deviates from the review's `core/` sketch, which would have inverted the dep). Verified: no
+  cycle, full suite unchanged (176/55, zero regression), TEST-0 green. Per Invariant #5, synced
+  `phase1_architecture_map.md` with the placement rationale. **Gate 1 underway: ARCH-2 next.**
 
 ### 2026-05-31
 - **Revival analysis** — full doc + code + build + asset audit; established real version is 15.0.0, single
