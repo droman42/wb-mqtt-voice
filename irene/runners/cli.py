@@ -66,7 +66,7 @@ def list_deployment_profiles():
     print("=" * 40)
     
     profiles = [
-        ("headless", "Text processing only (no dependencies)"),
+        ("headless", "Text command processing — NLU + intents (no audio/web; requires the 'nlu' extra)"),
         ("api-only", "Web API server (requires fastapi, uvicorn)"),
         ("tts-only", "Text-to-speech output (requires pyttsx3)"),
         ("voice", "Full voice assistant (all components)"),
@@ -79,7 +79,7 @@ def list_deployment_profiles():
         
         # Check availability
         if name == "headless":
-            print("   ✅ Always available")
+            print("   ✅ Available (requires NLU: spaCy + language model)")
         elif name == "custom":
             print("   ⚙️  Depends on configuration")
         else:
@@ -226,10 +226,14 @@ Note: CLI runner always uses CLI input only, regardless of config file settings.
         """Modify configuration for CLI-specific needs"""
         # Handle deployment profile overrides (V14 Architecture)
         if args.headless:
-            # Headless: minimal components, no audio/voice
+            # Headless: text-command pipeline, no audio/voice/web.
+            # NLU + text_processor are REQUIRED — the UnifiedVoiceAssistantWorkflow cannot
+            # turn text into an intent without the NLU component (otherwise workflow creation
+            # fails with "Required component 'nlu' not available"). LLM stays off (optional;
+            # conversation/translation handlers degrade to console fallback).
             config.components = ComponentConfig(
                 tts=False, audio=False, asr=False, voice_trigger=False,
-                llm=False, nlu=False, text_processor=False, intent_system=True
+                llm=False, nlu=True, text_processor=True, intent_system=True
             )
             # Also update system capabilities
             config.system.microphone_enabled = False
