@@ -15,7 +15,7 @@ from pydantic import BaseModel
 from .base import Component
 from ..core.interfaces.webapi import WebAPIPlugin
 from ..core.trace_context import TraceContext
-from ..intents.models import UnifiedConversationContext
+from ..intents.context_models import UnifiedConversationContext
 from ..utils.loader import dynamic_loader
 from ..utils.text_processing import all_num_to_text_async
 from ..providers.text_processing.base import TextProcessingProvider

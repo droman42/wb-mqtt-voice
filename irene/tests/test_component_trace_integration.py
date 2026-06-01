@@ -15,7 +15,8 @@ from ..components.voice_trigger_component import VoiceTriggerComponent
 from ..components.audio_component import AudioComponent
 from ..components.llm_component import LLMComponent
 from ..intents.orchestrator import IntentOrchestrator
-from ..intents.models import Intent, IntentResult, UnifiedConversationContext, AudioData, WakeWordResult
+from ..intents.models import Intent, IntentResult, AudioData, WakeWordResult
+from ..intents.context_models import UnifiedConversationContext
 from ..intents.registry import IntentRegistry
 
 

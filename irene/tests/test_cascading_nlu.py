@@ -10,7 +10,8 @@ import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 from typing import Dict, Any, List
 
-from irene.intents.models import UnifiedConversationContext, Intent
+from irene.intents.models import Intent
+from irene.intents.context_models import UnifiedConversationContext
 from irene.components.nlu_component import NLUComponent
 from irene.providers.nlu.base import NLUProvider
 from irene.core.donations import ParameterSpec

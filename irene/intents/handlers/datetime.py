@@ -10,7 +10,8 @@ from datetime import datetime
 from typing import Dict, List, Optional
 
 from .base import IntentHandler
-from ..models import Intent, IntentResult, UnifiedConversationContext
+from ..models import Intent, IntentResult
+from ..context_models import UnifiedConversationContext
 
 logger = logging.getLogger(__name__)
 

@@ -10,7 +10,8 @@ import logging
 import re
 from typing import Dict, Any, List, Optional, Tuple, Set
 from dataclasses import dataclass
-from ..intents.models import UnifiedConversationContext, Intent
+from ..intents.models import Intent
+from ..intents.context_models import UnifiedConversationContext
 
 # Required rapidfuzz import for fuzzy matching
 from rapidfuzz import fuzz, process

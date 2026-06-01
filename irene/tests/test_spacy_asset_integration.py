@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Dict, Any
 
 from irene.providers.nlu.spacy_provider import SpaCyNLUProvider
-from irene.intents.models import UnifiedConversationContext
+from irene.intents.context_models import UnifiedConversationContext
 
 
 class TestSpaCyAssetIntegration:

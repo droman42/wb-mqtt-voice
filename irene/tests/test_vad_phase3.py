@@ -16,7 +16,8 @@ from unittest.mock import AsyncMock, MagicMock
 from irene.workflows.voice_assistant import UnifiedVoiceAssistantWorkflow
 from irene.workflows.base import RequestContext
 from irene.config.models import VADConfig, UnifiedVoiceAssistantWorkflowConfig
-from irene.intents.models import AudioData, UnifiedConversationContext, IntentResult
+from irene.intents.models import AudioData, IntentResult
+from irene.intents.context_models import UnifiedConversationContext
 
 # Import Phase 1 & 2 components for testing
 from irene.tests.test_vad_basic import generate_test_audio_data

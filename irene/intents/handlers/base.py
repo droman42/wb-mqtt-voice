@@ -6,7 +6,8 @@ import time
 from abc import ABC, abstractmethod
 from typing import Dict, Any, List, Optional, Callable, Coroutine
 
-from ..models import Intent, IntentResult, UnifiedConversationContext
+from ..models import Intent, IntentResult
+from ..context_models import UnifiedConversationContext
 from ...core.metadata import EntryPointMetadata
 from ...core.notifications import get_notification_service, NotificationService
 from ...core.metrics import get_metrics_collector, MetricsCollector

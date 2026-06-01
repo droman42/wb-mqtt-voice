@@ -15,7 +15,8 @@ from typing import Dict, Any, List
 from unittest.mock import AsyncMock, MagicMock, patch
 from pathlib import Path
 
-from irene.intents.models import UnifiedConversationContext, Intent, IntentResult
+from irene.intents.models import Intent, IntentResult
+from irene.intents.context_models import UnifiedConversationContext
 from irene.intents.context import ContextManager
 from irene.intents.orchestrator import IntentOrchestrator
 from irene.intents.registry import IntentRegistry

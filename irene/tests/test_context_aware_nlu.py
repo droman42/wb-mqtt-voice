@@ -13,7 +13,8 @@ from typing import Dict, Any
 from pathlib import Path
 import yaml
 
-from irene.intents.models import UnifiedConversationContext, Intent
+from irene.intents.models import Intent
+from irene.intents.context_models import UnifiedConversationContext
 from irene.components.nlu_component import ContextAwareNLUProcessor, NLUComponent
 from irene.core.entity_resolver import ContextualEntityResolver
 

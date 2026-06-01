@@ -15,7 +15,7 @@ from typing import Dict, Any, Optional, List
 
 from .base import TextProcessingProvider
 from ...utils.text_normalizers import NumberNormalizer, PrepareNormalizer
-from ...intents.models import UnifiedConversationContext
+from ...intents.context_models import UnifiedConversationContext
 
 logger = logging.getLogger(__name__)
 

@@ -13,7 +13,8 @@ from pydantic import BaseModel
 from .base import Component
 from ..core.interfaces.webapi import WebAPIPlugin
 from ..core.trace_context import TraceContext
-from ..intents.models import Intent, UnifiedConversationContext
+from ..intents.models import Intent
+from ..intents.context_models import UnifiedConversationContext
 from ..utils.loader import dynamic_loader
 from ..providers.nlu.base import NLUProvider
 from ..core.entity_resolver import ContextualEntityResolver

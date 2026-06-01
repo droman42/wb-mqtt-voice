@@ -24,7 +24,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from irene.core.engine import AsyncVACore
 from irene.core.session_manager import SessionManager
-from irene.intents.models import UnifiedConversationContext
+from irene.intents.context_models import UnifiedConversationContext
 # CommandResult removed - use IntentResult instead
 from irene.config.models import CoreConfig as Config
 from irene.intents.handlers.conversation import ConversationIntentHandler

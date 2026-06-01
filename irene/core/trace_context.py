@@ -19,7 +19,7 @@ import uuid
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from ..intents.models import UnifiedConversationContext
+from ..intents.context_models import UnifiedConversationContext
 
 logger = logging.getLogger(__name__)
 

@@ -18,7 +18,8 @@ from typing import Dict, Any, Optional
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
 # Import intent system components
-from irene.intents.models import Intent, UnifiedConversationContext
+from irene.intents.models import Intent
+from irene.intents.context_models import UnifiedConversationContext
 from irene.core.session_manager import SessionManager
 from irene.intents.handlers.train_schedule import TrainScheduleIntentHandler
 from irene.intents.registry import IntentRegistry

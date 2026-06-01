@@ -13,7 +13,8 @@ from pathlib import Path
 from typing import Dict, Any, List, Optional, Tuple
 
 from .base import NLUProvider
-from ...intents.models import Intent, UnifiedConversationContext
+from ...intents.models import Intent
+from ...intents.context_models import UnifiedConversationContext
 from ...utils.loader import safe_import
 from ...core.donations import ParameterSpec, KeywordDonation
 

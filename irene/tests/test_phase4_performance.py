@@ -18,7 +18,8 @@ from typing import Dict, Any, List
 from unittest.mock import MagicMock
 from concurrent.futures import ThreadPoolExecutor
 
-from irene.intents.models import UnifiedConversationContext, Intent
+from irene.intents.models import Intent
+from irene.intents.context_models import UnifiedConversationContext
 from irene.intents.context import ContextManager
 from irene.core.metrics import get_metrics_collector
 from irene.config.models import ContextualCommandsConfig

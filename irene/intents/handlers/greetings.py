@@ -10,7 +10,8 @@ import logging
 from typing import List, Optional, Dict
 
 from .base import IntentHandler
-from ..models import Intent, IntentResult, UnifiedConversationContext
+from ..models import Intent, IntentResult
+from ..context_models import UnifiedConversationContext
 
 logger = logging.getLogger(__name__)
 

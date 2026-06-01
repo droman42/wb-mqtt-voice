@@ -10,7 +10,7 @@ import asyncio
 import time
 from typing import Dict, Any, List
 
-from irene.intents.models import UnifiedConversationContext
+from irene.intents.context_models import UnifiedConversationContext
 from irene.intents.context import ContextManager
 from irene.workflows.base import RequestContext
 from irene.core.client_registry import ClientRegistry, ClientRegistration, ClientDevice

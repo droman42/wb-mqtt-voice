@@ -4,7 +4,8 @@ import logging
 from abc import ABC, abstractmethod
 from typing import Dict, Any, AsyncIterator, Optional, List
 
-from ..intents.models import AudioData, UnifiedConversationContext, IntentResult
+from ..intents.models import AudioData, IntentResult
+from ..intents.context_models import UnifiedConversationContext
 from ..core.metadata import EntryPointMetadata
 from ..core.session_manager import SessionManager
 

@@ -21,7 +21,8 @@ from .base import Workflow, RequestContext
 from .audio_processor import AudioProcessorInterface, VoiceSegment
 from ..core.metrics import get_metrics_collector
 from ..core.trace_context import TraceContext
-from ..intents.models import AudioData, UnifiedConversationContext, Intent, IntentResult, WakeWordResult
+from ..intents.models import AudioData, Intent, IntentResult, WakeWordResult
+from ..intents.context_models import UnifiedConversationContext
 from ..utils.audio_helpers import test_audio_playback_capability, calculate_audio_buffer_size
 from ..utils.loader import safe_import
 from ..config.manager import ConfigValidationError

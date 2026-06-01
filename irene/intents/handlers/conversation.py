@@ -10,7 +10,8 @@ import time
 from typing import Dict, List, Optional, Any, Type, TYPE_CHECKING
 
 from .base import IntentHandler
-from ..models import Intent, IntentResult, UnifiedConversationContext, ConversationState, ContextLayer
+from ..models import Intent, IntentResult
+from ..context_models import UnifiedConversationContext, ConversationState, ContextLayer
 
 if TYPE_CHECKING:
     from pydantic import BaseModel

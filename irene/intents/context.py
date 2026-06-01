@@ -10,7 +10,8 @@ import time
 import logging
 import asyncio
 from typing import Dict, Any, Optional, List, TYPE_CHECKING
-from .models import UnifiedConversationContext, Intent, IntentResult
+from .models import Intent, IntentResult
+from .context_models import UnifiedConversationContext
 from ..core.metrics import get_metrics_collector
 
 if TYPE_CHECKING:

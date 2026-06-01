@@ -9,7 +9,8 @@ from abc import abstractmethod
 from typing import Dict, Any, List, Optional
 
 from ..base import ProviderBase
-from ...intents.models import Intent, UnifiedConversationContext
+from ...intents.models import Intent
+from ...intents.context_models import UnifiedConversationContext
 from ...core.donations import ParameterSpec
 
 

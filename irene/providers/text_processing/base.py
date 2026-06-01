@@ -9,7 +9,7 @@ from abc import abstractmethod
 from typing import Dict, Any, List
 
 from ..base import ProviderBase
-from ...intents.models import UnifiedConversationContext
+from ...intents.context_models import UnifiedConversationContext
 
 
 class TextProcessingProvider(ProviderBase):

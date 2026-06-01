@@ -4,7 +4,8 @@ import logging
 import time
 from typing import Dict, Any, Optional, List
 
-from .models import Intent, IntentResult, UnifiedConversationContext
+from .models import Intent, IntentResult
+from .context_models import UnifiedConversationContext
 from .registry import IntentRegistry
 from ..core.metrics import get_metrics_collector, MetricsCollector
 from ..core.trace_context import TraceContext

@@ -11,7 +11,8 @@ from datetime import datetime
 from typing import List, Dict, Any, TYPE_CHECKING
 
 from .base import IntentHandler
-from ..models import Intent, IntentResult, UnifiedConversationContext
+from ..models import Intent, IntentResult
+from ..context_models import UnifiedConversationContext
 
 if TYPE_CHECKING:
     from pydantic import BaseModel

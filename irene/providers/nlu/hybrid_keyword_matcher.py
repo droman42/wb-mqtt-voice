@@ -17,7 +17,8 @@ from typing import Dict, Any, List, Pattern, Optional, Tuple, Set
 from dataclasses import dataclass
 
 from .base import NLUProvider
-from ...intents.models import Intent, UnifiedConversationContext
+from ...intents.models import Intent
+from ...intents.context_models import UnifiedConversationContext
 from ...core.donations import ParameterSpec, KeywordDonation
 
 logger = logging.getLogger(__name__)
