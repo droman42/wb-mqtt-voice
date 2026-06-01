@@ -10,9 +10,29 @@ import asyncio
 from unittest.mock import AsyncMock, MagicMock
 from typing import Dict, Any
 
+from pathlib import Path
+import yaml
+
 from irene.intents.models import UnifiedConversationContext, Intent
 from irene.components.nlu_component import ContextAwareNLUProcessor, NLUComponent
 from irene.core.entity_resolver import ContextualEntityResolver
+
+
+class _LocalizationAssetLoader:
+    """Minimal asset-loader stub exposing `.localizations` loaded from the real
+    assets/localization/ YAMLs, so Device/Location entity resolvers work in tests
+    without a full IntentAssetLoader (the live NLU component rebuilds the resolver
+    with the real asset loader during provider loading)."""
+
+    def __init__(self):
+        self.localizations = {}
+        base = Path(__file__).resolve().parents[2] / "assets" / "localization"
+        for domain in ("devices", "rooms"):
+            self.localizations[domain] = {}
+            for lang in ("en", "ru"):
+                f = base / domain / f"{lang}.yaml"
+                if f.exists():
+                    self.localizations[domain][lang] = yaml.safe_load(f.read_text()) or {}
 
 
 class TestContextAwareNLU:
@@ -33,7 +53,11 @@ class TestContextAwareNLU:
     @pytest.fixture
     def context_processor(self, mock_nlu_component):
         """Create context-aware NLU processor for testing"""
-        return ContextAwareNLUProcessor(mock_nlu_component)
+        processor = ContextAwareNLUProcessor(mock_nlu_component)
+        # Back the entity resolver with the real localization assets (device/room
+        # mappings); the live component does this with the IntentAssetLoader.
+        processor.entity_resolver = ContextualEntityResolver(_LocalizationAssetLoader())
+        return processor
     
     @pytest.fixture
     def sample_context_kitchen(self):
