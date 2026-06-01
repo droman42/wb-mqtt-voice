@@ -55,6 +55,7 @@ Living findings behind the tasks (Invariant #5). `[x]` = exists; others are prod
 | `streaming_api_review.md` | AsyncAPI streaming-API tooling | QUAL-17/18 |
 | `esp32_wakeword_review.md` | ESP32 + wakeword keep/fix/cut | QUAL-19/20 |
 | `docs/design/mqtt_integration.md` | MQTT output-port design | ARCH-7/8 |
+| `docs/design/onnx_inference_layer.md` | shared sherpa-onnx inference layer (ASR/TTS/wakeword) | ARCH-9/10 |
 | `config-ui/docs/donation_editor_ux.md` | human-friendly donations editor design | UI-1/2/3 |
 
 ---
@@ -100,6 +101,30 @@ See `docs/review/phase1_architecture_map.md` §5.
       model; reconcile/supersede `docs/intent_mqtt.md`. → `docs/design/mqtt_integration.md`.
 - [ ] **ARCH-8** [MQTT] (P-TBD) — Implement per ARCH-7 (output-port seam + MQTT adapter + config + handler/action
       integration + tests). Split into PR-sized tasks from the design.
+- [ ] **ARCH-9** [INFER] (P-TBD) — **Design session** (needs live collaboration): a **shared sherpa-onnx (k2-fsa)
+      inference layer** behind the existing ASR/TTS/VoiceTrigger ports. Today inference is **provider-owned and
+      fragmented** — whisper→torch, silero v3/v4→torch, vosk→Kaldi C++, openWakeWord & vosk-tts→onnxruntime
+      (black-boxed); 2–3 runtimes loaded in one process, no shared session/asset management. Key enabler:
+      **`onnxruntime 1.22.1` is already a transitive dep** (via `openwakeword` + `vosk-tts`); zero direct use in
+      `irene/`. sherpa-onnx is one ONNX runtime spanning **ASR** (EN+RU Zipformer, streaming+offline), **TTS**
+      (100+ VITS/40+ langs incl. RU), **wake-word/KWS**, and **VAD** — int8 and edge-sized (RU small 45MB→21MB,
+      full 1.9GB→929MB, WER 6.1), serving the offline + **[ESP32]** goals. **Constraint (user, do not violate):
+      NOT a rip-and-replace.** Whisper and Silero stay **first-class** — both are genuinely strong and target
+      **different deployment profiles** (they'd never co-exist in one real deployment); sherpa-onnx is an
+      **additional backend family**, not a replacement. **Also explore sherpa-onnx variants of those models**
+      (Whisper exported to ONNX runs under sherpa-onnx; Silero-VAD is ONNX) so the *same* models can optionally
+      run on the unified runtime — dropping torch from edge images while keeping the models. Hexagonal placement:
+      adapters stay behind their ports; "**sherpa runtime + model-asset loader**" becomes a shared driven-adapter/
+      infra service (extends `core/assets.py`). Explicitly **avoid** a generic torch+onnx+Kaldi abstraction
+      (leaky, low value) — the real shared seam is the ONNX runtime itself. Decisions for the session: modality
+      order (ASR-RU spike first); **RU TTS quality A/B** (sherpa VITS/Piper vs Silero v4 — the one non-obvious
+      win); **wake-word consolidation** (sherpa KWS vs openWakeWord/microWakeWord — intersects **QUAL-19/20
+      [ESP32]**); config model + Invariant #4; dependency/image + armv7 impact of the sherpa-onnx wheel.
+      Intersects ASR/TTS providers, ASSET (model zoo/format), ARCH-4 (ports). → `docs/design/onnx_inference_layer.md`.
+- [ ] **ARCH-10** [INFER] (P-TBD) — Implement per ARCH-9. First spike: a **sherpa-onnx ASR provider** (RU Zipformer
+      int8) on a shared runtime+asset helper, alongside vosk/whisper; then expand per the design (TTS family,
+      wake-word) keeping whisper/silero as first-class options. Gated by Invariant #4 (provider config →
+      config-ui). Split into PR-sized tasks from the design.
 
 ### Code Quality & Review (QUAL)
 - [x] **QUAL-1** — Phase-0 static baseline (ruff/pyright/vulture/validators/import-graph). → `docs/review/phase0_static_baseline.md` (6e39886)
@@ -275,6 +300,18 @@ Governed by Invariant #4 (config-ui must stay functional).
   refactors and **ARCH-1** (context split); Invariant #4 gates the contract-touching tasks; QUAL-12↔ASSET-3.
 - **Invariant #5** added (review docs stay in sync) + a **Review-documents index** linking the plan to
   `docs/review/*` + `docs/design/*`. Completing a finding-derived task includes updating its review doc.
+- **VOSK model re-audit (ASSET follow-up to ASSET-1).** Bumped VOSK **TTS** model `tts-ru-0.8-multi` →
+  **`0.9-multi`** (latest; `1.0` is 404; size note 500MB→780MB). → `34f8e71`. Fixed a latent **ASR** bug: `en_us`
+  pointed at the **full 1.8GB** `en-us-0.22` while labeled "42MB" under a "small models" comment → repointed to
+  `vosk-model-small-en-us-0.15.zip` (40MB, verified live); full model kept under the `en` key (label corrected). → `a5189b6`.
+  ASR versions otherwise already latest for the vosk runtime (small-ru-0.22, ru-0.42, de-0.21, es-0.42, fr-0.22).
+- **Key discovery → motivates ARCH-9 [INFER].** The "newer" RU models on alphacephei (`ru-0.54`, `small-ru-0.52`)
+  are **NOT vosk-runtime models** — empirically loading `small-ru-0.52` with our `vosk 0.3.45` fails
+  (`model.cc:122 does not contain model files`); the dir is `encoder/decoder/joiner.int8.onnx` + `decode.py`
+  importing `sherpa_onnx`. They are **sherpa-onnx Zipformer2** models needing a different runtime. So **do NOT
+  bump the vosk URLs to 0.5x** (would break ASR) — but this surfaced that sherpa-onnx unifies ASR/TTS/wakeword/VAD
+  on one ONNX runtime we **already ship transitively** (onnxruntime 1.22.1 via openwakeword + vosk-tts). Logged as
+  **ARCH-9/10 [INFER]** (broad design session) with the constraint that whisper & silero remain first-class.
 
 ### 2026-05-31
 - **Revival analysis** — full doc + code + build + asset audit; established real version is 15.0.0, single
