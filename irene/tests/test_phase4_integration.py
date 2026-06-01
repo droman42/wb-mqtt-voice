@@ -126,7 +126,7 @@ class TestPhase4RealHandlerIntegration:
             name="contextual.stop",
             domain="contextual",
             action="stop",
-            text="stop",
+            raw_text="stop",
             confidence=0.9
         )
         
@@ -369,7 +369,7 @@ class TestPhase4MigrationValidation:
             name="test.stop",
             domain="test",
             action="stop",
-            text="stop test",
+            raw_text="stop test",
             confidence=0.9
         )
         

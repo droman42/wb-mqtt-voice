@@ -37,7 +37,7 @@ class TestConfigurationValidation:
         config_data = {
             "components": {
                 "tts": True,
-                "audio_output": False
+                "audio": False
             }
         }
         
@@ -53,42 +53,42 @@ class TestConfigurationValidation:
         config_data = {
             "components": {
                 "tts": False,
-                "audio_output": True
+                "audio": True
             }
         }
         
         # Should not raise any error
         config = CoreConfig(**config_data)
         assert config.components.tts is False
-        assert config.components.audio_output is True
+        assert config.components.audio is True
     
     def test_both_tts_and_audio_enabled_is_valid(self):
         """Test that both TTS and Audio enabled is valid"""
         config_data = {
             "components": {
                 "tts": True,
-                "audio_output": True
+                "audio": True
             }
         }
         
         # Should not raise any error
         config = CoreConfig(**config_data)
         assert config.components.tts is True
-        assert config.components.audio_output is True
+        assert config.components.audio is True
     
     def test_both_tts_and_audio_disabled_is_valid(self):
         """Test that both TTS and Audio disabled is valid"""
         config_data = {
             "components": {
                 "tts": False,
-                "audio_output": False
+                "audio": False
             }
         }
         
         # Should not raise any error
         config = CoreConfig(**config_data)
         assert config.components.tts is False
-        assert config.components.audio_output is False
+        assert config.components.audio is False
     
     def test_asset_config_creates_temp_directory(self):
         """Test that AssetConfig creates temp_audio_dir"""
