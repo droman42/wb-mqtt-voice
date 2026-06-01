@@ -210,7 +210,12 @@ See `docs/review/phase1_architecture_map.md` §5.
 - [ ] **TEST-5** [TXTPROC] (P2) — Text-processor / normalizer test coverage, after QUAL-12/13 settle the model.
 
 ### Build & CI (BUILD)
-- [ ] **BUILD-1** (P0) — Verify clean `uv sync` + CLI and WebAPI boot at v15.
+- [x] **BUILD-1** (P0) — Verify clean `uv sync` + CLI and WebAPI boot at v15. **DONE 2026-06-01** (`bab6f97`):
+      `uv sync --extra all` clean; `--check-deps` 5/5; **WebAPI** boots (workflow READY, 10 routers) and
+      `POST /execute/command "привет"` → `greeting.hello` end-to-end; **CLI** boots and (after fix) headless
+      `--command "привет"` works. Found+fixed a real bug: `--headless` disabled `nlu`/`text_processor` while the
+      unified workflow requires `nlu` → headless could never execute a command. Observed (already-logged) cosmetics:
+      QUAL-6 schema warning on boot; CLI banner still says "v14" (DOC-3 sibling).
 - [ ] **BUILD-2** (P1) — Re-enable CI (`config-validation.yml` is manual-only; update deprecated
       `upload-artifact@v3` / `setup-python@v4`).
 - [ ] **BUILD-3** (P1) — Verify the minimal Docker build (x86_64 builder feeds analyzer package names to
@@ -233,7 +238,8 @@ See `docs/review/phase1_architecture_map.md` §5.
 ### Documentation (DOC)
 - [x] **DOC-1** — Sync README/architecture to v15; archive ~28 historical docs to `docs/archive/`. → 4a55519
 - [ ] **DOC-2** (P2) — Archive completed `docs/TODO/TODO0x`; mark `docs/TODO.md` superseded by this file; keep open TODO11 + partials.
-- [ ] **DOC-3** (P2) — Fix cosmetic "v13" strings in `irene/core/engine.py` docstrings/logs.
+- [ ] **DOC-3** (P2) — Fix cosmetic stale-version strings: "v13" in `irene/core/engine.py` docstrings/logs and the
+      "v14" CLI banner in `irene/runners/cli.py` (`--help` description). Should read v15.
 - [ ] **DOC-4** (P1) — Rewrite `architecture.md` to the harmonized current state **+ chosen target pattern**
       (do after pattern sign-off, so it's written once). Refs: phase1_architecture_map §3, §4, §5.
       Must also **document the fire-and-forget action flow** [FAF] (currently undocumented) and **retire
@@ -312,6 +318,17 @@ Governed by Invariant #4 (config-ui must stay functional).
   bump the vosk URLs to 0.5x** (would break ASR) — but this surfaced that sherpa-onnx unifies ASR/TTS/wakeword/VAD
   on one ONNX runtime we **already ship transitively** (onnxruntime 1.22.1 via openwakeword + vosk-tts). Logged as
   **ARCH-9/10 [INFER]** (broad design session) with the constraint that whisper & silero remain first-class.
+
+- **BUILD-1 DONE** (`bab6f97`). First actual run of the system post-revival. `uv sync --extra all` resolves/
+  installs clean (353 pkgs; torch 2.7.1, vosk 0.3.45, spaCy, whisper, lingua-franca git dep all OK). `irene-cli
+  --check-deps` → 5/5 components available. **WebAPI**: `irene-webapi` boots to uvicorn (workflow READY, 10
+  routers, 104 OpenAPI paths); `POST /execute/command {"command":"привет"}` → 200 `greeting.hello` conf 1.0,
+  real RU response — full spaCy-NLU→intent→handler chain works; graceful SIGINT shutdown clean. **CLI**: boots +
+  shuts down clean; **bug found & fixed** — `--headless` set `nlu=False/text_processor=False` but the unified
+  workflow requires `nlu` ("Required component 'nlu' not available"), so headless could boot but never execute a
+  command; now enables nlu+text_processor (llm optional) and `--headless --command "привет"` returns a greeting.
+  Cosmetics noted: QUAL-6 schema warning prints on every boot; CLI `--help` banner still says "v14" → folded into
+  DOC-3. Not yet covered: Docker boot (BUILD-3), interactive REPL, audio/voice path (needs devices + models).
 
 ### 2026-05-31
 - **Revival analysis** — full doc + code + build + asset audit; established real version is 15.0.0, single
