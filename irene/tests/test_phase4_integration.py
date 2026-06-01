@@ -224,7 +224,7 @@ class TestPhase4PerformanceValidation:
     @pytest.fixture
     def large_context_scenario(self):
         """Create scenario with many active actions for performance testing"""
-        context = ConversationContext(session_id="perf_test", client_id="test", language="en")
+        context = UnifiedConversationContext(session_id="perf_test", client_id="test", language="en")
         current_time = time.time()
         
         # Create 20 active actions across different domains
@@ -351,7 +351,7 @@ class TestPhase4MigrationValidation:
             async def can_handle(self, intent: Intent) -> bool:
                 return intent.domain == "test" and intent.action in ["stop", "pause"]
             
-            async def execute(self, intent: Intent, context: ConversationContext) -> IntentResult:
+            async def execute(self, intent: Intent, context: UnifiedConversationContext) -> IntentResult:
                 # Modern handlers receive resolved domain-specific intents
                 assert intent.domain != "contextual", "Handler should not receive contextual intents"
                 assert intent.name.startswith("test."), "Intent should be domain-specific"
@@ -376,7 +376,7 @@ class TestPhase4MigrationValidation:
         can_handle = await handler.can_handle(domain_intent)
         assert can_handle is True
         
-        context = ConversationContext(session_id="test", client_id="test", language="en")
+        context = UnifiedConversationContext(session_id="test", client_id="test", language="en")
         result = await handler.execute(domain_intent, context)
         
         assert result.success is True

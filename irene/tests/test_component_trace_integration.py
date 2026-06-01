@@ -25,7 +25,7 @@ class TestComponentTraceIntegration(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
         """Set up test fixtures"""
         self.trace_context = TraceContext(enabled=True)
-        self.conversation_context = ConversationContext(
+        self.conversation_context = UnifiedConversationContext(
             session_id="test_session",
             user_id="test_user",
             conversation_history=[]

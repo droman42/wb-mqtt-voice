@@ -157,7 +157,7 @@ class TestPhase6Integration:
     
     async def test_nlu_integrated_parameter_extraction(self, hybrid_provider):
         """Test that NLU provider extracts parameters during recognition."""
-        context = ConversationContext(session_id="test")
+        context = UnifiedConversationContext(session_id="test")
         
         # Test parameter extraction integrated into recognition
         intent = await hybrid_provider.recognize_with_parameters(
@@ -172,7 +172,7 @@ class TestPhase6Integration:
         
     async def test_end_to_end_flow_without_parameter_extractor(self, hybrid_provider, orchestrator):
         """Test complete flow: NLU recognition → Intent execution → Handler response."""
-        context = ConversationContext(session_id="test")
+        context = UnifiedConversationContext(session_id="test")
         
         # Step 1: NLU recognition with integrated parameter extraction
         intent = await hybrid_provider.recognize_with_parameters(
@@ -213,7 +213,7 @@ class TestPhase6Integration:
     
     async def test_graceful_degradation_no_parameters(self, orchestrator):
         """Test that system works when intent has no parameters."""
-        context = ConversationContext(session_id="test")
+        context = UnifiedConversationContext(session_id="test")
         
         # Create intent without parameters
         intent = Intent(
@@ -287,7 +287,7 @@ async def test_phase6_comprehensive_integration():
     await provider._initialize_from_donations(list(manager._donations.values()))
     
     # Test complete flow
-    context = ConversationContext(session_id="test")
+    context = UnifiedConversationContext(session_id="test")
     
     # NLU recognition with parameter extraction
     intent = await provider.recognize_with_parameters("установи таймер на 45 минут", context)

@@ -312,6 +312,17 @@ force_grid_wrap = 0
 use_parentheses = true
 ensure_newline_before_comments = true
 
+[tool.pytest.ini_options]
+testpaths = ["irene/tests", "tools"]
+# pytest-asyncio: treat bare `async def test_*` as asyncio tests (the suite predates
+# pytest-asyncio's strict default; without this ~23 async tests error as "not natively supported").
+asyncio_mode = "auto"
+filterwarnings = [
+    # Pydantic V1-style @validator / class Config across the config + donation models is known
+    # tech debt (separate migration); silence the deprecation flood so real signal is visible.
+    "ignore::pydantic.warnings.PydanticDeprecatedSince20",
+]
+
 [tool.mypy]
 # Basic settings - detailed configuration in mypy.ini (matching wb-mqtt-bridge)
 python_version = "3.11"
