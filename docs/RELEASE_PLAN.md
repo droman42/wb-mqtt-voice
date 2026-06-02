@@ -209,6 +209,13 @@ See `docs/review/phase1_architecture_map.md` §5.
       root). Also fix the contained `inputs.base ⇄ subclasses` cycle (SCC-2). Server-side voice-trigger (+ the
       `WakeWordResult` bug) is only for non-ESP32 local-mic. Intertwined with **ARCH-7** (the return channel: WS audio
       response to the ESP32 + MQTT smart-home actuation). → `docs/design/ws_esp32_transport.md`.
+      **★ ROOM/DEVICE ACTIVATION POINT (Q1 timing decision, 2026-06-02):** this is *when the room/device story switches
+      on.* QUAL-28/29/11 leave everything "room-ready" (action store + context split with device fields; declarative
+      `entity_type`/`room_context`; device resolvers that degrade gracefully) — all keyed off a single
+      **`resolve_physical_id(request)`** seam that today returns the session-derived id. **ARCH-6 changes only that one
+      function** to return the registered `client_id`/room from the WS handshake, activating real room/device keying +
+      device resolution with **no re-refactor**. Sequence: do ARCH-6's design session **after the Gate-2 foundation
+      (QUAL-28/29/11) stabilizes**; it's one of the 3 design-gated threads (ARCH-6 [WS] · ARCH-7 [MQTT] · ARCH-9 [INFER]).
 - [ ] **ARCH-7** [MQTT] (P-TBD) — **Design session** (needs live collaboration): place MQTT publication as a driven
       **output adapter** in the hexagon (intent result/action → output port → MQTT adapter). Defines the general
       output-port seam — MQTT is the **first non-audio output** (today output is TTS/audio-only via
@@ -473,6 +480,15 @@ _Apply to every remediation task below (from the 4 review docs + QUAL-25/26). So
       LLM context summary). So **migrate-then-retire** in ③b (rewrite the conversation handler's context *assembly* onto
       the new model; its LLM prompt/provider logic stays QUAL-15/16). Deferred to Q9: the now-dead
       `memory_management_enabled` config key + the context `memory_management` block (config-ui coord, Invariant #4).
+      **Stage-3 design (decided 2026-06-02 with user):** (a) **action store = a runtime-only (non-persisted) sub-store
+      on `ClientRegistry`** keyed by `physical_id` — NOT a field on the persisted registration record (it holds live
+      `asyncio` task refs for the reaper and must never serialize / survive a restart). `ClientRegistry` keeps its
+      persistent registration table (devices/room) + this new runtime state table. (b) **Single
+      `resolve_physical_id(request)` seam** — today returns the session-derived id; **ARCH-6 changes only this one
+      function** to return the registered `client_id`/room (so the room/device story is a clean *activation*, not a
+      re-refactor). (c) **Decoupled from ARCH-6** (incremental): the store + reaper + eviction-survival land now keyed
+      by the best-available stable id; room/device keying upgrades when ARCH-6 populates identity. See the **Q1 timing
+      decision** recorded in `RELEASE_JOURNAL.md` + ARCH-6.
 - [ ] **QUAL-29** [DFLOW] (P1) — **Donation format split (Q6; precedes declarative device-resolution).** Split
       donations into a **language-neutral contract** (method list + invariant `ParameterSpec` core: name/type/required/
       choices/min-max + **`entity_type`** {device/location/room/person/generic} + per-method **`room_context`**

@@ -159,6 +159,22 @@ newest entries near the top of each dated section.
   **Gate 1: ARCH-1 ✓, ARCH-2 ✓, ARCH-3 ✓ — ARCH-4 (formalize ports) → ARCH-5 (import-linter) next.**
 
 ### 2026-06-02
+- **QUAL-28 Stage-3 design decisions (with user) — incl. the Q1 room/device timing.**
+  - **Q1 (room/device story timing):** the room/device story **activates at ARCH-6** (the WS/ESP32 `ClientRegistry`
+    registration handshake that *populates* room/client/devices). QUAL-28/29/11 make everything **"room-ready"** (the
+    store + context split with device fields, declarative `entity_type`/`room_context`, gracefully-degrading device
+    resolvers) — none require a populated room. The whole thing pivots on a single **`resolve_physical_id(request)`**
+    seam: today it returns the session-derived id; **ARCH-6 changes only that one function** to return the registered
+    `client_id`/room → clean *activation*, not a re-refactor. ARCH-6 gets its design session **after the Gate-2
+    foundation (QUAL-28/29/11) stabilizes** (one of the 3 design-gated threads ARCH-6/7/9). ARCH-7 (MQTT) acts on it.
+  - **Q2 (action-store home):** **`ClientRegistry`** is the home, realized as a **runtime-only (non-persisted) sub-store**
+    keyed by `physical_id` — *not* a field on the persisted registration record (it holds live `asyncio` task refs and
+    must never serialize or survive a restart). `ClientRegistry` = persistent registration table (devices/room) + this
+    runtime state table (`active_actions` + task refs); the reaper operates on the runtime table; JSON persistence
+    ignores it.
+  - **Sequencing (decoupled from ARCH-6):** the store + reaper + eviction-survival land **now** keyed by the
+    best-available stable id; room/device keying upgrades transparently when ARCH-6 lands. Documented on the QUAL-28 +
+    ARCH-6 ledger entries.
 - **QUAL-28 Stage 2 — session-id hygiene.** Forbid the literal `"default"` at the `RequestContext` chokepoint
   (`"default"`/empty → derive a real id; P0-6 collapse fixed); the 3 `workflow_manager` entries default to `None` and
   **re-read `context.session_id`** so the local var reflects the derived id (it's reused by the action-metadata
