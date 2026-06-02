@@ -21,8 +21,8 @@ committed after every decision, so an interrupted session continues from the fir
 | Q2 | **Session identity** — forbid `"default"`; `get` vs `get_or_create`; always derive a real session_id; unify eviction clocks | P0-6 (cross-request leak), P1-p | ✅ DECIDED |
 | Q3 | **Fire-and-forget keying** — one key end-to-end (`action_name`) + a `domain` index; fix dup-`session_id` + `get_or_create_context` together | P0-2/3/4, P1-k/l/m/n | ✅ DECIDED |
 | Q4 | **Wired-or-delete** — MemoryManager · ContextLayer/progressive-context · InputManager queue + WebSocket input · `Intent.session_id` · `_disambiguate_with_device_context` · dead text-proc stages | P0-7, P0-8, P1-g; scopes how much code is deleted vs fixed | ✅ DECIDED |
-| Q5 | **Conversation history** — pick the canonical representation (3 today) and a single writer | P1-q | 🔵 OPEN |
-| Q6 | **Device-context pipeline** — who populates `device_context`/`available_devices` at the entry | P1-j (blocks the PEX device-resolution P0) | ⚪ pending |
+| Q5 | **Conversation history** — pick the canonical representation (3 today) and a single writer | P1-q | ✅ DECIDED (by consequence) |
+| Q6 | **Device-context pipeline** — who populates `device_context`/`available_devices` at the entry | P1-j (blocks the PEX device-resolution P0) | 🔵 OPEN |
 | Q7 | **Fail-loud philosophy + typed accessor** (theme #1) — raise vs result-signal; where the typed entity/result accessor lives | P0-9, P1-a/s; the whole handler boundary | ⚪ pending |
 | Q8 | **Shared-bases consolidations** (theme #2) — extraction base · prompt source · F&F write-back · collapse text processors · `_create_error_result` signature | P1-f/k/r/t | ⚪ pending |
 | Q9 | **Config-truth scope** (theme #3) — cascade phantoms · `language` plumbing · dead config trees · schema↔model drift | P1-e/h/i, P2 tail | ⚪ pending |
@@ -138,6 +138,15 @@ seam / audio-response-back-to-ESP32 + MQTT smart-home actuation). **Action (→ 
 "WebSocket streaming-input driving adapter (primary ESP32 transport) + ClientRegistry registration handshake"; flag a
 design session; note two output channels for ESP32 (WS audio response + MQTT device control) feed ARCH-7.
 
-<!-- next: Q5 -->
+### Q5 — Conversation history · ✅ DECIDED (by consequence of Q1+Q2+Q3)
+No new deliberation — determined by earlier calls: **text stored = original utterance** (Q1); **history on the
+short-lived conversation session, sliding-window N=15** (Q2); **single writer at the workflow funnel** (Q3's 3c
+principle). Residual resolved by single-source-of-truth: **one structured turn log** (keep `conversation_history`'s
+structured rows: original user_text, response, intent, timestamp); the LLM `messages` list is a **derived projection**;
+**delete the legacy `history` list** and the orchestrator's `add_user_turn`/`add_assistant_turn` double-write.
+**Action (→ Q10, into QUAL-9/11):** collapse the 3 writers into one `record_turn(...)` on the conversation context
+(which applies the Q2 window); history-write moves out of the domain orchestrator into the application/workflow layer.
+
+<!-- next: Q6 -->
 
 
