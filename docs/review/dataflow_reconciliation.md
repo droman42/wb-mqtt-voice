@@ -17,8 +17,8 @@ committed after every decision, so an interrupted session continues from the fir
 
 | # | Issue | What it blocks / why | Status |
 |---|---|---|---|
-| Q1 | **Text contract** — what does `Intent.raw_text` carry (original vs processed), and how is normalized text threaded? | P0-1 (biggest defect), P1-c, QUAL-13, the LLM/chat path | 🔵 OPEN |
-| Q2 | **Session identity** — forbid `"default"`; `get` vs `get_or_create`; always derive a real session_id; unify eviction clocks | P0-6 (cross-request leak), P1-p | ⚪ pending |
+| Q1 | **Text contract** — what does `Intent.raw_text` carry (original vs processed), and how is normalized text threaded? | P0-1 (biggest defect), P1-c, QUAL-13, the LLM/chat path | ✅ DECIDED |
+| Q2 | **Session identity** — forbid `"default"`; `get` vs `get_or_create`; always derive a real session_id; unify eviction clocks | P0-6 (cross-request leak), P1-p | 🔵 OPEN |
 | Q3 | **Fire-and-forget keying** — one key end-to-end (`action_name`) + a `domain` index; fix dup-`session_id` + `get_or_create_context` together | P0-2/3/4, P1-k/l/m/n | ⚪ pending |
 | Q4 | **Wired-or-delete** — MemoryManager · ContextLayer/progressive-context · InputManager queue + WebSocket input · `Intent.session_id` · `_disambiguate_with_device_context` · dead text-proc stages | P0-7, P0-8, P1-g; scopes how much code is deleted vs fixed | ⚪ pending |
 | Q5 | **Conversation history** — pick the canonical representation (3 today) and a single writer | P1-q | ⚪ pending |
@@ -38,4 +38,18 @@ contract*.
 
 _(filled per question as we resolve them — each entry: decision · rationale · resulting action/task)_
 
-<!-- Q1 ... -->
+### Q1 — Text contract · ✅ DECIDED (Option A)
+**Decision:** `Intent.raw_text` carries the **literal original user utterance**. NLU stops overwriting it with
+processed text. The **normalized/processed text is a pipeline-internal intermediate** (local to `_process_pipeline`,
+passed into NLU for matching only) — it does **not** become a persisted field on `Intent`. NLU matches on the
+normalized text but stamps `raw_text = original`.
+**Rationale:** nothing downstream of NLU needs the normalized form — handlers (translation, text-enhance, TTS-speak,
+provider-switch) want the actual user words, and TTS normalizes the *response* via a separate `tts_input` stage.
+Makes the field name honest and the LLM/chat path get real input. Resolves P0-1 **and** P1-c together.
+**Actions (→ numbered in Q10):** (1) replace the 14 `intent.text` reads (7 handlers) + `Intent(text=…)` at
+`orchestrator.py:217` with `raw_text`; (2) thread original+normalized into NLU `recognize`, provider sets
+`raw_text=original`, matches on normalized; (3) remove the NLU sites that set `raw_text=processed_text`
+(`hybrid_keyword_matcher.py:779`, `spacy_provider.py:753`, `nlu_component.py`). Intersects QUAL-11/13.
+
+<!-- next: Q2 -->
+
