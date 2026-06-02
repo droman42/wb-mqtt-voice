@@ -10,7 +10,6 @@ import time
 import logging
 import asyncio
 from typing import Dict, Any, Optional, List
-from .models import Intent, IntentResult
 from .context_models import UnifiedConversationContext, RequestContext
 from ..core.metrics import get_metrics_collector
 from ..core.client_registry import get_client_registry  # QUAL-28: resolver reads the action store
@@ -153,44 +152,6 @@ class ContextManager:
         context.last_updated = time.time()
         logger.debug(f"Updated context metadata for session {session_id}")
     
-    async def add_user_turn(self, session_id: str, intent: Intent):
-        """
-        Add a user turn to conversation history.
-        
-        Args:
-            session_id: Session identifier
-            intent: User intent to add
-        """
-        context = await self.get_or_create_context(session_id)
-        context.add_user_turn(intent)
-        logger.debug(f"Added user turn to session {session_id}: {intent.name}")
-    
-    async def add_assistant_turn(self, session_id: str, result: IntentResult):
-        """
-        Add an assistant turn to conversation history.
-        
-        Args:
-            session_id: Session identifier
-            result: Assistant response to add
-        """
-        context = await self.get_or_create_context(session_id)
-        context.add_assistant_turn(result)
-        logger.debug(f"Added assistant turn to session {session_id}")
-    
-    async def get_conversation_history(self, session_id: str, turns: int = 5) -> list:
-        """
-        Get recent conversation history for a session.
-        
-        Args:
-            session_id: Session identifier
-            turns: Number of conversation turns to retrieve
-            
-        Returns:
-            List of recent conversation turns
-        """
-        context = await self.get_or_create_context(session_id)
-        return context.get_recent_context(turns)
-    
     async def clear_session(self, session_id: str):
         """
         Clear a specific session's context.
@@ -227,7 +188,7 @@ class ContextManager:
         await self._cleanup_expired_sessions()
         
         total_sessions = len(self.sessions)
-        total_turns = sum(len(ctx.history) for ctx in self.sessions.values())
+        total_turns = sum(len(ctx.conversation_history) for ctx in self.sessions.values())
         
         # Calculate average session age
         current_time = time.time()
@@ -284,51 +245,17 @@ class ContextManager:
             
         if "max_history_turns" in config:
             self.max_history_turns = config["max_history_turns"]
-            # Update existing sessions
+            # Propagate the new window to existing sessions and trim them down immediately.
             for context in self.sessions.values():
                 context.max_history_turns = self.max_history_turns
-                context._trim_history()
+                if len(context.conversation_history) > self.max_history_turns:
+                    context.conversation_history = context.conversation_history[-self.max_history_turns:]
         
         if "cleanup_interval" in config:
             self.cleanup_interval = config["cleanup_interval"]
         
         logger.info(f"Configured context manager: timeout={self.session_timeout}s, "
                    f"max_turns={self.max_history_turns}, cleanup_interval={self.cleanup_interval}s")
-    
-    async def process_intent_with_context(self, intent: Intent, session_id: str) -> UnifiedConversationContext:
-        """
-        Process an intent and update conversation context.
-        
-        Args:
-            intent: Intent to process
-            session_id: Session identifier
-            
-        Returns:
-            Updated conversation context
-        """
-        context = await self.get_or_create_context(session_id)
-        context.add_user_turn(intent)
-        
-        # Update context metadata based on intent
-        if intent.domain and intent.domain != context.metadata.get('current_domain'):
-            context.metadata['current_domain'] = intent.domain
-            context.metadata['domain_switch_count'] = context.metadata.get('domain_switch_count', 0) + 1
-        
-        # Track intent patterns for context-aware processing
-        if 'recent_intents' not in context.metadata:
-            context.metadata['recent_intents'] = []
-        
-        context.metadata['recent_intents'].append({
-            'name': intent.name,
-            'domain': intent.domain,
-            'confidence': intent.confidence,
-            'timestamp': intent.timestamp
-        })
-        
-        # Keep only recent intents (last 5)
-        context.metadata['recent_intents'] = context.metadata['recent_intents'][-5:]
-        
-        return context
     
     async def get_context_for_intent_processing(self, session_id: str, intent_domain: str = None) -> UnifiedConversationContext:
         """
@@ -359,48 +286,6 @@ class ContextManager:
             domain_freq[intent_domain] = domain_freq.get(intent_domain, 0) + 1
         
         return context
-    
-    async def update_context_with_result(self, result: IntentResult, session_id: str):
-        """
-        Update conversation context with intent execution result.
-        
-        Args:
-            result: Intent execution result
-            session_id: Session identifier
-        """
-        context = await self.get_or_create_context(session_id)
-        context.add_assistant_turn(result)
-        
-        # Phase 2: Update session activity with intent execution result
-        if hasattr(result, 'metadata') and result.metadata and 'original_intent' in result.metadata:
-            intent_name = result.metadata['original_intent']
-        else:
-            intent_name = "unknown"
-        
-        self.metrics_collector.update_session_activity(session_id, intent_name, result.success)
-        
-        # Update intent processing statistics
-        if 'intent_processing' in context.metadata:
-            stats = context.metadata['intent_processing']
-            stats['total_intents'] += 1
-            
-            if result.success:
-                stats['successful_intents'] += 1
-            else:
-                stats['failed_intents'] += 1
-            
-            # Update average confidence
-            if 'recent_intents' in context.metadata and context.metadata['recent_intents']:
-                recent_confidences = [i['confidence'] for i in context.metadata['recent_intents']]
-                stats['avg_confidence'] = sum(recent_confidences) / len(recent_confidences)
-        
-        # Track conversation quality
-        if 'conversation_quality' not in context.metadata:
-            context.metadata['conversation_quality'] = {
-                'response_relevance': 0.8,  # Default assumption
-                'user_satisfaction': 0.8,
-                'coherence_score': 0.8
-            }
     
     def get_recent_intent_patterns(self, session_id: str, count: int = 3) -> List[Dict[str, Any]]:
         """
@@ -462,7 +347,7 @@ class ContextManager:
             'created_at': context.created_at,
             'last_updated': context.last_updated,
             'duration': time.time() - context.created_at,
-            'history_length': len(context.history),
+            'history_length': len(context.conversation_history),
             'max_history_turns': context.max_history_turns
         }
         

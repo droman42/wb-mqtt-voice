@@ -258,7 +258,7 @@ class SystemIntentHandler(IntentHandler):
             language,
             version=version,
             session_start_time=datetime.fromtimestamp(context.created_at).strftime('%H:%M'),
-            message_count=len(context.history),
+            message_count=len(context.conversation_history),
             session_id=context.session_id
         )
         
@@ -336,7 +336,7 @@ class SystemIntentHandler(IntentHandler):
             "session_id": context.session_id,
             "created_at": context.created_at,
             "last_updated": context.last_updated,
-            "message_count": len(context.history),
+            "message_count": len(context.conversation_history),
             "session_duration": time.time() - context.created_at
         }
     

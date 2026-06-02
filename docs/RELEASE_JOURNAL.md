@@ -159,6 +159,25 @@ newest entries near the top of each dated section.
   **Gate 1: ARCH-1 ✓, ARCH-2 ✓, ARCH-3 ✓ — ARCH-4 (formalize ports) → ARCH-5 (import-linter) next.**
 
 ### 2026-06-02
+- **QUAL-28 Stage 4 — history windowing; one list, one writer, one method. QUAL-28 now fully DONE (all 4 stages).**
+  The dataflow review's P1-q (conversation turn modeled 2–3× per request) traced to three writers over two parallel
+  lists: the orchestrator's `add_user_turn`+`add_assistant_turn` (`orchestrator.py:297-298`, which also wrote
+  `conversation_history` via `add_to_history`) **and** the workflow's `add_to_history` (`voice_assistant.py:411`) — so
+  every turn was recorded twice, and `history` vs `conversation_history` were redundant copies. Collapsed to a single
+  model: **(1)** deleted the legacy `history` field + `__post_init__` copy; **(2)** replaced `add_to_history` with the
+  one canonical writer **`record_turn(user_text, response, intent)`**, called **once** at the workflow level (the only
+  `orchestrator.execute` caller is `voice_assistant`, immediately followed by `record_turn` — verified no other
+  intent-processing path needs its own write); **(3)** removed the orchestrator's parallel turn-write; **(4)** wired
+  **`max_history_turns`** — `record_turn` and the LLM-history-restore now trim to the configured window instead of a
+  hardcoded `[-10:]` (kills the P2 "config-that-lies": the field existed but was ignored). Deleted the now-dead
+  `add_user_turn`/`add_assistant_turn`/`_trim_history`/`get_recent_context` on the context, plus **5 dead
+  `ContextManager` methods** (`add_user_turn`/`add_assistant_turn`/`get_conversation_history`/
+  `process_intent_with_context`/`update_context_with_result` — all confirmed zero-caller repo-wide) and the now-unused
+  `Intent`/`IntentResult` imports in `context_models.py` + `context.py`. Stat readers (`context.py` ×2, `system.py` ×2)
+  repointed `.history` → `.conversation_history`. _Boundary note:_ `max_history_turns` is settable via
+  `ContextManager(max_history_turns=…)`/`.configure()`, but is **not** yet a `config-master.toml` key — exposing it as
+  config is a config-ui-gated change (Invariant #4), out of this stage's "make the field functional" scope. Smoke + 10
+  store tests + import contracts green; scope guard clean.
 - **Invariant #9 added — no `TYPE_CHECKING` import guards (+ QUAL-32 to sweep the residue).** User flagged
    `TYPE_CHECKING` as a no-go for this project: it's a band-aid for an import cycle, and a cycle violates the
    inward-pointing hexagon (Invariant #3) — fix the cycle, don't hide it from the runtime; and hard deps like

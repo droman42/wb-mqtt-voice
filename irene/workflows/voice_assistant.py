@@ -407,8 +407,8 @@ class UnifiedVoiceAssistantWorkflow(Workflow):
         # Stage 4: fire-and-forget actions are now registered directly in the action store by the
         # handler-base launch (QUAL-28) — no context write-back of result.action_metadata is needed.
 
-        # Update conversation history
-        conversation_context.add_to_history(
+        # Update conversation history — the SINGLE writer (QUAL-28 stage 4)
+        conversation_context.record_turn(
             user_text=input_data,
             response=result.text,
             intent=intent.name

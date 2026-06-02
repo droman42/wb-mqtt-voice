@@ -14,7 +14,6 @@ from typing import Any, Dict, List, Optional, Set
 
 from rapidfuzz import fuzz, process
 
-from .models import Intent, IntentResult
 from ..core.session_manager import SessionManager  # ARCH-5: RequestContext session-id gen
 from ..core.client_registry import get_client_registry, resolve_physical_id, ActionRecord  # QUAL-28: action store
 
@@ -96,17 +95,12 @@ class UnifiedConversationContext:
     timestamp: float = field(default_factory=time.time)
     request_source: str = "unknown"  # "microphone", "web", "api", etc.
     
-    # Legacy compatibility fields
-    history: List[Dict[str, Any]] = field(default_factory=list)
     metadata: Dict[str, Any] = field(default_factory=dict)
     last_updated: float = field(default_factory=time.time)
+    # QUAL-28 stage 4: conversation_history is the SINGLE history list; max_history_turns is its window.
     max_history_turns: int = 10
-    
+
     def __post_init__(self):
-        """Initialize conversation history from legacy history field"""
-        if self.history and not self.conversation_history:
-            self.conversation_history = self.history.copy()
-        
         # Sync metadata with client_metadata
         if self.metadata and not self.client_metadata:
             self.client_metadata.update(self.metadata)
@@ -186,7 +180,7 @@ class UnifiedConversationContext:
         messages = []
         
         # Convert recent conversation history to LLM format
-        recent_history = self.conversation_history[-10:]  # Last 10 interactions
+        recent_history = self.conversation_history[-self.max_history_turns:]
         
         for interaction in recent_history:
             if interaction.get("user_text"):
@@ -329,8 +323,13 @@ class UnifiedConversationContext:
             self.room_name = metadata['room_name']
         self.last_updated = time.time()
     
-    def add_to_history(self, user_text: str, response: str, intent: Optional[str] = None):
-        """Add interaction to conversation history"""
+    def record_turn(self, user_text: str, response: str, intent: Optional[str] = None):
+        """Record one conversation turn — the SINGLE history writer (QUAL-28 stage 4).
+
+        The workflow calls this exactly once per request. There is no parallel ``history`` list and
+        no per-layer double-write; the window is the configured ``max_history_turns`` (P1-q — the
+        field is now honoured instead of a hardcoded cap).
+        """
         self.conversation_history.append({
             "timestamp": time.time(),
             "user_text": user_text,
@@ -338,10 +337,9 @@ class UnifiedConversationContext:
             "intent": intent,
             "client_id": self.client_id
         })
-        
-        # Keep only last 10 interactions to prevent memory bloat
-        if len(self.conversation_history) > 10:
-            self.conversation_history = self.conversation_history[-10:]
+        if len(self.conversation_history) > self.max_history_turns:
+            self.conversation_history = self.conversation_history[-self.max_history_turns:]
+        self.last_updated = time.time()
         
         self.last_updated = time.time()
     
@@ -481,47 +479,6 @@ class UnifiedConversationContext:
             for action in self.failed_actions[-5:]  # Check last 5 failures
         )
     
-    # Legacy compatibility methods
-    def add_user_turn(self, intent: Intent):
-        """Add a user turn to conversation history (legacy compatibility)"""
-        self.history.append({
-            "type": "user",
-            "intent": intent.name,
-            "text": intent.raw_text,
-            "entities": intent.entities,
-            "timestamp": intent.timestamp
-        })
-        
-        # Also add to new conversation_history format
-        self.add_to_history(intent.raw_text, "", intent.name)
-        
-        self._trim_history()
-        self.last_updated = time.time()
-    
-    def add_assistant_turn(self, result: IntentResult):
-        """Add an assistant turn to conversation history (legacy compatibility)"""
-        self.history.append({
-            "type": "assistant", 
-            "text": result.text,
-            "metadata": result.metadata,
-            "timestamp": result.timestamp
-        })
-        
-        # Update last conversation entry with response
-        if self.conversation_history:
-            self.conversation_history[-1]["response"] = result.text
-        
-        self._trim_history()
-        self.last_updated = time.time()
-    
-    def _trim_history(self):
-        """Keep history within max_history_turns limit"""
-        if len(self.history) > self.max_history_turns * 2:  # User + assistant pairs
-            self.history = self.history[-(self.max_history_turns * 2):]
-    
-    def get_recent_context(self, turns: int = 3) -> List[Dict[str, Any]]:
-        """Get recent conversation turns for context (legacy compatibility)"""
-        return self.history[-turns*2:] if self.history else []     
     # Memory management methods (Phase 1.3 MemoryManager compatibility)
     def get_memory_usage_estimate(self) -> Dict[str, Any]:
         """Estimate memory usage of unified context data"""

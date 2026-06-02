@@ -292,11 +292,11 @@ class IntentOrchestrator:
                 if not result.metadata:
                     result.metadata = {}
                 result.metadata["original_intent"] = processed_intent.name
-                
-                # Update conversation context
-                context.add_user_turn(processed_intent)
-                context.add_assistant_turn(result)
-                
+
+                # QUAL-28 stage 4: history is written ONCE, at the workflow level (record_turn).
+                # The orchestrator no longer records turns (was the parallel add_user_turn/
+                # add_assistant_turn double-write — P1-q).
+
                 logger.info(f"Intent executed successfully: {processed_intent.name}")
                 return result
                 

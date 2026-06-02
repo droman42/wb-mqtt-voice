@@ -133,9 +133,9 @@ and the structural refactors **move code** — so blind refactoring/fixing is th
 - **Gate 2 — the cross-cutting systemic remediation + review P0s (downstream of Gate 1.5; framing per QUAL-26):**
   - **Cross-cutting principles** (the lens; full text in the QUAL section): **① fail-loud** · **② shared bases** ·
     **③ config-truth (deployment-aware)** · **④ data-contract integrity**.
-  - **Foundational tasks first:** **QUAL-27** (data-contract fixes; fast, unblocks the command surface) →
-    **QUAL-29** (donation format split; precedes declarative device-resolution) + **QUAL-28** (context & action-store
-    refactor) as the structural base.
+  - **Foundational tasks first:** **QUAL-27** (data-contract fixes; ✓ DONE) + **QUAL-28** (context & action-store
+    refactor; ✓ DONE 2026-06-02) as the structural base → **QUAL-29** (donation format split; precedes declarative
+    device-resolution) remains.
   - **Per-subsystem on top:** **QUAL-9** [FAF], **QUAL-11** [PEX], **QUAL-13** [TXTPROC], **QUAL-15** [LLM],
     **QUAL-16** [PROMPTS], **QUAL-22**, **QUAL-23** + **QUAL-30** (clarification Grade 1).
   - **Later / design-gated:** **QUAL-31** (slot-filling feature) · **ARCH-6** (WS ESP32 input) + **ARCH-7** (output
@@ -477,7 +477,7 @@ _Apply to every remediation task below (from the 4 review docs + QUAL-25/26). So
       (5 passed / 1 xfailed). **Scope change (Invariant #8, user-approved):** P1-t (`_create_error_result` signature
       unification) was found to be **6 handlers, not 2**, and is a shared-bases (theme ②) base-vs-handlers split →
       **moved to QUAL-11** (handler-base/typed-accessor consolidation). Refs: `dataflow_reconciliation.md` Q1/Q7.
-- [~] **QUAL-28** `[release]` [DFLOW] (P0) — **Context & session refactor (Q2/Q3; foundational). DOING (staged).** Split
+- [x] **QUAL-28** `[release]` [DFLOW] (P0) — **Context & session refactor (Q2/Q3; foundational). DONE (all 4 stages).** Split
       `UnifiedConversationContext` → a **long-lived physical-identity store** (room/device/client; holds
       `active_actions` + device capabilities; `ClientRegistry` = device source-of-truth) + a **short-lived conversation
       session** (history + `ConversationState`). **Dedicated zombie-resistant action store**, `action_name`-keyed
@@ -493,7 +493,13 @@ _Apply to every remediation task below (from the 4 review docs + QUAL-25/26). So
       Stage-3.3 field split: completed-action history moved into the store, survives eviction) → ③b **migrate consumers
       + retire `ContextLayer`** (**DONE** — conversation handler's context assembly rewritten onto direct accessors;
       `ContextLayer` enum + all `resolve_*context`/`resolve_layered_context`/`get_contextual_summary` machinery deleted)
-      → ④ history windowing. **Moved ②→③ (Invariant #8):** eviction-unify (needs the
+      → ④ history windowing (**DONE** — collapsed the parallel `history`/`conversation_history` lists into the single
+      `conversation_history`, written by **one** method `record_turn` at **one** site (the workflow); deleted the legacy
+      `history` field + `add_user_turn`/`add_assistant_turn`/`add_to_history`/`_trim_history`/`get_recent_context` and
+      the orchestrator's parallel turn-write (P1-q triple-write killed); `max_history_turns` now actually drives the
+      window — both `record_turn` and the LLM-restore read it instead of a hardcoded 10 (was the "config-that-lies"
+      P2). Also removed 4 dead `ContextManager` turn methods (`add_user_turn`/`add_assistant_turn`/
+      `get_conversation_history`/`process_intent_with_context`/`update_context_with_result`).). **Moved ②→③ (Invariant #8):** eviction-unify (needs the
       `last_activity` timestamp-touch audit), the non-creating-`get` split (needs caller migration), and
       `kill extract_room_from_session` (needs room-as-explicit-field) ride the Stage-3 restructure. **Scope correction (Invariant #8):**
       `ContextLayer`/progressive-context is **NOT dead** (Q4 mis-scoped it) — it's live in `conversation.py` (builds the

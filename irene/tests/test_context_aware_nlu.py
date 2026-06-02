@@ -211,12 +211,12 @@ class TestContextAwareNLU:
     async def test_context_enhancement_conversation_history(self, context_processor, sample_context_kitchen):
         """Test context enhancement with conversation history"""
         # Add some conversation history
-        sample_context_kitchen.add_to_history(
+        sample_context_kitchen.record_turn(
             "what's the weather like", 
             "It's sunny today", 
             "weather.current"
         )
-        sample_context_kitchen.add_to_history(
+        sample_context_kitchen.record_turn(
             "set a timer for 10 minutes",
             "Timer set for 10 minutes",
             "timer.set"
