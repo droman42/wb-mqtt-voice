@@ -14,6 +14,7 @@ from irene.core.client_registry import (
     ActionRecord,
     resolve_physical_id,
 )
+from irene.intents.handlers.base import IntentHandler
 
 
 def _registry() -> ClientRegistry:
@@ -112,3 +113,72 @@ def test_action_store_is_never_persisted():
     data = ClientRegistration(client_id="c1", room_name="Kitchen").to_dict()
     assert "task" not in str(data)
     assert "_actions" not in data
+
+
+# --- mini-TEST-3: fire-and-forget lifecycle through a real handler (QUAL-28 stage 3.2) --- #
+
+class _StoreTestHandler(IntentHandler):
+    """Minimal concrete handler to exercise the store-centric F&F machinery."""
+    async def execute(self, intent, context):  # pragma: no cover - not used
+        ...
+
+    async def can_handle(self, intent):  # pragma: no cover - not used
+        return True
+
+    @classmethod
+    def get_python_dependencies(cls):
+        return []
+
+    @classmethod
+    def get_platform_dependencies(cls):
+        return {"linux.ubuntu": []}
+
+    @classmethod
+    def get_platform_support(cls):
+        return ["linux.ubuntu"]
+
+
+async def test_ff_lifecycle_through_handler_and_no_session_collision():
+    from irene.intents.context_models import UnifiedConversationContext
+    from irene.core.client_registry import get_client_registry
+
+    h = _StoreTestHandler()
+    ctx = UnifiedConversationContext(session_id="kitchen_session")
+    physical_id = resolve_physical_id(ctx.client_id, ctx.room_name, ctx.session_id)
+    reg = get_client_registry()
+    for r in list(reg.get_live_actions(physical_id)):  # isolate from any prior state
+        reg.remove_action(physical_id, r.action_name)
+
+    done = asyncio.Event()
+    seen = {}
+
+    async def action(session_id, label):
+        # An action coroutine that consumes its OWN session_id kwarg — the exact case that used to
+        # crash with "multiple values for 'session_id'". It must now run.
+        seen["session_id"] = session_id
+        seen["label"] = label
+        await done.wait()
+        return "ok"
+
+    await h.execute_fire_and_forget_with_context(
+        action, action_name="act_1", domain="timers", context=ctx,
+        session_id=ctx.session_id, label="hi",
+    )
+    await asyncio.sleep(0)  # let the task body start
+
+    # the action's session_id kwarg reached it (no collision)
+    assert seen.get("session_id") == "kitchen_session"
+    assert seen.get("label") == "hi"
+
+    # registered in the store under (physical_id, action_name), with a live task
+    live = reg.get_live_actions(physical_id)
+    assert [r.action_name for r in live] == ["act_1"]
+    assert live[0].task is not None and live[0].is_live()
+
+    # completion reaps it from the store (no leak)
+    done.set()
+    for _ in range(20):
+        await asyncio.sleep(0.01)
+        if not reg.get_live_actions(physical_id):
+            break
+    assert reg.get_live_actions(physical_id) == []

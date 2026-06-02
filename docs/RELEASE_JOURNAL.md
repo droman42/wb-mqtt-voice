@@ -159,6 +159,19 @@ newest entries near the top of each dated section.
   **Gate 1: ARCH-1 ✓, ARCH-2 ✓, ARCH-3 ✓ — ARCH-4 (formalize ports) → ARCH-5 (import-linter) next.**
 
 ### 2026-06-02
+- **QUAL-28 Stage 3.2 — store-centric F&F machinery (launch/completion/timeout) rewritten.** Per user, done
+  store-centric (no session-threading), not the rejected `tracking_session_id` patch. `execute_fire_and_forget_*`
+  now: resolves `physical_id` from the context, registers an `ActionRecord` **with the real task** in the
+  `ClientRegistry` store, and the done-callback **reaps from the store** + fires metrics/notifications **off the
+  record** (no `get_or_create_context` session lookup). Identity params are **keyword-only**, so the dup-`session_id`
+  crash is fixed **by removal** — an action coroutine's own `session_id` kwarg now flows through (`_create_timer_action`
+  case). Timeout monitor uses `wait_for` not flat-sleep; completion tasks held to avoid the orphan-GC bug.
+  `mini-TEST-3` lifecycle test added (launch → store has it (live task) → completion reaps it; + the no-collision
+  case). **Transitional:** old `context.active_actions` is still populated by the existing write-back (readers
+  unchanged → no regression) while the store is now the real source of truth. **Next:** migrate readers
+  (orchestrator/`context.py` resolver/conversation/nlu) to the store by `physical_id`; remove `context.active_actions`
+  + the write-back + the now-dead `_handle_action_completion`/`_update_context_on_completion`. Import contracts +
+  smoke + 9 action-store tests green.
 - **QUAL-9 → QUAL-28 MERGE (user, Invariant #8).** Tracing the 3.2 relocation surfaced that (a) readers must hit the
   store by `physical_id` *independently of the session* to get eviction-survival (not a context façade), and (b) the
   authoritative liveness = the task ref, which is created in the F&F **launch** (`base.py`) — QUAL-9 territory. The

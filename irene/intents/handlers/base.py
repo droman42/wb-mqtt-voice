@@ -8,6 +8,7 @@ from typing import Dict, Any, List, Optional, Callable, Coroutine
 
 from ..models import Intent, IntentResult
 from ..context_models import UnifiedConversationContext
+from ...core.client_registry import get_client_registry, resolve_physical_id, ActionRecord
 from ...core.metadata import EntryPointMetadata
 from ...core.notifications import get_notification_service, NotificationService
 from ...core.metrics import get_metrics_collector, MetricsCollector
@@ -37,6 +38,7 @@ class IntentHandler(EntryPointMetadata, ABC):
         self._asset_loader_initialized = False
         self.context_manager: Optional[Any] = None  # Context manager for fire-and-forget actions
         self._timeout_tasks: Dict[str, asyncio.Task] = {}  # Track timeout monitoring tasks
+        self._completion_tasks: set = set()  # Strong refs to async completion tasks (avoid GC/orphan)
         self._notification_service: Optional[NotificationService] = None  # Phase 3.1: Notification service
         self._metrics_collector: Optional[MetricsCollector] = None  # Phase 3.2: Metrics collector
         self._action_debugger: Optional[ActionDebugger] = None  # Phase 3.4: Action debugger
@@ -90,44 +92,35 @@ class IntentHandler(EntryPointMetadata, ABC):
             self._action_debugger = action_debugger
     
     async def execute_fire_and_forget_with_context(
-        self, 
-        action_func: Callable[..., Coroutine[Any, Any, Any]], 
+        self,
+        action_func: Callable[..., Coroutine[Any, Any, Any]],
         action_name: str,
         domain: str,
         context: UnifiedConversationContext,
         timeout: Optional[float] = None,
         max_retries: int = 0,
         retry_delay: float = 1.0,
-        *args, 
         **kwargs
     ) -> Dict[str, Any]:
         """
-        Execute a fire-and-forget action with automatic context manager and session_id injection.
-        
-        Args:
-            action_func: Async function to execute
-            action_name: Human-readable action name
-            domain: Action domain for ambiguity resolution
-            context: Conversation context (provides session_id)
-            timeout: Optional timeout in seconds (default: 300 seconds)
-            max_retries: Maximum number of retry attempts for transient failures (default: 0)
-            retry_delay: Delay between retry attempts in seconds (default: 1.0)
-            *args: Arguments to pass to action function
-            **kwargs: Keyword arguments to pass to action function
-            
-        Returns:
-            Action metadata for context tracking
+        Launch a fire-and-forget action, registered in the runtime action store (QUAL-28).
+
+        Resolves the action's stable ``physical_id`` from the context (room/device, falling back to
+        the session id) so the action survives conversation-session eviction. ``**kwargs`` are passed
+        verbatim to ``action_func`` — the F&F machinery takes no ``session_id`` parameter, so an
+        action coroutine is free to take its own ``session_id`` kwarg without any collision.
         """
+        physical_id = resolve_physical_id(context.client_id, context.room_name, context.session_id)
         return await self.execute_fire_and_forget_action(
-            action_func=action_func,
+            action_func,
             action_name=action_name,
             domain=domain,
-            context_manager=self.context_manager,
-            session_id=context.session_id,
+            physical_id=physical_id,
+            owner_session_id=context.session_id,
+            room_id=context.client_id or context.room_name,
             timeout=timeout,
             max_retries=max_retries,
             retry_delay=retry_delay,
-            *args,
             **kwargs
         )
     
@@ -441,145 +434,145 @@ class IntentHandler(EntryPointMetadata, ABC):
         """
         return result
     
-    # Action execution helper methods for Phase 5
+    # Action execution helper methods (QUAL-28: store-centric fire-and-forget)
     async def execute_fire_and_forget_action(
-        self, 
-        action_func: Callable[..., Coroutine[Any, Any, Any]], 
+        self,
+        action_func: Callable[..., Coroutine[Any, Any, Any]],
         action_name: str,
         domain: str,
-        context_manager: Optional[Any] = None,
-        session_id: Optional[str] = None,
+        *,
+        physical_id: Optional[str] = None,
+        owner_session_id: Optional[str] = None,
+        room_id: Optional[str] = None,
         timeout: Optional[float] = None,
         max_retries: int = 0,
         retry_delay: float = 1.0,
-        *args, 
         **kwargs
     ) -> Dict[str, Any]:
         """
-        Execute an action using fire-and-forget pattern with context tracking.
-        
-        Args:
-            action_func: Async function to execute
-            action_name: Human-readable action name
-            domain: Action domain for ambiguity resolution
-            context_manager: Context manager for completion callbacks
-            session_id: Session ID for context updates
-            timeout: Optional timeout in seconds (default: 300 seconds)
-            max_retries: Maximum number of retry attempts for transient failures (default: 0)
-            retry_delay: Delay between retry attempts in seconds (default: 1.0)
-            *args: Arguments to pass to action function
-            **kwargs: Keyword arguments to pass to action function
-            
-        Returns:
-            Action metadata for context tracking
+        Launch ``action_func`` as a background task and register it in the runtime action store.
+
+        The identity params (``physical_id``/``owner_session_id``/``room_id``) are **keyword-only**,
+        so they can never collide with the action coroutine's own kwargs — ``**kwargs`` flows
+        verbatim to ``action_func``. The store holds the task ref authoritatively; completion and
+        timeout reap the action via :meth:`_on_action_done` (no session lookup, no leak).
+
+        Returns informational action metadata (for ``create_action_result`` / API), NOT the storage
+        mechanism — the action is already registered in the store before this returns.
         """
+        if timeout is None:
+            timeout = 300.0
+        if physical_id is None:
+            physical_id = resolve_physical_id(None, None, owner_session_id or action_name)
         try:
-            # Set default timeout if not provided
-            if timeout is None:
-                timeout = 300.0  # 5 minutes default
-            
-            # Create background task for fire-and-forget execution with retry logic
             if max_retries > 0:
                 task = asyncio.create_task(self._execute_with_retry(
-                    action_func, action_name, domain, max_retries, retry_delay, *args, **kwargs
+                    action_func, action_name, domain, max_retries, retry_delay, **kwargs
                 ))
             else:
-                task = asyncio.create_task(action_func(*args, **kwargs))
-            
-            # Phase 3.2: Record action start in metrics
+                task = asyncio.create_task(action_func(**kwargs))
+
+            record = ActionRecord(
+                action_name=action_name,
+                domain=domain,
+                physical_id=physical_id,
+                task=task,
+                started_at=time.time(),
+                expected_end=(time.time() + timeout) if timeout and timeout > 0 else None,
+                status="running",
+                session_id=owner_session_id,
+                room_id=room_id,
+                metadata={"handler": self.__class__.__name__, "timeout": timeout,
+                          "max_retries": max_retries, "retry_count": 0},
+            )
+            get_client_registry().add_action(record)
+
             if self._metrics_collector:
                 self._metrics_collector.record_action_start(
-                    domain=domain,
-                    action_name=action_name,
-                    handler=self.__class__.__name__,
-                    session_id=session_id
+                    domain=domain, action_name=action_name,
+                    handler=self.__class__.__name__, session_id=owner_session_id
                 )
-            
-            # Generate action metadata for context tracking
-            action_metadata = {
-                "active_actions": {
-                    action_name: {
-                        "handler": self.__class__.__name__,
-                        "action": action_name,
-                        "domain": domain,
-                        "started_at": time.time(),
-                        "task_id": id(task),
-                        "status": "running",
-                        "timeout": timeout,
-                        "timeout_at": time.time() + timeout,
-                        "max_retries": max_retries,
-                        "retry_delay": retry_delay,
-                        "retry_count": 0
-                    }
-                }
-            }
-            
-            # Use provided context manager or fall back to instance context manager
-            effective_context_manager = context_manager or self.context_manager
-            
-            # Set up completion callback for context updates
-            task.add_done_callback(
-                lambda t: self._handle_action_completion(action_name, domain, t, effective_context_manager, session_id)
-            )
-            
-            # Set up timeout monitoring
-            if timeout > 0:
-                timeout_task = asyncio.create_task(self._monitor_action_timeout(
-                    task, action_name, domain, timeout, effective_context_manager, session_id
-                ))
-                # Track timeout task for cleanup
-                timeout_key = f"{domain}:{action_name}"
-                self._timeout_tasks[timeout_key] = timeout_task
-                # Store timeout task reference in metadata for potential cancellation
-                action_metadata["active_actions"][action_name]["timeout_task_id"] = id(timeout_task)
-                action_metadata["active_actions"][action_name]["timeout_key"] = timeout_key
-            
-            # Validate metadata structure before returning
-            if not self._validate_action_metadata(action_metadata):
-                self.logger.error(f"Generated invalid action metadata for {action_name}")
-                # Return a minimal valid structure as fallback
-                return {
-                    "active_actions": {
-                        action_name: {
-                            "handler": self.__class__.__name__,
-                            "action": action_name,
-                            "domain": domain,
-                            "started_at": time.time(),
-                            "task_id": id(task),
-                            "status": "running"
-                        }
-                    }
-                }
-            
-            self.logger.info(f"Started fire-and-forget action: {action_name} (domain: {domain})")
-            return action_metadata
-            
+
+            # Reaper layer 1: completion removes from the store + fires metrics/notifications.
+            task.add_done_callback(lambda t: self._on_action_done(record, t))
+
+            # Timeout monitor: cancel an overrunning task (the done-callback then reaps it).
+            if timeout and timeout > 0:
+                timeout_key = f"{physical_id}:{action_name}"
+                self._timeout_tasks[timeout_key] = asyncio.create_task(
+                    self._monitor_action_timeout(task, action_name, timeout_key, timeout)
+                )
+
+            self.logger.info(f"Started fire-and-forget action: {action_name} "
+                             f"(domain: {domain}, scope: {physical_id})")
+            return {"active_actions": {action_name: {
+                "handler": self.__class__.__name__, "action": action_name, "domain": domain,
+                "physical_id": physical_id, "started_at": record.started_at,
+                "status": "running", "timeout": timeout}}}
+
         except Exception as e:
             self.logger.error(f"Failed to start action {action_name}: {e}")
-            # Use consistent metadata structure - failed actions still go in active_actions
-            # but with failed status and immediate completion time
-            error_metadata = {
-                "active_actions": {
-                    action_name: {
-                        "handler": self.__class__.__name__,
-                        "action": action_name,
-                        "domain": domain,
-                        "started_at": time.time(),
-                        "completed_at": time.time(),
-                        "task_id": None,  # No task created due to failure
-                        "status": "failed",
-                        "error": str(e),
-                        "failed_at_startup": True  # Flag to indicate startup failure
-                    }
-                }
-            }
-            
-            # Validate error metadata structure
-            if not self._validate_action_metadata(error_metadata):
-                self.logger.error(f"Generated invalid error metadata for {action_name}")
-            
-            return error_metadata
-    
+            if self._metrics_collector:
+                try:
+                    self._metrics_collector.record_action_completion(domain=domain, success=False, error=str(e))
+                except Exception:
+                    pass
+            return {"active_actions": {action_name: {
+                "handler": self.__class__.__name__, "action": action_name, "domain": domain,
+                "started_at": time.time(), "completed_at": time.time(),
+                "status": "failed", "error": str(e), "failed_at_startup": True}}}
+
+    def _on_action_done(self, record: 'ActionRecord', task: asyncio.Task) -> None:
+        """Done-callback: reap the action from the store and fire metrics/notifications off the record."""
+        try:
+            if task.cancelled():
+                success, error = False, "cancelled"
+            elif task.exception() is not None:
+                success, error = False, str(task.exception())
+            else:
+                success, error = True, None
+        except Exception:
+            success, error = True, None
+
+        # Reaper layer 1 — remove from the store (no session lookup).
+        try:
+            get_client_registry().remove_action(record.physical_id, record.action_name)
+        except Exception as e:
+            self.logger.error(f"Failed to remove completed action {record.action_name} from store: {e}")
+
+        # Cancel this action's timeout monitor, if any.
+        mon = self._timeout_tasks.pop(f"{record.physical_id}:{record.action_name}", None)
+        if mon is not None and not mon.done():
+            mon.cancel()
+
+        if self._metrics_collector:
+            try:
+                self._metrics_collector.record_action_completion(
+                    domain=record.domain, success=success, error=error)
+            except Exception as me:
+                self.logger.error(f"Failed to record action completion metrics: {me}")
+
+        # Notifications are async — schedule and hold a strong ref to avoid GC/orphan.
+        if self._notification_service and record.session_id:
+            t = asyncio.create_task(self._notify_action_result(record, success, error))
+            self._completion_tasks.add(t)
+            t.add_done_callback(self._completion_tasks.discard)
+
+    async def _notify_action_result(self, record: 'ActionRecord', success: bool, error: Optional[str]) -> None:
+        """Send the completion/failure notification, routed by the action's owner."""
+        try:
+            duration = time.time() - record.started_at
+            if success:
+                await self._notification_service.send_action_completion_notification(
+                    session_id=record.session_id, domain=record.domain,
+                    action_name=record.action_name, duration=duration, success=True)
+            else:
+                await self._notification_service.send_action_failure_notification(
+                    session_id=record.session_id, domain=record.domain,
+                    action_name=record.action_name, error=error or "Unknown error", is_critical=False)
+        except Exception as e:
+            self.logger.error(f"Failed to send action notification for {record.action_name}: {e}")
+
     def _handle_action_completion(self, action_name: str, domain: str, task: asyncio.Task, 
                                  context_manager: Optional[Any] = None, session_id: Optional[str] = None) -> None:
         """
@@ -704,91 +697,26 @@ class IntentHandler(EntryPointMetadata, ABC):
         except Exception as e:
             self.logger.error(f"Failed to update conversation context on action completion: {e}")
     
-    async def _notify_critical_failure(self, action_name: str, domain: str, error: str, 
-                                     context: UnifiedConversationContext) -> None:
-        """
-        Notify about critical action failures that may require user attention.
-        
-        Args:
-            action_name: Name of the failed action
-            domain: Action domain
-            error: Error message
-            context: Conversation context for failure tracking
+    async def _monitor_action_timeout(self, task: asyncio.Task, action_name: str,
+                                      timeout_key: str, timeout: float) -> None:
+        """Cancel an action that overruns its timeout; the done-callback then reaps it from the store.
+
+        Uses ``wait_for`` (not a flat ``sleep(timeout)``) so a normally-completing action ends the
+        monitor immediately instead of leaving a zombie sleeper for the full timeout.
         """
         try:
-            # Check if this is a critical failure
-            if context._is_critical_failure(domain, error):
-                self.logger.error(f"CRITICAL FAILURE in {domain}: {action_name} - {error}")
-                
-                # Log detailed error information for monitoring
-                error_summary = context.get_error_summary()
-                self.logger.warning(f"Error summary for session {context.session_id}: {error_summary}")
-                
-                # TODO: In Phase 3, this could trigger user notifications
-                # For now, we ensure critical failures are prominently logged
-                
-        except Exception as e:
-            self.logger.error(f"Error in critical failure notification: {e}")
-    
-    async def _monitor_action_timeout(self, task: asyncio.Task, action_name: str, domain: str, 
-                                    timeout: float, context_manager: Optional[Any] = None, 
-                                    session_id: Optional[str] = None) -> None:
-        """
-        Monitor action timeout and handle timeout scenarios.
-        
-        Args:
-            task: The action task to monitor
-            action_name: Name of the action
-            domain: Action domain
-            timeout: Timeout duration in seconds
-            context_manager: Context manager for updates
-            session_id: Session ID for context lookup
-        """
-        try:
-            # Wait for either task completion or timeout
-            await asyncio.sleep(timeout)
-            
-            # If we reach here, the task has timed out
+            await asyncio.wait_for(asyncio.shield(task), timeout=timeout)
+        except asyncio.TimeoutError:
             if not task.done():
-                self.logger.warning(f"Action {action_name} in domain {domain} timed out after {timeout} seconds")
-                
-                # Cancel the timed-out task
+                self.logger.warning(f"Action {action_name} timed out after {timeout}s — cancelling")
                 task.cancel()
-                
-                # Update context with timeout status
-                if context_manager and session_id:
-                    try:
-                        conversation_context = await context_manager.get_or_create_context(session_id)
-                        
-                        # Update action status to timeout
-                        conversation_context.update_action_status(domain, "timeout", f"Action timed out after {timeout} seconds")
-                        
-                        # Remove the timed-out action and mark as failed
-                        conversation_context.remove_completed_action(
-                            domain, 
-                            success=False, 
-                            error=f"Action timed out after {timeout} seconds"
-                        )
-                        
-                        # Notify about timeout (considered a critical failure)
-                        await self._notify_critical_failure(
-                            action_name, domain, f"Action timed out after {timeout} seconds", conversation_context
-                        )
-                        
-                    except Exception as ctx_error:
-                        self.logger.error(f"Failed to update context for timed-out action {action_name}: {ctx_error}")
-                
         except asyncio.CancelledError:
-            # Timeout monitoring was cancelled (task completed normally)
             pass
         except Exception as e:
             self.logger.error(f"Error in timeout monitoring for action {action_name}: {e}")
         finally:
-            # Clean up timeout task tracking
-            timeout_key = f"{domain}:{action_name}"
-            if timeout_key in self._timeout_tasks:
-                del self._timeout_tasks[timeout_key]
-    
+            self._timeout_tasks.pop(timeout_key, None)
+
     async def _execute_with_retry(self, action_func: Callable[..., Coroutine[Any, Any, Any]], 
                                 action_name: str, domain: str, max_retries: int, retry_delay: float,
                                 *args, **kwargs) -> Any:
