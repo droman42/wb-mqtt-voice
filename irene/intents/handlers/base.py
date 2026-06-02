@@ -534,11 +534,14 @@ class IntentHandler(EntryPointMetadata, ABC):
         except Exception:
             success, error = True, None
 
-        # Reaper layer 1 — remove from the store (no session lookup).
+        # Reaper layer 1 — remove from the active store + record in the per-identity history
+        # (the single completion chokepoint, so history is recorded exactly once).
         try:
-            get_client_registry().remove_action(record.physical_id, record.action_name)
+            registry = get_client_registry()
+            registry.remove_action(record.physical_id, record.action_name)
+            registry.record_completed_action(record, success, error)
         except Exception as e:
-            self.logger.error(f"Failed to remove completed action {record.action_name} from store: {e}")
+            self.logger.error(f"Failed to reap/record completed action {record.action_name}: {e}")
 
         # Cancel this action's timeout monitor, if any.
         mon = self._timeout_tasks.pop(f"{record.physical_id}:{record.action_name}", None)

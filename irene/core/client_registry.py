@@ -145,6 +145,11 @@ class ClientRegistry:
         # NEVER persisted (holds live task refs; must not survive a restart). _save_registrations
         # only serializes self.clients, so this attribute is excluded by construction.
         self._actions: Dict[str, Dict[str, ActionRecord]] = {}
+        # Completed-action history, also runtime-only and physical-identity-scoped (so it survives
+        # conversation-session eviction, per Q3). Capped per identity.
+        self._recent_actions: Dict[str, List[Dict[str, Any]]] = {}
+        self._failed_actions: Dict[str, List[Dict[str, Any]]] = {}
+        self._action_error_count: Dict[str, Dict[str, int]] = {}
 
         # Configuration
         self.registration_timeout = self.config.get('registration_timeout', 3600)  # 1 hour
@@ -481,6 +486,36 @@ class ClientRegistry:
         if total:
             logger.debug(f"Action store reaper removed {total} dead action(s)")
         return total
+
+    # --- completed-action history (physical-identity-scoped, runtime-only) --- #
+
+    def record_completed_action(self, record: 'ActionRecord', success: bool, error: Optional[str] = None) -> None:
+        """Record a completed/failed/cancelled action in the per-identity history (caps: 10 recent /
+        20 failed). Called once from the F&F done-callback — the single completion chokepoint."""
+        pid = record.physical_id
+        info = {"action": record.action_name, "domain": record.domain, "started_at": record.started_at,
+                "completed_at": time.time(), "success": success, "error": error,
+                "status": "completed" if success else "failed"}
+        recent = self._recent_actions.setdefault(pid, [])
+        recent.append(info)
+        if len(recent) > 10:
+            self._recent_actions[pid] = recent[-10:]
+        if not success:
+            failed = self._failed_actions.setdefault(pid, [])
+            failed.append(info)
+            if len(failed) > 20:
+                self._failed_actions[pid] = failed[-20:]
+            ec = self._action_error_count.setdefault(pid, {})
+            ec[record.domain] = ec.get(record.domain, 0) + 1
+
+    def get_recent_actions(self, physical_id: str) -> List[Dict[str, Any]]:
+        return list(self._recent_actions.get(physical_id, []))
+
+    def get_failed_actions(self, physical_id: str) -> List[Dict[str, Any]]:
+        return list(self._failed_actions.get(physical_id, []))
+
+    def get_action_error_count(self, physical_id: str) -> Dict[str, int]:
+        return dict(self._action_error_count.get(physical_id, {}))
 
     def _save_registrations(self):
         """Save registrations to persistent storage"""

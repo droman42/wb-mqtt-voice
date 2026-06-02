@@ -56,12 +56,10 @@ class UnifiedConversationContext:
     available_devices: List[Dict[str, Any]] = field(default_factory=list)
     language: str = "ru"
     
-    # Fire-and-forget action tracking. QUAL-28: `active_actions` is no longer a stored field — it is a
-    # read-only view over the long-lived ClientRegistry action store (keyed by physical_id), so actions
-    # survive conversation-session eviction. See the `active_actions` property below.
-    recent_actions: List[Dict[str, Any]] = field(default_factory=list) # Completed actions
-    failed_actions: List[Dict[str, Any]] = field(default_factory=list) # Failed actions
-    action_error_count: Dict[str, int] = field(default_factory=dict)   # Error tracking
+    # Fire-and-forget action tracking. QUAL-28: active_actions AND the completed-action history
+    # (recent_actions/failed_actions/action_error_count) are no longer stored fields — they are
+    # read-only views over the long-lived, physical-identity-scoped ClientRegistry store, so they all
+    # survive conversation-session eviction (per Q3). See the properties below.
     
     # Handler-specific contexts (replaces ConversationSession approach)
     handler_contexts: Dict[str, Dict[str, Any]] = field(default_factory=dict)
@@ -102,35 +100,7 @@ class UnifiedConversationContext:
             "include_metrics": False
         }
     })
-    memory_management: Dict[str, Any] = field(default_factory=lambda: {
-        "retention_policies": {
-            "conversation_history": {
-                "max_entries": 50,
-                "max_age_hours": 24,
-                "cleanup_threshold": 60  # cleanup when exceeding max_entries by this amount
-            },
-            "recent_actions": {
-                "max_entries": 20,
-                "max_age_hours": 6,
-                "cleanup_threshold": 25
-            },
-            "failed_actions": {
-                "max_entries": 50,
-                "max_age_hours": 48,  # Keep failures longer for analysis
-                "cleanup_threshold": 60
-            }
-        },
-        "auto_cleanup": {
-            "enabled": True,
-            "interval_minutes": 30,
-            "aggressive_cleanup_threshold": 0.8  # Trigger aggressive cleanup at 80% memory usage
-        },
-        "memory_monitoring": {
-            "enabled": True,
-            "alert_threshold_mb": 100,
-            "critical_threshold_mb": 200
-        }
-    })
+    # (QUAL-28) `memory_management` config blob removed — it was dead state for the deleted MemoryManager.
     timestamp: float = field(default_factory=time.time)
     request_source: str = "unknown"  # "microphone", "web", "api", etc.
     
@@ -257,6 +227,21 @@ class UnifiedConversationContext:
                                   "status": r.status, "session_id": r.session_id, "room_id": r.room_id}
         return out
 
+    @property
+    def recent_actions(self) -> List[Dict[str, Any]]:
+        """Read-only view of completed actions for this scope (from the store; survives eviction)."""
+        return get_client_registry().get_recent_actions(self._action_pid)
+
+    @property
+    def failed_actions(self) -> List[Dict[str, Any]]:
+        """Read-only view of failed actions for this scope (from the store; survives eviction)."""
+        return get_client_registry().get_failed_actions(self._action_pid)
+
+    @property
+    def action_error_count(self) -> Dict[str, int]:
+        """Read-only per-domain error counts for this scope (from the store)."""
+        return get_client_registry().get_action_error_count(self._action_pid)
+
     def add_active_action(self, action_name: str, action_info: Dict[str, Any]):
         """Register a (task-less) action in the store — best-effort. The handler-base launch performs the
         primary registration with a real task ref; this path is for callers that don't have one."""
@@ -286,36 +271,23 @@ class UnifiedConversationContext:
         return list({r.domain for r in get_client_registry().get_live_actions(self._action_pid)})
     
     def remove_completed_action(self, key: str, success: bool = True, error: Optional[str] = None) -> bool:
-        """Remove an action from the store. Accepts an ``action_name`` (preferred) or a ``domain``
-        (removes all live actions in it); records a recent/failed summary best-effort."""
+        """Remove an action from the ACTIVE store (by ``action_name`` or ``domain``). The completion
+        HISTORY (recent/failed) is recorded by the F&F done-callback — the single completion chokepoint —
+        not here, to avoid double-counting."""
         registry = get_client_registry()
         pid = self._action_pid
-        removed = []
         rec = registry.get_action(pid, key)
         if rec is not None:
             registry.remove_action(pid, key)
-            removed.append(rec)
-        else:
-            for rec in registry.get_live_actions_by_domain(pid, key):
-                registry.remove_action(pid, rec.action_name)
-                removed.append(rec)
-        for rec in removed:
-            info = {"action": rec.action_name, "domain": rec.domain, "started_at": rec.started_at,
-                    "completed_at": time.time(), "success": success, "error": error,
-                    "status": "completed" if success else "failed"}
-            self.recent_actions.append(info)
-            if not success:
-                info["failure_type"] = self._classify_error(error) if error else 'unknown'
-                info["is_critical"] = self._is_critical_failure(rec.domain, error)
-                self.failed_actions.append(info)
-                self.action_error_count[rec.domain] = self.action_error_count.get(rec.domain, 0) + 1
-        if len(self.failed_actions) > 20:
-            self.failed_actions = self.failed_actions[-20:]
-        if len(self.recent_actions) > 10:
-            self.recent_actions = self.recent_actions[-10:]
+            self.last_updated = time.time()
+            return True
+        removed = False
+        for rec in registry.get_live_actions_by_domain(pid, key):
+            registry.remove_action(pid, rec.action_name)
+            removed = True
         if removed:
             self.last_updated = time.time()
-        return bool(removed)
+        return removed
     
     # Additional fire-and-forget management methods
     def cancel_action(self, domain: str, reason: str = "User requested cancellation") -> bool:

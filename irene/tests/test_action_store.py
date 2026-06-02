@@ -182,3 +182,42 @@ async def test_ff_lifecycle_through_handler_and_no_session_collision():
         if not reg.get_live_actions(physical_id):
             break
     assert reg.get_live_actions(physical_id) == []
+
+
+async def test_completed_action_history_lives_in_store_and_survives_eviction():
+    from irene.intents.context_models import UnifiedConversationContext
+    from irene.core.client_registry import get_client_registry
+
+    h = _StoreTestHandler()
+    ctx = UnifiedConversationContext(session_id="study_session")
+    pid = resolve_physical_id(ctx.client_id, ctx.room_name, ctx.session_id)
+    reg = get_client_registry()
+    reg._recent_actions.pop(pid, None)            # isolate from prior runs
+    reg._failed_actions.pop(pid, None)
+    reg._action_error_count.pop(pid, None)
+
+    async def ok_action():
+        return "ok"
+
+    async def bad_action():
+        raise ValueError("boom")
+
+    await h.execute_fire_and_forget_with_context(ok_action, action_name="a_ok", domain="timers", context=ctx)
+    await h.execute_fire_and_forget_with_context(bad_action, action_name="a_bad", domain="timers", context=ctx)
+    for _ in range(30):  # let both done-callbacks fire + record history
+        await asyncio.sleep(0.01)
+        if reg.get_recent_actions(pid) and reg.get_failed_actions(pid):
+            break
+
+    # history recorded in the STORE (physical-identity-scoped), not on the transient context
+    assert {r["action"] for r in reg.get_recent_actions(pid)} == {"a_ok", "a_bad"}
+    assert [r["action"] for r in reg.get_failed_actions(pid)] == ["a_bad"]
+    assert reg.get_action_error_count(pid).get("timers") == 1
+
+    # the context exposes them as read-only views ...
+    assert {a["action"] for a in ctx.recent_actions} == {"a_ok", "a_bad"}
+    # ... and they SURVIVE conversation-session eviction: a freshly re-created context for the same
+    # physical scope still sees the history (the whole point of moving it off the session).
+    fresh = UnifiedConversationContext(session_id="study_session")
+    assert {a["action"] for a in fresh.recent_actions} == {"a_ok", "a_bad"}
+    assert [a["action"] for a in fresh.failed_actions] == ["a_bad"]

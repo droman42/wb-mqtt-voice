@@ -159,7 +159,20 @@ newest entries near the top of each dated section.
   **Gate 1: ARCH-1 ✓, ARCH-2 ✓, ARCH-3 ✓ — ARCH-4 (formalize ports) → ARCH-5 (import-linter) next.**
 
 ### 2026-06-02
-- **QUAL-28 Stage 3.3 — context field split assessed as SUBSUMED (Invariant #8).** The Q2 goal (long-lived
+- **QUAL-28 Stage 3.3 — completed the field split properly (correcting the earlier "subsumed" overstatement).** On
+  challenge, re-audited the context fields: the lifetime-critical `active_actions` relocation was done, but
+  `recent_actions`/`failed_actions`/`action_error_count` were **still on the transient context** (died on eviction,
+  contra the Q3 action-store design) and a dead `memory_management` config blob (for the deleted MemoryManager)
+  remained. Both now fixed: **(a)** the completed-action history moved into the `ClientRegistry` store
+  (per-`physical_id`, capped 10 recent / 20 failed; recorded once by the F&F done-callback — the single completion
+  chokepoint), exposed on the context as read-only properties — so it **survives session eviction** (new test:
+  history visible to a freshly-recreated context for the same scope). **(b)** the dead `memory_management` field
+  deleted (no consumers). `remove_completed_action` simplified to active-store removal only (no double-counting).
+  Now ALL F&F state (active + history) is in the long-lived store; the context is the transient session with views.
+  10 store tests + smoke + contracts green.
+- **QUAL-28 Stage 3.3 — context field split assessed as SUBSUMED (Invariant #8).** _[Superseded by the entry above —
+  the assessment was an overstatement; recent/failed-action history and the dead memory_management blob were genuine
+  residuals, now fixed.]_ The Q2 goal (long-lived
   physical-identity store vs short-lived conversation session) is achieved by the store-relocation: `active_actions`
   (the state that must outlive the conversation) now lives in the `ClientRegistry` store and survives session
   eviction. The residual identity fields on the context (`client_id`/`room_name`/`available_devices`/`language`) are
