@@ -19,8 +19,8 @@ committed after every decision, so an interrupted session continues from the fir
 |---|---|---|---|
 | Q1 | **Text contract** — what does `Intent.raw_text` carry (original vs processed), and how is normalized text threaded? | P0-1 (biggest defect), P1-c, QUAL-13, the LLM/chat path | ✅ DECIDED |
 | Q2 | **Session identity** — forbid `"default"`; `get` vs `get_or_create`; always derive a real session_id; unify eviction clocks | P0-6 (cross-request leak), P1-p | ✅ DECIDED |
-| Q3 | **Fire-and-forget keying** — one key end-to-end (`action_name`) + a `domain` index; fix dup-`session_id` + `get_or_create_context` together | P0-2/3/4, P1-k/l/m/n | 🔵 OPEN |
-| Q4 | **Wired-or-delete** — MemoryManager · ContextLayer/progressive-context · InputManager queue + WebSocket input · `Intent.session_id` · `_disambiguate_with_device_context` · dead text-proc stages | P0-7, P0-8, P1-g; scopes how much code is deleted vs fixed | ⚪ pending |
+| Q3 | **Fire-and-forget keying** — one key end-to-end (`action_name`) + a `domain` index; fix dup-`session_id` + `get_or_create_context` together | P0-2/3/4, P1-k/l/m/n | ✅ DECIDED |
+| Q4 | **Wired-or-delete** — MemoryManager · ContextLayer/progressive-context · InputManager queue + WebSocket input · `Intent.session_id` · `_disambiguate_with_device_context` · dead text-proc stages | P0-7, P0-8, P1-g; scopes how much code is deleted vs fixed | 🔵 OPEN |
 | Q5 | **Conversation history** — pick the canonical representation (3 today) and a single writer | P1-q | ⚪ pending |
 | Q6 | **Device-context pipeline** — who populates `device_context`/`available_devices` at the entry | P1-j (blocks the PEX device-resolution P0) | ⚪ pending |
 | Q7 | **Fail-loud philosophy + typed accessor** (theme #1) — raise vs result-signal; where the typed entity/result accessor lives | P0-9, P1-a/s; the whole handler boundary | ⚪ pending |
@@ -103,6 +103,22 @@ short-lived conversation session; relocate `active_actions`; wire entry adapter 
 `"default"`; get/get_or_create split; window history; drop `extract_room_from_session`. Big-ticket — spans QUAL-9/11 +
 context refactor. Full room→device→**MQTT** chain completes later (ARCH-7/8).
 
-<!-- next: Q3 -->
+### Q3 — Fire-and-forget keying & write-back · ✅ DECIDED
+- **3a (confirmed):** `active_actions` keyed by unique **`action_name`** (identity); **`domain`** is a secondary
+  **index** for the contextual router (priority + recency); **N concurrent actions per domain supported** (fixes the
+  same-domain clobber).
+- **3b — dedicated long-lived action store** keyed by physical identity (room/device/client), `ClientRegistry` as the
+  device/room source-of-truth. **Zombie-resistant by design — authoritative rule: an action is live iff its asyncio
+  task is live.** Four removal layers: (1) completion callback (primary, action_name-keyed); (2) read-time liveness
+  filter (resolver skips `done()` tasks before targeting); (3) periodic reaper sweep (catches missed callbacks /
+  crashed-GC'd tasks — the exact historical failure); (4) TTL + grace for bounded actions (timers) + hard
+  max-concurrent cap per identity. Store holds the task ref authoritatively (also fixes orphan-task P1-m).
+- **3c (confirmed):** single write-back path — keep workflow-level `voice_assistant._process_action_metadata`
+  (the funnel all modalities pass through); **delete** `workflow_manager._process_action_metadata_integration` (P1-k).
+- **Mechanical → QUAL-9** (no decision): dup-`session_id` launch crash (P0-2), wire real `get_or_create_context` from
+  Q2 (P0-4), fire completion lifecycle (metrics/notifications/timeout-cleanup), key metrics by `action_name` (P1-l),
+  replace timeout flat-sleep with task-await/cancel (P1-n).
+
+<!-- next: Q4 -->
 
 
