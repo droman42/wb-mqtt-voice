@@ -159,6 +159,15 @@ newest entries near the top of each dated section.
   **Gate 1: ARCH-1 ✓, ARCH-2 ✓, ARCH-3 ✓ — ARCH-4 (formalize ports) → ARCH-5 (import-linter) next.**
 
 ### 2026-06-02
+- **QUAL-29 Stage D — extraction surface→canonical normalization. Smoke green.** Added
+  `ParameterSpec.surface_to_canonical()` ({surface_lower: canonical}, all languages; canonical maps to itself).
+  Rewrote the 4 CHOICE consumption spots — `hybrid_keyword_matcher` (fuzzy) + `spacy_provider` (similarity), both
+  match + validate — to match against the SURFACE forms and **emit the canonical token**, normalizing any surface to
+  canonical before validation. Threaded `choice_surfaces`/`entity_type` through the spaCy param-spec serialize/restore
+  cache (else a cache round-trip dropped them). Now the handler always receives the language-neutral value regardless
+  of spoken language — verified: `"доброе утро"`→`morning`, `"вечером"`→`evening`, `"good morning"`→`morning`. This
+  activates the canonical model and centralizes the RU→EN normalization that handlers like `provider_control` did
+  by hand. Remaining (QUAL-29): validator shrink, v1.1 JSON schemas, config-ui, dead-param handler-wiring follow-ups.
 - **QUAL-29 backend Stages A–C — model + migration + loader (v1.0→v1.1 split). Smoke green.** (1) **Model**
   (`donations.py`): added `EntityType`/`RoomContext` enums, `ParameterSpec.entity_type` (default generic) +
   `choice_surfaces` ({canonical: [surfaces]}), `MethodDonation.room_context` (default none); `choices` redefined as the

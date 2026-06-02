@@ -515,6 +515,8 @@ class SpaCyNLUProvider(NLUProvider):
                     default_value=param_data['default_value'],
                     pattern=param_data['pattern'],
                     choices=param_data['choices'],
+                    choice_surfaces=param_data.get('choice_surfaces'),  # QUAL-29
+                    entity_type=param_data.get('entity_type', 'generic'),  # QUAL-29
                     min_value=param_data['min_value'],
                     max_value=param_data['max_value'],
                     description=param_data['description']
@@ -638,6 +640,8 @@ class SpaCyNLUProvider(NLUProvider):
                         'default_value': p.default_value,
                         'pattern': p.pattern,
                         'choices': p.choices,
+                        'choice_surfaces': p.choice_surfaces,  # QUAL-29
+                        'entity_type': p.entity_type.value if hasattr(p.entity_type, 'value') else p.entity_type,  # QUAL-29
                         'min_value': p.min_value,
                         'max_value': p.max_value,
                         'description': p.description
@@ -865,17 +869,17 @@ class SpaCyNLUProvider(NLUProvider):
                     return False
         
         elif param_spec.type == ParameterType.CHOICE and param_spec.choices:
-            # Use spaCy similarity for choice matching
+            # QUAL-29: match SURFACE forms (every language) via spaCy similarity, return the CANONICAL token.
             best_choice = None
             best_similarity = 0
-            
-            for choice in param_spec.choices:
-                choice_doc = self.nlp(choice)
-                similarity = doc.similarity(choice_doc)
+
+            for surface, canonical in param_spec.surface_to_canonical().items():
+                surface_doc = self.nlp(surface)
+                similarity = doc.similarity(surface_doc)
                 if similarity > best_similarity and similarity >= 0.7:  # 70% threshold
                     best_similarity = similarity
-                    best_choice = choice
-            
+                    best_choice = canonical
+
             return best_choice
         
         return None
@@ -901,11 +905,12 @@ class SpaCyNLUProvider(NLUProvider):
             if param_spec.max_value is not None and value > param_spec.max_value:
                 raise ValueError(f"Value {value} above maximum {param_spec.max_value}")
         
-        # Choice validation
+        # Choice validation (QUAL-29: normalize a surface form to its canonical token first)
         if param_spec.type == ParameterType.CHOICE and param_spec.choices:
+            value = param_spec.surface_to_canonical().get(str(value).lower(), value)
             if value not in param_spec.choices:
                 raise ValueError(f"Value {value} not in allowed choices {param_spec.choices}")
-        
+
         return value
     
     def get_supported_intents(self) -> List[str]:

@@ -1092,15 +1092,16 @@ class HybridKeywordMatcherProvider(NLUProvider):
             return None
             
         elif param_spec.type == ParameterType.CHOICE and param_spec.choices:
-            # Find the closest matching choice using fuzzy matching
+            # QUAL-29: match the SURFACE forms (every language) and return the CANONICAL token, so the
+            # handler always receives the language-neutral value regardless of which language was spoken.
             from rapidfuzz import fuzz
             best_choice = None
             best_score = 0
-            for choice in param_spec.choices:
-                score = fuzz.partial_ratio(choice.lower(), text_lower)
+            for surface, canonical in param_spec.surface_to_canonical().items():
+                score = fuzz.partial_ratio(surface, text_lower)
                 if score > best_score and score >= 70:  # 70% threshold
                     best_score = score
-                    best_choice = choice
+                    best_choice = canonical
             return best_choice
             
         elif param_spec.type == ParameterType.DURATION:
@@ -1151,11 +1152,12 @@ class HybridKeywordMatcherProvider(NLUProvider):
             if param_spec.max_value is not None and value > param_spec.max_value:
                 raise ValueError(f"Value {value} above maximum {param_spec.max_value}")
         
-        # Choice validation
+        # Choice validation (QUAL-29: normalize a surface form to its canonical token first)
         if param_spec.type == ParameterType.CHOICE and param_spec.choices:
+            value = param_spec.surface_to_canonical().get(str(value).lower(), value)
             if value not in param_spec.choices:
                 raise ValueError(f"Value {value} not in allowed choices {param_spec.choices}")
-        
+
         return value
     
     def validate_config(self) -> bool:

@@ -88,6 +88,20 @@ class ParameterSpec(BaseModel):
             raise ValueError(f'min_value/max_value only valid for numeric types, got {param_type}')
         return v
 
+    def surface_to_canonical(self) -> Dict[str, str]:
+        """QUAL-29: map every spoken surface form (lowercased, all languages) → its canonical choice token.
+
+        The canonical token always maps to itself (it is self-matchable). Returns {} for non-CHOICE params.
+        Used by the NLU to recognise a value spoken in any language and emit the language-neutral canonical.
+        """
+        mapping: Dict[str, str] = {}
+        surfaces = self.choice_surfaces or {}
+        for canonical in (self.choices or []):
+            mapping[canonical.lower()] = canonical
+            for surface in surfaces.get(canonical, []):
+                mapping[surface.lower()] = canonical
+        return mapping
+
 
 class TrainingExample(BaseModel):
     """Training example with expected parameters"""
