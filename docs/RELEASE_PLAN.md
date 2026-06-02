@@ -91,6 +91,7 @@ Living findings behind the tasks (Invariant #5). `[x]` = exists; others are prod
 | `dataflow_review.md` `[x]` | full input→action flow map + defect hunt (~9 P0/~20 P1; gates Gate 2) | QUAL-25 ✓, QUAL-26 ✓, DOC-8 |
 | `dataflow_reconciliation.md` `[x]` | QUAL-26 review-of-reviews — 10 intended-vs-today decisions + Gate 2 framing | QUAL-26 ✓ → QUAL-27..31, QUAL-9/11/13/15/16/22/23, ARCH-6/7, DOC-7/8 |
 | `qual29_choices_decisions.md` | QUAL-29 interactive CHOICE canonical-model decisions (5 cases + parallel-set map + build plan) | QUAL-29 |
+| `declared_param_audit.md` | audit: 19 declared-but-unconsumed donation params across 11 handlers (Bucket A dead / B bypassed) | QUAL-34, QUAL-11 |
 | `streaming_api_review.md` | AsyncAPI streaming-API tooling | QUAL-17/18 |
 | `esp32_wakeword_review.md` | ESP32 + wakeword keep/fix/cut | QUAL-19/20 |
 | `docs/design/mqtt_integration.md` | MQTT output-port design | ARCH-7/8 |
@@ -569,6 +570,17 @@ _Apply to every remediation task below (from the 4 review docs + QUAL-25/26). So
       for both (`datetime.format` en+ru; `system.info_type` en+ru), making the values reachable (QUAL-29's matcher
       extracts CHOICE via surfaces). Validator now reports `datetime`/`system` surface-complete. _ru surfaces are a
       proposal pending native-speaker review._ Refs: `qual29_choices_decisions.md` Cases 1–2.
+- [ ] **QUAL-34** `[release]` [DFLOW] (P2) — **Triage declared-but-unconsumed donation params (systemic; audit →
+      `declared_param_audit.md`).** The QUAL-33 bug class is **not** limited to datetime/system: **19 of ~56 declared
+      params across 11 of 14 handlers are never read as `intent.entities[...]`** (7 are CHOICE params). Two buckets:
+      **A — genuinely dead** (feature not built; e.g. `greetings.time_of_day`, `text_enhancement.improvement_type`,
+      `system_service.metric_type`, `datetime.relative/location/timezone`, `conversation.topic/query_topic/context_
+      reference`) → per-param **wire-or-remove** (the QUAL-33 precedent: build the feature, or stop declaring it; for
+      CHOICE params kept, author bilingual `choice_surfaces`). **B — bypassed** (feature works but re-parses
+      `intent.raw_text` instead of the NLU entity; e.g. `voice_synthesis.voice` → `voice_name`) → **fold into QUAL-11**
+      (typed `ParameterSpec` accessor; same as QUAL-25 P1-r/P1-s). Also decide the `language`-as-pseudo-param pattern
+      (declared CHOICE in most handlers but satisfied by `context.language`). Done when every declared param is either
+      consumed or removed, and the audit re-runs clean. Refs: `declared_param_audit.md`, QUAL-11, QUAL-33, Q6/Q7.
 
 ### Tests (TEST)
 > **Strategy (decided 2026-06-01): do NOT keep repairing the existing suite.** Most tests were written against

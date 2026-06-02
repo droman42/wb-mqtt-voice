@@ -159,6 +159,15 @@ newest entries near the top of each dated section.
   **Gate 1: ARCH-1 ✓, ARCH-2 ✓, ARCH-3 ✓ — ARCH-4 (formalize ports) → ARCH-5 (import-linter) next.**
 
 ### 2026-06-02
+- **Audit (user) — "do handlers consume every declared param?" NO; filed QUAL-34.** Swept all 14 handlers (declared
+  params from each `contract.json` vs whether the name is read in the handler `.py`). **19 of ~56 params across 11 of
+  14 handlers are never read as `intent.entities[...]`** (7 CHOICE) — the QUAL-33 bug class is systemic. Two buckets:
+  **A — genuinely dead** (feature not built; spot-confirmed `greetings.time_of_day`, `text_enhancement.improvement_
+  type`, `system_service.metric_type`; `datetime` reads zero entities so all of its are dead) → wire-or-remove per the
+  QUAL-33 precedent. **B — bypassed** (handler re-parses `intent.raw_text` instead of the NLU entity; spot-confirmed
+  `voice_synthesis.voice` → `voice_name`) → folds into **QUAL-11** (typed accessor; QUAL-25 P1-r/P1-s). Recorded the
+  full table in `docs/review/declared_param_audit.md`; filed **QUAL-34** `[release]` for the per-param triage. _Did not
+  auto-fix — disposition is per-param (build vs stop-declaring), user's call._
 - **QUAL-33 (system half) — wired `system.info_type`; canonical set reduced to `[system, performance]`. QUAL-33 DONE.**
   `_handle_info_request` now branches on `info_type` (was ignored). Per user, the canonical set was **reduced to
   `[system, performance]`** — `configuration` and `logs` REMOVED from the donation contract entirely ("no handlers, no
