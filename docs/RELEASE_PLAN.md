@@ -57,7 +57,7 @@ Living findings behind the tasks (Invariant #5). `[x]` = exists; others are prod
 | `parameter_extraction_review.md` `[x]` | text→parameters review + gaps | QUAL-10 ✓, QUAL-11, TEST-4, DOC-7, UI-1/2/3, QUAL-22 |
 | `text_processing_review.md` `[x]` | text-processor subsystem review + LLM-text-proc question | QUAL-12 ✓, QUAL-13, TEST-5 |
 | `llm_usage_review.md` `[x]` | LLM usage + offline-first + NLU-LLM decision | QUAL-14 ✓, QUAL-15, QUAL-16 |
-| `dataflow_review.md` | full input→action flow map + defect hunt (gates Gate 2 cross-cutting) | QUAL-25, QUAL-26 (reconcile), DOC-8, + remediations TBD |
+| `dataflow_review.md` `[x]` | full input→action flow map + defect hunt (~9 P0/~20 P1; gates Gate 2) | QUAL-25 ✓, QUAL-26 (reconcile), DOC-8, + remediations TBD |
 | `streaming_api_review.md` | AsyncAPI streaming-API tooling | QUAL-17/18 |
 | `esp32_wakeword_review.md` | ESP32 + wakeword keep/fix/cut | QUAL-19/20 |
 | `docs/design/mqtt_integration.md` | MQTT output-port design | ARCH-7/8 |
@@ -359,32 +359,21 @@ See `docs/review/phase1_architecture_map.md` §5.
       (inject the needed components via the existing handler-DI path, like the monitoring component injection),
       then **remove the `ignore_imports` exception** from the ARCH-5 domain contract so it enforces with no
       escape hatch. Domain-cleanliness; relates to ARCH-1.
-- [ ] **QUAL-25** [DFLOW] (P1) — **End-to-end dataflow & context-models review** → `docs/review/dataflow_review.md`.
-      A **map + findings** review (same species as the QUAL-8/10/12/14 wave: faithful as-is map **and** a defect
-      hunt, with ranked **P0/P1/P2** remediations). **Why a review, not just a doc:** end-to-end clarity on how data
-      moves through the pipeline needs an investigation pass first — `DATA_MODELS.md` (DOC-8) is the *output* of this
-      review, not the task itself (re-categorized 2026-06-02 per user; DOC-8 demoted to the downstream write-up).
-      **Scope (BROADENED 2026-06-02 per user — full pipeline, not just the model cast):** trace the **entire
-      dataflow from input to final action/result** — every **entry modality** (voice/wake-word→ASR, plain text,
-      streaming) through `RequestContext` creation → workflow → **NLU → `Intent`** → `ContextManager.get_context` →
-      **orchestrator → handler → `IntentResult`** → fire-and-forget actions → **output** (TTS/audio today, MQTT
-      planned [ARCH-7]) → `context.add_to_history`. **As a sub-part:** how the model cast plays together and *when
-      each is needed and why* — `RequestContext` (per-request input metadata) · `UnifiedConversationContext`
-      (per-session state via `ContextManager`) · `Intent` (NLU output) · `IntentResult` (handler output) ·
-      `AudioData`/`WakeWordResult` (IO primitives) — the request-scoped vs session-scoped distinction being the key
-      confusion to resolve. *(Originally scoped as "just analyze the context/result types"; the user widened it to a
-      full input→action flow analysis.)*
-      **Hunt for:** data threaded-but-dropped / built-then-discarded; inconsistent or implicit handoffs across the
-      port boundaries; where the handler boundary lacks a typed entity/result accessor; session/request lifecycle
-      leaks or mismatches; models that diverge from how they're actually populated/consumed; **and where the flow
-      contradicts findings already logged by the QUAL-8/10/12/14 reviews** (this review is expected to surface
-      *additional* inconsistencies that cut across them — those feed QUAL-26). **Gates Gate 2:** the cross-cutting
-      systemic remediation (fail-loud + typed accessor at the handler boundary / shared bases / config-truth) is
-      **downstream of this review** — "fail-loud + typed accessor" *is* dataflow design, so map the threading before
-      remediating. Likely uses the multi-agent (parallel subagents → synthesis) approach the QUAL wave used. Refs:
-      `phase1_architecture_map.md` §4; ARCH-1/5 (post-split model homes: `intents/context_models.py`,
-      `intents/models.py`, `utils/audio_data.py`). **Spawns:** **QUAL-26** (reconciliation) + DOC-8 (the write-up) +
-      ranked remediation tasks (numbered after QUAL-26).
+- [x] **QUAL-25** [DFLOW] (P1) — **End-to-end dataflow & context-models review.** **DONE 2026-06-02** →
+      `docs/review/dataflow_review.md` (~9 P0, ~20 P1, long P2 tail; 5 parallel tracers → synthesis →
+      adversarial-verify on the headline NEW P0s). **Headline NEW finding: a field rename `Intent.text`→`raw_text`
+      was never propagated** — `intent.text` is read at 14 unguarded sites across 7 handlers + `Intent(text=…)` at
+      `orchestrator.py:217`, so TTS-speak/translation/text-enhance/provider-switch/ASR-audio-provider/contextual
+      commands all `AttributeError`, masked by the orchestrator as a generic error (verified vs source). Other NEW
+      P0s: `session_id="default"` collapses all sessions (cross-request/room/user leak); `MemoryManager` cleanup loop
+      dead (calls non-existent methods); `InputManager._input_queue`/WebSocket `AUDIO_DATA:` input path dead
+      (captured mic/web audio dropped — overlaps ARCH-6); required-params never enforced. **CONFIRMS** the FAF P0s
+      (timer crash, key-mismatch completion death, `get_or_create_context`) and TXTPROC (TTS gets raw text). Found a
+      **4th cross-cutting theme — "data-contract drift"** (model contracts silently disagree across boundaries:
+      `Intent.text`/`raw_text`, `WakeWordResult.word`/`wake_word`, action key `action_name`/`domain`, session scope)
+      — these are refactor残骸 the relaxed pyright (Phase-0 §E) was configured not to see. §2 resolves the DOC-8
+      request-vs-session question (→ DOC-8 write-up). §4+§6 are the **QUAL-26** agenda. **Spawns:** QUAL-26
+      (reconcile) + new P0s for the Gate 2 backlog (numbered in QUAL-26) + DOC-8.
 - [ ] **QUAL-26** [DFLOW] (P1) — **Review-of-reviews: reconcile inconsistencies, decide intended-vs-actual.** A
       **follow-up session** (decided 2026-06-02; **needs live collaboration** — like the ARCH-7/9 design sessions)
       that runs **after QUAL-25**. QUAL-25's full-flow trace is expected to reveal inconsistencies that **cut across
@@ -682,6 +671,17 @@ Governed by Invariant #4 (config-ui must stay functional).
   **Gate 1: ARCH-1 ✓, ARCH-2 ✓, ARCH-3 ✓ — ARCH-4 (formalize ports) → ARCH-5 (import-linter) next.**
 
 ### 2026-06-02
+- **QUAL-25 DONE** → `docs/review/dataflow_review.md`. Ran 5 parallel tracer agents (entry adapters · text-proc/NLU/
+  orchestrator · handler boundary · F&F/output · context-model lifecycle), each cross-referencing the 4 prior QUAL
+  reviews, then adversarially verified the headline NEW P0s against source. **~9 P0, ~20 P1.** Headline: **a
+  `Intent.text`→`raw_text` field rename was never propagated** — `intent.text` read at 14 unguarded sites in 7
+  handlers + `Intent(text=…)` at orchestrator.py:217 → most of the command surface AttributeErrors, masked as a
+  generic error (the smoke test only covers entity-only handlers, so it stayed green). Other NEW P0s: session_id=
+  "default" collapses all sessions (cross-request leak); MemoryManager cleanup loop dead; InputManager/WebSocket
+  input path dead (overlaps ARCH-6); required-params unenforced. CONFIRMS all FAF P0s + TXTPROC raw-TTS. **Surfaced a
+  4th cross-cutting theme: "data-contract drift"** (model contracts silently disagree across boundaries). §2 answers
+  the DOC-8 request-vs-session question; §4+§6 = the QUAL-26 agenda. Per Invariant #5, plan + review doc updated
+  together. **NEXT: QUAL-26 (review-of-reviews, live collaboration).**
 - **QUAL-25 BROADENED + QUAL-26 added** (user) — (1) QUAL-25 scope widened from "analyze the context/result types"
   to a **full input→action dataflow** analysis (every entry modality: voice/ASR, text, stream → NLU → orchestrator →
   handler → F&F → output). (2) The user expects QUAL-25 to reveal inconsistencies that **cut across the earlier
