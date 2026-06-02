@@ -6,6 +6,7 @@ web clients, and other system endpoints. Provides unified client registration an
 discovery for context-aware processing.
 """
 
+import asyncio
 import logging
 import time
 import json
@@ -90,23 +91,67 @@ class ClientRegistration:
         return None
 
 
+@dataclass
+class ActionRecord:
+    """Runtime-only record of a live fire-and-forget action (QUAL-28).
+
+    Lives in the ``ClientRegistry`` action store, NOT on the persisted registration record —
+    it holds a live ``asyncio.Task`` ref and must never be serialized or survive a restart.
+    Keyed by the unique ``action_name`` (its identity); ``domain`` is a secondary index used by
+    the contextual-command resolver.
+    """
+    action_name: str                         # unique identity = the store key
+    domain: str                              # router index, e.g. "timers" / "audio_playback"
+    physical_id: str                         # the stable scope this action belongs to
+    task: Optional[asyncio.Task] = None      # live task ref — authoritative liveness signal
+    started_at: float = field(default_factory=time.time)
+    expected_end: Optional[float] = None     # bounded actions (timers): started_at + duration (+grace)
+    status: str = "running"
+    session_id: Optional[str] = None         # conversation that launched it (informational)
+    room_id: Optional[str] = None
+    metadata: Dict[str, Any] = field(default_factory=dict)
+
+    def is_live(self) -> bool:
+        """Authoritative liveness: live iff the task is still running.
+
+        Falls back to the TTL (``expected_end``) when there is no task ref, and finally to
+        'assume live' so we never reap something we can't prove is dead.
+        """
+        if self.task is not None:
+            return not self.task.done()
+        if self.expected_end is not None:
+            return time.time() <= self.expected_end
+        return True
+
+
 class ClientRegistry:
     """
     Central registry for client identification and capabilities.
-    
+
     Manages registration, discovery, and context information for all clients
     including ESP32 nodes, web clients, and other system endpoints.
+
+    Also owns the **runtime-only action store** (QUAL-28): a non-persisted table of live
+    fire-and-forget actions keyed by ``physical_id`` → ``action_name`` → ``ActionRecord``. It is
+    deliberately separate from ``self.clients`` (the persisted registrations) so it never
+    serializes and never survives a restart.
     """
     
     def __init__(self, config: Dict[str, Any] = None):
         self.config = config or {}
         self.clients: Dict[str, ClientRegistration] = {}
-        
+
+        # Runtime-only action store (QUAL-28): physical_id -> {action_name -> ActionRecord}.
+        # NEVER persisted (holds live task refs; must not survive a restart). _save_registrations
+        # only serializes self.clients, so this attribute is excluded by construction.
+        self._actions: Dict[str, Dict[str, ActionRecord]] = {}
+
         # Configuration
         self.registration_timeout = self.config.get('registration_timeout', 3600)  # 1 hour
         self.persistent_storage = self.config.get('persistent_storage', True)
         self.storage_path = Path(self.config.get('storage_path', 'cache/client_registry.json'))
-        
+        self.max_actions_per_identity = self.config.get('max_actions_per_identity', 32)
+
         # Load existing registrations
         if self.persistent_storage:
             self._load_registrations()
@@ -369,6 +414,74 @@ class ClientRegistry:
         
         return stats
     
+    # ------------------------------------------------------------------ #
+    # Runtime action store (QUAL-28) — zombie-resistant, never persisted.  #
+    # Reaper layers: (1) completion callback removes; (2) read-time        #
+    # liveness filter; (3) periodic sweep reap_dead_actions(); (4) TTL via #
+    # ActionRecord.expected_end + a hard per-identity cap.                  #
+    # ------------------------------------------------------------------ #
+
+    def add_action(self, record: ActionRecord) -> None:
+        """Register a live action under its physical_id, keyed by action_name."""
+        table = self._actions.setdefault(record.physical_id, {})
+        table[record.action_name] = record
+        # Layer 4: opportunistically reap dead entries, then enforce the hard cap.
+        self._reap_identity(record.physical_id)
+        table = self._actions.get(record.physical_id, {})
+        if len(table) > self.max_actions_per_identity:
+            oldest = min(table.values(), key=lambda r: r.started_at)
+            table.pop(oldest.action_name, None)
+            logger.warning(f"Action store cap ({self.max_actions_per_identity}) hit for "
+                           f"'{record.physical_id}'; evicted oldest action '{oldest.action_name}'")
+
+    def get_action(self, physical_id: str, action_name: str) -> Optional[ActionRecord]:
+        """Fetch a specific action, applying the read-time liveness filter (layer 2)."""
+        rec = self._actions.get(physical_id, {}).get(action_name)
+        if rec is not None and not rec.is_live():
+            self.remove_action(physical_id, action_name)
+            return None
+        return rec
+
+    def get_live_actions(self, physical_id: str) -> List[ActionRecord]:
+        """All live actions for a physical_id (dead entries reaped first — layer 2)."""
+        self._reap_identity(physical_id)
+        return list(self._actions.get(physical_id, {}).values())
+
+    def get_live_actions_by_domain(self, physical_id: str, domain: str) -> List[ActionRecord]:
+        """Live actions in a domain — the secondary index the contextual resolver uses."""
+        return [r for r in self.get_live_actions(physical_id) if r.domain == domain]
+
+    def remove_action(self, physical_id: str, action_name: str) -> Optional[ActionRecord]:
+        """Remove an action (layer 1 — called from the completion callback)."""
+        table = self._actions.get(physical_id)
+        if not table:
+            return None
+        rec = table.pop(action_name, None)
+        if not table:
+            self._actions.pop(physical_id, None)
+        return rec
+
+    def _reap_identity(self, physical_id: str) -> int:
+        """Drop dead actions for one physical_id; returns count reaped."""
+        table = self._actions.get(physical_id)
+        if not table:
+            return 0
+        dead = [name for name, rec in table.items() if not rec.is_live()]
+        for name in dead:
+            table.pop(name, None)
+        if not table:
+            self._actions.pop(physical_id, None)
+        return len(dead)
+
+    def reap_dead_actions(self) -> int:
+        """Periodic sweep across all identities (layer 3); returns count reaped."""
+        total = 0
+        for physical_id in list(self._actions.keys()):
+            total += self._reap_identity(physical_id)
+        if total:
+            logger.debug(f"Action store reaper removed {total} dead action(s)")
+        return total
+
     def _save_registrations(self):
         """Save registrations to persistent storage"""
         try:
@@ -412,6 +525,21 @@ class ClientRegistry:
             
         except Exception as e:
             logger.error(f"Failed to load client registrations: {e}")
+
+
+def resolve_physical_id(client_id: Optional[str], room_name: Optional[str], session_id: str) -> str:
+    """The single seam mapping a request/context to its stable action-scope id (QUAL-28).
+
+    The action store + contextual-command resolution key off the *physical origin* (room/device),
+    which is what lets a later "stop" find an action even after the conversation session expires.
+
+    Today ``client_id``/``room_name`` are usually unpopulated, so this falls back to the
+    session-derived id — already a stable per-origin scope for the current paths. **ARCH-6**
+    (the WS/ESP32 `ClientRegistry` registration handshake) populates ``client_id``/``room_name``,
+    at which point this transparently returns the physical identity — **this is the only function
+    that changes to activate the room/device story** (no re-refactor elsewhere).
+    """
+    return client_id or room_name or session_id
 
 
 # Global client registry instance

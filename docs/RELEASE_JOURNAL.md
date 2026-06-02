@@ -159,6 +159,13 @@ newest entries near the top of each dated section.
   **Gate 1: ARCH-1 ✓, ARCH-2 ✓, ARCH-3 ✓ — ARCH-4 (formalize ports) → ARCH-5 (import-linter) next.**
 
 ### 2026-06-02
+- **QUAL-28 Stage 3.1 — action-store skeleton (additive, nothing consumes it yet).** Added to `ClientRegistry`: an
+  `ActionRecord` (action_name identity · domain index · live task ref · TTL) and a **runtime-only, non-persisted**
+  action store keyed by `physical_id → action_name`, with the **4 reaper layers** (completion-remove · read-time
+  liveness filter · periodic sweep · TTL + per-identity cap). Added the **`resolve_physical_id(client_id, room_name,
+  session_id)`** seam (client_id > room > session; the one function ARCH-6 flips). New `tests/test_action_store.py`
+  (8 tests, all green) — the bottom-up start of mini-TEST-3. Smoke unaffected. Next: 3.2 relocate `active_actions` +
+  wire consumers.
 - **QUAL-28 Stage-3 design decisions (with user) — incl. the Q1 room/device timing.**
   - **Q1 (room/device story timing):** the room/device story **activates at ARCH-6** (the WS/ESP32 `ClientRegistry`
     registration handshake that *populates* room/client/devices). QUAL-28/29/11 make everything **"room-ready"** (the
