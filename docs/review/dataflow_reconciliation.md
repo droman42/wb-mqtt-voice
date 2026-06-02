@@ -1,8 +1,7 @@
 # QUAL-26 [DFLOW] — Review-of-reviews: reconciliation & decisions log
 
-**Status:** 🟡 IN PROGRESS (started 2026-06-02) · **Format:** live Q&A session. Issues presented one at a time,
-ordered by importance; each is **decided → actionable** before moving on. **This doc is the resume point** — it is
-committed after every decision, so an interrupted session continues from the first `OPEN` row below.
+**Status:** ✅ COMPLETE (2026-06-02) — all 10 issues decided; Gate 2 framing finalized + tasks numbered (Q10).
+**Format:** live Q&A session. Issues presented one at a time, ordered by importance; each **decided → actionable**.
 
 **Inputs:** `dataflow_review.md` (§4 reconciliation, §6 open questions) + the four QUAL reviews
 (`fire_and_forget`, `parameter_extraction`, `text_processing`, `llm_usage`) + the 4 cross-cutting themes
@@ -26,7 +25,7 @@ committed after every decision, so an interrupted session continues from the fir
 | Q7 | **Fail-loud philosophy + typed accessor** (theme #1) — raise vs result-signal; where the typed entity/result accessor lives | P0-9, P1-a/s; the whole handler boundary | ✅ DECIDED |
 | Q8 | **Shared-bases consolidations** (theme #2) — extraction base · prompt source · F&F write-back · collapse text processors · `_create_error_result` signature | P1-f/k/r/t | ✅ DECIDED |
 | Q9 | **Config-truth scope** (theme #3) — cascade phantoms · `language` plumbing · dead config trees · schema↔model drift | P1-e/h/i, P2 tail | ✅ DECIDED |
-| Q10 | **Gate 2 framing + numbering** (meta) — principles block vs discrete tasks (QUAL-27/28/…); number the new P0s | finalizes Gate 2 | 🔵 OPEN |
+| Q10 | **Gate 2 framing + numbering** (meta) — principles block vs discrete tasks (QUAL-27/28/…); number the new P0s | finalizes Gate 2 | ✅ DECIDED |
 
 **Mechanical fixes confirmed with no decision needed** (fold into the relevant remediation task): `WakeWordResult.word`
 vs `.wake_word` consumer rename (P1-b); the `intent.text` → correct-field replacement is mechanical *once Q1 sets the
@@ -239,6 +238,36 @@ minimal starter).
   (deployment/client language), per-utterance detection as fallback/override. Consumed + robust + aligns with the
   per-language donation/normalization model.
 
-<!-- next: Q10 -->
+### Q10 — Gate 2 framing + task numbering · ✅ DECIDED
+- **Framing = HYBRID:** a short **4-theme cross-cutting principles block** (the lens) + **discrete numbered tasks**.
+  Principles: **① fail-loud** · **② shared bases** · **③ config-truth (deployment-aware)** · **④ data-contract
+  integrity**.
+- **New tasks (foundational, land first):**
+  - **QUAL-27** [DFLOW] — **Data-contract fixes:** `Intent.text`→`raw_text` (P0-1), `WakeWordResult.word` (P1-b),
+    delete `Intent.session_id`, `IntentResult` error contract. Fast; unblocks the command surface. (Q1, theme ④)
+  - **QUAL-28** [DFLOW] — **Context & session refactor:** split `UnifiedConversationContext` → physical-identity store
+    + conversation session; zombie-resistant `action_name`-keyed **action store**; session lifecycle (idle-window
+    T=10m/voice~5m, history window N=15); forbid `"default"`; `get`/`get_or_create`; kill `extract_room_from_session`.
+    (Q2, Q3)
+  - **QUAL-29** [DFLOW] — **Donation format split:** language-neutral contract + per-language phrasing; `entity_type` +
+    `room_context` fields; schema v1.1; loader; validator. **Precedes declarative device-resolution.** (Q6)
+  - **QUAL-30** [DFLOW] — **Clarification UX (Grade 1):** explain-and-ask at the fail-loud boundary; configurable
+    LLM/deterministic responder. (Q7, theme ①)
+  - **QUAL-31** [DFLOW] — **Multi-turn slot-filling (Grade 2, feature):** `pending_clarification` + `ConversationState`
+    + next-turn slot-fill. (Q7)
+- **Existing tasks updated:** QUAL-9 [FAF], QUAL-11 [PEX], QUAL-13 [TXTPROC], QUAL-15 [LLM], QUAL-16 [PROMPTS],
+  QUAL-22, QUAL-23, DOC-7, DOC-8; **ARCH-6 reframed** → WebSocket ESP32 input adapter; **ARCH-7** → output seam (WS
+  audio response + MQTT).
+- **Sequencing (Gate 2):** QUAL-27 (fast data-contract) → QUAL-29 (donation split) + QUAL-28 (context/action) as the
+  foundation → per-subsystem QUAL-9/11/13/15/16 + QUAL-30 on top → QUAL-31 + ARCH-6/7 design sessions later.
+
+---
+
+## Outcome
+All 10 issues decided. The reconciliation upheld the four review docs' findings and added a 4th cross-cutting theme
+(**data-contract integrity**). The biggest single fix is **P0-1** (`Intent.text`→`raw_text`). The largest structural
+move is the **Q2 context split** (physical-identity store vs conversation session) which unblocks F&F follow-ups,
+the room/device pipeline, and the eventual ESP32-WS + MQTT story. Gate 2 framing finalized → written to
+`RELEASE_PLAN.md` (principles block + QUAL-27…31 + updated tasks). **QUAL-26 DONE.**
 
 

@@ -57,7 +57,8 @@ Living findings behind the tasks (Invariant #5). `[x]` = exists; others are prod
 | `parameter_extraction_review.md` `[x]` | text→parameters review + gaps | QUAL-10 ✓, QUAL-11, TEST-4, DOC-7, UI-1/2/3, QUAL-22 |
 | `text_processing_review.md` `[x]` | text-processor subsystem review + LLM-text-proc question | QUAL-12 ✓, QUAL-13, TEST-5 |
 | `llm_usage_review.md` `[x]` | LLM usage + offline-first + NLU-LLM decision | QUAL-14 ✓, QUAL-15, QUAL-16 |
-| `dataflow_review.md` `[x]` | full input→action flow map + defect hunt (~9 P0/~20 P1; gates Gate 2) | QUAL-25 ✓, QUAL-26 (reconcile), DOC-8, + remediations TBD |
+| `dataflow_review.md` `[x]` | full input→action flow map + defect hunt (~9 P0/~20 P1; gates Gate 2) | QUAL-25 ✓, QUAL-26 ✓, DOC-8 |
+| `dataflow_reconciliation.md` `[x]` | QUAL-26 review-of-reviews — 10 intended-vs-today decisions + Gate 2 framing | QUAL-26 ✓ → QUAL-27..31, QUAL-9/11/13/15/16/22/23, ARCH-6/7, DOC-7/8 |
 | `streaming_api_review.md` | AsyncAPI streaming-API tooling | QUAL-17/18 |
 | `esp32_wakeword_review.md` | ESP32 + wakeword keep/fix/cut | QUAL-19/20 |
 | `docs/design/mqtt_integration.md` | MQTT output-port design | ARCH-7/8 |
@@ -93,32 +94,22 @@ and the structural refactors **move code** — so blind refactoring/fixing is th
 - **Gate 1 — structural foundation:** **ARCH-1** (split god-module) → **ARCH-2** (config↔core cycle) →
   **ARCH-4** (formalize ports) → **ARCH-5** (import-linter; folds in QUAL-23). **DOC-4** in parallel (pin the target).
   **✓ COMPLETE 2026-06-02.**
-- **Gate 1.5 — dataflow review + reconciliation (do BEFORE Gate 2):** two [DFLOW] tasks in sequence —
-  1. **QUAL-25** — trace the **full input→action flow** (every entry modality: voice/ASR, text, stream → NLU →
-     orchestrator → handler → F&F → output) **and** hunt its defects (QUAL-wave-species review →
-     `docs/review/dataflow_review.md`). Expected to reveal inconsistencies that **cut across the earlier reviews**.
-  2. **QUAL-26** — **review-of-reviews** (live collaboration): consolidate all review docs, surface each
-     cross-review contradiction, and **decide intended-behaviour-vs-today** for each (the user's call on intent).
-     This is where the **Gate 2 framing is finalized** and the remediation tasks are numbered.
+- **Gate 1.5 — dataflow review + reconciliation. ✓ COMPLETE 2026-06-02.** **QUAL-25** (full input→action flow map +
+  defect hunt → `dataflow_review.md`, ~9 P0/~20 P1) → **QUAL-26** (review-of-reviews, live: 10 intended-vs-today
+  decisions + finalized Gate 2 framing → `dataflow_reconciliation.md`). Surfaced a 4th cross-cutting theme
+  (data-contract integrity) and emitted QUAL-27..31.
+- **Gate 2 — the cross-cutting systemic remediation + review P0s (downstream of Gate 1.5; framing per QUAL-26):**
+  - **Cross-cutting principles** (the lens; full text in the QUAL section): **① fail-loud** · **② shared bases** ·
+    **③ config-truth (deployment-aware)** · **④ data-contract integrity**.
+  - **Foundational tasks first:** **QUAL-27** (data-contract fixes; fast, unblocks the command surface) →
+    **QUAL-29** (donation format split; precedes declarative device-resolution) + **QUAL-28** (context & action-store
+    refactor) as the structural base.
+  - **Per-subsystem on top:** **QUAL-9** [FAF], **QUAL-11** [PEX], **QUAL-13** [TXTPROC], **QUAL-15** [LLM],
+    **QUAL-16** [PROMPTS], **QUAL-22**, **QUAL-23** + **QUAL-30** (clarification Grade 1).
+  - **Later / design-gated:** **QUAL-31** (slot-filling feature) · **ARCH-6** (WS ESP32 input) + **ARCH-7** (output
+    seam / MQTT) design sessions · **DOC-7/DOC-8**.
 
-  This whole gate **precedes** the cross-cutting Gate 2 work because "fail-loud + a typed accessor at the handler
-  boundary" *is* dataflow design — map and reconcile the threading before remediating.
-- **Gate 2 — the review P0s + the cross-cutting systemic remediation (downstream of Gate 1.5):**
-  - **Cross-cutting systemic fixes** (shared policy/utilities the 4 reviews + QUAL-25 all point to, established once
-    then applied across the per-review P0s): **fail-loud** (stop swallowing; typed entity/result accessor at the
-    handler boundary), **shared bases** (one extraction base / one prompt source / one F&F write-back / collapse
-    duplicate text-processors), **config-truth** (every key *consumed*, not just resolvable; kill dead trees; sync
-    schema↔model). Framing (principles block vs discrete QUAL-27/28/… task IDs) and intended-vs-today dispositions
-    are settled **in QUAL-26**, not here.
-  - **The review P0s, split by type:**
-    - **Surgical bug P0s** — can land any time **after Gate 0** (verifiable + restore basic function): QUAL-9 #1
-      (timer crash), QUAL-9 #3 (`get_or_create_context`), QUAL-11 #1 (cascade names), QUAL-15 #1 (console provider).
-      *(QUAL-23/Gate 0 already covers the name-resolution ones.)*
-    - **Refactor-flavored P0s** — land **after Gate 1**, as adapters behind the new ports: QUAL-11 #3 (shared
-      extraction base), QUAL-13 (collapse text-processors + wire stages), QUAL-9 #2 (F&F key-model rework — touches
-      the god-module ARCH-1 splits), QUAL-15 local-LLM provider (ties to ARCH-9/10).
-
-**One-line rule:** *bug P0s ride the smoke net; refactor P0s ride the ports.*
+**One-line rule:** *fix the data contracts and the context split first; the per-subsystem P0s ride that foundation.*
 
 ---
 
@@ -184,7 +175,15 @@ See `docs/review/phase1_architecture_map.md` §5.
       (8 handlers use `get_core()` service-locator; ignored in the domain contract with a comment, tracked
       separately). _The deliverable that makes "follows the architecture" verifiable._ **Gate 1 COMPLETE
       (ARCH-1..5 ✓).**
-- [ ] **ARCH-6** (P2) — Resolve the dead `InputManager._input_queue` seam (wire as driving port, or delete). Fix the contained `inputs.base ⇄ subclasses` cycle (SCC-2).
+- [ ] **ARCH-6** [WS] (P1) — **REFRAMED by QUAL-26 (Q4): WebSocket streaming-input driving adapter — the primary
+      ESP32 transport.** The dead `InputManager._input_queue` + base64 `AUDIO_DATA:` path (P0-8) is a broken
+      placeholder to be **replaced by a proper WS streaming adapter**, not patched. Design (needs a **design session**):
+      wake word runs **on-device (ESP32)** → device streams audio over WS (`skip_wake_word=True` server-side) → server
+      ASR → pipeline; the WS connection also runs the **`ClientRegistry` registration handshake** (room +
+      `available_devices`) — the linchpin that populates the Q6/QUAL-28 physical-identity store (resolves P1-j at its
+      root). Also fix the contained `inputs.base ⇄ subclasses` cycle (SCC-2). Server-side voice-trigger (+ the
+      `WakeWordResult` bug) is only for non-ESP32 local-mic. Intertwined with **ARCH-7** (the return channel: WS audio
+      response to the ESP32 + MQTT smart-home actuation). → `docs/design/ws_esp32_transport.md`.
 - [ ] **ARCH-7** [MQTT] (P-TBD) — **Design session** (needs live collaboration): place MQTT publication as a driven
       **output adapter** in the hexagon (intent result/action → output port → MQTT adapter). Defines the general
       output-port seam — MQTT is the **first non-audio output** (today output is TTS/audio-only via
@@ -374,17 +373,64 @@ See `docs/review/phase1_architecture_map.md` §5.
       — these are refactor residue the relaxed pyright (Phase-0 §E) was configured not to see. §2 resolves the DOC-8
       request-vs-session question (→ DOC-8 write-up). §4+§6 are the **QUAL-26** agenda. **Spawns:** QUAL-26
       (reconcile) + new P0s for the Gate 2 backlog (numbered in QUAL-26) + DOC-8.
-- [ ] **QUAL-26** [DFLOW] (P1) — **Review-of-reviews: reconcile inconsistencies, decide intended-vs-actual.** A
-      **follow-up session** (decided 2026-06-02; **needs live collaboration** — like the ARCH-7/9 design sessions)
-      that runs **after QUAL-25**. QUAL-25's full-flow trace is expected to reveal inconsistencies that **cut across
-      the earlier reviews** (QUAL-8 FAF / QUAL-10 PEX / QUAL-12 TXTPROC / QUAL-14 LLM). This task **consolidates all
-      review docs**, surfaces each contradiction, and for every one **decides the disposition: what is the intended
-      behaviour vs what exists today** (fix-to-intent, accept-current, or redesign) — because many can't be resolved
-      mechanically; they need the user's call on intent. **Output:** a reconciliation/decisions doc (intended-vs-today
-      per inconsistency) + the **finalized Gate 2 framing** (this is where the cross-cutting principles-block-vs-
-      discrete-IDs question lands) + the numbered remediation tasks. **Gates Gate 2** — no systemic remediation
-      starts until the intended behaviour is agreed here. See [[irene-review-crosscutting]] (the 3 cross-cutting
-      themes feed straight into this).
+- [x] **QUAL-26** [DFLOW] (P1) — **Review-of-reviews: reconcile inconsistencies, decide intended-vs-actual.**
+      **DONE 2026-06-02** → `docs/review/dataflow_reconciliation.md` (live Q&A, 10 issues decided, committed
+      per-decision). Consolidated all review docs + the QUAL-25 dataflow findings and decided **intended-vs-today** for
+      each. Headline decisions: **Model 2 — split identity from session** (physical-identity store holds `active_actions`
+      + devices, long-lived; conversation session holds history, short-lived idle-window); **dedicated zombie-resistant
+      action store** (`action_name`-keyed); **`raw_text` = original utterance** (P0-1 fix); **declarative device/room
+      via a donation format split** (language-neutral contract + per-language phrasing; `entity_type` + `room_context`
+      tri-state); **fail-loud → conversational clarification** (configurable LLM/deterministic); **WebSocket = primary
+      ESP32 transport** (reframes ARCH-6). Surfaced a **4th cross-cutting theme: data-contract integrity.** Finalized
+      Gate 2 framing (hybrid: principles block + discrete tasks) and emitted **QUAL-27…31** (below). See the doc for
+      the full per-issue rationale.
+
+#### Cross-cutting systemic remediation — principles (the Gate 2 lens)
+_Apply to every remediation task below (from the 4 review docs + QUAL-25/26). Source: `dataflow_reconciliation.md`._
+- **① Fail-loud** — raise structured exceptions → catch at ONE handler/orchestrator boundary → typed
+  `IntentResult(success=False, error=…)`; **never swallow, guess a default, or return-original-on-failure.** The
+  user-facing form is a **conversational clarification** (explain + ask), not an error dump; missing-required and
+  no-intent both clarify. Backed by a **donation-driven typed accessor** (one place enforces required-vs-optional).
+- **② Shared bases** — one NLU extraction base (donation-`ParameterSpec`-driven), one LLM prompt source (= the
+  LLM-independent hardening layer), one normalization seam (contains the `lingua_franca`/`Runorm` debt), one F&F
+  write-back, one result-construction contract. No copy-paste-then-diverge.
+- **③ Config-truth (deployment-aware)** — every key is schema-known with **no dead trees** (consumed by *some*
+  codepath in *some* profile) **and** every *enabled* component/provider/stage resolves to real code. `config-master`
+  is a valid curated **superset**; deployment configs are minimal subsets — the check must not flag the superset.
+- **④ Data-contract integrity** — a model field means **one thing end-to-end**; no rename residue
+  (`Intent.text`/`raw_text`, `WakeWordResult.word`/`wake_word`, action key `action_name`/`domain`, session scope).
+- [ ] **QUAL-27** [DFLOW] (P0) — **Data-contract fixes (theme ④; fast, unblocks the command surface).**
+      `Intent.text`→`raw_text` at all 14 handler sites + `orchestrator.py:217` (P0-1, the biggest single defect;
+      `raw_text` = **original utterance**, NLU stops overwriting it — Q1); `WakeWordResult.word` consumer rename
+      (P1-b); **delete `Intent.session_id`** (use `context.session_id`); enforce the `IntentResult` error contract
+      (`success=False` ⟹ non-empty `error`, P1-a) + unify the forked `_create_error_result` (P1-t). Refs:
+      `dataflow_reconciliation.md` Q1/Q7.
+- [ ] **QUAL-28** [DFLOW] (P0) — **Context & session refactor (Q2/Q3; foundational).** Split
+      `UnifiedConversationContext` → a **long-lived physical-identity store** (room/device/client; holds
+      `active_actions` + device capabilities; `ClientRegistry` = device source-of-truth) + a **short-lived conversation
+      session** (history + `ConversationState`). **Dedicated zombie-resistant action store**, `action_name`-keyed
+      (`domain` = router index), 4-layer reaping (completion callback · read-time liveness filter · periodic sweep ·
+      TTL+cap). **Session lifecycle:** idle-window (T=10m / voice ~5m, configurable) + sliding history window (N=15,
+      wire `max_history_turns`); per-modality boundaries (voice=wake-word burst, WS=connection, REST=conversation-id).
+      Forbid the literal `"default"` (P0-6); split `get`/`get_or_create`; **kill `extract_room_from_session`** (P1-o);
+      unify eviction on `last_activity`. Delete `MemoryManager` (P0-7) + `ContextLayer`/progressive-context (Q4). Refs:
+      Q2/Q3/Q4.
+- [ ] **QUAL-29** [DFLOW] (P1) — **Donation format split (Q6; precedes declarative device-resolution).** Split
+      donations into a **language-neutral contract** (method list + invariant `ParameterSpec` core: name/type/required/
+      choices/min-max + **`entity_type`** {device/location/room/person/generic} + per-method **`room_context`**
+      {required/none/conditional}) + **per-language files** (phrases/lemmas/token/slot patterns + language-specific
+      `extraction_patterns`/`aliases`). Schema `v1.0`→`v1.1`; update the loader (`core/donations.py`,
+      `core/intent_asset_loader.py`); shrink `cross_language_validator` to phrasing-completeness. Delete the heuristic
+      `_is_device_entity`/`_is_location_entity` + hardcoded device-domain set. Intersects DOC-5b, DOC-7, UI-1/2/3.
+- [ ] **QUAL-30** [DFLOW] (P1) — **Clarification UX — Grade 1 (theme ①; with the typed accessor).** At the fail-loud
+      boundary, convert structured failures (missing-required, unresolved device/room per `room_context`,
+      no-intent-identified) into a single-turn **explain-and-ask** response. **Configurable responder:** LLM if present
+      (natural), else **deterministic + localized** (from `ParameterSpec.description` + per-language prompt; offline
+      guarantee). Fix the fake `confidence=1.0` NLU fallback. Refs: Q7.
+- [ ] **QUAL-31** [DFLOW] (P2, feature) — **Clarification UX — Grade 2 (multi-turn slot-filling).** `pending_clarification`
+      on the conversation session + `ConversationState = awaiting-clarification` + a pipeline pre-check that fills the
+      slot from the next turn and completes the original intent (symmetric to the F&F `contextual` check, but transient).
+      Expires with the Q2 idle window. Follow-up to QUAL-30.
 
 ### Tests (TEST)
 > **Strategy (decided 2026-06-01): do NOT keep repairing the existing suite.** Most tests were written against
@@ -680,6 +726,19 @@ Governed by Invariant #4 (config-ui must stay functional).
   **Gate 1: ARCH-1 ✓, ARCH-2 ✓, ARCH-3 ✓ — ARCH-4 (formalize ports) → ARCH-5 (import-linter) next.**
 
 ### 2026-06-02
+- **QUAL-26 DONE — review-of-reviews complete** → `docs/review/dataflow_reconciliation.md`. Live Q&A, **10 issues
+  decided** (committed per-decision so it was interruption-safe). Gate 1.5 closed. Key intended-vs-today calls:
+  **(Q1)** `raw_text` = original utterance (fixes P0-1); **(Q2)** **Model 2 — split identity from session**
+  (long-lived physical-identity store for `active_actions`+devices vs short-lived idle-window conversation session);
+  **(Q3)** dedicated zombie-resistant `action_name`-keyed action store; **(Q4)** delete MemoryManager/ContextLayer/
+  Intent.session_id, **WebSocket = primary ESP32 transport** (reframes ARCH-6); **(Q6)** declarative device/room via a
+  **donation format split** (language-neutral contract + per-language phrasing; `entity_type` + tri-state
+  `room_context`); **(Q7)** fail-loud → conversational **clarification** (configurable LLM/deterministic) + typed
+  donation-driven accessor; **(Q8)** shared bases (one extraction base / one prompt source = LLM-indep hardening / one
+  normalization seam containing the `lingua_franca`+`Runorm` debt); **(Q9)** deployment-aware config-truth (config-master
+  is a valid superset); **(Q10)** hybrid framing — **4-theme principles block + discrete tasks QUAL-27..31.** Surfaced a
+  4th cross-cutting theme (**data-contract integrity**). Per Invariant #5, plan + both review docs updated together.
+  **NEXT: Gate 2 implementation** — QUAL-27 (fast) → QUAL-29 + QUAL-28 (foundation) → per-subsystem.
 - **QUAL-25 DONE** → `docs/review/dataflow_review.md`. Ran 5 parallel tracer agents (entry adapters · text-proc/NLU/
   orchestrator · handler boundary · F&F/output · context-model lifecycle), each cross-referencing the 4 prior QUAL
   reviews, then adversarially verified the headline NEW P0s against source. **~9 P0, ~20 P1.** Headline: **a
