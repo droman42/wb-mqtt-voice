@@ -20,8 +20,8 @@ committed after every decision, so an interrupted session continues from the fir
 | Q1 | **Text contract** — what does `Intent.raw_text` carry (original vs processed), and how is normalized text threaded? | P0-1 (biggest defect), P1-c, QUAL-13, the LLM/chat path | ✅ DECIDED |
 | Q2 | **Session identity** — forbid `"default"`; `get` vs `get_or_create`; always derive a real session_id; unify eviction clocks | P0-6 (cross-request leak), P1-p | ✅ DECIDED |
 | Q3 | **Fire-and-forget keying** — one key end-to-end (`action_name`) + a `domain` index; fix dup-`session_id` + `get_or_create_context` together | P0-2/3/4, P1-k/l/m/n | ✅ DECIDED |
-| Q4 | **Wired-or-delete** — MemoryManager · ContextLayer/progressive-context · InputManager queue + WebSocket input · `Intent.session_id` · `_disambiguate_with_device_context` · dead text-proc stages | P0-7, P0-8, P1-g; scopes how much code is deleted vs fixed | 🔵 OPEN |
-| Q5 | **Conversation history** — pick the canonical representation (3 today) and a single writer | P1-q | ⚪ pending |
+| Q4 | **Wired-or-delete** — MemoryManager · ContextLayer/progressive-context · InputManager queue + WebSocket input · `Intent.session_id` · `_disambiguate_with_device_context` · dead text-proc stages | P0-7, P0-8, P1-g; scopes how much code is deleted vs fixed | ✅ DECIDED |
+| Q5 | **Conversation history** — pick the canonical representation (3 today) and a single writer | P1-q | 🔵 OPEN |
 | Q6 | **Device-context pipeline** — who populates `device_context`/`available_devices` at the entry | P1-j (blocks the PEX device-resolution P0) | ⚪ pending |
 | Q7 | **Fail-loud philosophy + typed accessor** (theme #1) — raise vs result-signal; where the typed entity/result accessor lives | P0-9, P1-a/s; the whole handler boundary | ⚪ pending |
 | Q8 | **Shared-bases consolidations** (theme #2) — extraction base · prompt source · F&F write-back · collapse text processors · `_create_error_result` signature | P1-f/k/r/t | ⚪ pending |
@@ -119,6 +119,25 @@ context refactor. Full room→device→**MQTT** chain completes later (ARCH-7/8)
   Q2 (P0-4), fire completion lifecycle (metrics/notifications/timeout-cleanup), key metrics by `action_name` (P1-l),
   replace timeout flat-sleep with task-await/cancel (P1-n).
 
-<!-- next: Q4 -->
+### Q4 — Wired-or-delete · ✅ DECIDED
+**DELETE (4 dead items):** `Intent.session_id` (use `context.session_id` per Q2; it's data-contract drift) ·
+`MemoryManager` (P0-7 — its job is now Q2's idle-timeout+history-window + Q3's action-store reaper) · `ContextLayer`/
+progressive-context (`resolve_context`/`resolve_layered_context`/`get_contextual_summary` — dead, never wired) ·
+`_disambiguate_with_device_context` (P1-g/QUAL-22 — dead + EN-hardcoded; fold the *intent* into the Q6 device rework).
+**WIRE (not delete):** the `asr_output`/`tts_input` text-proc stages — `tts_input` is required for the TTS-normalization
+fix (P0-5); handled as QUAL-13 stage-routing (Q9).
+**WebSocket input = BUILD (first-class), NOT delete — KEY ARCHITECTURE DECISION (user):** WebSocket is the **primary
+ESP32 transport**. Design: **wake word runs on-device (ESP32)** → device streams audio over WS (`skip_wake_word=True`
+server-side) → server ASR → pipeline. The WS connection is also where the device **registers its physical identity**
+(room + `available_devices`) into `ClientRegistry` — i.e. WS is the linchpin that finally populates the Q2/Q3
+physical-identity store (resolves P1-j device starvation at its root). The current dead `InputManager._input_queue` +
+base64 `AUDIO_DATA:` path (P0-8) is a broken placeholder to be **replaced by a proper WS streaming driving adapter**,
+not revived. Server-side voice-trigger (and the `WakeWordResult.word`/`.wake_word` bug P1-b) is only for *non-ESP32*
+local-mic deployments. **Needs a design session** — intertwined with **ARCH-6** (input seam) + **ARCH-7** (output
+seam / audio-response-back-to-ESP32 + MQTT smart-home actuation). **Action (→ Q10):** reframe/expand **ARCH-6** into
+"WebSocket streaming-input driving adapter (primary ESP32 transport) + ClientRegistry registration handshake"; flag a
+design session; note two output channels for ESP32 (WS audio response + MQTT device control) feed ARCH-7.
+
+<!-- next: Q5 -->
 
 
