@@ -325,7 +325,10 @@ See `docs/review/phase1_architecture_map.md` §5.
       assertion; (2) decide the slot/extraction-pattern story (implement, or remove the dead author-visible fields);
       (3) make required-param a real contract on a **shared** extraction base (raise on missing-required, stop
       swallowing, always apply `default_value`, unify spaCy+hybrid → deterministic param surface); (4) de-fatalize
-      the entity resolvers (degrade, don't crash the request, when the asset loader isn't wired); (5) **QUAL-22**
+      the entity resolvers (degrade, don't crash the request, when the asset loader isn't wired) **and replace the
+      brittle `_is_device_entity`/`_is_location_entity` heuristics + hardcoded device-domain set with the declarative
+      `entity_type`-driven selection from the QUAL-29 contract (deletion moved here from QUAL-29 so the swap is atomic —
+      the typed accessor IS the replacement, Q7b);** (5) **QUAL-22**
       (finish/delete the context-enhancement stub). **P1s:** typed `ParameterSpec`-driven entity accessor on
       `IntentHandler`; fix first-match span→value; default `_md` spaCy models for similarity; unify duplicate device
       resolution; **unify `_create_error_result` (P1-t, moved here from QUAL-27): the base uses `(text, error,
@@ -515,13 +518,25 @@ _Apply to every remediation task below (from the 4 review docs + QUAL-25/26). So
       re-refactor). (c) **Decoupled from ARCH-6** (incremental): the store + reaper + eviction-survival land now keyed
       by the best-available stable id; room/device keying upgrades when ARCH-6 populates identity. See the **Q1 timing
       decision** recorded in `RELEASE_JOURNAL.md` + ARCH-6.
-- [ ] **QUAL-29** [DFLOW] (P1) — **Donation format split (Q6; precedes declarative device-resolution).** Split
+- [~] **QUAL-29** [DFLOW] (P1) — **Donation format split (Q6; precedes declarative device-resolution). DOING.** Split
       donations into a **language-neutral contract** (method list + invariant `ParameterSpec` core: name/type/required/
       choices/min-max + **`entity_type`** {device/location/room/person/generic} + per-method **`room_context`**
       {required/none/conditional}) + **per-language files** (phrases/lemmas/token/slot patterns + language-specific
-      `extraction_patterns`/`aliases`). Schema `v1.0`→`v1.1`; update the loader (`core/donations.py`,
-      `core/intent_asset_loader.py`); shrink `cross_language_validator` to phrasing-completeness. Delete the heuristic
-      `_is_device_entity`/`_is_location_entity` + hardcoded device-domain set. Intersects DOC-5b, DOC-7, UI-1/2/3.
+      `extraction_patterns`/`aliases`/`default_value`/`description`). Schema `v1.0`→`v1.1`; update the loader
+      (`core/donations.py`, `core/intent_asset_loader.py`); shrink `cross_language_validator` to phrasing-completeness.
+      Intersects DOC-5b, DOC-7, UI-1/2/3.
+      **Decisions (2026-06-02, user):** (1) **Layout** = `assets/donations/<handler>/contract.json` (neutral core) +
+      `<handler>/{en,ru}.json` (phrasing only, joined by `method_name#intent_suffix` + param `name`). (2) **Migration
+      tie-break:** where en/ru diverge on a neutral field, **Russian wins** (it's the primary language; also fixes the
+      latent loader bug where `_merge_language_donations` silently took params/patterns from whichever language iterated
+      first). (3) **`default_value` lives in the per-language files** (handles language-specific default text like the
+      timer completion message, which already diverges en/ru today; canonical defaults like `unit="minutes"` just
+      repeat harmlessly). (4) **SCOPE CHANGE — heuristic deletion MOVED to QUAL-11.** `entity_resolver._is_device_entity`
+      /`_is_location_entity` are **live** (`nlu_component.py:38/62` call them every request), and the entity_type-driven
+      *replacement* is the Q7b typed accessor (QUAL-11). So QUAL-29 only ADDS the `entity_type`/`room_context`
+      declarations (defaulted conservatively: `entity_type="generic"`, `room_context="none"` — humans refine); the
+      heuristics stay live until QUAL-11 swaps in the declarative resolver atomically (no broken window). QUAL-29 stays
+      **first** — it provides the contract QUAL-11 consumes.
 - [ ] **QUAL-30** [DFLOW] (P1) — **Clarification UX — Grade 1 (theme ①; with the typed accessor).** At the fail-loud
       boundary, convert structured failures (missing-required, unresolved device/room per `room_context`,
       no-intent-identified) into a single-turn **explain-and-ask** response. **Configurable responder:** LLM if present

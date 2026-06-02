@@ -159,6 +159,24 @@ newest entries near the top of each dated section.
   **Gate 1: ARCH-1 ✓, ARCH-2 ✓, ARCH-3 ✓ — ARCH-4 (formalize ports) → ARCH-5 (import-linter) next.**
 
 ### 2026-06-02
+- **QUAL-29 STARTED — donation format split; 4 design decisions locked with user (Invariant #5/#8 reconciliation).**
+  Verified the task is valid as written: the language-neutral `ParameterSpec` core (`name`/`type`/`required`/`choices`/
+  `min_value`/`max_value`) IS physically duplicated across `<handler>/en.json` + `ru.json` (28 files, 14 handlers), and
+  is **already diverging** (e.g. `timer.set` `message.default_value` is absent in en but `"Таймер завершён!"` in ru).
+  The loader's `_merge_language_donations` silently takes params/`token_patterns`/`slot_patterns` from whichever
+  language iterates first — a latent "first-language-wins" bug. **Decisions:** (1) **Layout** =
+  `<handler>/contract.json` (neutral) + `<handler>/{en,ru}.json` (phrasing), joined by `method_name#intent_suffix` +
+  param `name`. (2) **Tie-break = Russian wins** on any en/ru divergence in a neutral field (primary language; also
+  resolves the first-wins bug deterministically). (3) **`default_value` is per-language** (language-specific default
+  text is real; canonical defaults repeat harmlessly). (4) **Scope change — heuristic deletion moved QUAL-29 → QUAL-11.**
+  `entity_resolver._is_device_entity`/`_is_location_entity` are LIVE (`nlu_component.py:38/62`), and their
+  entity_type-driven replacement is the Q7b typed accessor (QUAL-11). QUAL-29 only ADDS the `entity_type` (default
+  `generic`) + `room_context` (default `none`) declarations; QUAL-11 swaps the resolver atomically. QUAL-29 stays
+  first (it provides the contract QUAL-11 consumes — confirmed the dependency direction with the user). Field
+  partition (neutral vs per-language) mapped from the timer donation: neutral = intent_name_patterns, action_domain_
+  priority, method name/suffix/boost/room_context, param name/type/required/choices/min/max/pattern/entity_type;
+  per-language = phrases/lemmas/token_patterns/slot_patterns/negative_patterns/stop_command_patterns/action_patterns/
+  examples + per-param description/extraction_patterns/aliases/default_value.
 - **QUAL-28 Stage 4 — history windowing; one list, one writer, one method. QUAL-28 now fully DONE (all 4 stages).**
   The dataflow review's P1-q (conversation turn modeled 2–3× per request) traced to three writers over two parallel
   lists: the orchestrator's `add_user_turn`+`add_assistant_turn` (`orchestrator.py:297-298`, which also wrote
