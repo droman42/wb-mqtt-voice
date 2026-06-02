@@ -1,3 +1,8 @@
+> **📄 FROZEN EVIDENCE — not the task ledger.** Findings/rationale below are a point-in-time record. The
+> authoritative **scope + status** is [`docs/RELEASE_PLAN.md`](../RELEASE_PLAN.md); chronology is
+> [`docs/RELEASE_JOURNAL.md`](../RELEASE_JOURNAL.md). Inline status notes here (DONE/✅/…) are **historical and NOT
+> authoritative** — check the ledger for live status (Invariant #5/#6). Edit this file only to correct a *finding*.
+
 # LLM Usage & Offline-First Review — QUAL-14 [LLM]
 
 **Status:** complete (2026-06-01). **Backs:** QUAL-15 (act-on), QUAL-16 [PROMPTS]. **Relates:** QUAL-11 (cascade-order P0), ARCH-9/10 [INFER] (a local-model runtime).

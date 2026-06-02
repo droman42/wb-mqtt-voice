@@ -1,3 +1,8 @@
+> **📄 FROZEN EVIDENCE — not the task ledger.** Findings/rationale below are a point-in-time record. The
+> authoritative **scope + status** is [`docs/RELEASE_PLAN.md`](../RELEASE_PLAN.md); chronology is
+> [`docs/RELEASE_JOURNAL.md`](../RELEASE_JOURNAL.md). Inline status notes here (DONE/✅/…) are **historical and NOT
+> authoritative** — check the ledger for live status (Invariant #5/#6). Edit this file only to correct a *finding*.
+
 # Parameter Extraction Review — QUAL-10 [PEX]
 
 **Status:** complete (2026-06-01). **Backs:** QUAL-11 (remediation), DOC-7 (guide), UI-1/2/3 [DEDITOR], TEST-4. **Relates:** QUAL-22 (confirmed here), ASSET-3 (number parsing).

@@ -1,3 +1,8 @@
+> **📄 FROZEN EVIDENCE — not the task ledger.** Findings/rationale below are a point-in-time record. The
+> authoritative **scope + status** is [`docs/RELEASE_PLAN.md`](../RELEASE_PLAN.md); chronology is
+> [`docs/RELEASE_JOURNAL.md`](../RELEASE_JOURNAL.md). Inline status notes here (DONE/✅/…) are **historical and NOT
+> authoritative** — check the ledger for live status (Invariant #5/#6). Edit this file only to correct a *finding*.
+
 # Backend code review — Phase 0: static baseline
 
 **Date:** 2026-05-31 · **Scope:** all of `irene/` (~64k LOC, 175 files) · **Branch:** `main`

@@ -1,3 +1,8 @@
+> **📄 FROZEN EVIDENCE — not the task ledger.** Findings/rationale below are a point-in-time record. The
+> authoritative **scope + status** is [`docs/RELEASE_PLAN.md`](../RELEASE_PLAN.md); chronology is
+> [`docs/RELEASE_JOURNAL.md`](../RELEASE_JOURNAL.md). Inline status notes here (DONE/✅/…) are **historical and NOT
+> authoritative** — check the ledger for live status (Invariant #5/#6). Edit this file only to correct a *finding*.
+
 # Fire-and-Forget (F&F) Review — QUAL-8 [FAF]
 
 **Status:** complete (2026-06-01). **Backs:** QUAL-9 (remediation), TEST-3, DOC-4 (retire `docs/fire_forget_issues.md`). **Re-validates:** the 6 issues in `docs/fire_forget_issues.md` (Sep 2025).

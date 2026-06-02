@@ -1,3 +1,8 @@
+> **📄 FROZEN EVIDENCE — not the task ledger.** Findings/rationale below are a point-in-time record. The
+> authoritative **scope + status** is [`docs/RELEASE_PLAN.md`](../RELEASE_PLAN.md); chronology is
+> [`docs/RELEASE_JOURNAL.md`](../RELEASE_JOURNAL.md). Inline status notes here (DONE/✅/…) are **historical and NOT
+> authoritative** — check the ledger for live status (Invariant #5/#6). Edit this file only to correct a *finding*.
+
 # QUAL-26 [DFLOW] — Review-of-reviews: reconciliation & decisions log
 
 **Status:** ✅ COMPLETE (2026-06-02) — all 10 issues decided; Gate 2 framing finalized + tasks numbered (Q10).
