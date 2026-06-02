@@ -51,5 +51,36 @@ Makes the field name honest and the LLM/chat path get real input. Resolves P0-1 
 `raw_text=original`, matches on normalized; (3) remove the NLU sites that set `raw_text=processed_text`
 (`hybrid_keyword_matcher.py:779`, `spacy_provider.py:753`, `nlu_component.py`). Intersects QUAL-11/13.
 
-<!-- next: Q2 -->
+### Q2 — Session identity · 🔵 OPEN (analysis captured, awaiting decision)
+**Analysis (2 investigation agents, 2026-06-02).** Two user questions reframed this:
+- **F&F follow-up linkage:** a later "stop"/"louder" binds to a running action *only* via `active_actions` on the
+  session context, found *only if* request #2 shares request #1's `session_id`. Orchestrator intercepts
+  `domain=="contextual"` (`orchestrator.py:146`), reads `active_actions`, picks a **target domain** by priority+recency
+  (`context.py:571-742`), re-dispatches `{domain}.{cmd}`. Designed scope = **room** (`session_id="{room}_session"`,
+  `context_models.py:44` "sessions represent physical locations"). Broken 4 ways → **no contextual command executes
+  today**: `"default"` collapse, `Intent(text=…)` crash (P0-1), action_name/domain key mismatch, timer launch crash.
+  Emerging model: **session_id = scope · action_name = identity · domain = router index.**
+- **Room concept:** intended chain source→`client_id`+`room_name`+`available_devices`→context→entity resolution
+  (stamp room + filter devices by room)→MQTT. Reality: structures REAL, but **both ends missing** — `ClientRegistry`
+  orphaned (tests-only), `device_context`/`available_devices` never populated (P1-j), MQTT deferred (zero code),
+  ESP32-wake-word→room absent (doc-only). Only WebAPI `room_alias` sets a room-session (client_id only). "turn on the
+  light"→"in kitchen" today only **stamps a room label** (`nlu_component.py:79-85`), doesn't filter devices by room.
+
+**Key insight:** `session_id` is overloaded with two orthogonal scopes — **physical origin** (room/device; stable;
+needed for F&F linkage + IoT + MQTT) and **conversation** (transient). F&F follow-up *requires the stable scope*.
+
+**Two models on the table:**
+- **Model 1 — session *is* the room:** `session_id` derived from stable origin (room→client→generated), forbid
+  `"default"`; room encoded in the id; `active_actions` room-session-scoped; history = windowed per-room thread.
+- **Model 2 (recommended) — split identity from session:** room/client/device = explicit first-class identity on
+  `RequestContext` (populated by entry adapter from `ClientRegistry`; kill `extract_room_from_session`); `active_actions`
+  bind to that physical identity; `session_id` = conversation token. Lines up with the future MQTT `{room_name}` target.
+
+Mechanical either way: split `get` vs `get_or_create` (2b ✓), unify eviction on `last_activity` (2c ✓). **Crux for
+user:** Model 1 vs Model 2 (the physical-scope fork). Note: full room→device→MQTT chain can't complete now (MQTT
+deferred, registry orphaned) — but the *scoping* decision is needed for F&F to work at all. Relates to Q3 (F&F keying),
+Q6 (device-pipeline ownership), ARCH-7 (MQTT consumer).
+
+<!-- next: Q2 decision -->
+
 
