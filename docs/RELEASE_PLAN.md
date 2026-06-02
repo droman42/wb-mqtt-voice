@@ -371,7 +371,7 @@ See `docs/review/phase1_architecture_map.md` §5.
       (timer crash, key-mismatch completion death, `get_or_create_context`) and TXTPROC (TTS gets raw text). Found a
       **4th cross-cutting theme — "data-contract drift"** (model contracts silently disagree across boundaries:
       `Intent.text`/`raw_text`, `WakeWordResult.word`/`wake_word`, action key `action_name`/`domain`, session scope)
-      — these are refactor残骸 the relaxed pyright (Phase-0 §E) was configured not to see. §2 resolves the DOC-8
+      — these are refactor residue the relaxed pyright (Phase-0 §E) was configured not to see. §2 resolves the DOC-8
       request-vs-session question (→ DOC-8 write-up). §4+§6 are the **QUAL-26** agenda. **Spawns:** QUAL-26
       (reconcile) + new P0s for the Gate 2 backlog (numbered in QUAL-26) + DOC-8.
 - [ ] **QUAL-26** [DFLOW] (P1) — **Review-of-reviews: reconcile inconsistencies, decide intended-vs-actual.** A
