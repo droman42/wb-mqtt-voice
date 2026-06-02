@@ -27,14 +27,6 @@ class ConversationState(Enum):
     CONTEXTUAL = "contextual"        # Processing contextual command (already working)
 
 
-class ContextLayer(Enum):
-    """Represents different layers of context resolution (Phase 3)"""
-    SESSION = "session"      # Room, user preferences, device capabilities
-    THREAD = "thread"        # Domain-specific conversations  
-    ACTION = "action"        # Active fire-and-forget actions
-    INTENT = "intent"        # Current intent and entities
-
-
 @dataclass
 class UnifiedConversationContext:
     """Unified conversation context replacing both ConversationContext and ConversationSession
@@ -761,112 +753,6 @@ class UnifiedConversationContext:
             "active_threads": len(self.get_active_threads()),
             "threads": summaries
         }
-    
-    # Progressive context resolution methods (Phase 3)
-    def resolve_context(self, layer: ContextLayer, domain: Optional[str] = None) -> Dict[str, Any]:
-        """Resolve context at specified layer with optional domain filtering"""
-        if layer == ContextLayer.SESSION:
-            return self._resolve_session_context()
-        elif layer == ContextLayer.THREAD and domain:
-            return self._resolve_thread_context(domain)
-        elif layer == ContextLayer.ACTION:
-            return self._resolve_action_context(domain)
-        elif layer == ContextLayer.INTENT:
-            return self._resolve_intent_context()
-        else:
-            return {}
-    
-    def _resolve_session_context(self) -> Dict[str, Any]:
-        """Resolve session-level context (room, user preferences, device capabilities)"""
-        return {
-            "session_id": self.session_id,
-            "client_id": self.client_id,
-            "room_name": self.room_name,
-            "language": self.language,
-            "available_devices": self.available_devices,
-            "client_metadata": self.client_metadata,
-            "conversation_state": self.conversation_state.value,
-            "created_at": self.created_at,
-            "last_activity": self.last_activity
-        }
-    
-    def _resolve_thread_context(self, domain: str) -> Dict[str, Any]:
-        """Resolve thread-level context for specific domain"""
-        if not domain:
-            return {}
-        
-        thread = self.get_conversation_thread(domain)
-        thread_summary = self.get_thread_summary(domain)
-        
-        return {
-            "domain": domain,
-            "messages": thread["messages"][-5:],  # Last 5 messages
-            "active_context": thread["active_context"],
-            "last_activity": thread["last_activity"],
-            "message_count": thread_summary["message_count"],
-            "age_seconds": thread_summary["age_seconds"]
-        }
-    
-    def _resolve_action_context(self, domain: Optional[str] = None) -> Dict[str, Any]:
-        """Resolve action-level context (active fire-and-forget actions)"""
-        if domain and domain in self.active_actions:
-            # Return specific domain action
-            return {
-                "domain": domain,
-                "action": self.active_actions[domain],
-                "recent_actions": [a for a in self.recent_actions if a.get("domain") == domain][-3:],
-                "failed_actions": [a for a in self.failed_actions if a.get("domain") == domain][-2:]
-            }
-        else:
-            # Return all actions
-            return {
-                "active_actions": self.active_actions,
-                "recent_actions": self.recent_actions[-5:],  # Last 5 actions
-                "failed_actions": self.failed_actions[-3:],  # Last 3 failures
-                "action_error_count": self.action_error_count
-            }
-    
-    def _resolve_intent_context(self) -> Dict[str, Any]:
-        """Resolve intent-level context (current intent and entities)"""
-        # This would typically be called with current intent passed in
-        # For now, return recent conversation context
-        return {
-            "conversation_history": self.conversation_history[-3:],  # Last 3 interactions
-            "current_intent_context": self.current_intent_context,
-            "last_intent_timestamp": self.last_intent_timestamp,
-            "state_context": self.state_context
-        }
-    
-    def resolve_layered_context(self, layers: List[ContextLayer], domain: Optional[str] = None) -> Dict[str, Any]:
-        """Resolve context across multiple layers with priority"""
-        layered_context = {}
-        
-        # Resolve contexts in priority order
-        for layer in layers:
-            layer_context = self.resolve_context(layer, domain)
-            if layer_context:
-                layered_context[layer.value] = layer_context
-        
-        return layered_context
-    
-    def get_contextual_summary(self, domain: Optional[str] = None, max_layers: int = 3) -> Dict[str, Any]:
-        """Get a comprehensive context summary across layers"""
-        # Define default layer priority
-        priority_layers = [ContextLayer.INTENT, ContextLayer.ACTION, ContextLayer.THREAD, ContextLayer.SESSION]
-        
-        # Limit to max layers for performance
-        selected_layers = priority_layers[:max_layers]
-        
-        layered_context = self.resolve_layered_context(selected_layers, domain)
-        
-        # Add metadata
-        return {
-            "domain": domain,
-            "layers_resolved": len(layered_context),
-            "resolution_timestamp": time.time(),
-            "context": layered_context
-        }
-
 
 # ARCH-5: RequestContext moved here from workflows/base.py so the domain (intents) no
 # longer imports up into workflows (it's request-context data — a domain type).

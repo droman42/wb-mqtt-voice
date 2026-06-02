@@ -159,6 +159,18 @@ newest entries near the top of each dated section.
   **Gate 1: ARCH-1 ✓, ARCH-2 ✓, ARCH-3 ✓ — ARCH-4 (formalize ports) → ARCH-5 (import-linter) next.**
 
 ### 2026-06-02
+- **QUAL-28 Stage 3b — retired the `ContextLayer` indirection; conversation handler consumes context directly.**
+  Invariant #8 caught the map-agent's claim that `ContextLayer` was already dead — a grep showed it was *live*,
+  used only inside `conversation.py` via `resolve_layered_context`/`get_contextual_summary`. So the scope became
+  migrate-then-retire (not "already gone"). Rewrote the conversation handler's context **consumption** to use direct
+  model accessors (`room_name`/`available_devices`/`get_thread_summary`/`active_actions`/`recent_actions`/
+  `conversation_history`/`state_context`) instead of the layered-resolution dict-walking: `_build_progressive_context_
+  summary` + `_get_context_coordination_summary` rewritten, `_summarize_context_layer` deleted, `context_layers_used`
+  now counts present slices via a `sum([...])`. Then deleted the now-unreferenced machinery from `context_models.py`:
+  the `ContextLayer` enum + `resolve_context`/`_resolve_session_context`/`_resolve_thread_context`/`_resolve_action_
+  context`/`_resolve_intent_context`/`resolve_layered_context`/`get_contextual_summary` (~115 lines). Note: only the
+  context *assembly* moved here — the LLM prompt/provider logic stays in QUAL-15/16. Smoke + 10 store tests +
+  import contracts green; scope guard clean.
 - **QUAL-28 Stage 3.3 — completed the field split properly (correcting the earlier "subsumed" overstatement).** On
   challenge, re-audited the context fields: the lifetime-critical `active_actions` relocation was done, but
   `recent_actions`/`failed_actions`/`action_error_count` were **still on the transient context** (died on eviction,

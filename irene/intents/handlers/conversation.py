@@ -11,7 +11,7 @@ from typing import Dict, List, Optional, Any, Type, TYPE_CHECKING
 
 from .base import IntentHandler
 from ..models import Intent, IntentResult
-from ..context_models import UnifiedConversationContext, ConversationState, ContextLayer
+from ..context_models import UnifiedConversationContext, ConversationState
 
 if TYPE_CHECKING:
     from pydantic import BaseModel
@@ -450,8 +450,12 @@ class ConversationIntentHandler(IntentHandler):
                     "threading_domain": target_domain,
                     "active_threads": len(context.get_active_threads()) if target_domain else 0,
                     "thread_message_count": context.get_thread_summary(target_domain)["message_count"] if target_domain else 0,
-                    # Phase 3: Add progressive context information
-                    "context_layers_used": len(context.resolve_layered_context([ContextLayer.SESSION, ContextLayer.ACTION, ContextLayer.THREAD], target_domain)),
+                    # QUAL-28: count present context slices directly (ContextLayer retired)
+                    "context_layers_used": sum([
+                        bool(context.room_name or context.client_id),
+                        bool(context.active_actions),
+                        bool(context.get_thread_summary(target_domain).get("message_count")) if target_domain else False,
+                    ]),
                     "progressive_context_active": bool(target_domain or context.active_actions or context.get_active_threads())
                 }
             )
@@ -940,75 +944,49 @@ class ConversationIntentHandler(IntentHandler):
             context.add_to_thread(domain, "assistant", response, {"response_type": "threaded"})
     
     def _build_progressive_context_summary(self, intent: Intent, context: UnifiedConversationContext, domain: Optional[str] = None) -> str:
-        """Build progressive context summary using layered context resolution"""
-        # Define context layers based on conversation type and domain
+        """Build a short human-readable context summary for the LLM, assembled directly from the
+        conversation/identity model (QUAL-28: replaces the retired ContextLayer indirection — the
+        'layers' were just slices of the context the new model exposes cleanly)."""
+        parts = []
+
+        # Session: room + devices
+        room = context.room_name or context.client_id or "unknown"
+        device_count = len(context.available_devices or [])
+        parts.append(f"Session: {room} ({device_count} devices)")
+
+        # Thread: domain conversation summary (domain-specific conversations)
         if domain:
-            # Domain-specific conversation: prioritize thread and action context
-            priority_layers = [ContextLayer.THREAD, ContextLayer.ACTION, ContextLayer.SESSION]
-        else:
-            # General conversation: prioritize intent and session context
-            priority_layers = [ContextLayer.INTENT, ContextLayer.ACTION, ContextLayer.SESSION]
-        
-        # Resolve layered context
-        layered_context = context.resolve_layered_context(priority_layers, domain)
-        
-        # Build human-readable summary
-        context_parts = []
-        
-        # Process each layer
-        for layer_name, layer_data in layered_context.items():
-            layer_summary = self._summarize_context_layer(layer_name, layer_data, domain)
-            if layer_summary:
-                context_parts.append(layer_summary)
-        
-        if context_parts:
-            return f"Context layers: {' | '.join(context_parts)}"
-        return ""
-    
-    def _summarize_context_layer(self, layer_name: str, layer_data: Dict[str, Any], domain: Optional[str] = None) -> str:
-        """Summarize a specific context layer for LLM consumption"""
-        if layer_name == "session":
-            # Session layer: room and device info
-            room = layer_data.get("room_name", layer_data.get("client_id", "unknown"))
-            device_count = len(layer_data.get("available_devices", []))
-            return f"Session: {room} ({device_count} devices)"
-        
-        elif layer_name == "thread" and domain:
-            # Thread layer: domain conversation summary
-            msg_count = layer_data.get("message_count", 0)
+            thread = context.get_thread_summary(domain)
+            msg_count = thread.get("message_count", 0)
             if msg_count > 0:
-                age_min = int(layer_data.get("age_seconds", 0) / 60)
-                return f"Thread: {domain} ({msg_count} msgs, {age_min}m)"
-        
-        elif layer_name == "action":
-            # Action layer: active and recent actions
-            active_count = len(layer_data.get("active_actions", {}))
-            recent_count = len(layer_data.get("recent_actions", []))
-            if active_count > 0 or recent_count > 0:
-                return f"Actions: {active_count} active, {recent_count} recent"
-        
-        elif layer_name == "intent":
-            # Intent layer: recent conversation flow
-            history_count = len(layer_data.get("conversation_history", []))
-            state = layer_data.get("state_context", {})
-            if history_count > 0:
-                state_info = f", state: {len(state)} items" if state else ""
-                return f"Intent: {history_count} recent{state_info}"
-        
-        return ""
-    
+                age_min = int(thread.get("age_seconds", 0) / 60)
+                parts.append(f"Thread: {domain} ({msg_count} msgs, {age_min}m)")
+
+        # Actions: active + recent (from the store-backed views)
+        active_count = len(context.active_actions)
+        recent_count = len(context.recent_actions)
+        if active_count or recent_count:
+            parts.append(f"Actions: {active_count} active, {recent_count} recent")
+
+        # Conversation flow
+        history_count = len(context.conversation_history)
+        if history_count > 0:
+            state_info = f", state: {len(context.state_context)} items" if context.state_context else ""
+            parts.append(f"Flow: {history_count} recent{state_info}")
+
+        return f"Context: {' | '.join(parts)}" if parts else ""
+
     def _get_context_coordination_summary(self, context: UnifiedConversationContext, domain: Optional[str] = None) -> Dict[str, Any]:
-        """Get comprehensive context coordination summary for debugging/monitoring"""
+        """Diagnostic context summary (QUAL-28: direct accessors, no ContextLayer)."""
         return {
             "domain": domain,
-            "contextual_summary": context.get_contextual_summary(domain, max_layers=4),
             "active_threads": context.get_active_threads(),
             "conversation_state": context.get_conversation_state().value,
-            "layered_resolution": {
-                "session": bool(context.resolve_context(ContextLayer.SESSION)),
-                "action": bool(context.resolve_context(ContextLayer.ACTION, domain)),
-                "thread": bool(context.resolve_context(ContextLayer.THREAD, domain)) if domain else False,
-                "intent": bool(context.resolve_context(ContextLayer.INTENT))
+            "present": {
+                "session": bool(context.room_name or context.client_id),
+                "action": bool(context.active_actions),
+                "thread": bool(context.get_thread_summary(domain).get("message_count")) if domain else False,
+                "intent": bool(context.conversation_history),
             }
         }
 

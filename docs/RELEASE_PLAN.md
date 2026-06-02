@@ -481,8 +481,11 @@ _Apply to every remediation task below (from the 4 review docs + QUAL-25/26). So
       **Staging (2026-06-02):** ① delete `MemoryManager` (**DONE** — module + monitoring wiring) → ② session-id hygiene
       (**DONE** — forbid literal `"default"` in `RequestContext` + re-read the derived id in the 3 `workflow_manager`
       entries; added real `get_or_create_context` fixing the 5 phantom `AttributeError` callers) → ③ new context model +
-      action store (+ a **focused action-lifecycle test**, mini-TEST-3, no regression net else) → ③b **migrate consumers
-      + retire `ContextLayer`** → ④ history windowing. **Moved ②→③ (Invariant #8):** eviction-unify (needs the
+      action store (+ a **focused action-lifecycle test**, mini-TEST-3, no regression net else) (**DONE** — incl. the
+      Stage-3.3 field split: completed-action history moved into the store, survives eviction) → ③b **migrate consumers
+      + retire `ContextLayer`** (**DONE** — conversation handler's context assembly rewritten onto direct accessors;
+      `ContextLayer` enum + all `resolve_*context`/`resolve_layered_context`/`get_contextual_summary` machinery deleted)
+      → ④ history windowing. **Moved ②→③ (Invariant #8):** eviction-unify (needs the
       `last_activity` timestamp-touch audit), the non-creating-`get` split (needs caller migration), and
       `kill extract_room_from_session` (needs room-as-explicit-field) ride the Stage-3 restructure. **Scope correction (Invariant #8):**
       `ContextLayer`/progressive-context is **NOT dead** (Q4 mis-scoped it) — it's live in `conversation.py` (builds the
