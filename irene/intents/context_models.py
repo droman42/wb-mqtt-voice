@@ -253,8 +253,8 @@ class UnifiedConversationContext:
         out: Dict[str, Dict[str, Any]] = {}
         for r in get_client_registry().get_live_actions(self._action_pid):
             out[r.action_name] = {**r.metadata, "action": r.action_name, "domain": r.domain,
-                                  "started_at": r.started_at, "status": r.status,
-                                  "session_id": r.session_id, "room_id": r.room_id}
+                                  "started_at": r.started_at, "expected_end": r.expected_end,
+                                  "status": r.status, "session_id": r.session_id, "room_id": r.room_id}
         return out
 
     def add_active_action(self, action_name: str, action_info: Dict[str, Any]):

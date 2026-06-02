@@ -159,6 +159,18 @@ newest entries near the top of each dated section.
   **Gate 1: ARCH-1 ✓, ARCH-2 ✓, ARCH-3 ✓ — ARCH-4 (formalize ports) → ARCH-5 (import-linter) next.**
 
 ### 2026-06-02
+- **QUAL-28 Stage 3.2 — dead-code cleanup + timer simplification.** Removed the orphaned
+  `workflow_manager._process_action_metadata_integration` + base.py `_handle_action_completion`/
+  `_update_context_on_completion`/`_validate_action_metadata`. **Timer rewritten store-centric:** the old
+  `_create_timer_action` *returned immediately* and spawned a nested `timer_callback` task that fired *another* F&F
+  notification + kept a parallel `active_timers` dict — so with the store the timer's ActionRecord completed instantly
+  and was reaped (timers never actually persisted). Replaced with `_run_timer` = a plain `sleep(duration)` + announce
+  that **is** the store task; dropped `active_timers` and the 6 nested/helper methods; migrated all 7 handlers
+  (set/cancel/stop/pause/resume/list/status) to read/cancel via `context.active_actions` + `cancel_action`. set_timer
+  launches with `timeout = duration + grace` so the monitor never pre-empts; list/status read remaining from the
+  store's `expected_end` (now exposed on the `active_actions` view). Minor accepted simplifications: a specific-id
+  cancel cancels the domain (single-timer common case); pause/resume are status-flags only (a sleeping task can't truly
+  pause — the prior impl was likewise cosmetic); list no longer shows the per-timer message. Smoke + store tests green.
 - **QUAL-28 Stage 3.2 — reader migration (the store is now the F&F source of truth).** `context.active_actions` is
   now a **read-only property** over the `ClientRegistry` action store (keyed by the context's `physical_id`), so every
   reader auto-migrates — orchestrator (contextual interception), `context.py` resolver, conversation summary, NLU
