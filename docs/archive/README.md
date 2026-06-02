@@ -21,5 +21,6 @@ For current, maintained documentation see:
 | Bug-fix / issue writeups | `fix_vosk.md`, `VAD_SIBILANT_FIX.md`, `ESP32_LiteRT_Implementation.md` |
 | Completed migration guides | `VAD_MIGRATION_GUIDE.md`, `CONTEXTUAL_COMMANDS_MIGRATION_GUIDE.md` |
 | Superseded refs / completed plans (ARCH-0 / DOC-6) | `config_schemas.md`, `language_support.md`, `configuration_guide.md` (v13), `PIPELINE_IMPLEMENTATION.md` (plugin-era), `irene_current.md` (pre-refactor VACore/Jaa) |
+| Deferred UI designs (never built; idea kept in plan) | `workflow_control.md` (config-ui pipeline-viz page → **UI-4 [WORKFLOWVIZ]**) |
 
 _Archived during the v15 documentation cleanup. Recover any file with `git mv docs/archive/<file> docs/<file>` if it turns out to still be needed._

@@ -513,6 +513,15 @@ Governed by Invariant #4 (config-ui must stay functional).
       `compile/decompile` endpoint reusing the real spaCy logic.
 - [ ] **UI-3** [DEDITOR] (P2) — Reimplement `TokenPatternsEditor`/`SlotPatternsEditor` on the new model (retain
       raw-spaCy advanced mode); add "test pattern against sample text" via the NLU recognize endpoint.
+- [ ] **UI-4** [WORKFLOWVIZ] (P-deferred) — A config-ui **"Workflow Control" / pipeline-visualization page** (live
+      React-Flow DAG of the component/provider pipeline, per-stage input/output inspection, provider switching, SSE
+      updates). **Source design archived** at `docs/archive/workflow_control.md` (Sep-2025, never built). **Strongly
+      gated — do NOT start before Gate 2:** the design assumes a clean pipeline, but QUAL-25 proved the real dataflow
+      is broken at many hops (visualizing it now would faithfully render broken flow), and it specs `/workflow/*`
+      endpoints that `architecture.md` §7 flags as **fictional** (they'd have to be built for real). Relates to the
+      `MonitoringPage` placeholder and the **ARCH-7 [MQTT]** output-seam work (both touch live pipeline observability).
+      Re-scope against the *fixed* pipeline + real endpoints when it's actually picked up. Captured from a config-ui
+      doc reviewed during QUAL-25 (2026-06-02).
 
 ### Release Readiness (REL)
 - [ ] **REL-1** (P0) — Sign off the Definition-of-release checklist above (fill target + criteria).
