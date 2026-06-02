@@ -328,7 +328,7 @@ class IntentOrchestrator:
                 success=False,
                 execution_time=0.0,
                 error=str(e),
-                session_id=intent.session_id
+                session_id=context.session_id
             )
             
             # Generic error response

@@ -779,7 +779,6 @@ class HybridKeywordMatcherProvider(NLUProvider):
             raw_text=text,
             domain=domain,
             action=action,
-            session_id=context.session_id
         )
         
         # Store metadata as a special entity for debugging/tracking

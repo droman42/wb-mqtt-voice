@@ -700,7 +700,6 @@ class SpaCyNLUProvider(NLUProvider):
                 raw_text=text,
                 domain="conversation",
                 action="general",
-                session_id=context.session_id
             )
         
         # Runtime language detection and model selection
@@ -728,7 +727,6 @@ class SpaCyNLUProvider(NLUProvider):
                 raw_text=text,
                 domain="conversation",
                 action="general",
-                session_id=context.session_id
             )
         
         # Process text with selected spaCy model
@@ -753,7 +751,6 @@ class SpaCyNLUProvider(NLUProvider):
             raw_text=text,
             domain=domain,
             action=action,
-            session_id=context.session_id
         )
     
     async def extract_entities(self, text: str, intent_name: str) -> Dict[str, Any]:

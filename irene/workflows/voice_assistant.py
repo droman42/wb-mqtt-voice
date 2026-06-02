@@ -588,7 +588,7 @@ class UnifiedVoiceAssistantWorkflow(Workflow):
                         output_data=wake_word_result.__dict__,
                         metadata={
                             "wake_word_detected": wake_word_detected,
-                            "detected_word": wake_word_result.wake_word if wake_word_detected else None,
+                            "detected_word": wake_word_result.word if wake_word_detected else None,
                             "confidence": wake_word_result.confidence,
                             "threshold": self.voice_trigger.threshold if hasattr(self.voice_trigger, 'threshold') else None,
                             "stage_enabled": self._voice_trigger_enabled
@@ -608,7 +608,7 @@ class UnifiedVoiceAssistantWorkflow(Workflow):
                         confidence=0.0
                     )
                     
-                self.logger.debug(f"Wake word detected: {wake_word_result.wake_word} (confidence: {wake_word_result.confidence:.2f})")
+                self.logger.debug(f"Wake word detected: {wake_word_result.word} (confidence: {wake_word_result.confidence:.2f})")
             
             # Stage 2: ASR Transcription (conditional)
             if not context.skip_asr and self._asr_enabled and self.asr:

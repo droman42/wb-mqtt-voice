@@ -33,7 +33,7 @@ class VoiceTriggerComponent(Component, VoiceTriggerPlugin, WebAPIPlugin):
         super().__init__()
         self.dependency_checker = DependencyChecker()  # From loader.py
         self.buffer_size = calculate_audio_buffer_size(16000, 100.0)  # From audio_helpers.py
-        self.wake_words = ["irene", "jarvis"]
+        self.words = ["irene", "jarvis"]
         self.threshold = 0.8
         self.active = False
         
@@ -114,7 +114,7 @@ class VoiceTriggerComponent(Component, VoiceTriggerPlugin, WebAPIPlugin):
         if isinstance(config, dict):
             self.default_provider = config.get("default_provider", self.default_provider)
             self.fallback_providers = config.get("fallback_providers", self.fallback_providers)
-            self.wake_words = config.get("wake_words", self.wake_words)
+            self.words = config.get("wake_words", self.words)
             self.threshold = config.get("threshold", self.threshold)
         else:
             # Handle config object case
@@ -123,7 +123,7 @@ class VoiceTriggerComponent(Component, VoiceTriggerPlugin, WebAPIPlugin):
             if hasattr(config, 'fallback_providers'):
                 self.fallback_providers = config.fallback_providers
             if hasattr(config, 'wake_words'):
-                self.wake_words = config.wake_words
+                self.words = config.words
             if hasattr(config, 'threshold'):
                 self.threshold = config.threshold
         
@@ -151,7 +151,7 @@ class VoiceTriggerComponent(Component, VoiceTriggerPlugin, WebAPIPlugin):
                 try:
                     # Add common configuration
                     provider_config.update({
-                        "wake_words": self.wake_words,
+                        "wake_words": self.words,
                         "threshold": self.threshold,
                         "sample_rate": 16000,
                         "channels": 1
@@ -175,7 +175,7 @@ class VoiceTriggerComponent(Component, VoiceTriggerPlugin, WebAPIPlugin):
             try:
                 fallback_config = {
                     "enabled": True,
-                    "wake_words": self.wake_words,
+                    "wake_words": self.words,
                     "threshold": self.threshold,
                     "sample_rate": 16000,
                     "channels": 1,
@@ -231,7 +231,7 @@ class VoiceTriggerComponent(Component, VoiceTriggerPlugin, WebAPIPlugin):
         stage_start = time.time()
         detection_metadata = {
             "audio_duration_ms": len(audio_data.data) / (audio_data.sample_rate * audio_data.channels * 2) * 1000,  # Assuming 16-bit
-            "wake_words_configured": self.wake_words,
+            "wake_words_configured": self.words,
             "threshold": self.threshold,
             "provider": self.default_provider,
             "component_name": self.__class__.__name__
@@ -425,7 +425,7 @@ class VoiceTriggerComponent(Component, VoiceTriggerPlugin, WebAPIPlugin):
                     result = await provider.detect_wake_word(audio_data)
                     
                     # Track detection operation in unified collector
-                    wake_word = result.wake_word if result.detected else None
+                    wake_word = result.word if result.detected else None
                     get_metrics_collector().record_detection_operation("voice_trigger", result.detected, wake_word)
                         
                     return result
@@ -440,7 +440,7 @@ class VoiceTriggerComponent(Component, VoiceTriggerPlugin, WebAPIPlugin):
             result = await provider.detect_wake_word(processed_audio)
             
             # Track detection operation in unified collector
-            wake_word = result.wake_word if result.detected else None
+            wake_word = result.word if result.detected else None
             get_metrics_collector().record_detection_operation("voice_trigger", result.detected, wake_word)
                 
             return result
@@ -535,11 +535,11 @@ class VoiceTriggerComponent(Component, VoiceTriggerPlugin, WebAPIPlugin):
         for name, provider in self.providers.items():
             status = "✓ (по умолчанию)" if name == self.default_provider else "✓"
             capabilities = provider.get_capabilities()
-            wake_words = capabilities.get("wake_words", self.wake_words)
+            wake_words = capabilities.get("wake_words", self.words)
             info_lines.append(f"  {status} {name}: {', '.join(wake_words[:3])}")
         
         info_lines.append(f"Порог обнаружения: {self.threshold}")
-        info_lines.append(f"Активные слова: {', '.join(self.wake_words)}")
+        info_lines.append(f"Активные слова: {', '.join(self.words)}")
         
         return "\n".join(info_lines)
     
@@ -574,7 +574,7 @@ class VoiceTriggerComponent(Component, VoiceTriggerPlugin, WebAPIPlugin):
     
     def get_wake_words(self) -> List[str]:
         """Get current wake words."""
-        return self.wake_words.copy()
+        return self.words.copy()
     
     def get_threshold(self) -> float:
         """Get current detection threshold."""
@@ -586,7 +586,7 @@ class VoiceTriggerComponent(Component, VoiceTriggerPlugin, WebAPIPlugin):
     
     async def set_wake_words(self, wake_words: List[str]) -> bool:
         """Set new wake words for all providers."""
-        self.wake_words = wake_words
+        self.words = wake_words
         success = True
         for provider in self.providers.values():
             try:

@@ -112,7 +112,6 @@ class ContextAwareNLUProcessor:
             timestamp=intent.timestamp,
             domain=disambiguated_intent.domain,
             action=disambiguated_intent.action,
-            session_id=intent.session_id
         )
         
         self.logger.info(f"Context-enhanced intent: {enhanced_intent.name} with {len(enhanced_entities)} entities")
@@ -898,7 +897,7 @@ class NLUComponent(Component, NLUPlugin, WebAPIPlugin):
             "confidence_scores": {}  # Could be enhanced with actual scores
         }
         
-        fallback_intent = self._create_fallback_intent(text, context.session_id, failed_context)
+        fallback_intent = self._create_fallback_intent(text, failed_context)
         fallback_intent.entities["_recognition_provider"] = "fallback"
         fallback_intent.entities["_cascade_attempts"] = attempts
         
@@ -1025,20 +1024,19 @@ class NLUComponent(Component, NLUPlugin, WebAPIPlugin):
         """
         return await self.context_processor.process_with_context(text, context)
     
-    def _create_fallback_intent(self, text: str, session_id: str, failed_context: Optional[Dict[str, Any]] = None) -> Intent:
+    def _create_fallback_intent(self, text: str, failed_context: Optional[Dict[str, Any]] = None) -> Intent:
         """Create a fallback conversation intent when NLU fails or has low confidence."""
         entities = {"original_text": text}
-        
+
         # Add enhanced fallback context if available
         if failed_context:
             entities["_fallback_context"] = failed_context
-        
+
         return Intent(
             name=self.fallback_intent,
             entities=entities,
             confidence=1.0,  # High confidence for conversation fallback
             raw_text=text,
-            session_id=session_id,
             domain="conversation",
             action="general"
         )
