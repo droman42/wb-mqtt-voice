@@ -14,7 +14,6 @@ from .base import Component
 from ..core.interfaces.webapi import WebAPIPlugin
 from ..core.notifications import initialize_notification_service, get_notification_service
 from ..core.metrics import initialize_metrics_system, get_metrics_collector
-from ..core.memory_manager import initialize_memory_manager, get_memory_manager
 from ..core.debug_tools import initialize_action_debugger, get_action_debugger
 from ..core.analytics_dashboard import initialize_analytics_dashboard, get_analytics_dashboard
 
@@ -41,7 +40,6 @@ class MonitoringComponent(Component, WebAPIPlugin):
         super().__init__()
         self.notification_service = None
         self.metrics_collector = None
-        self.memory_manager = None
         self.action_debugger = None
         self.analytics_dashboard = None
         
@@ -108,18 +106,11 @@ class MonitoringComponent(Component, WebAPIPlugin):
             else:
                 self.logger.info("⏭️ Metrics system disabled in configuration")
             
-            # Phase 3.3: Initialize Memory Manager
-            if config_dict.get('memory_management_enabled', True):
-                # Configure memory manager with monitoring configuration
-                memory_config = {
-                    'cleanup_interval': config_dict.get('memory_cleanup_interval', 1800),
-                    'aggressive_cleanup': config_dict.get('memory_aggressive_cleanup', False)
-                }
-                self.memory_manager = await initialize_memory_manager(self.context_manager, memory_config)
-                self.logger.info(f"✅ Memory manager initialized with cleanup_interval={memory_config['cleanup_interval']}s")
-            else:
-                self.logger.info("⏭️ Memory manager disabled in configuration")
-            
+            # (QUAL-28) MemoryManager deleted — it was dead (called non-existent context cleanup
+            # methods). Session/history eviction is owned by ContextManager; action reaping by the
+            # action store. The `memory_management_enabled` config key is now dead → remove in Q9
+            # (config-truth) with the config-ui coordination Invariant #4 requires.
+
             # Phase 3.4: Initialize Debug Tools
             if config_dict.get('debug_tools_enabled', True):
                 debug_components = {
@@ -156,9 +147,6 @@ class MonitoringComponent(Component, WebAPIPlugin):
     async def shutdown(self) -> None:
         """Shutdown monitoring component and all services"""
         try:
-            if self.memory_manager:
-                await self.memory_manager.shutdown()
-            
             if self.notification_service:
                 await self.notification_service.stop()
             
@@ -216,7 +204,7 @@ class MonitoringComponent(Component, WebAPIPlugin):
         try:
             from fastapi import APIRouter, HTTPException
             from ..api.schemas import (
-                MonitoringStatusResponse, MetricsResponse, MemoryStatusResponse,
+                MonitoringStatusResponse, MetricsResponse,
                 NotificationResponse, DebugResponse, DashboardResponse,
                 AnalyticsReportResponse, PerformanceValidationResponse,
                 SessionSatisfactionRequest, SessionSatisfactionResponse,
@@ -236,7 +224,6 @@ class MonitoringComponent(Component, WebAPIPlugin):
                 services = {
                     "notification_service": self.notification_service is not None,
                     "metrics_collector": self.metrics_collector is not None,
-                    "memory_manager": self.memory_manager is not None,
                     "action_debugger": self.action_debugger is not None,
                     "analytics_dashboard": self.analytics_dashboard is not None
                 }
@@ -318,35 +305,8 @@ class MonitoringComponent(Component, WebAPIPlugin):
                     }
                 }
             
-            # Memory management endpoints
-            @router.get("/memory", response_model=MemoryStatusResponse)
-            async def get_memory_status():
-                """Get memory usage and management status"""
-                if not self.memory_manager:
-                    raise HTTPException(status_code=503, detail="Memory manager not available")
-                
-                analysis = await self.memory_manager.analyze_system_memory_usage()
-                recommendations = await self.memory_manager.get_memory_recommendations()
-                
-                return MemoryStatusResponse(
-                    success=True,
-                    memory_usage=analysis,
-                    cleanup_needed={"system_cleanup": len(recommendations) > 0},
-                    recommendations=recommendations
-                )
-            
-            @router.post("/memory/cleanup", response_model=NotificationResponse)
-            async def trigger_memory_cleanup(aggressive: bool = False):
-                """Trigger system memory cleanup"""
-                if not self.memory_manager:
-                    raise HTTPException(status_code=503, detail="Memory manager not available")
-                
-                result = await self.memory_manager.perform_system_cleanup(aggressive=aggressive)
-                return NotificationResponse(
-                    success=True,
-                    message=f"Memory cleanup completed: {result}"
-                )
-            
+            # (QUAL-28) /memory + /memory/cleanup endpoints removed with the dead MemoryManager.
+
             # Notification endpoints
             @router.post("/notifications/test", response_model=NotificationResponse)
             async def send_test_notification():
@@ -646,10 +606,6 @@ class MonitoringComponent(Component, WebAPIPlugin):
         """Get metrics collector instance"""
         return self.metrics_collector
     
-    def get_memory_manager(self):
-        """Get memory manager instance"""
-        return self.memory_manager
-    
     def get_action_debugger(self):
         """Get action debugger instance"""
         return self.action_debugger
@@ -666,8 +622,6 @@ class MonitoringComponent(Component, WebAPIPlugin):
             services.append("Notification Service")
         if self.metrics_collector:
             services.append("Metrics Collector")
-        if self.memory_manager:
-            services.append("Memory Manager")
         if self.action_debugger:
             services.append("Action Debugger")
         if self.analytics_dashboard:

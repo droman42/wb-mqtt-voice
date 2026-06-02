@@ -105,7 +105,7 @@ exist (`WakeWordResult.word`), → `AttributeError` (§3 P1-b). ENTRY B bypasses
 | **AudioData** | mic/file/VAD producers | raw bytes + sample params | voice_trigger, ASR, VAD | **transient** | after ASR |
 | **WakeWordResult** | `microwakeword.py:269`, `openwakeword.py:299` (`word=`) | provider detection | `voice_assistant.py:588/608`, `voice_trigger_component.py:428/443` (as `.wake_word` → crash) | **transient** | after wake-word stage |
 | **ConversationState** | enum default `IDLE` (`context_models.py:68`) | `transition_state` | state helpers | **session** | with context |
-| **ContextLayer** | enum; never used as state | — | `resolve_context` (no live caller) | — | — (dead, §3 P2) |
+| **ContextLayer** | enum; never used as state | — | `resolve_context` _[correction 2026-06-02: NOT dead — `conversation.py` builds its LLM context summary via `resolve_layered_context`/`get_contextual_summary`; migrate-then-retire in QUAL-28 §3b, not a free deletion]_ | — | — (§3 P2) |
 
 **Request-scoped vs session-scoped — the verdict (resolves the DOC-8 question):**
 - `RequestContext` is correctly **request-scoped**: per-utterance routing flags + the *identity keys* (session_id,

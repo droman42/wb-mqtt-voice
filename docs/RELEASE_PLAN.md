@@ -453,7 +453,7 @@ _Apply to every remediation task below (from the 4 review docs + QUAL-25/26). So
       (5 passed / 1 xfailed). **Scope change (Invariant #8, user-approved):** P1-t (`_create_error_result` signature
       unification) was found to be **6 handlers, not 2**, and is a shared-bases (theme ②) base-vs-handlers split →
       **moved to QUAL-11** (handler-base/typed-accessor consolidation). Refs: `dataflow_reconciliation.md` Q1/Q7.
-- [ ] **QUAL-28** [DFLOW] (P0) — **Context & session refactor (Q2/Q3; foundational).** Split
+- [~] **QUAL-28** `[release]` [DFLOW] (P0) — **Context & session refactor (Q2/Q3; foundational). DOING (staged).** Split
       `UnifiedConversationContext` → a **long-lived physical-identity store** (room/device/client; holds
       `active_actions` + device capabilities; `ClientRegistry` = device source-of-truth) + a **short-lived conversation
       session** (history + `ConversationState`). **Dedicated zombie-resistant action store**, `action_name`-keyed
@@ -461,8 +461,14 @@ _Apply to every remediation task below (from the 4 review docs + QUAL-25/26). So
       TTL+cap). **Session lifecycle:** idle-window (T=10m / voice ~5m, configurable) + sliding history window (N=15,
       wire `max_history_turns`); per-modality boundaries (voice=wake-word burst, WS=connection, REST=conversation-id).
       Forbid the literal `"default"` (P0-6); split `get`/`get_or_create`; **kill `extract_room_from_session`** (P1-o);
-      unify eviction on `last_activity`. Delete `MemoryManager` (P0-7) + `ContextLayer`/progressive-context (Q4). Refs:
-      Q2/Q3/Q4.
+      unify eviction on `last_activity`. Delete `MemoryManager` (P0-7). Refs: Q2/Q3/Q4.
+      **Staging (2026-06-02):** ① delete `MemoryManager` (**DONE** — module + monitoring wiring) → ② session-id hygiene
+      → ③ new context model + action store (+ a **focused action-lifecycle test**, mini-TEST-3, no regression net else)
+      → ③b **migrate consumers + retire `ContextLayer`** → ④ history windowing. **Scope correction (Invariant #8):**
+      `ContextLayer`/progressive-context is **NOT dead** (Q4 mis-scoped it) — it's live in `conversation.py` (builds the
+      LLM context summary). So **migrate-then-retire** in ③b (rewrite the conversation handler's context *assembly* onto
+      the new model; its LLM prompt/provider logic stays QUAL-15/16). Deferred to Q9: the now-dead
+      `memory_management_enabled` config key + the context `memory_management` block (config-ui coord, Invariant #4).
 - [ ] **QUAL-29** [DFLOW] (P1) — **Donation format split (Q6; precedes declarative device-resolution).** Split
       donations into a **language-neutral contract** (method list + invariant `ParameterSpec` core: name/type/required/
       choices/min-max + **`entity_type`** {device/location/room/person/generic} + per-method **`room_context`**
