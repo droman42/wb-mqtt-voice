@@ -627,7 +627,7 @@ _Apply to every remediation task below (from the 4 review docs + QUAL-25/26). So
       resolve-or-clarify policy; today resolvers degrade with a `_resolution_failed` marker, don't raise); (c) **targeted
       no-intent clarification** — today no-intent gives a *generic* "didn't understand, try X" (offline) or LLM chat
       (online); the NLU already computes `_fallback_context.likely_domain` ("probably timer") but **nothing uses it** for
-      a "did you mean to set a timer?" prompt — enhancement, tracked here. **System** errors (component down) correctly
+      a "did you mean to set a timer?" prompt — **enhancement beyond Grade-1 scope → QUAL-37** (keeps QUAL-30 a clean `[x]`; 7d's "explain-and-ask" is met generically). **System** errors (component down) correctly
       stay graceful errors (not clarifications); their hardcoded English message → QUAL-36. Refs: Q7. _Original spec:_
       At the fail-loud boundary, convert structured failures into explain-and-ask; configurable responder; fix
       `confidence=1.0`.
@@ -722,6 +722,13 @@ _Apply to every remediation task below (from the 4 review docs + QUAL-25/26). So
       hardcoded language literal remains in `irene/` runtime (outside config defaults + tests), and an English-primary
       config produces English fallbacks end-to-end. Sibling to **QUAL-32** (cross-cutting purge). Refs: `RELEASE_JOURNAL.md`
       2026-06-03 findings.
+- [ ] **QUAL-37** `[deferred]` [DFLOW] (P2) — **Targeted no-intent clarification (enhancement; split from QUAL-30).**
+      Today an unrecognized command yields a **generic** "didn't understand «…», try saying …" (offline templates) or is
+      treated as LLM chat (online). But the NLU already computes **`_fallback_context.likely_domain`** ("probably timer")
+      + `ambiguous_entities` in `_create_fallback_intent` — and **nothing consumes it**. Use that signal in the
+      conversation fallback to offer a *targeted* explain-and-ask ("Did you want to set a timer?") instead of a generic
+      one; deterministic + localized (offline guarantee), same shape as the QUAL-30 responder. Beyond QUAL-30's delivered
+      Grade-1 scope (7d's "explain-and-ask" requirement is met generically); this is the quality lift. Refs: QUAL-30, Q7.
 
 ### Tests (TEST)
 > **Strategy (decided 2026-06-01): do NOT keep repairing the existing suite.** Most tests were written against
