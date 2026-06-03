@@ -28,3 +28,23 @@ reference_template:
   prompt_type: "template"
   content: |
     Answer the following user question briefly, only the requested data: {0}
+
+fallback_context:
+  description: "Context prompt for the LLM when a command wasn't recognized (NLU fallback)."
+  usage_context: "Helps the model gently clarify an unrecognized request."
+  variables:
+    - name: "{topic}"
+      description: "The guessed topic of the request (or an empty string)"
+  prompt_type: "system"
+  content: |
+    The user's command wasn't recognized precisely.{topic} Briefly and kindly help them clarify what they want, or suggest how to phrase the request. The answer is spoken: plain text, no markdown or lists.
+
+fallback_topic:
+  description: "Guessed-topic fragment inserted into fallback_context."
+  usage_context: "Filled into {topic} when NLU guessed a likely topic for the request."
+  variables:
+    - name: "{domain}"
+      description: "The guessed topic/domain"
+  prompt_type: "template"
+  content: |
+    It seems related to the {domain} topic.

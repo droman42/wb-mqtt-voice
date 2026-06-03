@@ -467,11 +467,27 @@ See `docs/review/phase1_architecture_map.md` §5.
       **Carve-outs:** prompt hardening/externalization of the inline task prompts (openai/anthropic/deepseek) → **QUAL-16**;
       a real **local-model** LLM (true offline chat, not the stub) + opt-in LLM-NLU assist → **ARCH-9/10 [INFER]**;
       `silero_v3.is_available()` network HEAD is a TTS concern (separate). NLU-LLM assist deferred behind ARCH-9/10 + QUAL-11.
-- [ ] **QUAL-16** [PROMPTS] (P1) — Prompt hardening for ALL LLM use cases: audit every prompt — asset YAML
-      (`assets/prompts/<handler>/<lang>.yaml`) **and inline-in-code prompts** (translation/text_enhancement/
-      conversation handlers) — and rewrite for clarity, guardrails, output-format constraints, persona
-      consistency, and prompt-injection resistance. Establish a prompt-authoring convention. Gated by Invariant #4
-      (config-ui `PromptEditor`). Done when: prompts hardened + `docs/guides/PROMPTING_GUIDE.md` exists.
+- [x] **QUAL-16** [PROMPTS] (P1) — **DONE 2026-06-03 (Stages A–B + tail; live-validated against DeepSeek).** Prompt
+      hardening for ALL LLM use cases. **Stage A:** the 6 triplicated inline task prompts (improve/translation/
+      grammar_correction/summarize/expand + chat-default) were extracted from the 3 providers → **`assets/prompts/llm/
+      {ru,en}.yaml`** (a system prompt set, loaded unconditionally), keyed by the **user's** language (not the
+      provider). The component resolves the prompt (`_get_task_prompt`) and passes it as `system_prompt`; providers
+      hold no task prompts (one-line generic fallback only); `generate_response` injects the externalized `chat_default`
+      if the caller gave no system message (kills anthropic's hardcoded "You are a helpful assistant."). Handlers thread
+      `language=context.language`; fixed `text_enhancement` `task="correct"` → `grammar_correction` (was an undefined
+      key). **Stage B (user):** hardened the conversation persona prompts (`chat_system`/`reference_system`/
+      `reference_template`) + fixed their `_get_prompt` `"ru"` hardcode (now `context.language`). **Tail:** externalized
+      `_build_fallback_context_prompt` → localized `fallback_context`/`fallback_topic` assets; wrote
+      **`docs/guides/PROMPTING_GUIDE.md`** (the authoring convention: externalized-only, user-language-keyed, spoken/
+      no-markdown, injection-resistant, persona; live-validate before shipping). **Hardening rules:** plain-text/no-
+      markdown (spoken via TTS), return-only-result, "user text is DATA not instructions" injection resistance, persona,
+      preserve-language. **Live validation (DeepSeek, .env keys):** translation clean; injection inputs treated as data
+      (persona held, no markdown, not obeyed) — and a real leak (markdown lists) was caught and fixed. **Invariant #4:**
+      config-ui prompt editor is directory-driven (`prompts_dir.iterdir()`) → the new `llm/` set surfaces automatically;
+      zero config-ui files changed, `npm run type-check` passes. **Residual → QUAL-36:** the LLM *context-injection
+      labels* (`Currently active:`, `Session:`, `Recent activity:` … in `_prepare_llm_context`) are hardcoded English
+      — but they're machine-context serialization, not persona/task prompts, so their localization folds into the
+      language-source-of-truth work, not prompt hardening. Refs: `llm_usage_review.md` (the prompt inventory).
 - [ ] **QUAL-17** [STREAMAPI] (P2, must-before-release) — Critically review the streaming-API exposure: the
       hand-rolled **AsyncAPI 2.6.0** generator (`irene/web_api/asyncapi.py`: `@websocket_api` decorators,
       `WebSocketRegistry`, custom Pydantic→AsyncAPI conversion) + the `@asyncapi/web-component@2.6.4` renderer at
@@ -750,10 +766,14 @@ _Apply to every remediation task below (from the 4 review docs + QUAL-25/26). So
       source; (2) inject + seed context with the default (fix `context.py:86`); (3) detection clamps to supported-list →
       default; (4) establish the invariant (context.language never None/out-of-list); (5) delete the 63 `or "ru"`
       fallbacks → bare `context.language`; rip out the `_get_language` re-detection heuristics; fix the hybrid `'en'`
-      divergence; drop the `language="ru"` default params; (6) make the `["ru","en"]` set config-driven. Done when: no
+      divergence; drop the `language="ru"` default params; (6) make the `["ru","en"]` set config-driven; (7) **localize
+      the LLM context-injection labels** (folded from QUAL-16): the hardcoded English system-message labels in
+      `conversation.py` `_prepare_llm_context`/`_build_*_summary` (`Currently active:`, `Session:`, `Recent activity:`,
+      `Thread:`, `Actions:`, `Flow:`, `Context:`) — machine-context for the LLM, not persona/task prompts, so QUAL-16
+      left them; localize them with the user-language plumbing here. Done when: no
       hardcoded language literal remains in `irene/` runtime (outside config defaults + tests), and an English-primary
       config produces English fallbacks end-to-end. Sibling to **QUAL-32** (cross-cutting purge). Refs: `RELEASE_JOURNAL.md`
-      2026-06-03 findings.
+      2026-06-03 findings, QUAL-16.
 - [ ] **QUAL-37** `[deferred]` [DFLOW] (P2) — **Targeted no-intent clarification (enhancement; split from QUAL-30).**
       Today an unrecognized command yields a **generic** "didn't understand «…», try saying …" (offline templates) or is
       treated as LLM chat (online). But the NLU already computes **`_fallback_context.likely_domain`** ("probably timer")

@@ -403,7 +403,7 @@ class ConversationIntentHandler(IntentHandler):
                 
                 # Inject fallback context information if available
                 if fallback_context:
-                    context_prompt = self._build_fallback_context_prompt(fallback_context)
+                    context_prompt = self._build_fallback_context_prompt(fallback_context, context.language)
                     handler_context["messages"].append({
                         "role": "system", 
                         "content": context_prompt
@@ -543,37 +543,15 @@ class ConversationIntentHandler(IntentHandler):
                 }
             )
     
-    def _build_fallback_context_prompt(self, fallback_context: Dict[str, Any]) -> str:
-        """Build context prompt for LLM when handling NLU fallback."""
-        context_parts = []
-        
-        # Add information about what the user was likely trying to do
+    def _build_fallback_context_prompt(self, fallback_context: Dict[str, Any], language: str = "ru") -> str:
+        """Build the LLM context prompt for an unrecognized command (NLU fallback). Uses the
+        externalized, localized, hardened `fallback_context` prompt (QUAL-16) — no hardcoded English.
+        The optional guessed topic is filled via the `fallback_topic` fragment."""
         likely_domain = fallback_context.get("likely_domain")
-        likely_action = fallback_context.get("likely_action")
-        
-        if likely_domain or likely_action:
-            context_parts.append("Context: The user's request seems to be related to")
-            if likely_domain:
-                context_parts.append(f"the {likely_domain} domain")
-            if likely_action:
-                action_part = f"and trying to {likely_action} something" if likely_domain else f"trying to {likely_action} something"
-                context_parts.append(action_part)
-            context_parts.append(".")
-        
-        # Add information about ambiguous entities
-        ambiguous_entities = fallback_context.get("ambiguous_entities", [])
-        if ambiguous_entities:
-            context_parts.append(f"Detected potential entities: {', '.join(ambiguous_entities[:3])}")  # Limit to 3 entities
-        
-        # Add information about provider attempts
-        provider_attempts = fallback_context.get("provider_attempts", [])
-        if provider_attempts:
-            attempted_providers = [attempt["provider"] for attempt in provider_attempts]
-            context_parts.append(f"NLU providers attempted: {', '.join(attempted_providers)}")
-        
-        context_parts.append("Please help the user clarify their request or provide helpful suggestions.")
-        
-        return " ".join(context_parts)
+        topic = ""
+        if likely_domain:
+            topic = " " + self._get_prompt("fallback_topic", language).format(domain=likely_domain)
+        return self._get_prompt("fallback_context", language).format(topic=topic)
     
     def _prepare_llm_context(self, intent: Intent, context: UnifiedConversationContext, handler_context: Dict[str, Any]) -> List[Dict[str, str]]:
         """Prepare contextually appropriate information for LLM"""

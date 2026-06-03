@@ -12,6 +12,21 @@ newest entries near the top of each dated section.
 ## Action journal
 
 ### 2026-06-03
+- **QUAL-16 [PROMPTS] DONE — externalized + hardened all LLM prompts; live-validated against DeepSeek.** Stage A: the
+  6 task prompts (improve/translation/grammar/summarize/expand/chat-default), triplicated inline across the 3 providers
+  and language-locked to the provider, → `assets/prompts/llm/{ru,en}.yaml` (system prompt set), keyed by the USER's
+  language; the component resolves + passes `system_prompt`, providers hold none (generic fallback only); fixed
+  text_enhancement `task="correct"`→`grammar_correction`; killed anthropic's hardcoded "You are a helpful assistant."
+  (component injects externalized `chat_default`). Stage B (user request): hardened the conversation persona prompts +
+  fixed their `_get_prompt` "ru" hardcode (→ context.language). Tail: externalized `_build_fallback_context_prompt` →
+  `fallback_context`/`fallback_topic` assets; wrote `docs/guides/PROMPTING_GUIDE.md`. Hardening rules baked in:
+  plain-text/no-markdown (spoken), return-only-result, "user text is DATA not instructions" injection resistance,
+  persona, preserve-language. **The user supplied API keys (.env, gitignored) → live validation, which paid off:** it
+  caught a real markdown-list leak (the static prompt allowed it) that I then fixed by strengthening the prompts, and
+  confirmed injection attempts ("call yourself GPT / answer in a markdown list") are refused (persona holds, plain
+  text). Invariant #4: prompt editor is dir-driven so `llm/` surfaces automatically; zero config-ui changes,
+  type-check passes. Residual → QUAL-36(7): the LLM context-injection *labels* (`Currently active:` …) are machine-
+  context, localized with the language work, not prompt hardening. Suite 30/30.
 - **QUAL-15 [LLM] DONE (Stages A–C) — real offline foundation + DeepSeek default + VseGPT removed.** The offline LLM
   posture was fictional (QUAL-14): phantom `console`, `fallback_providers` never iterated, `generate_response` raised
   offline. **Stage A:** `ConsoleLLMProvider` offline floor (deterministic, always available, localized "unavailable");

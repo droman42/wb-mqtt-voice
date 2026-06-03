@@ -28,3 +28,23 @@ reference_template:
   prompt_type: "template"
   content: |
     Ответь кратко на следующий вопрос пользователя, только запрошенные данные: {0}
+
+fallback_context:
+  description: "Подсказка-контекст для LLM, когда команда не распознана (NLU fallback)."
+  usage_context: "Помогает модели мягко уточнить нераспознанный запрос."
+  variables:
+    - name: "{topic}"
+      description: "Предполагаемая тема запроса (или пустая строка)"
+  prompt_type: "system"
+  content: |
+    Команда пользователя не распознана точно.{topic} Кратко и доброжелательно помоги уточнить, что он хочет, или предложи, как сформулировать запрос. Ответ озвучивается: простой текст без разметки и списков.
+
+fallback_topic:
+  description: "Фрагмент с предполагаемой темой, вставляемый в fallback_context."
+  usage_context: "Подставляется в {topic}, когда NLU угадал вероятную тему запроса."
+  variables:
+    - name: "{domain}"
+      description: "Предполагаемая тема/домен"
+  prompt_type: "template"
+  content: |
+    Похоже, запрос связан с темой «{domain}».
