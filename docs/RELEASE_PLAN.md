@@ -606,11 +606,23 @@ _Apply to every remediation task below (from the 4 review docs + QUAL-25/26). So
       declarations (defaulted conservatively: `entity_type="generic"`, `room_context="none"` — humans refine); the
       heuristics stay live until QUAL-11 swaps in the declarative resolver atomically (no broken window). QUAL-29 stays
       **first** — it provides the contract QUAL-11 consumes.
-- [ ] **QUAL-30** [DFLOW] (P1) — **Clarification UX — Grade 1 (theme ①; with the typed accessor).** At the fail-loud
-      boundary, convert structured failures (missing-required, unresolved device/room per `room_context`,
-      no-intent-identified) into a single-turn **explain-and-ask** response. **Configurable responder:** LLM if present
-      (natural), else **deterministic + localized** (from `ParameterSpec.description` + per-language prompt; offline
-      guarantee). Fix the fake `confidence=1.0` NLU fallback. Refs: Q7.
+- [x] **QUAL-30** [DFLOW] (P1) — **Clarification UX — Grade 1. DONE 2026-06-03 (deterministic responder; carve-outs
+      tracked).** Built the **single fail-loud boundary → explain-and-ask** mechanism: `get_param` now raises a structured
+      **`MissingRequiredParameter`** (param_name/description/intent_name); the handler base's `execute_with_donation_
+      routing` catches the `ParameterExtractionError` family **before** the generic error and calls a new base
+      **`_clarify()`** responder → a single-turn, **localized, speak-able** `IntentResult` (`success=True`,
+      `metadata.clarification=True`). Responder is **deterministic + localized** via a new system template set
+      `assets/templates/clarification/{ru,en}.yaml` (loaded unconditionally, not per-handler; `get_template` handles the
+      language→default fallback so no language is hardcoded). Fixed the fake **`confidence=1.0`** NLU fallback → `0.0`
+      (honest no-match; routing keys on `_recognition_provider`, so safe). Tests: `test_clarification.py` (3, green).
+      **Carve-outs (not blockers — gated elsewhere):** **LLM phrasing** ("use an LLM if present") deferred to the
+      **QUAL-15** LLM foundation (deterministic is the offline guarantee — the must-have; LLM is the review's opt-in
+      enhancement); **device/room clarification** → **ARCH-6** (no registered devices yet); **per-handler activation** →
+      **QUAL-34** (handlers adopt `get_param` for required params — only timer uses the accessor today, with a caller
+      default, so nothing triggers it in production yet); **no-intent** clarification already exists via the conversation
+      fallback (now with honest confidence). Grade 2 (multi-turn slot-filling) is **QUAL-31**. Refs: Q7. _Original spec:_
+      At the fail-loud boundary, convert structured failures into explain-and-ask; configurable responder; fix
+      `confidence=1.0`.
 - [ ] **QUAL-31** [DFLOW] (P2, feature) — **Clarification UX — Grade 2 (multi-turn slot-filling).** `pending_clarification`
       on the conversation session + `ConversationState = awaiting-clarification` + a pipeline pre-check that fills the
       slot from the next turn and completes the original intent (symmetric to the F&F `contextual` check, but transient).

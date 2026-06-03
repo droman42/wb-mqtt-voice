@@ -1,0 +1,6 @@
+# English clarification templates (QUAL-30 Grade 1).
+# Rendered at the handler-execute boundary when a structured parameter failure is raised
+# (e.g. a missing required parameter from IntentHandler.get_param). {detail} = the parameter's
+# donation description (or its name).
+
+missing_parameter: "Could you clarify? I'm missing some information for that command: {detail}."

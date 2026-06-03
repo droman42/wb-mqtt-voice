@@ -280,5 +280,19 @@ class DonationDiscoveryError(Exception):
 
 
 class ParameterExtractionError(Exception):
-    """Raised when parameter extraction fails"""
+    """Raised when parameter extraction fails. Caught at the handler-execute boundary and converted
+    into a conversational clarification (QUAL-30), not a terminal error."""
     pass
+
+
+class MissingRequiredParameter(ParameterExtractionError):
+    """A declared `required` parameter was absent with no default (raised by `IntentHandler.get_param`).
+
+    Carries structured fields so the QUAL-30 clarification boundary can phrase an explain-and-ask
+    ("I need <description>") without re-deriving them — deterministically or via an LLM.
+    """
+    def __init__(self, param_name: str, intent_name: str, description: str = ""):
+        self.param_name = param_name
+        self.intent_name = intent_name
+        self.description = description or param_name
+        super().__init__(f"Missing required parameter '{param_name}' for intent '{intent_name}'")

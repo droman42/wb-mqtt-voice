@@ -266,9 +266,16 @@ class IntentHandler(EntryPointMetadata, ABC):
         
         # Call the method
         if hasattr(self, method_name):
+            from ...core.donations import ParameterExtractionError
             method = getattr(self, method_name)
             try:
                 return await method(intent, context)
+            except ParameterExtractionError as e:
+                # QUAL-30: a structured parameter failure (e.g. missing-required from get_param) is
+                # fail-loud → conversational CLARIFICATION, not a terminal error. Caught at this single
+                # boundary and turned into an explain-and-ask response.
+                self.logger.info(f"Clarification needed for {intent.name}: {e}")
+                return await self._clarify(intent, context, e)
             except Exception as e:
                 self.logger.error(f"Method {method_name} execution failed: {e}")
                 return self._create_error_result(
@@ -281,10 +288,44 @@ class IntentHandler(EntryPointMetadata, ABC):
                 "method_not_implemented"
             )
     
+    async def _clarify(self, intent: Intent, context: UnifiedConversationContext,
+                       exc: Exception) -> IntentResult:
+        """QUAL-30 Grade-1 clarification responder. Turns a structured parameter failure (e.g. a
+        missing-required param from `get_param`) into a single-turn **explain-and-ask** response —
+        not a silent wrong-action and not a generic error dump.
+
+        Deterministic + localized via the shared `clarification` template set (`assets/templates/
+        clarification/<lang>.yaml`); `asset_loader.get_template` handles the language→default fallback,
+        so no language is hardcoded here. (Optional LLM phrasing — "use an LLM if present" — is a later
+        enhancement gated on the QUAL-15 LLM foundation; deterministic is the offline guarantee.)
+        Returns a SUCCESSFUL conversational turn (`success=True`) flagged in metadata, so the boundary
+        and Grade-2 slot-filling (QUAL-31) can detect it.
+        """
+        description = getattr(exc, 'description', '') or getattr(exc, 'param_name', '') or ''
+        param_name = getattr(exc, 'param_name', None)
+
+        text = None
+        if self.has_asset_loader():
+            tmpl = self.asset_loader.get_template("clarification", "missing_parameter", context.language)
+            if tmpl:
+                try:
+                    text = tmpl.format(detail=description)
+                except Exception:
+                    text = tmpl
+        if not text:
+            # Only reached if the clarification template set is missing (misconfiguration).
+            text = f"I need a bit more information: {description}".strip()
+
+        return IntentResult(
+            text=text, should_speak=True, success=True, confidence=1.0,
+            metadata={"clarification": True, "clarification_reason": "missing_parameter",
+                      "parameter": param_name, "intent_name": intent.name},
+        )
+
     def get_supported_domains(self) -> List[str]:
         """
         Get list of domains this handler supports.
-        
+
         Returns:
             List of supported domain names
         """
@@ -447,7 +488,7 @@ class IntentHandler(EntryPointMetadata, ABC):
           boundary turns this into a clarification — QUAL-30). For an undeclared param it behaves like
           `extract_entity` (plain get with the caller default).
         """
-        from ...core.donations import ParameterExtractionError
+        from ...core.donations import MissingRequiredParameter
         spec = self._find_param_spec(intent, name)
         raw = intent.entities.get(name)
 
@@ -470,8 +511,9 @@ class IntentHandler(EntryPointMetadata, ABC):
         if default is not IntentHandler._UNSET:
             return default
         if spec is not None and spec.required:
-            raise ParameterExtractionError(
-                f"Missing required parameter '{name}' for intent '{intent.name}'"
+            raise MissingRequiredParameter(
+                param_name=name, intent_name=intent.name,
+                description=getattr(spec, 'description', '') or name,
             )
         return None
     

@@ -1393,7 +1393,25 @@ class IntentAssetLoader:
                 
             except Exception as e:
                 self._add_warning(f"Failed to load templates for handler '{handler_name}': {e}")
-    
+
+        # System-level template sets that are NOT tied to an enabled handler (loaded unconditionally) —
+        # e.g. the QUAL-30 clarification responder's templates (assets/templates/clarification/<lang>.yaml).
+        for system_set in ("clarification",):
+            sys_dir = templates_dir / system_set
+            if not sys_dir.exists() or system_set in self.templates:
+                continue
+            try:
+                sys_templates: Dict[str, Any] = {}
+                for lang_file in sys_dir.glob("*.yaml"):
+                    language = lang_file.stem
+                    for template_name, content in (await self._load_language_file(lang_file)).items():
+                        sys_templates.setdefault(template_name, {})[language] = content
+                if sys_templates:
+                    self.templates[system_set] = sys_templates
+                    logger.debug(f"Loaded system template set '{system_set}' ({len(sys_templates)} templates)")
+            except Exception as e:
+                self._add_warning(f"Failed to load system template set '{system_set}': {e}")
+
     async def _load_prompts(self, handler_names: List[str]) -> None:
         """Load LLM prompts from YAML files with metadata (YAML format only)"""
         prompts_dir = self.assets_root / "prompts"

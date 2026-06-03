@@ -974,7 +974,11 @@ class NLUComponent(Component, NLUPlugin, WebAPIPlugin):
         return Intent(
             name=self.fallback_intent,
             entities=entities,
-            confidence=1.0,  # High confidence for conversation fallback
+            # QUAL-30: honest confidence — this is the NO-MATCH fallback, not a recognized intent.
+            # The fake 1.0 hid that nothing was recognized; routing keys on `_recognition_provider
+            # == "fallback"` (set by the caller), not confidence, so 0.0 is safe and lets downstream
+            # (clarification, fallback_conditions) tell a real match from a give-up.
+            confidence=0.0,
             raw_text=text,
             domain="conversation",
             action="general"

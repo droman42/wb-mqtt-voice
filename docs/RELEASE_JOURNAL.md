@@ -12,6 +12,23 @@ newest entries near the top of each dated section.
 ## Action journal
 
 ### 2026-06-03
+- **QUAL-30 [DFLOW] Grade-1 clarification DONE (deterministic responder).** Built the single fail-loud → explain-and-ask
+  boundary that the QUAL-11 typed accessor was set up to feed. Reconciled first (Invariant #5/#8): the single catch
+  point is `execute_with_donation_routing` (base.py:270 — it already wraps the routed method and maps everything to a
+  generic error); `get_param` already raises but nothing caught it; the fallback intent carries a fake `confidence=1.0`;
+  templates load per-enabled-handler only. **Implementation:** (1) `get_param` raises structured
+  **`MissingRequiredParameter`** (param/description/intent); (2) the boundary catches the `ParameterExtractionError`
+  family **before** the generic error → new base **`_clarify()`** → localized single-turn `IntentResult`
+  (`success=True`, `metadata.clarification=True`, speaks); (3) deterministic responder via a new **system** template set
+  `assets/templates/clarification/{ru,en}.yaml` — and taught `_load_templates` to load system sets unconditionally (not
+  tied to an enabled handler), `get_template` handles language→default so **no language hardcoded**; (4) fixed the fake
+  `confidence=1.0` → `0.0` (honest no-match; routing keys on `_recognition_provider`, verified safe — smoke's
+  offline-conversation test still green). Verified both languages render; `test_clarification.py` (3) green; full suite
+  21/21. **Scope (with user's text-first priority):** deterministic path is the offline guarantee = the must-have; **LLM
+  phrasing deferred to QUAL-15** (the review frames LLM as the opt-in enhancement, and the LLM foundation is shaky per
+  QUAL-14); **device/room → ARCH-6**; **per-handler activation → QUAL-34** (only timer uses the accessor today, with a
+  caller default, so nothing triggers clarification in production yet — the mechanism is ready for the migration). Grade
+  2 (multi-turn slot-filling) stays QUAL-31.
 - **Filed QUAL-36 — single language source-of-truth; purge hardcoded language codes (user observation 2026-06-03).**
   User spotted a hardcoded `"ru"` in a handler and suspected it was systemic — verified: it is. Audit found `context.
   language or "ru"` at **63 handler sites** + `entity_resolver` ×2; context-ignoring hardcodes (`timer._get_language`
