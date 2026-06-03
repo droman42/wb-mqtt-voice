@@ -8,10 +8,10 @@ using various ASR engines.
 from typing import Dict, Any, Optional
 from abc import abstractmethod
 
-from .plugin import PluginInterface
+from ..metadata import EntryPointMetadata
 
 
-class ASRPlugin(PluginInterface):
+class ASRPlugin(EntryPointMetadata):
     """
     Interface for Automatic Speech Recognition plugins.
     

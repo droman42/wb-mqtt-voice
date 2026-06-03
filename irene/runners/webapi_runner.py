@@ -401,25 +401,7 @@ monitoring = true
                     logger.warning(f"Could not get components from component manager: {e}")
             else:
                 logger.warning("Core does not have component_manager")
-            
-            # Also check plugins that implement WebAPIPlugin
-            if hasattr(self.core, 'plugin_manager'):
-                try:
-                    plugin_count = len(self.core.plugin_manager._plugins)
-                    logger.info(f"Found {plugin_count} plugins in plugin manager")
-                    
-                    for name, plugin in self.core.plugin_manager._plugins.items():
-                        if isinstance(plugin, WebAPIPlugin):
-                            web_components.append((name, plugin))
-                            logger.info(f"Plugin {name} implements WebAPIPlugin")
-                        else:
-                            logger.debug(f"Plugin {name} does not implement WebAPIPlugin (type: {type(plugin).__name__})")
-                            
-                except Exception as e:
-                    logger.warning(f"Could not get plugins from plugin manager: {e}")
-            else:
-                logger.warning("Core does not have plugin_manager")
-            
+
             logger.info(f"Found {len(web_components)} components/plugins with WebAPI support")
             
             # Mount each component's router

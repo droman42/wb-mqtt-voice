@@ -8,10 +8,10 @@ and text enhancement capabilities.
 from typing import Dict, Any, Optional, List
 from abc import abstractmethod
 
-from .plugin import PluginInterface
+from ..metadata import EntryPointMetadata
 
 
-class LLMPlugin(PluginInterface):
+class LLMPlugin(EntryPointMetadata):
     """
     Interface for Large Language Model plugins.
     

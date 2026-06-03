@@ -9,10 +9,10 @@ from typing import Dict, Any, Optional, AsyncIterator
 from abc import abstractmethod
 from pathlib import Path
 
-from .plugin import PluginInterface
+from ..metadata import EntryPointMetadata
 
 
-class AudioPlugin(PluginInterface):
+class AudioPlugin(EntryPointMetadata):
     """
     Interface for Audio playback plugins.
     

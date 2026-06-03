@@ -9,10 +9,10 @@ from typing import Dict, Any, Optional
 from abc import abstractmethod
 from pathlib import Path
 
-from .plugin import PluginInterface
+from ..metadata import EntryPointMetadata
 
 
-class TTSPlugin(PluginInterface):
+class TTSPlugin(EntryPointMetadata):
     """
     Interface for Text-to-Speech plugins.
     

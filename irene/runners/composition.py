@@ -3,10 +3,10 @@ Composition root - assembles a fully-wired AsyncVACore from its managers.
 
 ARCH-11 / S3: construction of ALL managers is moved OUT of `AsyncVACore` into
 this composition module. The runners are the composition root — the layer
-permitted to depend outward on `inputs`/`plugins`/`components`/`workflows` — so
-the delivery-layer `InputManager` (and the legacy `AsyncPluginManager`) are
-imported and built here, then injected into the core. This is what lets `core`
-itself stop importing `inputs.manager` (edge 4 of ARCH-11).
+permitted to depend outward on `inputs`/`components`/`workflows` — so the
+delivery-layer `InputManager` is imported and built here, then injected into the
+core. This is what lets `core` itself stop importing `inputs.manager` (edge 4 of
+ARCH-11). (The legacy `AsyncPluginManager` was retired in ARCH-13.)
 """
 
 from pathlib import Path
@@ -20,7 +20,6 @@ from ..core.timers import AsyncTimerManager
 from ..core.metrics import get_metrics_collector
 from ..intents.context import ContextManager
 from ..inputs.manager import InputManager
-from ..plugins.manager import AsyncPluginManager
 
 
 def build_core(config: CoreConfig, config_path: Optional[Path] = None) -> AsyncVACore:
@@ -30,7 +29,6 @@ def build_core(config: CoreConfig, config_path: Optional[Path] = None) -> AsyncV
     `InputManager` and `WorkflowManager` depend on the `ComponentManager`.
     """
     component_manager = ComponentManager(config)
-    plugin_manager = AsyncPluginManager()
     input_manager = InputManager(component_manager, config.inputs)
     context_manager = ContextManager(  # QUAL-36: seed sessions from the one canonical language source
         default_language=config.default_language,
@@ -44,7 +42,6 @@ def build_core(config: CoreConfig, config_path: Optional[Path] = None) -> AsyncV
         config,
         config_path=config_path,
         component_manager=component_manager,
-        plugin_manager=plugin_manager,
         input_manager=input_manager,
         context_manager=context_manager,
         timer_manager=timer_manager,

@@ -273,7 +273,6 @@ class ComponentManager:
                 'context_manager': getattr(core, 'context_manager', None),  # Use unified context manager
                 'timer_manager': getattr(core, 'timer_manager', None),
                 'workflow_manager': getattr(core, 'workflow_manager', None),
-                'plugin_manager': getattr(core, 'plugin_manager', None),
                 'input_manager': getattr(core, 'input_manager', None),
                 'config': self.config
             }

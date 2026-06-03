@@ -370,7 +370,18 @@ See `docs/review/phase1_architecture_map.md` §5.
       emit metrics directly) and `utils.logging → config.models` (a `LogLevel` enum reach-up). Captured to close the
       single-ledger gap (Invariant #6) — these were the only findings living solely in a review doc
       (`phase1_architecture_map.md` §2.3). Deferred: do post-Gate-2 (or alongside ARCH-11) if cheap.
-- [ ] **ARCH-13** `[release]` (P2) — **Retire the dormant `irene/plugins/` legacy system** (split out of ARCH-11,
+- [x] **ARCH-13** `[release]` (P2) — **DONE 2026-06-03.** Retired the dormant `irene/plugins/` legacy system. Re-rooted
+      the **8 capability ports** (`ASR/TTS/Audio/LLM/NLU/TextProcessor/VoiceTrigger/WebAPI Plugin`) off `PluginInterface`
+      onto `EntryPointMetadata` (completing decision (c) — MRO smoke-checked: the `Component`+port diamond resolves, real
+      components instantiate); **deleted** `irene/plugins/` (`AsyncPluginManager`/`BasePlugin`/`PluginRegistry`/`builtin/`)
+      + `core/interfaces/plugin.py` (`PluginInterface`/`PluginManager`); stripped the plugin lifecycle from `engine.py`
+      (init/load/unload calls + the injected `plugin_manager` param) and its construction from `runners/composition`;
+      rewired the **~8 service-locator status readers** (`cli.py`/`base.py` dropped the "Plugins loaded" line; `webapi_router`
+      ×4 + `webapi_runner` plugin blocks removed; `components.py` service-map entry dropped) — all reported 0; cleaned the
+      dead `irene.plugins.builtin` refs in `build_analyzer.py`. `core→plugins` was already clean (ARCH-11/S3 byproduct).
+      Verified: all modules import, 8/8 contracts kept, suite 85=85 FAILED (0 net regression), no live refs to retired
+      symbols remain (only provider docstrings note the historical paths). _Original below._ Retire the dormant
+      `irene/plugins/` legacy system (split out of ARCH-11,
       2026-06-03). **Verified dead:** `engine.py:95` calls `AsyncPluginManager.load_plugins()` with no paths → builtin
       branch is `pass` → loads **exactly 0 plugins** (`_plugins == {}`); there is no `irene.plugins` entry-point group in
       `pyproject.toml`. **Scope:** (1) delete `irene/plugins/` (`manager.py` `AsyncPluginManager`, `base.py` `BasePlugin`,

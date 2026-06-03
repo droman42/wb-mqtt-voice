@@ -403,7 +403,7 @@ class IreneBuildAnalyzer:
                 "irene.providers.llm", "irene.providers.voice_trigger", "irene.providers.nlu",
                 "irene.providers.text_processing", "irene.components", "irene.workflows",
                 "irene.intents.handlers", "irene.inputs", "irene.outputs",
-                "irene.plugins.builtin", "irene.runners"
+                "irene.runners"
             ]
     
     def _get_entry_points_catalog(self) -> Dict[str, List[str]]:
@@ -625,16 +625,8 @@ class IreneBuildAnalyzer:
     
     def _analyze_plugins(self, config: Dict[str, Any], requirements: BuildRequirements):
         """Analyze enabled plugins from configuration."""
-        plugins_config = config.get("plugins", {})
-        enabled = plugins_config.get("enabled", [])
-        
-        if enabled:
-            requirements.enabled_providers["irene.plugins.builtin"] = enabled
-            for plugin_name in enabled:
-                module_path = f"irene.plugins.builtin.{plugin_name}"
-                requirements.python_modules.add(module_path)
-        
-        # Analyze plugin-based providers (e.g., plugins.universal_tts.providers.*)
+        # The legacy irene.plugins.builtin system was retired in ARCH-13; only
+        # plugin-based providers remain analyzable here.
         self._analyze_plugin_providers(config, requirements)
     
     def _analyze_plugin_providers(self, config: Dict[str, Any], requirements: BuildRequirements):

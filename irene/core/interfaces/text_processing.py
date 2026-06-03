@@ -8,11 +8,11 @@ base in `providers/text_processing/base.py`.
 
 from abc import abstractmethod
 
-from .plugin import PluginInterface
+from ..metadata import EntryPointMetadata
 from ...intents.context_models import UnifiedConversationContext
 
 
-class TextProcessorPlugin(PluginInterface):
+class TextProcessorPlugin(EntryPointMetadata):
     """Interface for text-processing capability: normalize/transform text for the pipeline."""
 
     @abstractmethod

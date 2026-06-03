@@ -385,10 +385,6 @@ class InteractiveRunnerMixin:
             status_icon = "✅" if info.initialized else "❌"
             print(f"{status_icon} {name.capitalize()}: {'Active' if info.initialized else 'Inactive'}")
         
-        # Plugin status
-        plugin_count = len(self.core.plugin_manager._plugins)
-        print(f"🔌 Plugins loaded: {plugin_count}")
-        
         # Deployment profile
         profile = self.core.component_manager.get_deployment_profile()
         print(f"🚀 Deployment profile: {profile}")

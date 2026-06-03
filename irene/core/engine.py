@@ -18,11 +18,11 @@ from .components import ComponentManager
 from .workflow_manager import WorkflowManager
 from .metrics import MetricsCollector
 
-# NOTE (ARCH-11 / S3): the delivery-layer InputManager (inputs) and the legacy
-# AsyncPluginManager (plugins) are intentionally NOT imported here — `core` must
-# not depend outward. They are constructed by the composition root
-# (`irene/runners/composition.build_core`) and injected; typed `Any` to keep the
-# edge out of `core`.
+# NOTE (ARCH-11 / S3): the delivery-layer InputManager (inputs) is intentionally
+# NOT imported here — `core` must not depend outward. It is constructed by the
+# composition root (`irene/runners/composition.build_core`) and injected; typed
+# `Any` to keep the edge out of `core`. (The legacy plugin manager was retired in
+# ARCH-13.)
 
 logger = logging.getLogger(__name__)
 
@@ -57,7 +57,6 @@ class AsyncVACore:
         config: CoreConfig,
         *,
         component_manager: ComponentManager,
-        plugin_manager: Any,
         input_manager: Any,
         context_manager: ContextManager,
         timer_manager: AsyncTimerManager,
@@ -73,7 +72,6 @@ class AsyncVACore:
         self.config = config
         self.config_path = config_path  # Store config path for component access
         self.component_manager = component_manager
-        self.plugin_manager = plugin_manager
         self.input_manager = input_manager
         self.context_manager = context_manager
         self.timer_manager = timer_manager
@@ -97,19 +95,13 @@ class AsyncVACore:
             
             await self.context_manager.start()
             await self.timer_manager.start()
-            await self.plugin_manager.initialize(self)
-            
+
             # Initialize workflow manager with components
             await self.workflow_manager.initialize()
-            
+
             # Initialize metrics collector (Phase 2: unified analytics)
             logger.info("Metrics collector initialized for unified analytics")
-            
-            # NOTE: Builtin plugin loading removed - functionality moved to intent handlers
-            
-            # Load external plugins
-            await self.plugin_manager.load_plugins()
-            
+
             await self.input_manager.initialize()
             
             self._running = True
@@ -140,7 +132,6 @@ class AsyncVACore:
             await self.context_manager.stop()
             await self.workflow_manager.cleanup()
             await self.input_manager.close()
-            await self.plugin_manager.unload_all()
             await self.component_manager.shutdown_all()
             
             logger.info("Irene stopped successfully")

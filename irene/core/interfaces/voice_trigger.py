@@ -8,11 +8,11 @@ base in `providers/voice_trigger/base.py`.
 
 from abc import abstractmethod
 
-from .plugin import PluginInterface
+from ..metadata import EntryPointMetadata
 from ...utils.audio_data import AudioData, WakeWordResult
 
 
-class VoiceTriggerPlugin(PluginInterface):
+class VoiceTriggerPlugin(EntryPointMetadata):
     """Interface for voice-trigger capability: detect a wake word in audio."""
 
     @abstractmethod

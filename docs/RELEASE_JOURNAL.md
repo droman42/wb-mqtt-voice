@@ -12,6 +12,21 @@ newest entries near the top of each dated section.
 ## Action journal
 
 ### 2026-06-03
+- **ARCH-13 DONE — retired the dormant `irene/plugins/` legacy system.** Reconciliation surfaced that ARCH-11/S2 had
+  re-rooted only the Component/Workflow ports — the **8 capability ports still extended `PluginInterface`** — so completing
+  decision (c) was a prerequisite here (the ARCH-13 entry had anticipated this). Probed the risk surface first: nothing
+  reads `.version`/`.description`/`.configure()` via the plugin contract (components get `.name` from `Component.__init__`,
+  lifecycle from `ComponentPort`), so re-rooting only *relaxes* abstract requirements — can't break instantiation, only MRO
+  (caught at import). Re-rooted all 8 ports onto `EntryPointMetadata` (script-driven), MRO-smoke-checked the
+  `Component`+port diamond on real components. Then **deleted** `irene/plugins/` (`AsyncPluginManager`/`BasePlugin`/
+  `PluginRegistry`/`builtin/`) + `core/interfaces/plugin.py`; stripped the plugin lifecycle from `engine.py` (init/load/
+  unload + the injected `plugin_manager` param/attr) and its construction from `runners/composition.build_core`; rewired the
+  ~8 service-locator status readers (`cli.py`/`base.py` "Plugins loaded" line dropped; `webapi_router` ×4 sites +
+  `webapi_runner` plugin blocks removed — the `hasattr`-guarded ones were already graceful; `components.py` service-map
+  entry dropped); cleaned dead `irene.plugins.builtin` refs in `build_analyzer.py`. NB: distinct from **QUAL-24** (that's
+  `get_core()` in intent *handlers* — different sites, still open). Verified: all affected modules import, 8/8 contracts
+  kept, suite **85=85 FAILED** (0 net regression), no live refs to retired symbols (only provider docstrings note the old
+  paths). `core→plugins` was already clean from ARCH-11/S3.
 - **ARCH-11 S4 DONE — locked the inversion; ARCH-11 COMPLETE.** Added the 8th import-linter contract "Core does not import
   the outer layers (ARCH-11)" (`source=irene.core`, forbidden `irene.{inputs,workflows,components}`). Found there were **no
   literal ARCH-5 exemptions** to remove — ARCH-5 had simply left these composition-root edges *unenforced* (added no

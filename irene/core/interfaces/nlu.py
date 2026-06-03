@@ -8,12 +8,12 @@ spaCy / keyword NLU providers) implement the separate `NLUProvider` base in
 
 from abc import abstractmethod
 
-from .plugin import PluginInterface
+from ..metadata import EntryPointMetadata
 from ...intents.models import Intent
 from ...intents.context_models import UnifiedConversationContext
 
 
-class NLUPlugin(PluginInterface):
+class NLUPlugin(EntryPointMetadata):
     """Interface for NLU capability: recognize intent + entities from text (offline-first)."""
 
     @abstractmethod

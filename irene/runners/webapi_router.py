@@ -61,21 +61,7 @@ async def _generate_asyncapi_spec(core: AsyncVACore) -> Dict[str, Any]:
                     logger.warning(f"Could not get components from component manager: {e}")
             else:
                 logger.warning("Core does not have component_manager")
-            
-            # Also check plugin manager
-            if hasattr(core, 'plugin_manager'):
-                try:
-                    for name, plugin in core.plugin_manager._plugins.items():
-                        if isinstance(plugin, WebAPIPlugin):
-                            web_components.append((name, plugin))
-                            logger.debug(f"Plugin {name} implements WebAPIPlugin")
-                        else:
-                            logger.debug(f"Plugin {name} does not implement WebAPIPlugin (type: {type(plugin).__name__})")
-                except Exception as e:
-                    logger.warning(f"Could not get plugins from plugin manager: {e}")
-            else:
-                logger.warning("Core does not have plugin_manager")
-            
+
             logger.debug(f"Found {len(web_components)} WebAPIPlugin components for AsyncAPI generation")
             
             # Collect AsyncAPI specs from each component
@@ -724,8 +710,7 @@ def create_webapi_router(
         if core:
             info["core"] = {
                 "input_sources": list(core.input_manager._sources.keys()),
-                "workflows": list(core.workflow_manager.workflows.keys()),
-                "plugins": core.plugin_manager.plugin_count
+                "workflows": list(core.workflow_manager.workflows.keys())
             }
         
         return info
@@ -778,8 +763,7 @@ def create_webapi_router(
             if core:
                 status["core"] = {
                     "running": core.is_running,
-                    "input_sources": len(getattr(core.input_manager, '_sources', {})),
-                    "plugins": getattr(core.plugin_manager, 'plugin_count', 0)
+                    "input_sources": len(getattr(core.input_manager, '_sources', {}))
                 }
             
             # Web client information now handled by individual components
@@ -917,56 +901,7 @@ def create_webapi_router(
                 debug_info["component_names"] = list(available_components.keys())
             else:
                 debug_info["component_manager_available"] = False
-            
-            # Check plugin manager
-            if core and hasattr(core, 'plugin_manager'):
-                debug_info["plugin_manager_available"] = True
-                debug_info["total_plugins"] = len(core.plugin_manager._plugins)
-                
-                # Find WebAPIPlugin components
-                from ..core.interfaces.webapi import WebAPIPlugin
-                web_components = []
-                
-                for name, plugin in core.plugin_manager._plugins.items():
-                    plugin_info = {
-                        "name": name,
-                        "type": type(plugin).__name__,
-                        "is_webapi_plugin": isinstance(plugin, WebAPIPlugin),
-                        "has_get_websocket_spec": hasattr(plugin, 'get_websocket_spec'),
-                        "has_get_router": hasattr(plugin, 'get_router')
-                    }
-                    
-                    if isinstance(plugin, WebAPIPlugin):
-                        web_components.append((name, plugin))
-                        try:
-                            router = plugin.get_router()
-                            plugin_info["router_available"] = router is not None
-                            if router:
-                                plugin_info["router_routes_count"] = len(router.routes)
-                                plugin_info["websocket_routes"] = []
-                                
-                                for route in router.routes:
-                                    if hasattr(route, 'endpoint') and hasattr(route.endpoint, '_websocket_meta'):
-                                        plugin_info["websocket_routes"].append({
-                                            "path": route.path,
-                                            "endpoint": route.endpoint.__name__,
-                                            "has_meta": True
-                                        })
-                                
-                                # Test get_websocket_spec method
-                                if hasattr(plugin, 'get_websocket_spec'):
-                                    spec = plugin.get_websocket_spec()
-                                    plugin_info["websocket_spec"] = spec
-                                
-                        except Exception as e:
-                            plugin_info["error"] = str(e)
-                    
-                    debug_info[f"plugin_{name}"] = plugin_info
-                
-                debug_info["webapi_components_count"] = len(web_components)
-            else:
-                debug_info["plugin_manager_available"] = False
-            
+
             return debug_info
             
         except Exception as e:

@@ -8,13 +8,13 @@ using FastAPI routers.
 from typing import Optional, Any, TYPE_CHECKING
 from abc import abstractmethod
 
-from .plugin import PluginInterface
+from ..metadata import EntryPointMetadata
 
 if TYPE_CHECKING:
     from fastapi import APIRouter  # type: ignore
 
 
-class WebAPIPlugin(PluginInterface):
+class WebAPIPlugin(EntryPointMetadata):
     """
     Interface for plugins that provide web API endpoints.
     
