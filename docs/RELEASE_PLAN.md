@@ -287,7 +287,22 @@ See `docs/review/phase1_architecture_map.md` §5.
       wake-word) keeping whisper/silero as first-class options. Gated by Invariant #4 (provider config →
       config-ui). Split into PR-sized tasks from the design.
 - [ ] **ARCH-11** `[release]` (P1) — **Fix the `core → inputs/workflows/components.base` composition-root edges
-      properly — REVOKES the ARCH-5 reclassification** (which deemed them "legitimate composition-root behavior" and
+      properly — REVOKES the ARCH-5 reclassification.** _**Reconciled + decisions locked 2026-06-03 (ready to execute as a
+      staged refactor):**_ prerequisites met (ARCH-6 ✓, QUAL-28 ✓). **4 edges:** (1) `workflow_manager→inputs.base.
+      InputSource` (type in 3 sigs); (2) `core/components.py→components.base.Component` (24× type/TypeVar/isinstance);
+      (3) `workflow_manager→workflows.base.{Workflow,RequestContext}` — note `RequestContext` actually lives in
+      `intents/context_models.py` (domain), only re-exported by workflows.base → core can import it directly (inward);
+      (4) `engine.py→inputs.manager.InputManager` (**construction**). **User decisions:** edge-4 construction → **move
+      ALL manager construction (Component/Input/Workflow) out of `AsyncVACore` into the runners/a composition module**
+      (purest; touches every runner); input abstraction → **consolidate `InputSource`+`InputPlugin` into ONE port**.
+      **★ NEW sub-fork surfaced by the consolidation (needs a call):** there are **two parallel base hierarchies** —
+      `EntryPointMetadata` (discovery metadata; `InputSource` AND `Component` extend it) vs `PluginInterface` (capability
+      ports `ASRPlugin`/`InputPlugin` extend it, no metadata). Consolidating the input port forces deciding how those two
+      relate, and it **ripples to `Component`** (same split), so it's bigger than inputs. **Staging (each leaves a working
+      app):** S1 input-port consolidation + hierarchy decision · S2 Component+Workflow ports in `core/interfaces` + core
+      imports them · S3 construction inversion (managers→composition/runners, AsyncVACore port-typed) · S4 import-linter
+      contracts forbidding `core→{inputs,workflows,components}.base` + remove the ARCH-5 exemptions. _Original below._
+      (which deemed them "legitimate composition-root behavior" and
       left them unenforced; user reverses that 2026-06-02). Edges: `core.{engine,workflow_manager}→inputs.base`,
       `core.workflow_manager→workflows.base`, `core.components→components.base`. **Fix = invert via DI/ports:** the
       composition root (runners) injects concrete inputs/workflows/components into the core managers through
