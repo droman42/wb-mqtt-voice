@@ -333,13 +333,9 @@ forbidden_modules = [
     "irene.runners",
     "irene.inputs",
 ]
-ignore_imports = [
-    # KNOWN DEBT (QUAL-24): 8 handlers fetch components via `from ...core.engine import get_core`
-    # (service-locator) instead of DI, which transitively pulls the domain into core.engine's
-    # composition root. Ignored here so the contract still enforces the DIRECT domain-clean rule;
-    # the get_core()->DI refactor is tracked as QUAL-24.
-    "irene.intents.handlers.* -> irene.core.engine",
-]
+# QUAL-24 (DONE): the `intents.handlers.* -> core.engine` get_core() escape hatch was removed.
+# Handlers now depend on domain-owned capability ports (irene/intents/ports.py); the application
+# injects the real components inward. No ignore_imports — the domain-clean rule enforces with no hatch.
 
 [[tool.importlinter.contracts]]
 name = "Config has no upward imports (ARCH-2)"

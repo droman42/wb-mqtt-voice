@@ -14,6 +14,7 @@ from pydantic import BaseModel
 from .base import IntentHandler
 from ..models import Intent, IntentResult
 from ..context_models import UnifiedConversationContext, ConversationState
+from ..ports import LLMPort
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +34,7 @@ class ConversationIntentHandler(IntentHandler):
         super().__init__()
         self.conversation_context: List[Dict[str, str]] = []
 # Session management now handled by UnifiedConversationContext handler_contexts
-        self.llm_component = None
+        self.llm_component: Optional[LLMPort] = None
         
         # Phase 5: Configuration injection via Pydantic ConversationHandlerConfig
         if config:
@@ -158,22 +159,17 @@ class ConversationIntentHandler(IntentHandler):
                 error=str(e)
             )
     
-    def set_llm_component(self, llm_component):
-        """Set the LLM component reference"""
+    def set_llm_component(self, llm_component: Optional[LLMPort]) -> None:
+        """Set the injected LLM capability port (QUAL-24)."""
         self.llm_component = llm_component
-    
-    async def _get_llm_component(self):
-        """Get LLM component from core (dynamic access pattern)"""
-        if self.llm_component is None:
-            try:
-                from ...core.engine import get_core
-                core = get_core()
-                if core and hasattr(core, 'component_manager'):
-                    self.llm_component = await core.component_manager.get_component('llm')
-            except Exception as e:
-                self.logger.error(f"Failed to get LLM component: {e}")
-                return None
-        
+
+    async def _get_llm_component(self) -> Optional[LLMPort]:
+        """Return the injected LLM capability port (QUAL-24).
+
+        Injected by the application via
+        IntentComponent.post_initialize_handler_dependencies; the domain never
+        reaches into core for it.
+        """
         return self.llm_component
     
     def _get_prompt(self, prompt_type: str, language: str) -> str:

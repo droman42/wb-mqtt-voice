@@ -7,14 +7,12 @@ in TTSComponent. Delegates to TTSComponent for actual functionality.
 
 import logging
 import time
-from typing import List, Dict, Any, TYPE_CHECKING
+from typing import List, Dict, Any, Optional
 
 from .base import IntentHandler
 from ..models import Intent, IntentResult
 from ..context_models import UnifiedConversationContext
-
-if TYPE_CHECKING:
-    from pydantic import BaseModel
+from ..ports import TTSPort
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +29,7 @@ class VoiceSynthesisIntentHandler(IntentHandler):
     
     def __init__(self):
         super().__init__()
-        self._tts_component = None
+        self._tts_component: Optional[TTSPort] = None
 
     # Build dependency methods (TODO #5 Phase 2)
     @classmethod
@@ -277,18 +275,13 @@ class VoiceSynthesisIntentHandler(IntentHandler):
             action_metadata=action_metadata
         )
     
-    async def _get_tts_component(self):
-        """Get TTS component from core"""
-        if self._tts_component is None:
-            try:
-                from ...core.engine import get_core
-                core = get_core()
-                if core and hasattr(core, 'component_manager'):
-                    self._tts_component = await core.component_manager.get_component('tts')
-            except Exception as e:
-                self.logger.error(f"Failed to get TTS component: {e}")
-                return None
-        
+    async def _get_tts_component(self) -> Optional[TTSPort]:
+        """Return the injected TTS capability port (QUAL-24).
+
+        Injected by the application via
+        IntentComponent.post_initialize_handler_dependencies; the domain never
+        reaches into core for it.
+        """
         return self._tts_component
         
     def _get_template(self, template_name: str, language: str, **format_args) -> str:

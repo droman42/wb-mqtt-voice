@@ -8,14 +8,12 @@ in AudioComponent. Delegates to AudioComponent for actual functionality.
 import asyncio
 import logging
 import time
-from typing import List, Dict, Any, TYPE_CHECKING
+from typing import List, Dict, Any, Optional
 
 from .base import IntentHandler
 from ..models import Intent, IntentResult
 from ..context_models import UnifiedConversationContext
-
-if TYPE_CHECKING:
-    from pydantic import BaseModel
+from ..ports import AudioPort
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +30,7 @@ class AudioPlaybackIntentHandler(IntentHandler):
     
     def __init__(self):
         super().__init__()
-        self._audio_component = None
+        self._audio_component: Optional[AudioPort] = None
 
     # Build dependency methods (TODO #5 Phase 2)
     @classmethod
@@ -258,18 +256,13 @@ class AudioPlaybackIntentHandler(IntentHandler):
             success=True
         )
     
-    async def _get_audio_component(self):
-        """Get audio component from core"""
-        if self._audio_component is None:
-            try:
-                from ...core.engine import get_core
-                core = get_core()
-                if core and hasattr(core, 'component_manager'):
-                    self._audio_component = await core.component_manager.get_component('audio')
-            except Exception as e:
-                self.logger.error(f"Failed to get audio component: {e}")
-                return None
-        
+    async def _get_audio_component(self) -> Optional[AudioPort]:
+        """Return the injected audio capability port (QUAL-24).
+
+        Injected by the application via
+        IntentComponent.post_initialize_handler_dependencies; the domain never
+        reaches into core for it.
+        """
         return self._audio_component
         
     def _get_template(self, template_name: str, language: str, **format_args) -> str:

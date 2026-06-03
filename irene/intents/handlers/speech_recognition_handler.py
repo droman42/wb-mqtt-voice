@@ -6,14 +6,12 @@ in ASRComponent. Delegates to ASRComponent for actual functionality.
 """
 
 import logging
-from typing import List, Dict, Any, TYPE_CHECKING
+from typing import List, Dict, Any, Optional
 
 from .base import IntentHandler
 from ..models import Intent, IntentResult
 from ..context_models import UnifiedConversationContext
-
-if TYPE_CHECKING:
-    from pydantic import BaseModel
+from ..ports import ASRPort
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +29,7 @@ class SpeechRecognitionIntentHandler(IntentHandler):
     
     def __init__(self):
         super().__init__()
-        self._asr_component = None
+        self._asr_component: Optional[ASRPort] = None
 
     # Build dependency methods (TODO #5 Phase 2)
     @classmethod
@@ -220,18 +218,13 @@ class SpeechRecognitionIntentHandler(IntentHandler):
             success=False
         )
     
-    async def _get_asr_component(self):
-        """Get ASR component from core"""
-        if self._asr_component is None:
-            try:
-                from ...core.engine import get_core
-                core = get_core()
-                if core and hasattr(core, 'component_manager'):
-                    self._asr_component = await core.component_manager.get_component('asr')
-            except Exception as e:
-                self.logger.error(f"Failed to get ASR component: {e}")
-                return None
-        
+    async def _get_asr_component(self) -> Optional[ASRPort]:
+        """Return the injected ASR capability port (QUAL-24).
+
+        Injected by the application via
+        IntentComponent.post_initialize_handler_dependencies; the domain never
+        reaches into core for it.
+        """
         return self._asr_component
         
 

@@ -8,15 +8,14 @@ Adapted from core_commands.py for the new intent architecture.
 import logging
 import time
 from datetime import datetime
-from typing import List, Optional, Dict, Any, Type, TYPE_CHECKING
+from typing import List, Optional, Dict, Any, Type
 from ...__version__ import __version__
+
+from pydantic import BaseModel
 
 from .base import IntentHandler
 from ..models import Intent, IntentResult
 from ..context_models import UnifiedConversationContext
-
-if TYPE_CHECKING:
-    from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
 
@@ -78,7 +77,7 @@ class SystemIntentHandler(IntentHandler):
     
     # Configuration metadata methods
     @classmethod
-    def get_config_schema(cls) -> Type["BaseModel"]:
+    def get_config_schema(cls) -> Type[BaseModel]:
         """Return configuration schema for system handler"""
         from ...config.models import SystemHandlerConfig
         return SystemHandlerConfig
@@ -328,11 +327,9 @@ class SystemIntentHandler(IntentHandler):
         
         # Update context and preferences using context manager
         try:
-            # Get context manager from core to update language preference
-            from ...core.engine import get_core
-            core = get_core()
-            if core and hasattr(core, 'context_manager'):
-                await core.context_manager.update_language_preference(context.session_id, target_language)
+            # Use the injected context manager to update language preference (QUAL-24)
+            if self.context_manager is not None:
+                await self.context_manager.update_language_preference(context.session_id, target_language)
             else:
                 # Fallback: update context directly
                 context.language = target_language

@@ -6,11 +6,12 @@ in LLMComponent. Delegates to LLMComponent for actual functionality.
 """
 
 import logging
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 
 from .base import IntentHandler
 from ..models import Intent, IntentResult
 from ..context_models import UnifiedConversationContext
+from ..ports import LLMPort
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +28,7 @@ class TextEnhancementIntentHandler(IntentHandler):
     
     def __init__(self):
         super().__init__()
-        self._llm_component = None
+        self._llm_component: Optional[LLMPort] = None
 
     # Build dependency methods (TODO #5 Phase 2)
     @classmethod
@@ -201,18 +202,13 @@ class TextEnhancementIntentHandler(IntentHandler):
             self.logger.error(f"Text correction error: {e}")
             return self._error_result(context, f"Text correction failed: {e}")
     
-    async def _get_llm_component(self):
-        """Get LLM component from core"""
-        if self._llm_component is None:
-            try:
-                from ...core.engine import get_core
-                core = get_core()
-                if core and hasattr(core, 'component_manager'):
-                    self._llm_component = await core.component_manager.get_component('llm')
-            except Exception as e:
-                self.logger.error(f"Failed to get LLM component: {e}")
-                return None
-        
+    async def _get_llm_component(self) -> Optional[LLMPort]:
+        """Return the injected LLM capability port (QUAL-24).
+
+        Injected by the application via
+        IntentComponent.post_initialize_handler_dependencies; the domain never
+        reaches into core for it.
+        """
         return self._llm_component
         
 

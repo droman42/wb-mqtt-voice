@@ -663,14 +663,24 @@ See `docs/review/phase1_architecture_map.md` §5.
       enabled block — the QUAL-15 bug), zero false positives (TTS/audio `console` are real → pass; NLU cascade
       clean). Folds into ARCH-5 (CI). Note: text-processor **stage-routing** completeness (dead `command_input`
       stage) is provider-name-orthogonal → stays under QUAL-13.
-- [ ] **QUAL-24** (P2) — **Service-locator → DI in handlers (found by ARCH-5).** 8 intent handlers
-      (`speech_recognition`, `audio_playback`, `voice_synthesis`, `system`, `conversation`, `provider_control`,
-      `text_enhancement`, `translation`) fetch components via `from ...core.engine import get_core` →
-      `core.component_manager.get_component(...)` — a service-locator that makes the **domain reach into the
-      composition root** (transitively pulling components/inputs/workflows). Convert to **dependency injection**
-      (inject the needed components via the existing handler-DI path, like the monitoring component injection),
-      then **remove the `ignore_imports` exception** from the ARCH-5 domain contract so it enforces with no
-      escape hatch. Domain-cleanliness; relates to ARCH-1.
+- [x] **QUAL-24** (P2) — **DONE 2026-06-03 (approach refined + user-approved, Invariant #8).** Service-locator → DI in
+      8 handlers. **Approach (user chose Option A — domain-owned ports, over the entry's looser "inject components"
+      sketch, to truly satisfy Invariant #3):** added domain-owned capability **ports** `irene/intents/ports.py`
+      (`LLMPort`/`TTSPort`/`AudioPort`/`ASRPort` + shared `ComponentControlPort` + `ComponentControlRegistryPort`,
+      Protocols); the 8 handlers now depend only on these domain abstractions and the application
+      (`IntentComponent.post_initialize_handler_dependencies`) injects the real components inward as **structural**
+      impls (no component imports the port → no new edges). `system` uses the already-injected `context_manager`;
+      `provider_control` gets the registry port. **Removed** the `from ...core.engine import get_core` service-locator
+      from every handler and the **`ignore_imports` escape hatch** from the ARCH-1 contract — ARCH-1 now holds with
+      **no hatch** (9/9 contracts kept), proving the transitive `intents→core.engine→{components,inputs,workflows}`
+      pull is severed. Opportunistic Invariant #9: removed the `TYPE_CHECKING`/`pydantic` guards in the 6 touched
+      handlers that had them. Found a latent bug en route (the old `await component_manager.get_component(...)` awaited a
+      **sync** method — the fallback was already broken; injection is what worked). **Invariant #4:** no backend
+      contract changed (internal DI only) → config-ui untouched. Verified: suite 85=85 FAILED (0 net regression).
+      **Byproduct finding (surfaced for decision, not yet scoped):** `core.engine.get_core()` now has **zero callers** —
+      the whole global-core service-locator (`get_core`/`set_core`/`_global_core`) is orphaned (still `set_core`'d in
+      engine, never read). Removing it touches `engine.py` + 3 test files, so it is **out of QUAL-24's scope** pending a
+      user call (remove now vs. file a follow-up).
 - [x] **QUAL-25** [DFLOW] (P1) — **End-to-end dataflow & context-models review.** **DONE 2026-06-02** →
       `docs/review/dataflow_review.md` (~9 P0, ~20 P1, long P2 tail; 5 parallel tracers → synthesis →
       adversarial-verify on the headline NEW P0s). **Headline NEW finding: a field rename `Intent.text`→`raw_text`

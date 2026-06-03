@@ -6,14 +6,12 @@ across multiple components. Provides unified provider management.
 """
 
 import logging
-from typing import List, Dict, Any, TYPE_CHECKING
+from typing import List, Dict, Any, Optional
 
 from .base import IntentHandler
 from ..models import Intent, IntentResult
 from ..context_models import UnifiedConversationContext
-
-if TYPE_CHECKING:
-    from pydantic import BaseModel
+from ..ports import ComponentControlRegistryPort
 
 logger = logging.getLogger(__name__)
 
@@ -31,6 +29,11 @@ class ProviderControlIntentHandler(IntentHandler):
     def __init__(self):
         super().__init__()
         self._components = {}
+        self._component_registry: Optional[ComponentControlRegistryPort] = None
+
+    def set_component_registry(self, registry: Optional[ComponentControlRegistryPort]) -> None:
+        """Set the injected component-control registry port (QUAL-24)."""
+        self._component_registry = registry
 
     # Build dependency methods (TODO #5 Phase 2)
     @classmethod
@@ -327,17 +330,21 @@ class ProviderControlIntentHandler(IntentHandler):
         return ""
     
     async def _get_component(self, component_type: str):
-        """Get component from core"""
+        """Get a controllable component by type via the injected registry (QUAL-24).
+
+        The registry port is injected by the application; the domain never reaches
+        into core for it.
+        """
         if component_type not in self._components:
+            if self._component_registry is None:
+                self.logger.error(f"No component registry injected; cannot get {component_type} component")
+                return None
             try:
-                from ...core.engine import get_core
-                core = get_core()
-                if core and hasattr(core, 'component_manager'):
-                    self._components[component_type] = await core.component_manager.get_component(component_type)
+                self._components[component_type] = self._component_registry.get_component(component_type)
             except Exception as e:
                 self.logger.error(f"Failed to get {component_type} component: {e}")
                 return None
-        
+
         return self._components[component_type]
         
     def _error_result(self, context: UnifiedConversationContext, error: str) -> IntentResult:

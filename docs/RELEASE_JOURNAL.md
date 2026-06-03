@@ -12,6 +12,22 @@ newest entries near the top of each dated section.
 ## Action journal
 
 ### 2026-06-03
+- **QUAL-24 DONE — service-locator → domain-owned ports in 8 handlers (Invariant #3, user-approved Option A).**
+  Process note: I initially started this by grepping code and nearly committed to injecting `component_manager` (which
+  removes the *import* but leaves the domain runtime-coupled to a core registry — an Invariant #3 violation). The user
+  stopped me, pointed to the Invariants. Re-anchored on #3/#5/#8/#9, read the invariants + `phase1_architecture_map.md`
+  (§2.3–2.5: intents=domain, core=application; `intents→core` is the outward sin), and brought a hexagon-compliant
+  proposal. **User chose Option A (domain-owned ports).** Added `irene/intents/ports.py` (Protocols: `LLMPort`/`TTSPort`/
+  `AudioPort`/`ASRPort`, shared `ComponentControlPort`, `ComponentControlRegistryPort`); the 8 handlers depend only on
+  these; `IntentComponent.post_initialize_handler_dependencies` injects the real components inward as structural impls
+  (components import nothing → no new edges). `system` reuses the already-injected `context_manager`; `provider_control`
+  gets the registry port. Removed `get_core()` from every handler + the ARCH-1 `ignore_imports` hatch — **ARCH-1 now holds
+  with no hatch (9/9 kept)**, proving the transitive `intents→core.engine→{components,inputs,workflows}` pull is gone.
+  Honored Invariant #9 (removed `TYPE_CHECKING` guards in the 6 touched handlers that had them; the 2 untouched handlers'
+  guards stay for QUAL-32). Caught a latent bug: the old `await component_manager.get_component(...)` awaited a **sync**
+  method, so the get_core fallback was already broken — injection is what actually worked. Invariant #4: no backend
+  contract changed → config-ui untouched. Suite 85=85 FAILED (0 net regression). **Byproduct:** `get_core()`/`set_core`/
+  `_global_core` are now fully orphaned — surfaced in the QUAL-24 ledger entry for a remove-now-vs-follow-up decision.
 - **ARCH-12 DONE — removed the last two residual upward edges; locked `utils` with contract #9.** Edge 1
   (`utils.vad → core.metrics`) was a **dead import** (`get_metrics_collector` imported but never called — a Phase-4
   leftover after VAD metrics unified into `MetricsCollector`); deleted it. Edge 2 (`utils.logging → config.models`):

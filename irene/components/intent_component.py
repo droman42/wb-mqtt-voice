@@ -232,39 +232,45 @@ class IntentComponent(Component, WebAPIPlugin):
         Args:
             component_manager: The component manager containing all initialized components
         """
+        # QUAL-24: handlers depend only on the domain-owned ports in
+        # `irene/intents/ports.py`; here the application injects the real
+        # components (which satisfy those Protocols structurally) inward, so the
+        # domain never reaches into core via get_core(). Map: handler entry-point
+        # name -> (handler attribute, component name).
+        capability_ports = {
+            'conversation': ('llm_component', 'llm'),
+            'translation_handler': ('_llm_component', 'llm'),
+            'text_enhancement_handler': ('_llm_component', 'llm'),
+            'voice_synthesis_handler': ('_tts_component', 'tts'),
+            'audio_playback_handler': ('_audio_component', 'audio'),
+            'speech_recognition_handler': ('_asr_component', 'asr'),
+        }
         try:
-            logger.info("Starting intent handler dependency injection (post-initialization)...")
-            
+            logger.info("Starting intent handler capability-port injection (post-initialization)...")
+
             # Get available components - all should be initialized at this point
             components = component_manager.get_components()
-            
-            # Get all handler instances
             handlers = self.handler_manager.get_handlers()
-            
+
             injection_results = []
-            
+
             for handler_name, handler in handlers.items():
-                # Inject LLM component if handler needs it (specifically ConversationIntentHandler)
-                if handler_name == 'conversation':
-                    if 'llm' in components:
-                        handler.llm_component = components['llm']
-                        logger.info(f"✅ Injected LLM component into {handler_name} handler")
-                        injection_results.append(f"{handler_name}: LLM injected")
-                    else:
-                        handler.llm_component = None
-                        logger.warning(f"⚠️ LLM component not available - {handler_name} handler will operate in limited mode")
-                        injection_results.append(f"{handler_name}: LLM unavailable")
-                
-                # Add other component injections as needed for future handlers
-                # Example:
-                # if handler_name == 'some_other_handler' and 'other_component' in components:
-                #     handler.other_component = components['other_component']
-                #     logger.info(f"✅ Injected other component into {handler_name} handler")
-            
-            logger.info(f"Intent handler dependency injection completed: {injection_results}")
-                    
+                if handler_name in capability_ports:
+                    attr, comp_name = capability_ports[handler_name]
+                    component = components.get(comp_name)
+                    setattr(handler, attr, component)
+                    injection_results.append(
+                        f"{handler_name}: {comp_name} {'injected' if component else 'unavailable'}"
+                    )
+                elif handler_name == 'provider_control_handler' and hasattr(handler, 'set_component_registry'):
+                    # provider_control manages providers across ALL component types -> registry port
+                    handler.set_component_registry(component_manager)
+                    injection_results.append(f"{handler_name}: component registry injected")
+
+            logger.info(f"Intent handler capability-port injection completed: {injection_results}")
+
         except Exception as e:
-            logger.error(f"Failed to inject intent handler dependencies during post-initialization: {e}")
+            logger.error(f"Failed to inject intent handler capability ports during post-initialization: {e}")
             # Don't re-raise - this is graceful degradation
 
     def get_providers_info(self) -> str:
