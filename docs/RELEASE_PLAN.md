@@ -673,6 +673,31 @@ _Apply to every remediation task below (from the 4 review docs + QUAL-25/26). So
       `room_context` resolution authored under **ARCH-6**. Gated by Invariant #4 (any donation-schema change → config-ui;
       note the parked T2 pattern fields already exist, so no new schema surface unless extended). Refs:
       `parameter_extraction_review.md` (T2 = the "dead best mechanisms" themes 1+3), QUAL-11 (T1 baseline), Q6/Q7.
+- [ ] **QUAL-36** `[release]` [DFLOW][I18N] (P1) — **Single language source-of-truth; purge hardcoded language codes
+      (theme ④; user observation 2026-06-03).** Hardcoded `"ru"` (and inconsistently `"en"`) language codes pervade the
+      runtime and defeat the installation-agnostic design. **Findings:** (T1) context-ignoring hardcodes — `timer._get_
+      language()` ignores `context.language` entirely (Cyrillic-sniff heuristic → `return "ru"`); `context.py:86` seeds
+      new sessions `language="ru"`. (T2) the systemic bake — `context.language or "ru"` at **63 handler sites** +
+      `entity_resolver.py` ×2. (T3) a real **inconsistency bug** — `hybrid_keyword_matcher.py:422` defaults to `'en'`
+      while everything else defaults `'ru'`, so an unset `context.language` partitions keywords by the wrong language.
+      (T4) `def …(language: str = "ru")` default params across handlers. (T5) baked `["ru","en"]` sets (`system.py:315`,
+      `text_processor_component`). **Target architecture (user, 2026-06-03):** config declares the **supported-languages
+      list + default**; the **session/context** identifies the language *from the supported list* (default if unconfident/
+      out-of-list — **silent fallback**, user-chosen); **all downstream just READS `context.language`** — no fallback,
+      no re-detection, no literals. So the fix is *not* relocating the default to 70 sites — it's **make `context.language`
+      an invariant (always a valid supported language) then DELETE the fallbacks**. **Hexagonal (Invariant #3,
+      user-required):** config (`config/models.py:315-316` already declares `supported_languages`/`default_language` —
+      consolidate as the one source) is read at the **composition root** and the plain values are **injected inward** —
+      `ContextManager` gets `default_language` to seed with (same DI pattern as its existing `max_history_turns`); the NLU
+      component gets the supported-list + default to **clamp detection**. Domain (handlers, `context_models`) **never
+      imports config** — it reads the resolved `context.language` field. **Scope:** (1) consolidate/confirm the config
+      source; (2) inject + seed context with the default (fix `context.py:86`); (3) detection clamps to supported-list →
+      default; (4) establish the invariant (context.language never None/out-of-list); (5) delete the 63 `or "ru"`
+      fallbacks → bare `context.language`; rip out the `_get_language` re-detection heuristics; fix the hybrid `'en'`
+      divergence; drop the `language="ru"` default params; (6) make the `["ru","en"]` set config-driven. Done when: no
+      hardcoded language literal remains in `irene/` runtime (outside config defaults + tests), and an English-primary
+      config produces English fallbacks end-to-end. Sibling to **QUAL-32** (cross-cutting purge). Refs: `RELEASE_JOURNAL.md`
+      2026-06-03 findings.
 
 ### Tests (TEST)
 > **Strategy (decided 2026-06-01): do NOT keep repairing the existing suite.** Most tests were written against

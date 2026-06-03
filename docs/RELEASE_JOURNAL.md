@@ -12,6 +12,20 @@ newest entries near the top of each dated section.
 ## Action journal
 
 ### 2026-06-03
+- **Filed QUAL-36 — single language source-of-truth; purge hardcoded language codes (user observation 2026-06-03).**
+  User spotted a hardcoded `"ru"` in a handler and suspected it was systemic — verified: it is. Audit found `context.
+  language or "ru"` at **63 handler sites** + `entity_resolver` ×2; context-ignoring hardcodes (`timer._get_language`
+  re-detects + `return "ru"`, ignoring the NLU's detected language; `context.py:86` seeds sessions `"ru"`); a real
+  **inconsistency bug** (`hybrid_keyword_matcher:422` defaults `'en'` vs everything else `'ru'`); `language="ru"` default
+  params; baked `["ru","en"]` sets. **Target architecture (decided with user):** config declares **supported-languages +
+  default** → the **session resolves language ONCE** (detection clamped to the supported list, silent fallback to default
+  if unconfident/out-of-list) → **downstream just reads `context.language`** with NO fallback/re-detection/literals. The
+  insight: don't relocate the default to 70 sites — make `context.language` an **invariant** and DELETE the fallbacks
+  (theme ④ "a field means one thing end-to-end"). **Hexagonal (user-required):** config values are read at the
+  composition root and **injected inward** (`ContextManager` gets `default_language` to seed with — same DI as its
+  `max_history_turns`; NLU component gets supported-list+default to clamp detection); domain never imports config. The
+  config fields already exist (`config/models.py:315-316`). User chose: seed-context-read-context-only + silent fallback.
+  _Not yet implemented — filed for a focused pass._
 - **Donation CHOICE-surface audit + correction (user observation; QUAL-29 migration quality).** Verified Russian
   `choice_surfaces` across all 30 CHOICE params / 14 handlers. Two findings, opposite directions:
   **(1)** The genuinely-missing-Russian bug (the timer-class) was only `timer.unit` — fixed in QUAL-11 Stage D. All
