@@ -12,6 +12,18 @@ newest entries near the top of each dated section.
 ## Action journal
 
 ### 2026-06-03
+- **ARCH-12 DONE — removed the last two residual upward edges; locked `utils` with contract #9.** Edge 1
+  (`utils.vad → core.metrics`) was a **dead import** (`get_metrics_collector` imported but never called — a Phase-4
+  leftover after VAD metrics unified into `MetricsCollector`); deleted it. Edge 2 (`utils.logging → config.models`):
+  relocated the standalone `LogLevel` enum **into `utils.logging`** and re-exported it from `config.models`, inverting
+  the edge to `config → utils` (downward, allowed) while every `from config.models import LogLevel` still resolves;
+  dropped the now-dead `from enum import Enum` in `config.models`. Added the 9th import-linter contract "Utils
+  (foundation) depends on nothing upward" (`source=irene.utils`, forbids all 9 sibling layers), teeth-checked (planted
+  `utils→config` → BROKEN). One self-inflicted hiccup: the teeth-check's `git checkout -- vad.py` clobbered the
+  uncommitted edge-1 edit (restoring the dead import); re-applied it and re-verified clean — lesson: don't `git checkout`
+  a file with uncommitted edits to undo a planted violation. Verified: no cycle, 9/9 contracts kept, suite 85=85 FAILED
+  (0 net regression). Synced `phase1_architecture_map.md` §2.3 (Invariant #5) — closes the last backwards-edge findings
+  there. The whole hexagon (ARCH-1..6, 11, 12) is now clean *and* enforced by contracts.
 - **ARCH-13 DONE — retired the dormant `irene/plugins/` legacy system.** Reconciliation surfaced that ARCH-11/S2 had
   re-rooted only the Component/Workflow ports — the **8 capability ports still extended `PluginInterface`** — so completing
   decision (c) was a prerequisite here (the ARCH-13 entry had anticipated this). Probed the risk surface first: nothing

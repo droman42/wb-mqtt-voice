@@ -427,6 +427,27 @@ forbidden_modules = [
     "irene.components",
 ]
 
+[[tool.importlinter.contracts]]
+# ARCH-12: utils is the foundational kernel — it must not reach UP into any application/config/delivery
+# layer. The two residual upward edges were removed: utils.vad->core.metrics (a dead import) and
+# utils.logging->config.models (the LogLevel enum, relocated INTO utils.logging and re-exported by
+# config.models). NB: config.models now depends on utils.logging (downward) — that is the intended
+# direction and is allowed.
+name = "Utils (foundation) depends on nothing upward (ARCH-12)"
+type = "forbidden"
+source_modules = ["irene.utils"]
+forbidden_modules = [
+    "irene.core",
+    "irene.config",
+    "irene.components",
+    "irene.intents",
+    "irene.workflows",
+    "irene.inputs",
+    "irene.providers",
+    "irene.runners",
+    "irene.web_api",
+]
+
 [tool.mypy]
 # Basic settings - detailed configuration in mypy.ini (matching wb-mqtt-bridge)
 python_version = "3.11"

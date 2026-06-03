@@ -7,9 +7,24 @@ Provides logging configuration for the entire Irene system.
 import logging
 import sys
 from datetime import datetime
+from enum import Enum
 from pathlib import Path
 from typing import Optional
-from ..config.models import LogLevel
+
+
+class LogLevel(str, Enum):
+    """Logging levels.
+
+    ARCH-12: relocated here from `config.models` so the foundational `utils`
+    layer no longer reaches up into `config`. `config.models` re-exports it for
+    backward compatibility, so existing `from ..config.models import LogLevel`
+    imports keep working.
+    """
+    DEBUG = "DEBUG"
+    INFO = "INFO"
+    WARNING = "WARNING"
+    ERROR = "ERROR"
+    CRITICAL = "CRITICAL"
 
 
 def _rotate_log_file(log_file: Path) -> None:

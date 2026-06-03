@@ -17,22 +17,16 @@ import re
 import logging
 from typing import Optional, Any, Dict, List, Type, Union
 from pathlib import Path
-from enum import Enum
 from ..__version__ import __version__
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 from pydantic_settings import BaseSettings
 
+# ARCH-12: LogLevel now lives in the foundational utils layer (was here); re-exported
+# so the utils→config upward edge is gone while `config.models.LogLevel` still resolves.
+from ..utils.logging import LogLevel
+
 logger = logging.getLogger(__name__)
-
-
-class LogLevel(str, Enum):
-    """Logging levels"""
-    DEBUG = "DEBUG"
-    INFO = "INFO"
-    WARNING = "WARNING"
-    ERROR = "ERROR"
-    CRITICAL = "CRITICAL"
 
 
 # ============================================================

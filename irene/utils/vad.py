@@ -19,7 +19,8 @@ from functools import lru_cache
 import numpy as np
 
 from .audio_data import AudioData
-from ..core.metrics import get_metrics_collector
+# ARCH-12: dead import removed — metrics are emitted by callers, not by vad
+# (Phase 4 unified VAD metrics into MetricsCollector); this kept `utils → core`.
 
 logger = logging.getLogger(__name__)
 

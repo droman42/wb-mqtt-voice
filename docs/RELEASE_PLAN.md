@@ -365,11 +365,16 @@ See `docs/review/phase1_architecture_map.md` §5.
       `workflow_manager`/context refactor reshapes the `core→workflows` edge); ARCH-11 is the final hexagon-tightening
       that makes those two coherent and enforced. Refs: `phase1_architecture_map.md` §2.3 (core-orchestrating-outward
       row, "legitimize via DI"), §5 step 6.
-- [ ] **ARCH-12** `[deferred]` (P2) — **Residual upward edges** (benign, no functional impact; not import-linter
-      violations today). `utils.vad → core.metrics` (metrics should be a port injected into utils, or vad shouldn't
-      emit metrics directly) and `utils.logging → config.models` (a `LogLevel` enum reach-up). Captured to close the
-      single-ledger gap (Invariant #6) — these were the only findings living solely in a review doc
-      (`phase1_architecture_map.md` §2.3). Deferred: do post-Gate-2 (or alongside ARCH-11) if cheap.
+- [x] **ARCH-12** `[release]` (P2) — **DONE 2026-06-03.** Removed both residual upward edges + locked utils with a 9th
+      import-linter contract. **Edge 1** (`utils.vad → core.metrics`): turned out to be a **dead import** —
+      `get_metrics_collector` was imported but never called (Phase-4 leftover after VAD metrics unified into
+      `MetricsCollector`); deleted it. **Edge 2** (`utils.logging → config.models`): the `LogLevel` enum (a standalone
+      5-value enum) was **relocated into `utils.logging`** and re-exported from `config.models` — so the edge inverts to
+      `config → utils` (downward, allowed) while every `from config.models import LogLevel` keeps resolving; dropped the
+      now-dead `from enum import Enum` in `config.models`. Added contract **"Utils (foundation) depends on nothing upward
+      (ARCH-12)"** (`source=irene.utils`, forbids core/config/components/intents/workflows/inputs/providers/runners/web_api)
+      — teeth-checked (planted `utils→config` → BROKEN). Verified: no cycle, 9/9 contracts kept, suite 85=85 FAILED (0 net
+      regression). Closes the last `phase1_architecture_map.md` §2.3 backwards-edge findings.
 - [x] **ARCH-13** `[release]` (P2) — **DONE 2026-06-03.** Retired the dormant `irene/plugins/` legacy system. Re-rooted
       the **8 capability ports** (`ASR/TTS/Audio/LLM/NLU/TextProcessor/VoiceTrigger/WebAPI Plugin`) off `PluginInterface`
       onto `EntryPointMetadata` (completing decision (c) — MRO smoke-checked: the `Component`+port diamond resolves, real

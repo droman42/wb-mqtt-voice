@@ -102,7 +102,14 @@ problems are **directional violations**, not cycles.
 > legitimate application→driven-adapter relationship, so no port ceremony. **ARCH-5 linter:** forbid
 > `components → web_api`/`analysis`, except allow `nlu_analysis → analysis` (the boundary).
 | **core orchestrating outward** (engine/workflow_manager → inputs/workflows/components base) | `core.components→components.base`, `core.workflow_manager→workflows.base`, `core.{engine,workflow_manager}→inputs.base` | mostly composition-root behavior; legitimize via DI in the hexagon (§5) |
-| **utils→core.metrics** | `utils.vad→core.metrics` | metrics should be a port injected into utils, or vad shouldn't emit metrics directly |
+| **utils→core.metrics** ✅ ARCH-12 | `utils.vad→core.metrics` | metrics should be a port injected into utils, or vad shouldn't emit metrics directly |
+
+> **✅ ARCH-12 DONE (2026-06-03).** Both residual **utils→ upward** edges removed and locked with the 9th import-linter
+> contract *"Utils (foundation) depends on nothing upward (ARCH-12)"*. `utils.vad→core.metrics` was a **dead import**
+> (`get_metrics_collector` imported, never called — Phase-4 leftover) → deleted. `utils.logging→config.models` (the
+> `LogLevel` enum reach-up, in the row above) → `LogLevel` **relocated into `utils.logging`**, re-exported by
+> `config.models`, inverting the edge to `config→utils` (downward). `utils` is now a clean foundational kernel.
+> (The **core orchestrating outward** row was resolved separately by **ARCH-11** S1-S4 + contract #8.)
 
 ### 2.4 The god-module: `intents/models.py` (in-degree **67**, by far the highest)
 It currently defines, in one file in the intent layer: `AudioData`, `WakeWordResult` (generic IO primitives) ·
