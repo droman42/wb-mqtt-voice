@@ -266,8 +266,8 @@ class ConversationIntentHandler(IntentHandler):
         """Handle conversation start intent"""
         # Clear any existing conversation history in unified context
         conversation_type = "reference" if intent.action == "reference" else "chat"
-        system_prompt = (self._get_prompt("reference_system") if conversation_type == "reference" 
-                        else self._get_prompt("chat_system"))
+        system_prompt = (self._get_prompt("reference_system", context.language) if conversation_type == "reference" 
+                        else self._get_prompt("chat_system", context.language))
         
         # Initialize or reset handler context for conversation
         handler_context = context.get_handler_context("conversation")
@@ -346,7 +346,7 @@ class ConversationIntentHandler(IntentHandler):
         
         # Format query for reference mode
         query = intent.raw_text
-        template = self._get_prompt("reference_template")
+        template = self._get_prompt("reference_template", context.language)
         formatted_prompt = template.format(query)
         
         try:
