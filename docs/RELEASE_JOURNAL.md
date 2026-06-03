@@ -12,6 +12,20 @@ newest entries near the top of each dated section.
 ## Action journal
 
 ### 2026-06-03
+- **QUAL-15 [LLM] DONE (Stages A–C) — real offline foundation + DeepSeek default + VseGPT removed.** The offline LLM
+  posture was fictional (QUAL-14): phantom `console`, `fallback_providers` never iterated, `generate_response` raised
+  offline. **Stage A:** `ConsoleLLMProvider` offline floor (deterministic, always available, localized "unavailable");
+  a real fallback chain (default → fallback_providers → console) driving enhance_text + generate_response (never raises);
+  component `is_available()` excludes the stub (conversation handler unaffected). **Stage B (user):** DeepSeek
+  (`deepseek-chat`, OpenAI-compatible, new default, matching ../personal_vpn); VseGPT removed entirely; offline-safe boot
+  via a new optional `${VAR:-default}` env-var syntax + optional LLM keys (enabled cloud LLM w/o key no longer hard-fails
+  boot → console floor). **Stage C:** `openai.is_available()` → local check (was a network probe returning True on
+  failure); per-call timeouts; providers raise on failure (chain handles fallback, no silent original-text); fixed the
+  dead `universal_llm` ASR-enhance lookup (→ real LLM component). **User-directed during the work:** (1) externalize the
+  hardcoded localized message arrays → moved to `assets/localization/llm/{ru,en}.yaml` (the localization asset category,
+  read via `get_localization`, injected into the console floor); (2) kill VseGPT altogether. Verified: WebAPI boots with
+  no LLM key (console loads, deepseek skips); `test_llm_fallback.py` (4) + suite 30/30; QUAL-23 phantom-console ERROR
+  cleared. Carve-outs: prompt hardening → QUAL-16; real local-model LLM → ARCH-9/10.
 - **QUAL-13 Stage 2 DONE — collapsed the text-processing subsystem; wired both real stages. QUAL-13 complete.**
   Reconciled first (Invariant #5/#8): the QUAL-12 findings still held (TTS spoke raw text; WebAPI 500 on `self.processor`;
   `NumberTextProcessor.process()` bug; dead `_stage_providers`/`number_options`/normalizers config tree). User chose the

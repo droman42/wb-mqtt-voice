@@ -51,11 +51,7 @@ class OpenAILLMProvider(LLMProvider):
         self.default_model = config.get("default_model", "gpt-4o-mini")
         self.max_tokens = config.get("max_tokens", 150)
         self.temperature = config.get("temperature", 0.3)
-        
-        # Cache for availability checks to prevent excessive API calls
-        self._availability_cache = None
-        self._availability_cache_time = 0
-        self._availability_cache_duration = 300  # 5 minutes
+        self.timeout = config.get("timeout", 30)  # per-call timeout (s) — never hang offline
     
     @classmethod
     def _get_default_extension(cls) -> str:
@@ -83,74 +79,19 @@ class OpenAILLMProvider(LLMProvider):
         return {}
     
     async def is_available(self) -> bool:
-        """Check if OpenAI API is available and validate configured model (with caching)"""
-        # Check cache first
-        current_time = time.time()
-        if (self._availability_cache is not None and 
-            current_time - self._availability_cache_time < self._availability_cache_duration):
-            logger.debug("OpenAI provider availability cached: %s", self._availability_cache)
-            return self._availability_cache
-        
+        """LOCAL check only (QUAL-15): the SDK is importable and a key is present. The old version did a
+        network `models.list()` probe and **returned True even when it failed** — so an offline-but-keyed
+        provider loaded, then every call failed at runtime. A runtime call failure now falls through the
+        component's fallback chain instead."""
         try:
-            from openai import AsyncOpenAI
-            if not self.api_key:
-                logger.error("OpenAI API key not configured")
-                self._availability_cache = False
-                self._availability_cache_time = current_time
-                return False
-                
-            client = AsyncOpenAI(api_key=self.api_key, base_url=self.base_url)
-            
-            # Get available models for this API key
-            try:
-                logger.debug("OpenAI provider: Checking model availability (cache miss)")
-                models_response = await client.models.list()
-                available_models = {model.id for model in models_response.data}
-                
-                if self.default_model not in available_models:
-                    logger.error(
-                        "Configured model '%s' not available for this API key. "
-                        "Available models: %s", 
-                        self.default_model, 
-                        sorted(list(available_models))[:10]
-                    )
-                    result = False
-                else:
-                    logger.info(
-                        "OpenAI provider validated: model '%s' available", 
-                        self.default_model
-                    )
-                    result = True
-                
-                # Cache the result
-                self._availability_cache = result
-                self._availability_cache_time = current_time
-                return result
-                
-            except Exception as e:
-                logger.warning(
-                    "Could not validate OpenAI model availability: %s. "
-                    "Proceeding with basic API key check.", e
-                )
-                # Cache the fallback result
-                self._availability_cache = True
-                self._availability_cache_time = current_time
-                return True  # Fallback to basic availability
-                
+            import openai  # noqa: F401
         except ImportError:
             logger.error("OpenAI library not available. Install with: pip install openai>=1.0.0")
-            self._availability_cache = False
-            self._availability_cache_time = current_time
             return False
-        except Exception as e:
-            logger.error("OpenAI availability check failed: %s", e)
+        if not self.api_key:
+            logger.warning("OpenAI API key not configured")
             return False
-    
-    def invalidate_availability_cache(self):
-        """Invalidate the availability cache to force a fresh check"""
-        self._availability_cache = None
-        self._availability_cache_time = 0
-        logger.debug("OpenAI provider availability cache invalidated")
+        return True
     
     async def enhance_text(self, text: str, task: str = "improve", **kwargs) -> str:
         """Enhance text using OpenAI GPT models with smart API routing"""
@@ -174,7 +115,7 @@ class OpenAILLMProvider(LLMProvider):
         
         try:
             from openai import AsyncOpenAI  # type: ignore
-            client = AsyncOpenAI(api_key=self.api_key, base_url=self.base_url)
+            client = AsyncOpenAI(api_key=self.api_key, base_url=self.base_url, timeout=self.timeout)
             
             # Smart routing: use appropriate API for the model
             if model in self._get_chat_compatible_models():
@@ -218,11 +159,8 @@ class OpenAILLMProvider(LLMProvider):
                 return response.choices[0].message.content.strip()
             
         except Exception as e:
-            logger.error(
-                "OpenAI enhancement failed for model '%s' at %s: %s", 
-                model, self.base_url, e
-            )
-            return text  # Return original text on error
+            logger.error("OpenAI enhancement failed for model '%s' at %s: %s", model, self.base_url, e)
+            raise  # QUAL-15: signal failure so the component's fallback chain takes over (no silent original-text)
     
     async def chat_completion(self, messages: List[Dict], **kwargs) -> str:
         """Generate chat completion using OpenAI with smart API routing"""
@@ -232,7 +170,7 @@ class OpenAILLMProvider(LLMProvider):
         
         try:
             from openai import AsyncOpenAI  # type: ignore
-            client = AsyncOpenAI(api_key=self.api_key, base_url=self.base_url)
+            client = AsyncOpenAI(api_key=self.api_key, base_url=self.base_url, timeout=self.timeout)
             
             # Smart routing: use appropriate API for the model
             if model in self._get_chat_compatible_models():
@@ -273,11 +211,8 @@ class OpenAILLMProvider(LLMProvider):
                 return response.choices[0].message.content.strip()
             
         except Exception as e:
-            logger.error(
-                "OpenAI chat completion failed for model '%s' at %s: %s", 
-                model, self.base_url, e
-            )
-            return "Sorry, I couldn't process that request."
+            logger.error("OpenAI chat completion failed for model '%s' at %s: %s", model, self.base_url, e)
+            raise  # QUAL-15: signal failure so the component falls through to the next provider / console
     
     def get_available_models(self) -> List[str]:
         """Return list of known OpenAI models"""

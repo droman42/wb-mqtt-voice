@@ -587,19 +587,20 @@ class ASRComponent(Component, ASRPlugin, WebAPIPlugin):
                     audio_data_obj, provider=provider_name, language=language
                 )
                 
-                # Optional LLM enhancement
+                # Optional LLM enhancement (QUAL-15): the old `plugin_manager.get_plugin("universal_llm")`
+                # was a permanent no-op (no such plugin — the LLM is a *component*). Use the real LLM
+                # component, gated on a REAL model being available (is_available() excludes the console
+                # stub), so this stays a clean no-op offline / without an LLM key.
                 enhanced_text = None
                 if enhance and text.strip():
-                    # Get LLM plugin and enhance text
-                    if hasattr(self, 'core') and self.core:
-                        llm_plugin = self.core.plugin_manager.get_plugin("universal_llm")
-                        if llm_plugin:
-                            try:
-                                enhanced_text = await llm_plugin.enhance_text(
-                                    text, task="improve_speech_recognition"
-                                )
-                            except Exception as e:
-                                logger.warning(f"LLM enhancement failed: {e}")
+                    llm_component = self.get_dependency('llm')
+                    if llm_component and await llm_component.is_available():
+                        try:
+                            enhanced_text = await llm_component.enhance_text(
+                                text, task="improve_speech_recognition"
+                            )
+                        except Exception as e:
+                            logger.warning(f"LLM ASR-enhancement failed: {e}")
                     
                     if enhanced_text:
                         return {

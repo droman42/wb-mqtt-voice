@@ -447,14 +447,26 @@ See `docs/review/phase1_architecture_map.md` §5.
       independently `is_available()`-gates to templates. **NLU-LLM recommendation: keep NLU deterministic +
       offline-first; any LLM assist must be opt-in and LOCAL (not cloud) — gated on a real local LLM, which ties to
       ARCH-9/10 [INFER]. Fix the offline foundation + QUAL-11 extraction first.** Prompt inventory captured for QUAL-16.
-- [ ] **QUAL-15** [LLM] (P1) — Act on QUAL-14. **P0s:** (1) implement a real local LLM fallback (console/echo at
-      minimum, ideally a local-model provider) + register its entry-point, OR drop `console` from configs and
-      document LLM as online-only; add a startup assertion that every `default_provider`/`fallback_providers`
-      resolves to a discovered provider; (2) make `fallback_providers` actually iterate at runtime (mirror
-      TTS/audio, not `keys()[0]`); (3) give `generate_response` a graceful offline outcome (don't raise). **P1s:**
-      `openai.is_available()` local check; per-call timeouts + client reuse; fix the dead ASR `universal_llm`
-      lookup; stop `enhance_text` masking failures as success; `silero_v3.is_available()` local check. NLU-LLM
-      assist (local, opt-in) deferred behind ARCH-9/10 + QUAL-11.
+- [x] **QUAL-15** [LLM] (P1) — **DONE 2026-06-03 (Stages A–C).** Act on QUAL-14: the offline LLM foundation was
+      fictional (phantom `console`, `fallback_providers` never iterated, `generate_response` raised offline).
+      **Stage A (P0s):** real **`ConsoleLLMProvider`** offline floor (+ entry-point) — deterministic, no network, always
+      available, localized "unavailable" message; `fallback_providers` now actually iterates via a shared chain
+      (default → fallback_providers → console terminal) driving both `enhance_text` and `generate_response`;
+      `generate_response` never raises (console terminates the chain). The component's `is_available()` override
+      excludes the console stub (the conversation handler keeps preferring its own template — no regression). Clears the
+      QUAL-23 phantom-console startup ERROR. Localized text externalized to **`assets/localization/llm/{ru,en}.yaml`**
+      (the localization asset category, via `get_localization`) — no hardcoded message arrays.
+      **Stage B (user):** added **DeepSeek** (`deepseek-chat`/DeepSeek-V3, OpenAI-compatible at api.deepseek.com, the new
+      `default_provider`, matching `../personal_vpn`) and **removed VseGPT entirely** (provider/entry-point/schema/
+      credential/alias/configs). **Offline-safe boot:** added optional env-var syntax **`${VAR:-default}`** + made LLM
+      api_keys optional, so an enabled cloud LLM with no key no longer hard-fails boot (provider declines → console floor).
+      **Stage C (P1s):** `openai.is_available()` → LOCAL check (was a network probe that returned True even on failure);
+      per-call timeouts on openai/anthropic/deepseek; providers now **raise** on call failure (was silent original-text /
+      canned string) so the chain handles fallback; fixed the dead ASR `universal_llm` lookup (→ the real LLM component,
+      gated on a real model). Tests: `test_llm_fallback.py` (4); suite 30/30; WebAPI boots with no LLM key.
+      **Carve-outs:** prompt hardening/externalization of the inline task prompts (openai/anthropic/deepseek) → **QUAL-16**;
+      a real **local-model** LLM (true offline chat, not the stub) + opt-in LLM-NLU assist → **ARCH-9/10 [INFER]**;
+      `silero_v3.is_available()` network HEAD is a TTS concern (separate). NLU-LLM assist deferred behind ARCH-9/10 + QUAL-11.
 - [ ] **QUAL-16** [PROMPTS] (P1) — Prompt hardening for ALL LLM use cases: audit every prompt — asset YAML
       (`assets/prompts/<handler>/<lang>.yaml`) **and inline-in-code prompts** (translation/text_enhancement/
       conversation handlers) — and rewrite for clarity, guardrails, output-format constraints, persona

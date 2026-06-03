@@ -44,6 +44,7 @@ class AnthropicLLMProvider(LLMProvider):
         self.default_model = config.get("default_model", "claude-haiku-4-5-20251001")
         self.max_tokens = config.get("max_tokens", 150)
         self.temperature = config.get("temperature", 0.3)
+        self.timeout = config.get("timeout", 30)  # per-call timeout (s) — never hang offline
         
     @classmethod
     def _get_default_extension(cls) -> str:
@@ -101,7 +102,7 @@ class AnthropicLLMProvider(LLMProvider):
         
         try:
             from anthropic import AsyncAnthropic  # type: ignore
-            client = AsyncAnthropic(api_key=self.api_key)
+            client = AsyncAnthropic(api_key=self.api_key, timeout=self.timeout)
             
             response = await client.messages.create(
                 model=model,
@@ -117,7 +118,7 @@ class AnthropicLLMProvider(LLMProvider):
             
         except Exception as e:
             logger.error(f"Anthropic enhancement failed: {e}")
-            return text  # Return original text on error
+            raise  # QUAL-15: signal failure so the component's fallback chain takes over
     
     async def chat_completion(self, messages: List[Dict], **kwargs) -> str:
         """Generate chat completion using Anthropic Claude"""
@@ -127,7 +128,7 @@ class AnthropicLLMProvider(LLMProvider):
         
         try:
             from anthropic import AsyncAnthropic  # type: ignore
-            client = AsyncAnthropic(api_key=self.api_key)
+            client = AsyncAnthropic(api_key=self.api_key, timeout=self.timeout)
             
             # Convert messages format for Anthropic (extract system message if present)
             system_message = ""
@@ -151,7 +152,7 @@ class AnthropicLLMProvider(LLMProvider):
             
         except Exception as e:
             logger.error(f"Anthropic chat completion failed: {e}")
-            return "Sorry, I couldn't process that request."
+            raise  # QUAL-15: signal failure so the component falls through to the next provider / console
     
     def get_available_models(self) -> List[str]:
         """Return list of available Anthropic models"""
