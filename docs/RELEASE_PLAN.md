@@ -989,11 +989,28 @@ _Apply to every remediation task below (from the 4 review docs + QUAL-25/26). So
       task**, after the architecture/code work settles (image contents, extras, and armv7 viability all depend on
       the post-refactor shape — incl. QUAL-19/20 [ESP32] and ARCH-9/10 [INFER] for the sherpa-onnx/runtime
       footprint). Then verify the minimal x86_64 Docker build (builder feeds analyzer package names to
-      `uv sync --extra`, which expects extra *names* — confirm/fix) + container boots CLI/WebAPI. Gates
-      Definition-of-release item #1. Refs: README-DOCKER, build audit.
+      `uv sync --extra`, which expects extra *names* — confirm/fix, now owned by **BUILD-5**) + container boots
+      CLI/WebAPI. Gates Definition-of-release item #1. Refs: README-DOCKER, build audit.
 - [ ] **BUILD-4** (P1) — config-ui builds & type-checks clean (`npm ci && npm run type-check && npm run build`;
       `dist` is git-ignored). Per Invariant #4 this is an **ongoing gate** — add it to CI (BUILD-2) so backend
       contract changes that break config-ui are caught.
+- [ ] **BUILD-5** (P2) — **Verify conditional/profile-driven build analysis (`build_analyzer`) still works vs the
+      pre-pause (~Sep 2025) baseline.** The revival churned everything the analyzer reads — entry-points, providers,
+      models (ASSET-1/2), and it removed surfaces (`train_schedule` handler QUAL-34, `settings` runner QUAL-21) — and
+      **ARCH-13 just edited `build_analyzer.py`** (dropped the now-deleted `irene.plugins.builtin` discovery + a fallback
+      namespace). So the analyzer's emitted build requirements may have drifted or broken. **`build_analyzer` =** the
+      `irene-build-analyze` tool (`python -m irene.tools.build_analyzer`) that reads a config/profile and emits the
+      minimal build requirements (which `--extra`s / system packages / python modules per platform) so a *conditional*
+      image carries only what a profile needs — it feeds the Docker build (cf. **BUILD-3**, which it gates). **Checks:**
+      (1) `--list-profiles` + `--validate-all-profiles` pass; (2) `--config <profile>` (minimal/voice/full) emits sane,
+      non-empty requirements with **no references to deleted modules** (esp. `irene.plugins.builtin`); (3) entry-point
+      namespace discovery (`_discover_entry_point_namespaces`) resolves cleanly against the current `pyproject.toml`
+      `[project.entry-points]`; (4) the emitted `--extra` names are real extras `uv sync --extra` accepts (the BUILD-3
+      caveat); (5) `--docker --platform {ubuntu,alpine}` requirement sets look right. **Baseline compare:** diff today's
+      per-profile output against the analyzer's behavior at the pre-pause commit (git history) and explain every delta as
+      intentional (new/removed providers, model refresh) vs a regression. Consider landing a small regression test
+      (golden per-profile requirement sets) so this can't silently rot — coordinate with TEST-7. Refs: build audit,
+      README-DOCKER, BUILD-3.
 
 ### Models & Assets (ASSET)
 - [x] **ASSET-1** — Refresh stale model IDs (Anthropic→Claude 4.x, Whisper large-v3, ElevenLabs multilingual_v2, spaCy 3.8, gpt-4→gpt-4o-mini). → fc85306
