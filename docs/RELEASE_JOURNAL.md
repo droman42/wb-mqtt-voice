@@ -12,6 +12,23 @@ newest entries near the top of each dated section.
 ## Action journal
 
 ### 2026-06-03
+- **QUAL-17 [STREAMAPI] DONE — critical review of the streaming-API exposure; keep/upgrade/replace filed.** Found the
+  surface is **two** independently hand-rolled subsystems, not one: a 474-LOC code-first generator
+  (`irene/api/asyncapi.py` — `@websocket_api`/`WebSocketRegistry`/custom Pydantic→AsyncAPI **2.6.0**) **and** a fully
+  bespoke **923-LOC renderer** at `/asyncapi` (`assets/web/{templates/asyncapi.html, static/js/asyncapi.js,
+  static/css/asyncapi.css}`). **Three ledger-description corrections** (recorded in the review doc): the renderer is
+  **not** `@asyncapi/web-component@2.6.4` — that string is only a *comment* (`asyncapi.py:7`) rationalizing the 2.6.0
+  spec choice, so the code documents a dependency it doesn't use; the main **`/ws` is undecorated → absent** from the
+  spec; the **TTS** endpoints (`/tts/stream`, `/tts/binary`) **are** documented (ledger listed `/ws`, omitted TTS).
+  Tooling scan (June 2026): the official **`@asyncapi/web-component` 2.6.5** is maintained, framework-agnostic,
+  renders 2.x+3.x, and is a clean drop-in fed by the existing `/asyncapi.json`; **FastStream** generates AsyncAPI from
+  Pydantic but is a *broker* framework (Kafka/RabbitMQ/NATS/MQTT/Redis) → adopting it = rewriting the WS transport,
+  wrong shape; `asyncapi-python` is spec→code (opposite direction). **No maintained drop-in introspects raw FastAPI
+  WS routes** → the generator must stay bespoke. **Recommendation = Hybrid:** REPLACE the renderer with the vendored
+  official component (offline-first — no CDN; ≈ −900 LOC) + KEEP-and-improve the generator (fix lossy
+  `_clean_property_for_asyncapi` union/nullable flattening; decide 2.6.0-vs-3.0 deliberately; binary message bindings
+  for ESP32). Hand-off itemized into **QUAL-18** §5. Per Invariant #5, `streaming_api_review.md` written + index row
+  marked `[x]`. No code changed (review-only task).
 - **QUAL-16 [PROMPTS] DONE — externalized + hardened all LLM prompts; live-validated against DeepSeek.** Stage A: the
   6 task prompts (improve/translation/grammar/summarize/expand/chat-default), triplicated inline across the 3 providers
   and language-locked to the provider, → `assets/prompts/llm/{ru,en}.yaml` (system prompt set), keyed by the USER's

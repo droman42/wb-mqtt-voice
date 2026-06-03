@@ -92,7 +92,7 @@ Living findings behind the tasks (Invariant #5). `[x]` = exists; others are prod
 | `dataflow_reconciliation.md` `[x]` | QUAL-26 review-of-reviews — 10 intended-vs-today decisions + Gate 2 framing | QUAL-26 ✓ → QUAL-27..31, QUAL-9/11/13/15/16/22/23, ARCH-6/7, DOC-7/8 |
 | `qual29_choices_decisions.md` | QUAL-29 interactive CHOICE canonical-model decisions (5 cases + parallel-set map + build plan) | QUAL-29 |
 | `declared_param_audit.md` | audit: 19 declared-but-unconsumed donation params across 11 handlers (Bucket A dead / B bypassed) | QUAL-34, QUAL-11 |
-| `streaming_api_review.md` | AsyncAPI streaming-API tooling | QUAL-17/18 |
+| `streaming_api_review.md` `[x]` | AsyncAPI streaming-API tooling — Hybrid: replace renderer / keep+improve generator | QUAL-17 ✓, QUAL-18 |
 | `esp32_wakeword_review.md` | ESP32 + wakeword keep/fix/cut | QUAL-19/20 |
 | `docs/design/mqtt_integration.md` | MQTT output-port design | ARCH-7/8 |
 | `docs/design/onnx_inference_layer.md` | shared sherpa-onnx inference layer (ASR/TTS/wakeword) | ARCH-9/10 |
@@ -488,13 +488,21 @@ See `docs/review/phase1_architecture_map.md` §5.
       labels* (`Currently active:`, `Session:`, `Recent activity:` … in `_prepare_llm_context`) are hardcoded English
       — but they're machine-context serialization, not persona/task prompts, so their localization folds into the
       language-source-of-truth work, not prompt hardening. Refs: `llm_usage_review.md` (the prompt inventory).
-- [ ] **QUAL-17** [STREAMAPI] (P2, must-before-release) — Critically review the streaming-API exposure: the
-      hand-rolled **AsyncAPI 2.6.0** generator (`irene/web_api/asyncapi.py`: `@websocket_api` decorators,
-      `WebSocketRegistry`, custom Pydantic→AsyncAPI conversion) + the `@asyncapi/web-component@2.6.4` renderer at
-      `/asyncapi`, documenting the WebSocket endpoints (`/asr/stream`, `/asr/binary`, `/ws`). Evaluate modern
-      alternatives (AsyncAPI 3.0, maintained generator libraries, current renderers/Studio) — simpler/more
-      maintainable today? Done when: `docs/review/streaming_api_review.md` exists with a keep/upgrade/replace recommendation.
-- [ ] **QUAL-18** [STREAMAPI] (P-TBD) — Act on QUAL-17 (upgrade/replace the AsyncAPI generator + renderer).
+- [x] **QUAL-17** [STREAMAPI] (P2, must-before-release) — Critically reviewed the streaming-API exposure.
+      **Two** bespoke pieces (not one): generator `irene/api/asyncapi.py` (474 LOC, custom Pydantic→AsyncAPI
+      **2.6.0**) **+** a fully **hand-rolled 923-LOC renderer** at `/asyncapi` (`assets/web/{templates/asyncapi.html,
+      static/js/asyncapi.js,static/css/asyncapi.css}`) — **not** the `@asyncapi/web-component@2.6.4` the ledger
+      claimed (that name is only a code comment justifying the 2.6.0 spec choice). Documented channels are
+      `/asr/stream`, `/asr/binary`, `/tts/stream`, `/tts/binary` (**`/ws` is undecorated → undocumented**; TTS
+      endpoints ARE documented — ledger was wrong on both). **Recommendation = Hybrid: REPLACE the renderer**
+      (official, maintained `@asyncapi/web-component` 2.6.5, **vendored** offline — ≈ −900 LOC, the code stops
+      claiming a dep it doesn't use) **+ KEEP-and-improve the generator** (no maintained drop-in introspects raw
+      FastAPI WS routes; FastStream = broker framework, wrong shape; fix lossy `_clean_property_for_asyncapi`;
+      decide 2.6.0-vs-3.0 deliberately). Done: `docs/review/streaming_api_review.md` with keep/upgrade/replace rec.
+- [ ] **QUAL-18** [STREAMAPI] (P-TBD) — Act on QUAL-17 (per `streaming_api_review.md` §5): **(1)** vendor + wire the
+      official `@asyncapi/web-component` at `/asyncapi`, delete the bespoke renderer (≈ −900 LOC); **(2)** fix the
+      lossy `_clean_property_for_asyncapi` union/nullable handling; **(3, scoped separately)** emit AsyncAPI 3.0 +
+      binary message bindings for ESP32 frames; **(4)** retire/repoint the docstring `x-` extension parser.
 - [ ] **QUAL-19** [ESP32] (P2, last pre-release) — Full review & questioning of the ESP32 + wakeword story:
       ESP32 firmware subsystem (ESP-IDF nodes/common/tools, embedded microWakeWord model **not committed**,
       binary-WS audio streaming) — functional vs aspirational; the backend **microWakeWord provider is largely a
