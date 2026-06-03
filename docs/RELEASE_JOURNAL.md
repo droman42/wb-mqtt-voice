@@ -12,6 +12,11 @@ newest entries near the top of each dated section.
 ## Action journal
 
 ### 2026-06-03
+- **QUAL-7 CLOSED-AS-OBSOLETE (Invariant #8, user-approved).** Surfaced while reconciling the QUAL-3..7 static-baseline
+  backlog against Gate-2 relevance: QUAL-7's premise (a `train_schedule` config-master-vs-model mismatch) no longer exists
+  — the `train_schedule` handler + config/assets were removed in **QUAL-34**. Verified `train_schedule` is absent from
+  `config-master.toml`, `config/models.py`, and all of `irene/`/`assets/`/`configs/`. Nothing to reconcile → closed, no code
+  change. (QUAL-3..6 remain valid static-baseline cleanup, none on the Gate-2 critical path.)
 - **QUAL-24 DONE — service-locator → domain-owned ports in 8 handlers (Invariant #3, user-approved Option A).**
   Process note: I initially started this by grepping code and nearly committed to injecting `component_manager` (which
   removes the *import* but leaves the domain runtime-coupled to a core registry — an Invariant #3 violation). The user
