@@ -186,32 +186,38 @@ def decimal_to_text_ru(
 # Text processing with lingua_franca integration
 # Migrated from utils/all_num_to_text.py
 
-def _convert_one_num_float(match_obj: re.Match) -> str:
-    """Convert single number match to text using lingua_franca."""
-    if match_obj.group() is not None:
+def _convert_one_num_float(match_obj: re.Match, language: str = "ru") -> str:
+    """Convert a single matched number to words.
+
+    Russian goes through the in-repo pure-Python implementation (`num_to_text_ru`/`decimal_to_text_ru`)
+    — it's dependency-free (works on the offline/edge target without any extra) and gives proper Russian
+    words rather than ovos's literal "точка". Other languages use **ovos-number-parser** (the maintained
+    successor of the abandoned lingua-franca; optional `text-multilingual` extra); if it's absent the
+    number is left as digits rather than crashing.
+    """
+    s = match_obj.group()
+    if s is None:
+        return s
+    if language == "ru":
         try:
-            # Try to use lingua_franca if available
-            from lingua_franca.format import pronounce_number  # type: ignore
-            return pronounce_number(float(match_obj.group()))
-        except ImportError:
-            # Fallback to Russian implementation for integers
-            try:
-                if '.' in match_obj.group():
-                    return decimal_to_text_ru(match_obj.group())
-                else:
-                    return num_to_text_ru(int(match_obj.group()))
-            except (ValueError, decimal.InvalidOperation):
-                logger.warning(f"Could not convert number: {match_obj.group()}")
-                return match_obj.group()
-    return match_obj.group()
+            return decimal_to_text_ru(s) if '.' in s else num_to_text_ru(int(s))
+        except (ValueError, decimal.InvalidOperation):
+            logger.warning(f"Could not convert number: {s}")
+            return s
+    try:
+        from ovos_number_parser import pronounce_number  # type: ignore
+        return pronounce_number(float(s), lang=language)
+    except Exception:
+        logger.debug(f"ovos-number-parser unavailable for '{language}' — leaving number raw: {s}")
+        return s
 
 
-def _convert_diapazon(match_obj: re.Match) -> str:
+def _convert_diapazon(match_obj: re.Match, language: str = "ru") -> str:
     """Convert range (e.g., '120-130') to text."""
     if match_obj.group() is not None:
         text = str(match_obj.group())
         text = text.replace("-", " тире ")
-        return all_num_to_text(text)
+        return all_num_to_text(text, language)
     return match_obj.group()
 
 
@@ -239,36 +245,34 @@ def all_num_to_text(text: str, language: str = "ru") -> str:
         >>> all_num_to_text("Температура -10 градусов")
         'Температура минус десять градусов'
     """
-    try:
-        # Try to load lingua_franca if available
-        import lingua_franca  # type: ignore
-        lingua_franca.load_language(language)
-        logger.debug(f"Using lingua_franca for language: {language}")
-    except ImportError:
-        logger.debug("lingua_franca not available, using fallback Russian implementation")
-    
+    # Bind the per-call language into the regex callbacks (ovos-number-parser is stateless — no global
+    # `load_language` as lingua-franca had; QUAL-13/ASSET-3).
+    from functools import partial
+    conv = partial(_convert_one_num_float, language=language)
+    diap = partial(_convert_diapazon, language=language)
+
     # Process different number patterns in order of complexity
     # Decimal ranges (e.g., "120.1-120.8")
-    text = re.sub(r'[\d]*[.][\d]+-[\d]*[.][\d]+', _convert_diapazon, text)
-    
+    text = re.sub(r'[\d]*[.][\d]+-[\d]*[.][\d]+', diap, text)
+
     # Negative decimals (e.g., "-30.1")
-    text = re.sub(r'-[\d]*[.][\d]+', _convert_one_num_float, text)
-    
+    text = re.sub(r'-[\d]*[.][\d]+', conv, text)
+
     # Positive decimals (e.g., "44.05")
-    text = re.sub(r'[\d]*[.][\d]+', _convert_one_num_float, text)
-    
+    text = re.sub(r'[\d]*[.][\d]+', conv, text)
+
     # Integer ranges (e.g., "5-10")
-    text = re.sub(r'[\d]-[\d]+', _convert_diapazon, text)
-    
+    text = re.sub(r'[\d]-[\d]+', diap, text)
+
     # Negative integers (e.g., "-10")
-    text = re.sub(r'-[\d]+', _convert_one_num_float, text)
-    
+    text = re.sub(r'-[\d]+', conv, text)
+
     # Positive integers (e.g., "123")
-    text = re.sub(r'[\d]+', _convert_one_num_float, text)
-    
+    text = re.sub(r'[\d]+', conv, text)
+
     # Convert percentages
     text = text.replace("%", " процентов")
-    
+
     return text
 
 
@@ -301,18 +305,9 @@ async def all_num_to_text_async(text: str, language: str = "ru") -> str:
 # Legacy compatibility functions for migration period
 
 def load_language(lang: str) -> None:
-    """
-    Legacy compatibility function for lingua_franca language loading.
-    
-    Args:
-        lang: Language code to load
-    """
-    try:
-        import lingua_franca  # type: ignore
-        lingua_franca.load_language(lang)
-        logger.debug(f"Loaded lingua_franca language: {lang}")
-    except ImportError:
-        logger.debug("lingua_franca not available, language loading skipped")
+    """No-op kept for back-compat. lingua-franca needed a global `load_language`; its successor
+    ovos-number-parser is stateless (language is passed per call), so there is nothing to load."""
+    logger.debug(f"load_language({lang!r}) is a no-op (ovos-number-parser is stateless)")
 
 
 # Phase 4 Enhancement: Unified Text Processing Pipeline

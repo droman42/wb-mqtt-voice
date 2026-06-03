@@ -804,8 +804,15 @@ _Apply to every remediation task below (from the 4 review docs + QUAL-25/26). So
       normal; the real failure signal is a connection **stall/ERR**, not the IP. Verified 2026-06-01: silero.ai,
       alphacephei, github, whisper-CDN and PyPI all reachable and serving real bytes (silero served the real 40MB
       `v4_ru.pt`), so the "silero flaky/dead" reputation was at least partly the proxy stall, not the host.
-- [ ] **ASSET-3** (P2) — DEFERRED — Migrate `lingua-franca` off the abandoned MycroftAI git pin to the OVOS
-      successors (`ovos-number-parser`/`ovos-date-parser`), or mirror/vendor. Refs: `pyproject.toml` note.
+- [x] **ASSET-3** (P2) — **DONE 2026-06-03 (with QUAL-13 Stage 1).** Migrated `lingua-franca` (abandoned MycroftAI git
+      pin) → **`ovos-number-parser>=0.5.1`** (maintained OVOS successor, on PyPI, pure-Python → no armv7 wheel concern).
+      Investigation found irene's real usage was tiny (`pronounce_number` + the stateless successor needs `lang=` per
+      call, no global `load_language`) — confined to `irene/utils/text_processing.py`. **Russian now routes through the
+      dependency-free in-repo pure-Python path** (`num_to_text_ru`/`decimal_to_text_ru` — better than ovos's literal
+      "точка", and works on edge **without** the extra); non-ru uses ovos (degrades to raw digits if the optional extra
+      is absent). `load_language` shim → no-op. Removed the dead git pin from `pyproject.toml` + lock; `ovos-date-parser`
+      NOT added (irene needs no date parsing). _(Remaining: the 4 provider files' lingua-franca dep-hint strings are
+      deleted with those providers in QUAL-13 Stage 2; examples still import lingua_franca — demo-only, harmless.)_
 
 ### Documentation (DOC)
 - [x] **DOC-1** — Sync README/architecture to v15; archive ~28 historical docs to `docs/archive/`. → 4a55519

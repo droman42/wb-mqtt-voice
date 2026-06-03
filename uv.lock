@@ -1067,11 +1067,11 @@ all = [
     { name = "google-cloud-speech" },
     { name = "httpx" },
     { name = "librosa" },
-    { name = "lingua-franca" },
     { name = "numpy" },
     { name = "openai" },
     { name = "openai-whisper" },
     { name = "openwakeword" },
+    { name = "ovos-number-parser" },
     { name = "python-multipart" },
     { name = "pyttsx3" },
     { name = "ru-core-news-md" },
@@ -1150,7 +1150,7 @@ nlu = [
 ]
 text-multilingual = [
     { name = "eng-to-ipa" },
-    { name = "lingua-franca" },
+    { name = "ovos-number-parser" },
     { name = "runorm" },
 ]
 tts = [
@@ -1169,9 +1169,9 @@ voice = [
     { name = "fastapi" },
     { name = "httpx" },
     { name = "librosa" },
-    { name = "lingua-franca" },
     { name = "numpy" },
     { name = "openwakeword" },
+    { name = "ovos-number-parser" },
     { name = "python-multipart" },
     { name = "pyttsx3" },
     { name = "ru-core-news-md" },
@@ -1236,7 +1236,6 @@ requires-dist = [
     { name = "isort", marker = "extra == 'dev'", specifier = ">=5.0.0" },
     { name = "jsonschema", specifier = ">=4.25.0" },
     { name = "librosa", marker = "extra == 'audio-output'", specifier = ">=0.10.0" },
-    { name = "lingua-franca", marker = "extra == 'text-multilingual'", git = "https://github.com/MycroftAI/lingua-franca.git?rev=5bfd75fe5996fd364102a0eec3f714c9ddc9275c" },
     { name = "mypy", marker = "extra == 'dev'", specifier = "==1.15.0" },
     { name = "numpy", specifier = "<2" },
     { name = "numpy", marker = "extra == 'audio-output'", specifier = ">=1.21.0" },
@@ -1245,6 +1244,7 @@ requires-dist = [
     { name = "openai", marker = "extra == 'llm'", specifier = ">=1.0.0" },
     { name = "openai-whisper", marker = "extra == 'advanced-asr'", specifier = ">=20230314" },
     { name = "openwakeword", marker = "extra == 'voice-trigger'", specifier = ">=0.6.0" },
+    { name = "ovos-number-parser", marker = "extra == 'text-multilingual'", specifier = ">=0.5.1" },
     { name = "prompt-toolkit", specifier = ">=3.0.51" },
     { name = "pydantic", specifier = ">=2.0.0" },
     { name = "pydantic-settings", specifier = ">=2.0.0" },
@@ -1439,14 +1439,6 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/64/36/360b5aafa0238e29758729e9486c6ed92a6f37fa403b7875e06c115cdf4a/librosa-0.11.0.tar.gz", hash = "sha256:f5ed951ca189b375bbe2e33b2abd7e040ceeee302b9bbaeeffdfddb8d0ace908", size = 327001 }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/b5/ba/c63c5786dfee4c3417094c4b00966e61e4a63efecee22cb7b4c0387dda83/librosa-0.11.0-py3-none-any.whl", hash = "sha256:0b6415c4fd68bff4c29288abe67c6d80b587e0e1e2cfb0aad23e4559504a7fa1", size = 260749 },
-]
-
-[[package]]
-name = "lingua-franca"
-version = "0.4.3"
-source = { git = "https://github.com/MycroftAI/lingua-franca.git?rev=5bfd75fe5996fd364102a0eec3f714c9ddc9275c#5bfd75fe5996fd364102a0eec3f714c9ddc9275c" }
-dependencies = [
-    { name = "python-dateutil" },
 ]
 
 [[package]]
@@ -2027,6 +2019,19 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/b5/9b/73b7d98b07f4e1f525ad39703e0c5f30ff61c3fa16c8bfe4d99eadc0567a/openwakeword-0.6.0.tar.gz", hash = "sha256:36858d90f1183e307485597a912a4e3c3384b14ea9923f83feaffae7c1565565", size = 70830 }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/8a/33/dafd6822bebe463a9098951d06a0d88fb4f8c946ce087025bc4fa132e533/openwakeword-0.6.0-py3-none-any.whl", hash = "sha256:6f423a4e3ae9dd0e3cd12b50ff8abf69679f687b4ab349d7c82c021c0e2abc9d", size = 60690 },
+]
+
+[[package]]
+name = "ovos-number-parser"
+version = "0.5.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "quebra-frases" },
+    { name = "unicode-rbnf" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/47/84/9271f7ca2a4b9ab9e4d8e7cade1642764a1c0d44c112bbbce9025a7315cc/ovos-number-parser-0.5.1.tar.gz", hash = "sha256:3a5c771a25bf801fcf35ab6923185de8f96f4b3710104d65be2b57f06dffe437", size = 126723 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/c9/e2/9701592e8b5001d982aa73fe4c734ef86e21d1483fa96707ae477160205a/ovos_number_parser-0.5.1-py3-none-any.whl", hash = "sha256:15e47ed2df6415f053b4e3bae418eaca7520a43ab0c5e98292b0a0838e0934cc", size = 149472 },
 ]
 
 [[package]]
@@ -5285,6 +5290,18 @@ wheels = [
 ]
 
 [[package]]
+name = "quebra-frases"
+version = "0.3.7"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "regex" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/04/8f/dcc0beeb6e164f44e03d1501b70733a1d7f069c9d59354911537d84b71e6/quebra_frases-0.3.7.tar.gz", hash = "sha256:ec839ce8825a50ac671d2dff09f1a8563d1686f4954924ad0c6e3cde8e277ed0", size = 8471 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/1d/ea/563631b70a06f82617674adf180aaadbef929fc3184acb49bd219497ec67/quebra_frases-0.3.7-py3-none-any.whl", hash = "sha256:743f993b67777a1ddcdb9d8ad362367b24e2e1b716028d4e4c69770c614ac45a", size = 8559 },
+]
+
+[[package]]
 name = "rapidfuzz"
 version = "3.13.0"
 source = { registry = "https://pypi.org/simple" }
@@ -6435,6 +6452,15 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/f8/b1/0c11f5058406b3af7609f121aaa6b609744687f1d158b3c3a5bf4cc94238/typing_inspection-0.4.1.tar.gz", hash = "sha256:6ae134cc0203c33377d43188d4064e9b357dba58cff3185f22924610e70a9d28", size = 75726 }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/17/69/cd203477f944c353c31bade965f880aa1061fd6bf05ded0726ca845b6ff7/typing_inspection-0.4.1-py3-none-any.whl", hash = "sha256:389055682238f53b04f7badcb49b989835495a96700ced5dab2d8feae4b26f51", size = 14552 },
+]
+
+[[package]]
+name = "unicode-rbnf"
+version = "2.4.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/57/1f/d952ba97832647e608700c36b22d1c4476016076c9ed1ce74ae814bea55a/unicode_rbnf-2.4.0.tar.gz", hash = "sha256:6d2f12a7581c69ea6218ee61fafcd2da46e1f9986bdcd0964c5151f7c2a938ac", size = 89069 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/4b/21/82f5d435808cba330668a8b69efb180e3ef9739d4998e8cd0381e8c9cb23/unicode_rbnf-2.4.0-py3-none-any.whl", hash = "sha256:0176b30ac9b7b84008d7dc0f23078055dc10d2671fdadfab5747943243e20e2d", size = 141691 },
 ]
 
 [[package]]

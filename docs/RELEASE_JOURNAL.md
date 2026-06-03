@@ -12,6 +12,15 @@ newest entries near the top of each dated section.
 ## Action journal
 
 ### 2026-06-03
+- **QUAL-13 Stage 1 + ASSET-3 DONE — lingua-franca → ovos-number-parser.** Investigated the abandoned MycroftAI git pin
+  vs successors (research agent + WebSearch): irene's real usage is tiny (`pronounce_number` only; the stateless OVOS
+  successor needs `lang=` per call, no global `load_language`), confined to `irene/utils/text_processing.py`, with a
+  pure-Python Russian fallback as the default path. Migrated to **`ovos-number-parser>=0.5.1`** (maintained, PyPI,
+  pure-Python → no armv7 concern); ru now routes through the **dependency-free** pure-Python path (proper Russian vs
+  ovos's literal "точка", works on edge without the extra), non-ru → ovos (degrades to raw digits if absent). Threaded
+  `language` into the regex callbacks via `functools.partial`; `load_language` → no-op; removed the git pin from
+  pyproject + lock (`ovos-date-parser` not added — no date parsing needed). Verified ru+en number→words; suite 21/21.
+  This is QUAL-13 Stage 1 (de-risk number normalization before the full provider-collapse); **closes ASSET-3**.
 - **QUAL-30 [DFLOW] Grade-1 clarification DONE (deterministic responder).** Built the single fail-loud → explain-and-ask
   boundary that the QUAL-11 typed accessor was set up to feed. Reconciled first (Invariant #5/#8): the single catch
   point is `execute_with_donation_routing` (base.py:270 — it already wraps the routed method and maps everything to a
