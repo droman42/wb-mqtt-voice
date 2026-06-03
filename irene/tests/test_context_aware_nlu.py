@@ -245,61 +245,11 @@ class TestContextAwareNLU:
         assert "timer.set" in recent_intents
         assert "weather.current" in recent_intents
 
-    @pytest.mark.asyncio
-    @pytest.mark.xfail(reason="Context enhancement is stubbed in prod: _enhance_intent computes "
-                              "enhanced_entities (output_capabilities) but returns the original intent "
-                              "unchanged (nlu_component.py 'for now, return original'). See QUAL-22.",
-                       strict=False)
-    async def test_client_capability_context(self, context_processor, sample_context_living_room):
-        """Test client capability context enhancement"""
-        # Mock conversation intent
-        mock_intent = Intent(
-            name="conversation.general",
-            entities={"topic": "music"},
-            confidence=0.7,
-            raw_text="let's talk about music",
-            session_id="test_session_2"
-        )
-        
-        context_processor.nlu_component.recognize.return_value = mock_intent
-        
-        # Process with context
-        result = await context_processor.process_with_context(
-            "let's talk about music",
-            sample_context_living_room
-        )
-        
-        # Since living room has display capability, should suggest visual output
-        assert "output_capabilities" in result.entities
-        assert "visual" in result.entities["output_capabilities"]
-        assert "text" in result.entities["output_capabilities"]
-
-    @pytest.mark.asyncio  
-    async def test_device_not_found_suggestions(self, context_processor, sample_context_kitchen):
-        """Test behavior when requested device is not found"""
-        # Mock intent with non-existent device
-        mock_intent = Intent(
-            name="device.control",
-            entities={"device": "bedroom light", "action": "turn_off"},  # Not in kitchen
-            confidence=0.8,
-            raw_text="turn off bedroom light",
-            session_id="test_session"
-        )
-        
-        context_processor.nlu_component.recognize.return_value = mock_intent
-        
-        # Process with context
-        result = await context_processor.process_with_context(
-            "turn off bedroom light",
-            sample_context_kitchen
-        )
-        
-        # Should provide available devices as suggestions
-        assert "available_devices" in result.entities
-        available_devices = result.entities["available_devices"]
-        assert "Kitchen Light" in available_devices
-        assert "Kitchen Speaker" in available_devices
-        assert "Coffee Maker" in available_devices
+    # Removed (QUAL-11/QUAL-22): test_client_capability_context + test_room_context_inference tested the
+    # deleted `_disambiguate_with_device_context` stub (computed enhanced_entities, returned original
+    # intent); test_device_not_found_suggestions tested the deleted hardcoded `_resolve_device_entities`
+    # duplicate path (`available_devices` suggestions, removed in QUAL-11 Stage C). Capability/room-aware
+    # disambiguation is now ARCH-6 scope and will get real coverage in TEST-7.
 
     @pytest.mark.asyncio
     async def test_entity_resolver_temporal_entities(self):
@@ -326,33 +276,6 @@ class TestContextAwareNLU:
         assert duration_resolved["value"] == 5
         assert duration_resolved["unit"] == "minutes"
 
-    @pytest.mark.asyncio
-    @pytest.mark.xfail(reason="Location inference not implemented: no 'location_resolved' metadata is "
-                              "produced (context enhancement stubbed, returns original intent). See QUAL-22.",
-                       strict=False)
-    async def test_room_context_inference(self, context_processor, sample_context_kitchen):
-        """Test room context inference for location references"""
-        # Mock intent with location reference
-        mock_intent = Intent(
-            name="device.control",
-            entities={"location": "here", "action": "turn_off", "device": "lights"},
-            confidence=0.8,
-            raw_text="turn off lights here",
-            session_id="test_session"
-        )
-        
-        context_processor.nlu_component.recognize.return_value = mock_intent
-        
-        # Process with context  
-        result = await context_processor.process_with_context(
-            "turn off lights here",
-            sample_context_kitchen
-        )
-        
-        # Should resolve "here" to current room
-        assert "location_resolved" in result.entities
-        assert result.entities["location_resolved"] == "Kitchen"
-        assert result.entities["room_name"] == "Kitchen"
 
 
 def run_simple_device_scenario_test():

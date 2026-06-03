@@ -91,12 +91,12 @@ class ProviderControlIntentHandler(IntentHandler):
             component_type, provider_name = self._parse_provider_switch_command(intent.raw_text)
         
         if not component_type or not provider_name:
-            return self._create_error_result(intent, context, "Component type or provider name not specified")
+            return self._error_result(context, "Component type or provider name not specified")
         
         # Get the appropriate component
         component = await self._get_component(component_type)
         if not component:
-            return self._create_error_result(intent, context, f"Component {component_type} not available")
+            return self._error_result(context, f"Component {component_type} not available")
         
         # Determine language
         language = context.language or "ru"
@@ -135,7 +135,7 @@ class ProviderControlIntentHandler(IntentHandler):
         # Get the appropriate component
         component = await self._get_component(component_type)
         if not component:
-            return self._create_error_result(intent, context, f"Component {component_type} not available")
+            return self._error_result(context, f"Component {component_type} not available")
         
         # Get provider info based on component type
         info = self._get_component_providers_info(component, component_type)
@@ -352,7 +352,7 @@ class ProviderControlIntentHandler(IntentHandler):
         
         return self._components[component_type]
         
-    def _create_error_result(self, intent: Intent, context: UnifiedConversationContext, error: str) -> IntentResult:
+    def _error_result(self, context: UnifiedConversationContext, error: str) -> IntentResult:
         """Create error result with language awareness"""
         language = context.language or "ru"
         

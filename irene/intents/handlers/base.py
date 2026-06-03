@@ -352,18 +352,22 @@ class IntentHandler(EntryPointMetadata, ABC):
             confidence=1.0
         )
     
-    def _create_error_result(self, 
-                           text: str, 
+    def _create_error_result(self,
+                           text: str,
                            error: str,
                            metadata: Optional[Dict[str, Any]] = None) -> IntentResult:
-        """
-        Helper method to create an error intent result.
-        
+        """The single canonical error-result primitive: `(text, error, metadata)` → failure IntentResult.
+
+        QUAL-11 P1-t: 6 handlers used to **shadow** this name with an incompatible
+        `_create_error_result(intent, context, error)` signature (a footgun — the same call meant
+        different things per handler). Those localized builders are now uniformly named
+        `_error_result(context, error)` and render a per-handler template before delegating here.
+
         Args:
             text: Error message to display
             error: Error type or description
             metadata: Additional metadata
-            
+
         Returns:
             IntentResult indicating failure
         """

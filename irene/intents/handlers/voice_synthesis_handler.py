@@ -85,7 +85,7 @@ class VoiceSynthesisIntentHandler(IntentHandler):
         """Handle speak with specific voice request with fire-and-forget TTS generation"""
         tts_component = await self._get_tts_component()
         if not tts_component:
-            return self._create_error_result(intent, context, "TTS component not available")
+            return self._error_result(context, "TTS component not available")
         
         # Use language from context (detected by NLU)
         language = context.language or "ru"
@@ -94,7 +94,7 @@ class VoiceSynthesisIntentHandler(IntentHandler):
         text_to_speak, voice_name = self._extract_speech_parameters(intent.raw_text)
         
         if not text_to_speak:
-            return self._create_error_result(intent, context, "No text to speak found")
+            return self._error_result(context, "No text to speak found")
         
         # Use fire-and-forget action execution for TTS generation
         synthesis_id = f"tts_{int(time.time() * 1000)}"  # Unique ID based on timestamp
@@ -127,7 +127,7 @@ class VoiceSynthesisIntentHandler(IntentHandler):
         """Handle list available voices request"""
         tts_component = await self._get_tts_component()
         if not tts_component:
-            return self._create_error_result(intent, context, "TTS component not available")
+            return self._error_result(context, "TTS component not available")
         
         # Get TTS providers information
         response = tts_component.get_providers_info()
@@ -153,12 +153,12 @@ class VoiceSynthesisIntentHandler(IntentHandler):
         """Handle basic text-to-speech request with fire-and-forget synthesis"""
         tts_component = await self._get_tts_component()
         if not tts_component:
-            return self._create_error_result(intent, context, "TTS component not available")
+            return self._error_result(context, "TTS component not available")
         
         # Extract text to speak from intent entities
         text_to_speak = intent.entities.get("text", intent.raw_text)
         if not text_to_speak.strip():
-            return self._create_error_result(intent, context, "No text to speak")
+            return self._error_result(context, "No text to speak")
         
         # Use language from context (detected by NLU)
         language = context.language or "ru"
@@ -191,7 +191,7 @@ class VoiceSynthesisIntentHandler(IntentHandler):
         """Handle TTS provider switching request"""
         tts_component = await self._get_tts_component()
         if not tts_component:
-            return self._create_error_result(intent, context, "TTS component not available")
+            return self._error_result(context, "TTS component not available")
         
         # Use language from context (detected by NLU)
         language = context.language or "ru"
@@ -342,7 +342,7 @@ class VoiceSynthesisIntentHandler(IntentHandler):
         
         return provider_mappings
         
-    def _create_error_result(self, intent: Intent, context: UnifiedConversationContext, error: str) -> IntentResult:
+    def _error_result(self, context: UnifiedConversationContext, error: str) -> IntentResult:
         """Create error result with language awareness"""
         language = context.language or "ru"
         error_text = self._get_template("synthesis_error", language, error=error)

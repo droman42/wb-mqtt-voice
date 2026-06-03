@@ -89,9 +89,11 @@ class ContextAwareNLUProcessor:
         #    hardcoded English-only `_resolve_device_entities` duplicate was removed here (QUAL-11
         #    Stage C) — it re-resolved with a different strategy + wrote keys nothing consumed.
 
-        # 3. Intent Disambiguation Based on Available Devices
-        disambiguated_intent = await self._disambiguate_with_device_context(intent, context)
-        
+        # 3. Device-capability intent disambiguation: removed (QUAL-22). The former
+        #    `_disambiguate_with_device_context` computed `enhanced_entities` then returned the intent
+        #    unchanged ("for now, return original") — dead since inception. Real capability/room-aware
+        #    disambiguation needs registered devices and lands with ARCH-6, not a no-op stub.
+
         # 4. User Preference Context
         if context.language and context.language != "ru":
             enhanced_entities["language_preference"] = context.language
@@ -107,50 +109,18 @@ class ContextAwareNLUProcessor:
         
         # Create enhanced intent
         enhanced_intent = Intent(
-            name=disambiguated_intent.name,
+            name=intent.name,
             entities=enhanced_entities,
             confidence=intent.confidence,
             raw_text=intent.raw_text,
             timestamp=intent.timestamp,
-            domain=disambiguated_intent.domain,
-            action=disambiguated_intent.action,
+            domain=intent.domain,
+            action=intent.action,
         )
         
         self.logger.info(f"Context-enhanced intent: {enhanced_intent.name} with {len(enhanced_entities)} entities")
         return enhanced_intent
 
-    async def _disambiguate_with_device_context(self, intent: Intent, context: UnifiedConversationContext) -> Intent:
-        """
-        Disambiguate intent based on available device capabilities and context.
-        
-        This implements contextual intent disambiguation using client capabilities.
-        """
-        # If no client context available, return original intent
-        if not context.client_id:
-            return intent
-        
-        # Get available device types in this context
-        available_device_types = context.get_device_types()
-        
-        # Intent disambiguation based on device availability
-        if intent.domain == "system" and intent.action == "status":
-            # If there are smart devices, this might be a device status query
-            if "smart_device" in available_device_types or "sensor" in available_device_types:
-                # Could disambiguate to device.status instead
-                self.logger.debug("Disambiguating system.status to device context")
-                enhanced_entities = intent.entities.copy()
-                enhanced_entities["context_suggestion"] = "device_status"
-        
-        elif intent.domain == "conversation" and "display" in available_device_types:
-            # If there's a display available, conversation might benefit from visual output
-            enhanced_entities = intent.entities.copy()
-            enhanced_entities["output_capabilities"] = ["text", "visual"]
-            enhanced_entities["preferred_output_device"] = context.preferred_output_device
-        
-        # Return potentially enhanced intent (for now, return original)
-        # In the future, this could return a different intent based on context
-        return intent
-    
     async def _detect_language(self, text: str, context: UnifiedConversationContext) -> str:
         """
         Detect language from text with context awareness.

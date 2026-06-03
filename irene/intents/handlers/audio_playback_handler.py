@@ -199,7 +199,7 @@ class AudioPlaybackIntentHandler(IntentHandler):
         """Handle audio provider switching request"""
         audio_component = await self._get_audio_component()
         if not audio_component:
-            return self._create_error_result(intent, context, "Audio component not available")
+            return self._error_result(context, "Audio component not available")
         
         # Extract provider name from intent entities or text
         provider_name = intent.entities.get("provider")
@@ -207,7 +207,7 @@ class AudioPlaybackIntentHandler(IntentHandler):
             provider_name = audio_component.parse_provider_name_from_text(intent.raw_text)
         
         if not provider_name:
-            return self._create_error_result(intent, context, "Provider name not specified")
+            return self._error_result(context, "Provider name not specified")
         
         # Use language from context (detected by NLU)
         language = context.language or "ru"
@@ -239,7 +239,7 @@ class AudioPlaybackIntentHandler(IntentHandler):
         """Handle audio providers information request"""
         audio_component = await self._get_audio_component()
         if not audio_component:
-            return self._create_error_result(intent, context, "Audio component not available")
+            return self._error_result(context, "Audio component not available")
         
         info = audio_component.get_providers_info()
         
@@ -299,7 +299,7 @@ class AudioPlaybackIntentHandler(IntentHandler):
                 f"Check assets/templates/audio_playback/{language}/status_messages.yaml for correct placeholders."
             )
     
-    def _create_error_result(self, intent: Intent, context: UnifiedConversationContext, error: str) -> IntentResult:
+    def _error_result(self, context: UnifiedConversationContext, error: str) -> IntentResult:
         """Create error result with language awareness"""
         language = context.language or "ru"
         

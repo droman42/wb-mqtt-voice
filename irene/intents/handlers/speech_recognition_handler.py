@@ -85,7 +85,7 @@ class SpeechRecognitionIntentHandler(IntentHandler):
         """Handle show ASR providers request"""
         asr_component = await self._get_asr_component()
         if not asr_component:
-            return self._create_error_result(intent, context, "ASR component not available")
+            return self._error_result(context, "ASR component not available")
         
         info = asr_component.get_providers_info()
         
@@ -108,7 +108,7 @@ class SpeechRecognitionIntentHandler(IntentHandler):
         """Handle ASR provider switching request"""
         asr_component = await self._get_asr_component()
         if not asr_component:
-            return self._create_error_result(intent, context, "ASR component not available")
+            return self._error_result(context, "ASR component not available")
         
         # Extract provider name from intent entities or text
         provider_name = intent.entities.get("provider")
@@ -116,7 +116,7 @@ class SpeechRecognitionIntentHandler(IntentHandler):
             provider_name = asr_component.parse_provider_name_from_text(intent.raw_text)
         
         if not provider_name:
-            return self._create_error_result(intent, context, "Provider name not specified")
+            return self._error_result(context, "Provider name not specified")
         
         # Use language from context (detected by NLU)
         language = context.language or "ru"
@@ -146,7 +146,7 @@ class SpeechRecognitionIntentHandler(IntentHandler):
         """Handle ASR language switching request"""
         asr_component = await self._get_asr_component()
         if not asr_component:
-            return self._create_error_result(intent, context, "ASR component not available")
+            return self._error_result(context, "ASR component not available")
         
         # Extract language from intent entities
         target_language = intent.entities.get("language", "русский")
@@ -263,7 +263,7 @@ class SpeechRecognitionIntentHandler(IntentHandler):
                 f"Check assets/templates/speech_recognition/{language}/error_messages.yaml for correct placeholders."
             )
     
-    def _create_error_result(self, intent: Intent, context: UnifiedConversationContext, error: str) -> IntentResult:
+    def _error_result(self, context: UnifiedConversationContext, error: str) -> IntentResult:
         """Create error result with language awareness"""
         language = context.language or "ru"
         

@@ -29,6 +29,18 @@ newest entries near the top of each dated section.
   room/device registration; ARCH-6 now explicitly owns authoring the non-generic types + the `_is_device/location_entity`
   → `entity_type` swap). QUAL-11 keeps only the safe cleanup (dedupe device path + `_resolution_failed`) and refocuses its
   remaining energy on the universal hot-path wins: shared extraction base + required-param contract + typed accessor.
+- **QUAL-11 [PEX] Stage E — QUAL-22 (deleted dead disambiguation stub) + P1-t (`_create_error_result` de-shadowed). QUAL-11 lightweight scope COMPLETE.**
+  **QUAL-22:** deleted `ContextAwareNLUProcessor._disambiguate_with_device_context` — it computed `enhanced_entities`
+  (output_capabilities / context_suggestion / preferred_output_device) then `return intent` unchanged ("for now, return
+  original"), dead since inception; the caller now uses the intent directly. Real capability/room-aware disambiguation
+  needs registered devices → ARCH-6, not a no-op. Removed the 2 QUAL-22 xfail tests + `test_device_not_found_suggestions`
+  (the latter asserted the `available_devices` suggestions from the Stage-C-deleted duplicate path). **P1-t:** 6 handlers
+  shadowed the base `_create_error_result(text, error, metadata)` with an **incompatible**
+  `_create_error_result(intent, context, error)` — a footgun (the same call meant different things per handler). Renamed
+  all 6 to `_error_result(context, error)` (dropped the unused `intent`) across 31 call sites, so `_create_error_result`
+  has **one** canonical signature project-wide; each handler keeps its own localized template body. Suite 17/17.
+  **QUAL-11 done (lightweight T1 scope): Stages A–E.** Carve-outs tracked elsewhere: T2/T3 patterns → QUAL-35;
+  `entity_type` swap → ARCH-6; per-handler `get_param` migration → QUAL-34.
 - **QUAL-11 [PEX] Stage D — shared coercion base + typed `get_param` accessor; fixed a latent timer-unit bug.**
   (1) **Shared coercion (theme ②):** lifted the duplicated `_convert_and_validate_parameter` (identical in both NLU
   providers — the "two contracts" divergence) onto **`ParameterSpec.coerce()`** in `core/donations.py`; both providers

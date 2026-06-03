@@ -84,7 +84,7 @@ class TranslationIntentHandler(IntentHandler):
         """Handle text translation request"""
         llm_component = await self._get_llm_component()
         if not llm_component:
-            return self._create_error_result(intent, context, "LLM component not available")
+            return self._error_result(context, "LLM component not available")
         
         # Extract text and target language from command using LLM component helper methods
         text_and_lang = llm_component.extract_translation_request(intent.raw_text)
@@ -114,15 +114,15 @@ class TranslationIntentHandler(IntentHandler):
                 )
             except Exception as e:
                 self.logger.error(f"Translation error: {e}")
-                return self._create_error_result(intent, context, f"Translation failed: {e}")
+                return self._error_result(context, f"Translation failed: {e}")
         else:
-            return self._create_error_result(intent, context, "Could not extract text to translate")
+            return self._error_result(context, "Could not extract text to translate")
         
     async def _handle_translate_specific(self, intent: Intent, context: UnifiedConversationContext) -> IntentResult:
         """Handle specific text translation with extracted entities"""
         llm_component = await self._get_llm_component()
         if not llm_component:
-            return self._create_error_result(intent, context, "LLM component not available")
+            return self._error_result(context, "LLM component not available")
         
         # Use language from context (detected by NLU) first
         language = context.language or "ru"
@@ -137,7 +137,7 @@ class TranslationIntentHandler(IntentHandler):
             if extraction_result:
                 text_to_translate, target_language = extraction_result
             else:
-                return self._create_error_result(intent, context, "Text to translate not found")
+                return self._error_result(context, "Text to translate not found")
         
         try:
             translated = await llm_component.enhance_text(
@@ -166,7 +166,7 @@ class TranslationIntentHandler(IntentHandler):
             
         except Exception as e:
             self.logger.error(f"Translation error: {e}")
-            return self._create_error_result(intent, context, f"Translation failed: {e}")
+            return self._error_result(context, f"Translation failed: {e}")
     
     async def _get_llm_component(self):
         """Get LLM component from core"""
@@ -211,7 +211,7 @@ class TranslationIntentHandler(IntentHandler):
                 f"Check assets/templates/translation/{language}/result_messages.yaml for correct placeholders."
             )
     
-    def _create_error_result(self, intent: Intent, context: UnifiedConversationContext, error: str) -> IntentResult:
+    def _error_result(self, context: UnifiedConversationContext, error: str) -> IntentResult:
         """Create error result with language awareness"""
         language = context.language or "ru"
         

@@ -330,7 +330,7 @@ See `docs/review/phase1_architecture_map.md` §5.
       extraction_patterns`) are validated-then-discarded **dead code**; the two NLU providers extract with divergent
       contracts; failures are swallowed silently; resolvers *fatally crash* on asset-loader timing while the rest
       *silently no-ops*.
-- [~] **QUAL-11** [PEX] (P1) — **DOING (staged 2026-06-03).** Remediate parameter-extraction gaps (ranked in the review).
+- [x] **QUAL-11** [PEX] (P1) — **DONE (lightweight T1 scope, 2026-06-03; Stages A–E).** Remediate parameter-extraction gaps (ranked in the review).
       **Stage A DONE (2026-06-03):** fixed the **timer recognition gap at its root** — a Cyrillic normalization
       asymmetry in `hybrid_keyword_matcher._normalize_text` (NFKD+combining-strip folded «й»→«и»/«ё»→«е», so raw
       donation patterns like `таймер` never matched normalized input → every й/ё phrase silently unrecognized);
@@ -366,7 +366,10 @@ See `docs/review/phase1_architecture_map.md` §5.
       timer exemplar: "5 минут" was creating a **5-second** timer (unit CHOICE had English-only `choice_surfaces` + the
       handler hardcoded `'seconds'` over the donation's `"minutes"` default) — authored Russian unit surfaces + adopted
       `get_param` in timer; TEST-0 hardened to assert "5 мин".
-      **Remaining stages (lightweight scope):** Stage E — `_create_error_result` unification (P1-t) + QUAL-22 (P0 #5).
+      **Stage E DONE (2026-06-03):** QUAL-22 — deleted the dead `_disambiguate_with_device_context` stub (computed then
+      returned the intent unchanged; real capability-disambiguation is ARCH-6) + its 3 obsolete tests; P1-t — the 6
+      handlers that shadowed `_create_error_result` with an incompatible `(intent, context, error)` signature renamed to
+      `_error_result(context, error)` (31 call sites), so the error-result primitive has one canonical signature.
       _Per-handler `get_param` migration (the other ~10 handlers off ad-hoc `.get`) folds into **QUAL-34** — same
       handlers/files; consuming a declared param via the typed accessor IS QUAL-34's "wire-or-remove"._
       _Original P0/P1 detail below (P0 #2 → QUAL-35; P0 #4 ✓ Stage B; the entity_type half of P0 #4 → ARCH-6):_
@@ -454,7 +457,10 @@ See `docs/review/phase1_architecture_map.md` §5.
       Not done in the TEST pass because the mic/web migration is non-trivial (needs the inputs/system split, not a
       rename). Verify `irene-settings` boots after.
 
-- [ ] **QUAL-22** [PEX] (P2) — **Stubbed feature found via TEST-2, confirmed by QUAL-10**: context-aware NLU
+- [x] **QUAL-22** [PEX] (P2) — **DONE 2026-06-03 (removed; resolved within QUAL-11 Stage E).** Chose *remove* over
+      *finish*: the stub was dead since inception and real capability/room-aware disambiguation needs registered devices
+      (ARCH-6), not a no-op. Deleted `_disambiguate_with_device_context` (caller uses the intent directly) + the 2 xfail
+      tests + `test_device_not_found_suggestions`. _Original finding:_ **Stubbed feature found via TEST-2, confirmed by QUAL-10**: context-aware NLU
       enhancement is a no-op. `ContextAwareNLUProcessor._disambiguate_with_device_context` (`nlu_component.py`
       157-187 — the method QUAL-22 first called `_enhance_intent`) computes `enhanced_entities`
       (`output_capabilities`, `context_suggestion`, `preferred_output_device`) but then **returns the original
