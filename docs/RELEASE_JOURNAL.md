@@ -12,6 +12,21 @@ newest entries near the top of each dated section.
 ## Action journal
 
 ### 2026-06-03
+- **QUAL-13 Stage 2 DONE — collapsed the text-processing subsystem; wired both real stages. QUAL-13 complete.**
+  Reconciled first (Invariant #5/#8): the QUAL-12 findings still held (TTS spoke raw text; WebAPI 500 on `self.processor`;
+  `NumberTextProcessor.process()` bug; dead `_stage_providers`/`number_options`/normalizers config tree). User chose the
+  full collapse. Built **`UnifiedTextProcessor`** — one config-driven provider that reads per-normalizer `stages` lists
+  and applies a fixed-order chain (numbers → prepare → runorm) for the requested stage. Stages are now data, not classes.
+  Deleted the 4 stage-specific providers (asr/general/tts/number) + their entry-points + 4 config schemas (→ one
+  `UnifiedTextProcessorProviderSchema`); collapsed `config-master` + `TextProcessorConfig` onto the single `normalizers`
+  tree (dropped the dead `[providers.*]` split + `number_options`). **Wired both stages:** `process(stage="asr_output")`
+  for the ASR→NLU path; **added the missing `tts_input` normalization in `_handle_tts_output` before `synthesize_to_file`**
+  — the actual TTS-correctness win (responses now get numbers→words/symbols normalization; RUNorm available, opt-in).
+  Rewrote the 3 broken WebAPI endpoints onto the unified provider's `stage_map`/`normalizers_for_stage`. RUNorm now
+  `enabled=false` by default (documented HF-model-download offline hazard). Verified: chains correct per stage, "5 минут"→
+  "пять минут", disabled normalizers don't run; `test_text_processing.py` (5) + full suite 26/26; WebAPI boots (smoke).
+  **Carve-outs:** optional `llm_text_processor` + the dead `universal_llm` ASR-enhance path → QUAL-15; config-ui
+  text-processor editor (old shape, passes blob without enforcing) → UI-5 (Invariant #4 debt). **QUAL-13 done (Stages 1+2).**
 - **QUAL-13 Stage 1 + ASSET-3 DONE — lingua-franca → ovos-number-parser.** Investigated the abandoned MycroftAI git pin
   vs successors (research agent + WebSearch): irene's real usage is tiny (`pronounce_number` only; the stateless OVOS
   successor needs `lang=` per call, no global `load_language`), confined to `irene/utils/text_processing.py`, with a

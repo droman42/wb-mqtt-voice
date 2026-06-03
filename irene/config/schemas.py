@@ -327,29 +327,11 @@ class TTSPerformanceOptions(BaseModel):
     skip_advanced_normalization: bool = Field(default=False, description="Skip RunormNormalizer step")
 
 
-class ASRTextProcessorProviderSchema(TextProcessorProviderSchema):
-    """ASR Text Processor provider configuration schema"""
-    language: str = Field(default="ru", description="Language for processing")
-
-
-class GeneralTextProcessorProviderSchema(TextProcessorProviderSchema):
-    """General Text Processor provider configuration schema"""
-    language: str = Field(default="ru", description="Language for processing")
-    prepare_options: PrepareOptions = Field(default_factory=PrepareOptions, description="Structured PrepareNormalizer configuration options")
-
-
-class TTSTextProcessorProviderSchema(TextProcessorProviderSchema):
-    """TTS Text Processor provider configuration schema"""
-    language: str = Field(default="ru", description="Language for processing")
-    prepare_options: PrepareOptions = Field(default_factory=PrepareOptions, description="Structured PrepareNormalizer configuration options")
-    runorm_options: RunormOptions = Field(default_factory=RunormOptions, description="Structured RunormNormalizer configuration options")
-    performance: TTSPerformanceOptions = Field(default_factory=TTSPerformanceOptions, description="Performance tuning and pipeline control options")
-
-
-class NumberTextProcessorProviderSchema(TextProcessorProviderSchema):
-    """Number Text Processor provider configuration schema"""
-    language: str = Field(default="ru", description="Language for processing")
-    number_options: NumberOptions = Field(default_factory=NumberOptions, description="Structured NumberNormalizer configuration options")
+class UnifiedTextProcessorProviderSchema(TextProcessorProviderSchema):
+    """Unified text-processor provider config (QUAL-13). The provider's own config is just `enabled`
+    (inherited); the live per-stage normalizer chains live in the sibling `text_processor.normalizers`
+    tree, which the component threads into the provider at construction."""
+    pass
 
 
 # ============================================================

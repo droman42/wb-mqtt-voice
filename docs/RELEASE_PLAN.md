@@ -410,7 +410,23 @@ See `docs/review/phase1_architecture_map.md` §5.
       `NumberTextProcessor.process()` calls a non-existent method. **LLM-for-text-processing answer:** architecturally
       possible (open provider interface + DI), not wired today (only the dead `universal_llm` path), and should only
       be an **opt-in online-only `asr_output` stage** augmenting the deterministic default — never on the default path.
-- [ ] **QUAL-13** [TXTPROC] (P1) — Refine per QUAL-12: **collapse + wire.** (1) Collapse the 4 providers into ONE
+- [x] **QUAL-13** [TXTPROC] (P1) — **DONE 2026-06-03 (collapse + wire; Stages 1+2).** **(1) Collapsed** the 4 stage-
+      specific providers → ONE config-driven **`UnifiedTextProcessor`** (`providers/text_processing/unified.py`): stages
+      are now DATA — per-normalizer `stages` lists in `[text_processor.normalizers.*]` drive a fixed-order chain
+      (numbers → prepare → runorm). Deleted the 4 provider files + entry-points + their config schemas (→ one
+      `UnifiedTextProcessorProviderSchema`); collapsed `config-master`/`TextProcessorConfig` onto the single
+      `normalizers` tree (dropped the dead `[providers.*]` split + `number_options`). **(2) Wired both real stages:**
+      `process(text, stage="asr_output")` passes the caller's stage (ASR path, `voice_assistant.py`); **added the
+      missing `tts_input` normalization before TTS synthesis** (`_handle_tts_output` — TTS spoke raw text before, so
+      number/symbol normalization never ran on responses). **(3) Deleted the dead:** `self.processor` WebAPI 500 bug
+      (3 endpoints rewritten onto the unified provider's introspection), `NumberTextProcessor.process()`,
+      `_stage_providers`, the never-read `number_options`/duplicate config tree. **(4) Deps documented:** RUNorm is now
+      **opt-in (`enabled=false`)** with a "downloads a HF model" note (offline hazard); lingua-franca → ovos-number-parser
+      (Stage 1 / ASSET-3). Tests: `test_text_processing.py` (5, green); suite 26/26. **Carve-outs (deferred, not blockers):**
+      (5) optional `llm_text_processor` (asr_output) → **QUAL-15** (gated on a real LLM); the dead `universal_llm`
+      ASR-enhance path (`asr_component.py`) → **QUAL-15** (LLM territory). **Invariant #4 debt:** config-ui's
+      text-processor editor still targets the old config shape (it passes the blob without enforcing schema, so the
+      build won't break) → **carve to UI-5** like the donations editor. _Original spec:_ Refine per QUAL-12: **collapse + wire.** (1) Collapse the 4 providers into ONE
       config-driven `TextProcessor` with ordered **per-stage normalizer chains** (make the config tree real, delete
       the provider-per-stage classes + redundant `number` provider); (2) **actually wire the two real stages** —
       `process()` must pass the caller's stage (`asr_output` at `voice_assistant.py:383`) and **add the missing

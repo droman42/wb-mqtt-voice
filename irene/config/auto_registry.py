@@ -135,9 +135,8 @@ class AutoSchemaRegistry:
                 OpenWakeWordProviderSchema, PorcupineProviderSchema, MicroWakeWordProviderSchema,
                 # NLU providers
                 HybridKeywordMatcherProviderSchema, SpaCyNLUProviderSchema,
-                # Text processor providers
-                ASRTextProcessorProviderSchema, GeneralTextProcessorProviderSchema,
-                TTSTextProcessorProviderSchema, NumberTextProcessorProviderSchema
+                # Text processor provider (QUAL-13: one unified processor)
+                UnifiedTextProcessorProviderSchema
             )
             
             # Auto-discover provider mappings based on naming conventions and schema inheritance
@@ -178,10 +177,7 @@ class AutoSchemaRegistry:
                     "spacy_nlu": SpaCyNLUProviderSchema,
                 },
                 "text_processor": {
-                    "asr_text_processor": ASRTextProcessorProviderSchema,
-                    "general_text_processor": GeneralTextProcessorProviderSchema,
-                    "tts_text_processor": TTSTextProcessorProviderSchema,
-                    "number_text_processor": NumberTextProcessorProviderSchema,
+                    "unified_text_processor": UnifiedTextProcessorProviderSchema,
                 }
             }
             

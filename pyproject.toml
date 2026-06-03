@@ -220,11 +220,9 @@ hybrid_keyword_matcher = "irene.providers.nlu.hybrid_keyword_matcher:HybridKeywo
 spacy_nlu = "irene.providers.nlu.spacy_provider:SpaCyNLUProvider"
 
 [project.entry-points."irene.providers.text_processing"]
-# Stage-specific providers (TODO #2 implementation)
-asr_text_processor = "irene.providers.text_processing.asr_text_processor:ASRTextProcessor"
-general_text_processor = "irene.providers.text_processing.general_text_processor:GeneralTextProcessor"
-tts_text_processor = "irene.providers.text_processing.tts_text_processor:TTSTextProcessor"
-number_text_processor = "irene.providers.text_processing.number_text_processor:NumberTextProcessor"
+# QUAL-13: one config-driven processor (per-stage normalizer chains) replaced the 4 stage-specific
+# providers (asr/general/tts/number), which were decorative routing around one number call.
+unified_text_processor = "irene.providers.text_processing.unified:UnifiedTextProcessor"
 
 [project.entry-points."irene.components"]
 tts = "irene.components.tts_component:TTSComponent"

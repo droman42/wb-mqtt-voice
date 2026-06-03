@@ -680,9 +680,19 @@ class UnifiedVoiceAssistantWorkflow(Workflow):
         temp_path = self.temp_audio_dir / temp_filename
         
         try:
-            # Step 1: TTS generates audio file
+            # Step 1: normalize the response text for speech (QUAL-13 `tts_input` stage — numbers→words,
+            # symbols, optional RUNorm), THEN synthesize. Previously TTS spoke raw text (no normalization
+            # ran on the response at all). Degrades to raw text on any error.
+            text_to_speak = result.text
+            if self.text_processor and self._text_processing_enabled:
+                try:
+                    text_to_speak = await self.text_processor.process(result.text, stage="tts_input")
+                except Exception as e:
+                    self.logger.warning(f"TTS text normalization failed, speaking raw: {e}")
+                    text_to_speak = result.text
+
             self.logger.debug(f"Generating TTS audio: {temp_path}")
-            await self.tts.synthesize_to_file(result.text, temp_path)
+            await self.tts.synthesize_to_file(text_to_speak, temp_path)
             
             # Step 2: Audio plays the file
             self.logger.debug(f"Playing audio file: {temp_path}")

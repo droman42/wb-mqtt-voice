@@ -31,7 +31,6 @@ class TextProcessorComponent(Component, TextProcessorPlugin, WebAPIPlugin):
         super().__init__()
         self.providers: Dict[str, TextProcessingProvider] = {}  # Proper ABC type hint
         self._provider_classes: Dict[str, type] = {}
-        self._stage_providers: Dict[str, str] = {}  # Map stages to preferred providers
         self.context_manager = None  # Will be injected
         
     async def initialize(self, core) -> None:
@@ -60,26 +59,30 @@ class TextProcessorComponent(Component, TextProcessorPlugin, WebAPIPlugin):
         
         # Get provider configurations
         providers_config = config.get("providers", {})
-        
+        # QUAL-13: the live stage chains are config-tree (b) — `normalizers` — which is threaded into the
+        # (single, unified) provider so it can build the per-stage normalizer chain.
+        normalizers_config = config.get("normalizers", {})
+
         # Discover only enabled providers from entry-points (configuration-driven filtering)
-        enabled_providers = [name for name, provider_config in providers_config.items() 
+        enabled_providers = [name for name, provider_config in providers_config.items()
                             if provider_config.get("enabled", False)]
-        
-        # Ensure at least one general processor is available as fallback
-        if not any(p in enabled_providers for p in ["general_text_processor"]):
-            if providers_config.get("general_text_processor", {}).get("enabled", False) is not False:
-                enabled_providers.append("general_text_processor")
-            
+
+        # Ensure the unified processor is available as a fallback (QUAL-13).
+        if "unified_text_processor" not in enabled_providers and \
+                providers_config.get("unified_text_processor", {}).get("enabled", True) is not False:
+            enabled_providers.append("unified_text_processor")
+
         self._provider_classes = dynamic_loader.discover_providers("irene.providers.text_processing", enabled_providers)
         logger.info(f"Discovered {len(self._provider_classes)} enabled text processing providers: {list(self._provider_classes.keys())}")
-        
+
         # Initialize enabled providers
         enabled_count = 0
         for provider_name, provider_class in self._provider_classes.items():
             provider_config = providers_config.get(provider_name, {})
-            if provider_config.get("enabled", False):
+            if provider_config.get("enabled", True):
                 try:
-                    provider = provider_class(provider_config)
+                    # Thread the shared normalizers config into the provider (QUAL-13).
+                    provider = provider_class({**provider_config, "normalizers": normalizers_config})
                     if hasattr(provider, 'is_available'):
                         if await provider.is_available():
                             self.providers[provider_name] = provider
@@ -101,61 +104,48 @@ class TextProcessorComponent(Component, TextProcessorPlugin, WebAPIPlugin):
         
         logger.info(f"Text processing component initialized with {enabled_count} providers")
     
-    async def process(self, text: str, context: 'UnifiedConversationContext', 
-                      trace_context: Optional[TraceContext] = None) -> str:
+    async def process(self, text: str, context: Optional['UnifiedConversationContext'] = None,
+                      trace_context: Optional[TraceContext] = None, stage: str = "asr_output") -> str:
         """
-        Process text using the general text processing provider with optional tracing.
-        
+        Normalize text for a pipeline stage (QUAL-13). The caller's `stage` selects the normalizer
+        chain: `asr_output` (before NLU; the default — this is the only external call site today) or
+        `tts_input` (before TTS synthesis). `context` is unused by the normalizers and may be None
+        (e.g. the TTS path, which has a RequestContext, not a conversation context).
+
         Args:
             text: Input text to process
-            context: UnifiedConversationContext with session and room information
+            context: optional conversation context (only used for trace metadata)
             trace_context: Optional trace context for detailed execution tracking
-            
+            stage: the pipeline stage selecting the normalizer chain
+
         Returns:
             Processed text
         """
-        # Fast path - existing logic when no tracing
-        if not trace_context or not trace_context.enabled:
-            if not self.providers:
-                logger.debug("No text processing providers available, returning original text")
-                return text
-            
-            # USE PASSED CONTEXT - NO CREATION
-            return await self.improve(text, context, "general")
-        
-        # Trace path - detailed stage tracking
-        stage_start = time.time()
-        normalizers_applied = []
-        
         if not self.providers:
-            processed_text = text
-        else:
-            # USE PASSED CONTEXT - NO CREATION
-            processed_text = await self.improve(text, context, "general")
-            
-            # Track which providers were used
-            if self._stage_providers:
-                for stage, provider_name in self._stage_providers.items():
-                    normalizers_applied.append({
-                        "stage": stage,
-                        "provider": provider_name,
-                        "used": stage == "general"
-                    })
-        
+            logger.debug("No text processing provider available, returning original text")
+            return text
+
+        # Fast path - no tracing
+        if not trace_context or not trace_context.enabled:
+            return await self.improve(text, context, stage)
+
+        # Trace path - record the stage + which normalizers ran for it
+        stage_start = time.time()
+        processed_text = await self.improve(text, context, stage)
+        provider = self.get_current_provider()
+        normalizers_applied = provider.normalizers_for_stage(stage) if hasattr(provider, "normalizers_for_stage") else []
         trace_context.record_stage(
             stage_name="text_processing",
             input_data=text,
             output_data=processed_text,
             metadata={
                 "component_name": self.__class__.__name__,
+                "stage": stage,
                 "normalizers_applied": normalizers_applied,
-                "provider_count": len(self.providers),
-                "session_id": context.session_id,
-                "room_context": bool(context.client_id)
+                "session_id": getattr(context, "session_id", None),
             },
             processing_time_ms=(time.time() - stage_start) * 1000
         )
-        
         return processed_text
     
     def get_providers_info(self) -> str:
@@ -204,117 +194,56 @@ class TextProcessorComponent(Component, TextProcessorPlugin, WebAPIPlugin):
         return []  # All platforms
     
 
-    async def improve(self, text: str, context: UnifiedConversationContext, stage: str = "general") -> str:
+    async def improve(self, text: str, context: Optional[UnifiedConversationContext] = None,
+                      stage: str = "asr_output") -> str:
         """
-        Improve text using stage-specific providers or fallback to legacy processor.
-        Stages: 'asr_output', 'general', 'tts_input'
-        
-        Args:
-            text: Text to process
-            context: Conversation context
-            stage: Processing stage
-            
-        Returns:
-            Processed text
+        Apply the configured normalizer chain for `stage` via the unified processor (QUAL-13).
+        Stages: 'asr_output' (before NLU), 'tts_input' (before TTS synthesis).
         """
         try:
-            # Use stage-specific providers (Phase 2 providers)
-            stage_provider_map = {
-                "asr_output": "asr_text_processor",
-                "general": "general_text_processor", 
-                "tts_input": "tts_text_processor"
-            }
-            
-            # Try stage-specific provider first
-            preferred_provider = stage_provider_map.get(stage)
-            if preferred_provider and preferred_provider in self.providers:
-                provider = self.providers[preferred_provider]
-                if hasattr(provider, 'process_pipeline'):
-                    return await provider.process_pipeline(text, stage)
-                elif hasattr(provider, 'improve_text'):
-                    return await provider.improve_text(text, context, stage)
-            
-            # Fallback to any available provider
             provider = self.get_current_provider()
-            if provider:
-                if hasattr(provider, 'process_pipeline'):
-                    return await provider.process_pipeline(text, stage)
-                elif hasattr(provider, 'improve_text'):
-                    return await provider.improve_text(text, context, stage)
-            
-            # No providers available - return original text
-            logger.warning(f"No text processing providers available for stage '{stage}'")
+            if provider and hasattr(provider, 'process_pipeline'):
+                return await provider.process_pipeline(text, stage)
+            logger.warning(f"No text processing provider available for stage '{stage}'")
             return text
-            
         except Exception as e:
             logger.error(f"Text processing error: {e}")
             return text  # Return original text on error
         
-    async def normalize_numbers(self, text: str) -> str:
-        """Direct access to number normalization (uses new providers)"""
+    async def _run_normalizer(self, name: str, text: str) -> str:
+        """Run a single named normalizer from the unified provider (direct-access helpers below)."""
+        provider = self.get_current_provider()
+        normalizers = getattr(provider, "normalizers", {}) if provider else {}
+        inst = normalizers.get(name)
+        if inst is None:
+            logger.warning(f"Normalizer '{name}' not enabled/available")
+            return text
         try:
-            # Use number_text_processor or any available provider with number normalization
-            if "number_text_processor" in self.providers:
-                provider = self.providers["number_text_processor"]
-                return await provider.normalize_numbers(text)
-            
-            # Try other providers that support number normalization
-            for provider in self.providers.values():
-                if hasattr(provider, 'normalize_numbers'):
-                    return await provider.normalize_numbers(text)
-            
-            logger.warning("No text processing providers with number normalization available")
-            return text
+            return await inst.normalize(text)
         except Exception as e:
-            logger.error(f"Number normalization error: {e}")
+            logger.error(f"Normalizer '{name}' failed: {e}")
             return text
-    
+
+    async def normalize_numbers(self, text: str) -> str:
+        """Direct access to number normalization (the unified processor's `numbers` normalizer)."""
+        return await self._run_normalizer("numbers", text)
+
     async def convert_numbers_to_words(self, text: str, language: str = "ru") -> str:
-        """Convert numbers in text to words using existing utilities."""
+        """Convert numbers in text to words using the shared utility (language-explicit)."""
         try:
             return await all_num_to_text_async(text, language)
         except Exception as e:
             logger.error(f"Number to text conversion error: {e}")
             return text
-    
+
     async def prepare_normalize(self, text: str) -> str:
-        """Apply prepare normalization (uses new providers)"""
-        try:
-            # Use general_text_processor or any provider with text preparation
-            if "general_text_processor" in self.providers:
-                provider = self.providers["general_text_processor"]
-                return await provider.prepare_text(text)
-            
-            # Try other providers that support text preparation
-            for provider in self.providers.values():
-                if hasattr(provider, 'prepare_text'):
-                    return await provider.prepare_text(text)
-            
-            logger.warning("No text processing providers with text preparation available")
-            return text
-        except Exception as e:
-            logger.error(f"Prepare normalization error: {e}")
-            return text
-    
+        """Direct access to prepare normalization (symbols, Latin→Cyrillic)."""
+        return await self._run_normalizer("prepare", text)
+
     async def runorm_normalize(self, text: str) -> str:
-        """Apply runorm normalization (uses new providers)"""
-        try:
-            # Use tts_text_processor (has RunormNormalizer)
-            if "tts_text_processor" in self.providers:
-                provider = self.providers["tts_text_processor"]
-                return await provider.advanced_normalize(text)
-            
-            # Try other providers that support advanced normalization
-            for provider in self.providers.values():
-                if hasattr(provider, 'advanced_normalize'):
-                    return await provider.advanced_normalize(text)
-            
-            logger.warning("No text processing providers with advanced normalization available")
-            return text
-        except Exception as e:
-            logger.error(f"Runorm normalization error: {e}")
-            return text
-    
+        """Direct access to advanced Russian (RUNorm) normalization."""
+        return await self._run_normalizer("runorm", text)
+
     # WebAPIPlugin interface - following universal plugin pattern
     def get_router(self) -> Optional[Any]:
         """Get FastAPI router with text processing endpoints using centralized schemas"""
@@ -358,8 +287,9 @@ class TextProcessorComponent(Component, TextProcessorPlugin, WebAPIPlugin):
                     else:
                         # Use context from context manager
                         processed = await self.improve(request.text, context, request.stage)
-                        normalizers_applied = [n.__class__.__name__ for n in self.processor.normalizers 
-                                             if n.applies_to_stage(request.stage)]
+                        prov = self.get_current_provider()
+                        normalizers_applied = prov.normalizers_for_stage(request.stage) \
+                            if hasattr(prov, "normalizers_for_stage") else []
                 
                     return TextProcessingResponse(
                         success=True,
@@ -389,30 +319,34 @@ class TextProcessorComponent(Component, TextProcessorPlugin, WebAPIPlugin):
             @router.get("/normalizers", response_model=TextProcessingNormalizersResponse)
             async def list_normalizers():
                 """List available text normalizers and their capabilities"""
+                prov = self.get_current_provider()
+                stage_map = getattr(prov, "stage_map", {}) if prov else {}
+                stages = sorted({s for ss in stage_map.values() for s in ss}) or ["asr_output", "tts_input"]
                 normalizers = {}
-                for normalizer in self.processor.normalizers:
-                    name = normalizer.__class__.__name__
+                for name, applies in stage_map.items():
                     normalizers[name] = TextNormalizerInfo(
-                        stages=["asr_output", "general", "tts_input"],
-                        applies_to=[stage for stage in ["asr_output", "general", "tts_input"] 
-                                   if normalizer.applies_to_stage(stage)],
-                        description=normalizer.__doc__ or f"{name} text normalizer"
+                        stages=stages,
+                        applies_to=sorted(applies),
+                        description=f"{name} normalizer"
                     )
-                
+
                 return TextProcessingNormalizersResponse(
                     success=True,
                     normalizers=normalizers,
-                    pipeline_stages=["asr_output", "general", "tts_input"],
+                    pipeline_stages=stages,
                     available_languages=["ru", "en"]  # For number conversion
                 )
             
             @router.get("/config", response_model=TextProcessingConfigResponse)
             async def get_text_processor_config():
                 """Get text processor configuration"""
+                prov = self.get_current_provider()
+                normalizers = getattr(prov, "normalizers", {}) if prov else {}
+                stages = sorted({s for ss in getattr(prov, "stage_map", {}).values() for s in ss}) or ["asr_output", "tts_input"]
                 return TextProcessingConfigResponse(
                     success=True,
-                    normalizer_count=len(self.processor.normalizers),
-                    supported_stages=["asr_output", "general", "tts_input"],
+                    normalizer_count=len(normalizers),
+                    supported_stages=stages,
                     supported_languages=["ru", "en"],
                     dependencies=self.get_component_dependencies()
                 )
@@ -432,17 +366,18 @@ class TextProcessorComponent(Component, TextProcessorPlugin, WebAPIPlugin):
                         self._provider_classes.clear()
                         
                         providers_config = config_dict.get("providers", {})
-                        enabled_providers = [name for name, provider_config in providers_config.items() 
+                        normalizers_config = config_dict.get("normalizers", {})
+                        enabled_providers = [name for name, provider_config in providers_config.items()
                                            if provider_config.get("enabled", False)]
-                        
+
                         # Discover and initialize providers with new config
                         self._provider_classes = dynamic_loader.discover_providers("irene.providers.text_processing", enabled_providers)
-                        
+
                         for provider_name, provider_class in self._provider_classes.items():
                             provider_config = providers_config.get(provider_name, {})
                             if provider_config.get("enabled", False):
                                 try:
-                                    provider = provider_class(provider_config)
+                                    provider = provider_class({**provider_config, "normalizers": normalizers_config})
                                     if hasattr(provider, 'is_available'):
                                         if await provider.is_available():
                                             self.providers[provider_name] = provider

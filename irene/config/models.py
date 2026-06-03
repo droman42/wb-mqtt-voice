@@ -322,36 +322,43 @@ class NLUConfig(BaseModel):
 
 
 class TextProcessorConfig(BaseModel):
-    """Text processing pipeline component configuration"""
+    """Text processing pipeline component configuration.
+
+    QUAL-13: collapsed onto a single config-driven processor. `normalizers` is the live driver — each
+    normalizer declares the `stages` it runs on; the unified processor applies, per stage, the enabled
+    normalizers in a fixed order (numbers → prepare → runorm). The two real stages are `asr_output`
+    (before NLU) and `tts_input` (before TTS synthesis).
+    """
     enabled: bool = Field(default=False, description="Enable text processing pipeline component")
     stages: List[str] = Field(
-        default_factory=lambda: ["asr_output", "tts_input", "command_input", "general"],
-        description="Processing stages"
+        default_factory=lambda: ["asr_output", "tts_input"],
+        description="Valid processing stages (informational; the live chains live in `normalizers`)"
     )
     normalizers: Dict[str, Dict[str, Any]] = Field(
         default_factory=lambda: {
             "numbers": {
                 "enabled": True,
-                "stages": ["asr_output", "general", "tts_input"]
+                "stages": ["asr_output", "tts_input"]
             },
             "prepare": {
                 "enabled": True,
-                "stages": ["tts_input", "general"],
+                "stages": ["asr_output", "tts_input"],
                 "latin_to_cyrillic": True,
                 "symbol_replacement": True
             },
             "runorm": {
-                "enabled": True,
+                # Opt-in: downloads a HuggingFace model on first use (offline hazard); TTS-only.
+                "enabled": False,
                 "stages": ["tts_input"],
                 "model_size": "small",
                 "device": "cpu"
             }
         },
-        description="Text normalizer configurations"
+        description="Per-normalizer config incl. the stages each runs on (the live stage chains)"
     )
     providers: Dict[str, Dict[str, Any]] = Field(
-        default_factory=dict,
-        description="Provider-specific configurations"
+        default_factory=lambda: {"unified_text_processor": {"enabled": True}},
+        description="Provider discovery (one unified processor since QUAL-13)"
     )
 
 

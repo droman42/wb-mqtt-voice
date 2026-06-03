@@ -371,85 +371,31 @@ en = ["en_core_web_md", "en_core_web_sm"]    # English models in preference orde
 # TEXT PROCESSOR COMPONENT CONFIGURATION
 # ============================================================
 [text_processor]
-enabled = true                      # Enable text processing pipeline
-stages = ["asr_output", "tts_input", "command_input", "general"]  # Processing stages
+# QUAL-13: one config-driven processor. The live per-stage chains are the [normalizers] tables below
+# (each normalizer lists the stages it runs on); the unified provider applies them in a fixed order
+# (numbers -> prepare -> runorm). Two real stages: asr_output (before NLU), tts_input (before TTS).
+enabled = true
+stages = ["asr_output", "tts_input"]   # valid stages (informational)
 
-# Text normalizer configurations
 [text_processor.normalizers.numbers]
-enabled = true                      # Enable number normalization
-stages = ["asr_output", "general", "tts_input"]  # Stages to apply to
+enabled = true                          # number -> words (ru: dependency-free; non-ru: ovos-number-parser)
+stages = ["asr_output", "tts_input"]
 
 [text_processor.normalizers.prepare]
-enabled = true                      # Enable text preparation
-stages = ["tts_input", "general"]   # Stages to apply to  
-latin_to_cyrillic = true           # Convert Latin to Cyrillic
-symbol_replacement = true          # Replace symbols with words
+enabled = true                          # symbol->word, Latin->Cyrillic
+stages = ["asr_output", "tts_input"]
+latin_to_cyrillic = true
+symbol_replacement = true
 
 [text_processor.normalizers.runorm]
-enabled = true                      # Enable Russian normalization (RuNorm)
-stages = ["tts_input"]             # Stages to apply to
-model_size = "small"               # Model size: "small", "medium", "large"
-device = "cpu"                     # Device: "cpu", "cuda"
+enabled = false                         # advanced Russian TTS normalization; OPT-IN (downloads a HF model)
+stages = ["tts_input"]
+model_size = "small"                    # "small" | "medium" | "large"
+device = "cpu"                          # "cpu" | "cuda"
 
-# Provider configurations
-[text_processor.providers.asr_text_processor]
-enabled = true                      # Enable ASR text processor
-language = "ru"                    # Language for processing
-
-[text_processor.providers.general_text_processor]
-enabled = true                      # Enable general text processor
-language = "ru"                    # Language for processing
-
-# PrepareNormalizer configuration options
-[text_processor.providers.general_text_processor.prepare_options]
-change_numbers = "process"          # How to handle numbers: "process" or "skip"
-change_latin = "process"            # How to handle Latin characters: "process" or "skip"
-change_symbols = "#$%&*+-/<=>@~[\\]_`{|}№"  # Symbols to replace with words
-keep_symbols = ",.?!;:() "          # Symbols to keep unchanged
-delete_unknown_symbols = true      # Delete unrecognized symbols
-
-[text_processor.providers.number_text_processor]
-enabled = true                      # Enable number text processor
-language = "ru"                    # Language for processing
-
-# NumberNormalizer configuration options
-[text_processor.providers.number_text_processor.number_options]
-decimal_places = 2                  # Number of decimal places to preserve (0-10)
-handle_percentages = true           # Convert percentage numbers to text (e.g., '15%' → 'пятнадцать процентов')
-handle_ranges = true                # Process number ranges (e.g., '5-10' → 'от пяти до десяти')
-handle_negatives = true             # Convert negative numbers (e.g., '-5' → 'минус пять')
-handle_fractions = true             # Process fractional numbers (e.g., '1/2' → 'одна вторая')
-handle_ordinals = true              # Handle ordinal numbers (e.g., '1st' → 'первый')
-max_number_length = 15              # Maximum digits in a number to process (1-50, longer numbers remain as digits)
-
-[text_processor.providers.tts_text_processor]
-enabled = false                     # Enable TTS text processor (resource-intensive)
-language = "ru"                    # Language for processing
-
-# PrepareNormalizer configuration options  
-[text_processor.providers.tts_text_processor.prepare_options]
-change_numbers = "process"          # How to handle numbers: "process" or "skip"
-change_latin = "process"            # How to handle Latin characters: "process" or "skip"
-change_symbols = "#$%&*+-/<=>@~[\\]_`{|}№"  # Symbols to replace with words
-keep_symbols = ",.?!;:() "          # Symbols to keep unchanged
-delete_unknown_symbols = true      # Delete unrecognized symbols
-
-# RunormNormalizer configuration options (advanced Russian normalization)
-[text_processor.providers.tts_text_processor.runorm_options]
-model_size = "small"                # RUNorm model size: "small", "medium", "large" (affects quality vs speed)
-device = "cpu"                      # Processing device: "cpu" or "cuda"
-batch_size = 1                      # Batch size for processing (1-64, affects memory usage)
-model_cache = true                  # Cache loaded model in memory
-streaming_mode = false              # Enable streaming processing for long texts
-
-# Performance tuning and pipeline control options
-[text_processor.providers.tts_text_processor.performance]
-max_text_length = 1000              # Maximum text length to process (1-10000)
-timeout_seconds = 30                # Processing timeout in seconds (1-300)
-fallback_on_error = true            # Fallback to simpler processing on errors
-skip_number_normalization = false   # Skip number normalization step
-skip_prepare_normalization = false  # Skip text preparation step  
-skip_advanced_normalization = false # Skip RunormNormalizer step
+# Provider discovery: one unified processor since QUAL-13 (replaced the 4 stage-specific providers).
+[text_processor.providers.unified_text_processor]
+enabled = true
 
 # ============================================================
 # INTENT SYSTEM COMPONENT CONFIGURATION
