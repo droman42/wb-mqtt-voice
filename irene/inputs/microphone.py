@@ -17,7 +17,8 @@ import time
 from typing import AsyncIterator, Dict, Any, Optional, List
 from pathlib import Path
 
-from .base import InputSource, ComponentNotAvailable, InputData
+from .base import ComponentNotAvailable
+from ..core.interfaces.input import InputPort, InputData
 from ..intents.models import AudioData
 from ..utils.audio_helpers import get_default_audio_input_device, validate_audio_input_device, AudioFormatConverter
 from ..utils.loader import safe_import
@@ -25,7 +26,7 @@ from ..utils.loader import safe_import
 logger = logging.getLogger(__name__)
 
 
-class MicrophoneInput(InputSource):
+class MicrophoneInput(InputPort):
     """
     Pure microphone input - only audio capture (enhanced with audio_helpers.py)
     

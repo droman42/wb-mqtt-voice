@@ -1,9 +1,9 @@
 """
 Input-layer orchestrator (InputManager).
 
-Separated from `inputs.base` (which holds the InputSource PORT + value types) so the port no longer
-imports its own concrete adapters — breaking the inputs.base ⇄ {cli,microphone,web} cycle (SCC-2) with
-explicit composition-point wiring, NOT a runtime service-locator (cf. QUAL-24). This module is the
+Separated from the input PORT (`InputPort`, ARCH-11/S1 now in `core/interfaces/input.py`) so the port no
+longer imports its own concrete adapters — breaking the inputs.base ⇄ {cli,microphone,web} cycle (SCC-2)
+with explicit composition-point wiring, NOT a runtime service-locator (cf. QUAL-24). This module is the
 input layer's composition point: it legitimately depends outward on the concrete adapters it orchestrates.
 """
 
@@ -12,7 +12,8 @@ import logging
 from typing import Any, Dict, List, Optional, Tuple
 
 from ..intents.models import AudioData
-from .base import InputSource, InputData, ComponentNotAvailable
+from ..core.interfaces.input import InputPort, InputData
+from .base import ComponentNotAvailable
 from .cli import CLIInput
 from .microphone import MicrophoneInput
 from .web import WebInput
@@ -35,7 +36,7 @@ class InputManager:
     def __init__(self, component_manager, input_config=None):
         self.component_manager = component_manager
         self.input_config = input_config
-        self._sources: dict[str, InputSource] = {}
+        self._sources: dict[str, InputPort] = {}
         self._active_sources: list[str] = []
         self._listen_tasks: dict[str, asyncio.Task] = {}
         self._input_queue = asyncio.Queue()
@@ -138,7 +139,7 @@ class InputManager:
         except Exception as e:
             logger.error(f"Error auto-starting input sources: {e}")
     
-    async def add_source(self, name: str, source: InputSource) -> None:
+    async def add_source(self, name: str, source: InputPort) -> None:
         """Add an input source"""
         if not source.is_available():
             logger.warning(f"Input source '{name}' is not available")
@@ -199,7 +200,7 @@ class InputManager:
             logger.error(f"Failed to stop input source '{name}': {e}")
             return False
             
-    async def _listen_to_source(self, source_name: str, source: InputSource) -> None:
+    async def _listen_to_source(self, source_name: str, source: InputPort) -> None:
         """Listen to a specific source using async iterator"""
         try:
             async for data in source.listen():

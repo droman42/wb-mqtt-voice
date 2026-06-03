@@ -12,12 +12,12 @@ import logging
 
 from prompt_toolkit import prompt
 
-from .base import InputSource, InputData
+from ..core.interfaces.input import InputPort, InputData
 
 logger = logging.getLogger(__name__)
 
 
-class CLIInput(InputSource):
+class CLIInput(InputPort):
     """
     Command-line input source for interactive text input.
     

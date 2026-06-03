@@ -15,7 +15,7 @@ from .trace_context import TraceContext
 from ..workflows.base import Workflow, RequestContext
 from ..utils.audio_data import AudioData
 from ..intents.models import IntentResult
-from ..inputs.base import InputSource
+from .interfaces.input import InputPort
 from ..utils.audio_helpers import validate_audio_file
 from ..config.manager import ConfigValidationError
 from ..utils.loader import dynamic_loader
@@ -615,7 +615,7 @@ class WorkflowManager:
             # (QUAL-28) F&F actions are registered in the store by the launch — no write-back needed.
             yield result
     
-    async def _start_audio_workflow(self, input_source: InputSource, workflow: Workflow, context: RequestContext) -> None:
+    async def _start_audio_workflow(self, input_source: InputPort, workflow: Workflow, context: RequestContext) -> None:
         """Start audio processing workflow"""
         try:
             # Start input source
@@ -651,14 +651,14 @@ class WorkflowManager:
         except Exception as e:
             logger.error(f"Workflow processing error: {e}")
     
-    def _get_input_source(self, source_name: str) -> Optional[InputSource]:
+    def _get_input_source(self, source_name: str) -> Optional[InputPort]:
         """Get an input source by name"""
         if not self.input_manager:
             return None
         
         return self.input_manager._sources.get(source_name)
     
-    async def _get_audio_stream(self, input_source: InputSource) -> AsyncIterator[AudioData]:
+    async def _get_audio_stream(self, input_source: InputPort) -> AsyncIterator[AudioData]:
         """
         Convert input source to audio stream.
         

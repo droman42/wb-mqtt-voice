@@ -9,7 +9,7 @@ from .plugin import PluginInterface, PluginManager
 # CommandPlugin removed in Phase 3  
 from .tts import TTSPlugin
 from .audio import AudioPlugin
-from .input import InputPlugin
+from .input import InputPort, InputData
 from .webapi import WebAPIPlugin
 from .asr import ASRPlugin
 from .llm import LLMPlugin
@@ -23,7 +23,8 @@ __all__ = [
 
     "TTSPlugin",
     "AudioPlugin",
-    "InputPlugin",
+    "InputPort",
+    "InputData",
     "WebAPIPlugin",
     "ASRPlugin",
     "LLMPlugin",

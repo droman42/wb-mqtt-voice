@@ -10,12 +10,13 @@ import logging
 from typing import AsyncIterator, Dict, Any, Optional, List
 import json
 
-from .base import InputSource, ComponentNotAvailable, InputData
+from .base import ComponentNotAvailable
+from ..core.interfaces.input import InputPort, InputData
 
 logger = logging.getLogger(__name__)
 
 
-class WebInput(InputSource):
+class WebInput(InputPort):
     """
     Web input source for receiving commands via web interface.
     

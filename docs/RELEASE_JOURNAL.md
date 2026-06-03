@@ -12,6 +12,16 @@ newest entries near the top of each dated section.
 ## Action journal
 
 ### 2026-06-03
+- **ARCH-11 S1 DONE — input-port consolidation + re-root onto EntryPointMetadata.** First of the 4 staged edges.
+  Landed the single input port as `core/interfaces/input.InputPort(EntryPointMetadata)` (+ the `InputData` value type),
+  replacing both the former `inputs.base.InputSource` (which created the `core→inputs.base` edge) and the dead duplicate
+  `InputPlugin` (was `PluginInterface`-rooted, 0 subclasses). Adapters (CLI/microphone/web) and `InputManager` now
+  implement/type against `InputPort`, importing it inward from `core/interfaces`; `inputs/base.py` shrank to just the
+  adapter-side `ComponentNotAvailable`. `workflow_manager.py` imports the port inward (3 sigs) → the input edge is
+  **removed**. Stripped the now-dead `InputPlugin` refs from the dormant `plugins/manager.py` (behavior-preserving — it
+  loads 0 plugins; the `_input_plugins`/`get_input_plugins` bits were always empty). Verified: import-linter **7/7 kept**
+  (the SCC-2 `inputs.base`-no-adapters contract still holds), full suite **85=85 FAILED** vs stashed baseline (0 net
+  regression). NEXT = S2 (Component+Workflow ports into `core/interfaces`, core imports them).
 - **ARCH-11 hierarchy-fork RESOLVED + staging locked (discussion, no code yet).** Opened the deferred ARCH-11 session
   with the `EntryPointMetadata`-vs-`PluginInterface` decision, as agreed. Traced the real graph instead of trusting the
   summary: the live architecture is `EntryPointMetadata`-rooted (every real adapter/component extends it); `PluginInterface`

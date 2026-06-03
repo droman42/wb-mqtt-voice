@@ -13,7 +13,6 @@ from pathlib import Path
 from ..core.interfaces.plugin import PluginInterface, PluginManager
 from ..core.interfaces.tts import TTSPlugin
 from ..core.interfaces.audio import AudioPlugin
-from ..core.interfaces.input import InputPlugin
 from ..core.interfaces.asr import ASRPlugin
 from ..core.interfaces.llm import LLMPlugin
 from .registry import PluginRegistry
@@ -45,7 +44,6 @@ class AsyncPluginManager:
         # Categorized plugin access
         self._tts_plugins: list[TTSPlugin] = []
         self._audio_plugins: list[AudioPlugin] = []
-        self._input_plugins: list[InputPlugin] = []
         
     async def initialize(self, core) -> None:
         """Initialize the plugin manager with core reference"""
@@ -178,10 +176,7 @@ class AsyncPluginManager:
             
         if isinstance(plugin, AudioPlugin):
             self._audio_plugins.append(plugin)
-            
-        if isinstance(plugin, InputPlugin):
-            self._input_plugins.append(plugin)
-            
+
     def _resolve_dependencies(self, plugins: list[Type[PluginInterface]]) -> list[Type[PluginInterface]]:
         """
         Resolve plugin dependencies and return load order.
@@ -275,10 +270,6 @@ class AsyncPluginManager:
     def get_audio_plugins(self) -> list[AudioPlugin]:
         """Get all audio plugins"""
         return self._audio_plugins.copy()
-        
-    def get_input_plugins(self) -> list[InputPlugin]:
-        """Get all input plugins"""
-        return self._input_plugins.copy()
         
     def list_plugins_sync(self) -> list[PluginInterface]:
         """Get all loaded plugins (synchronous)"""
@@ -377,9 +368,7 @@ class AsyncPluginManager:
             interfaces.append("TTSPlugin")
         if isinstance(plugin, AudioPlugin):
             interfaces.append("AudioPlugin")
-        if isinstance(plugin, InputPlugin):
-            interfaces.append("InputPlugin")
-            
+
         return interfaces
         
     @property

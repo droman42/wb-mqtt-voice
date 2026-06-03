@@ -322,7 +322,12 @@ See `docs/review/phase1_architecture_map.md` §5.
       status readers (all currently report 0). **Staging (each leaves a working app):** S1 input-port consolidation +
       re-root onto EntryPointMetadata · S2 Component+Workflow ports in `core/interfaces` + core imports them · S3 construction
       inversion (managers→composition/runners, AsyncVACore port-typed) · S4 import-linter contracts forbidding
-      `core→{inputs,workflows,components}.base` + remove the ARCH-5 exemptions. _Original below._
+      `core→{inputs,workflows,components}.base` + remove the ARCH-5 exemptions. **Progress: ✓ S1 DONE 2026-06-03** —
+      consolidated the input port into `core/interfaces/input.InputPort(EntryPointMetadata)` (+`InputData`); deleted the
+      dead `InputPlugin` and stripped its dormant refs from `plugins/manager.py`; adapters (cli/microphone/web) + `InputManager`
+      now implement/type against `InputPort`; `inputs/base.py` reduced to the adapter-side `ComponentNotAvailable`;
+      `workflow_manager.py` imports the port inward (`core→inputs.base` input edge **removed** — 1 of 4 edges done). Verified:
+      import-linter 7/7 kept (SCC-2 contract holds), suite 85=85 FAILED (0 net regression). NEXT = S2. _Original below._
       (which deemed them "legitimate composition-root behavior" and
       left them unenforced; user reverses that 2026-06-02). Edges: `core.{engine,workflow_manager}→inputs.base`,
       `core.workflow_manager→workflows.base`, `core.components→components.base`. **Fix = invert via DI/ports:** the
