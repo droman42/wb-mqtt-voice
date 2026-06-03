@@ -167,9 +167,14 @@ class GreetingsIntentHandler(IntentHandler):
         
         greetings = self._get_template_data("greetings", language)
         greeting = random.choice(greetings)
-        
-        # Add time-based greeting if possible
-        time_greeting = self._get_time_based_greeting(language)
+
+        # QUAL-34: if the user explicitly stated the time of day ("good evening"), honor that entity;
+        # otherwise fall back to the system clock. time_of_day is an optional CHOICE → None when absent.
+        time_of_day = self.get_param(intent, "time_of_day", default=None)
+        if time_of_day:
+            time_greeting = self._get_time_based_greeting_template(time_of_day, language)
+        else:
+            time_greeting = self._get_time_based_greeting(language)
         if time_greeting:
             greeting = f"{time_greeting} {greeting}"
         

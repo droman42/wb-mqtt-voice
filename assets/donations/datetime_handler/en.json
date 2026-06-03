@@ -311,7 +311,18 @@
               ],
               "label": "RELATIVE_DATE"
             }
-          ]
+          ],
+          "choice_surfaces": {
+            "today": [
+              "today"
+            ],
+            "tomorrow": [
+              "tomorrow"
+            ],
+            "yesterday": [
+              "yesterday"
+            ]
+          }
         }
       ]
     },

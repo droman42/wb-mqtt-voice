@@ -90,9 +90,13 @@ class VoiceSynthesisIntentHandler(IntentHandler):
         # Use language from context (detected by NLU)
         language = context.language
         
-        # Extract text and voice parameters from command
-        text_to_speak, voice_name = self._extract_speech_parameters(intent.raw_text)
-        
+        # QUAL-34 (Bucket B): consume the NLU-extracted `text`/`voice` entities via the typed accessor
+        # (the `voice` CHOICE resolves to a canonical voice through its choice_surfaces), falling back to
+        # the raw_text parse ("скажи X голосом Y") when the NLU didn't populate them — no behavior loss.
+        parsed_text, parsed_voice = self._extract_speech_parameters(intent.raw_text)
+        text_to_speak = self.get_param(intent, "text", default=None) or parsed_text
+        voice_name = self.get_param(intent, "voice", default=None) or parsed_voice
+
         if not text_to_speak:
             return self._error_result(context, "No text to speak found")
         

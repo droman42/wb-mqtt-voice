@@ -6,7 +6,7 @@ Adapted from datetime_plugin.py for the new intent architecture.
 """
 
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Dict, List, Optional
 
 from .base import IntentHandler
@@ -109,6 +109,13 @@ class DateTimeIntentHandler(IntentHandler):
         
         now = datetime.now()
 
+        # QUAL-34: honour the relative day ("date tomorrow/yesterday"). Optional CHOICE → None when absent.
+        # The offset shifts the target date so BOTH the numeric format and the natural-language path follow it.
+        relative = self.get_param(intent, "relative", default=None)
+        offset = {"tomorrow": 1, "yesterday": -1}.get(relative, 0)
+        if offset:
+            now = now + timedelta(days=offset)
+
         # QUAL-33: honour the requested `format`. short = numeric (locale-ordered), iso = YYYY-MM-DD;
         # full/verbose (default) fall through to the natural-language template.
         fmt = (intent.entities.get("format") or "").strip().lower()
@@ -124,18 +131,29 @@ class DateTimeIntentHandler(IntentHandler):
         months = locale_data.get("months", [])
         templates = locale_data.get("templates", {})
 
+        # QUAL-34: for a relative day use the lead-word template ("Завтра: …" / "Tomorrow: …"); else the
+        # default "today" template. `lead` is the localized relative word.
+        lead = locale_data.get("relative_leads", {}).get(relative) if offset else None
         if language == "en":
             weekday = weekdays[now.weekday()] if now.weekday() < len(weekdays) else "Unknown"
             month = months[now.month - 1] if now.month - 1 < len(months) else "Unknown"
-            template = templates.get("date_full", "Today is {weekday}, {month} {day}, {year}")
-            date_str = template.format(weekday=weekday, month=month, day=now.day, year=now.year)
+            if lead:
+                template = templates.get("date_relative", "{lead}: {weekday}, {month} {day}, {year}")
+                date_str = template.format(lead=lead, weekday=weekday, month=month, day=now.day, year=now.year)
+            else:
+                template = templates.get("date_full", "Today is {weekday}, {month} {day}, {year}")
+                date_str = template.format(weekday=weekday, month=month, day=now.day, year=now.year)
         else:
             days_ordinal = locale_data.get("days_ordinal", [])
             weekday = weekdays[now.weekday()] if now.weekday() < len(weekdays) else "неизвестно"
             month = months[now.month - 1] if now.month - 1 < len(months) else "неизвестно"
             day_ordinal = days_ordinal[now.day - 1] if now.day <= len(days_ordinal) else str(now.day)
-            template = templates.get("date_full", "Сегодня {weekday}, {day_ordinal} {month} {year} года")
-            date_str = template.format(weekday=weekday, day_ordinal=day_ordinal, month=month, year=now.year)
+            if lead:
+                template = templates.get("date_relative", "{lead}: {weekday}, {day_ordinal} {month} {year} года")
+                date_str = template.format(lead=lead, weekday=weekday, day_ordinal=day_ordinal, month=month, year=now.year)
+            else:
+                template = templates.get("date_full", "Сегодня {weekday}, {day_ordinal} {month} {year} года")
+                date_str = template.format(weekday=weekday, day_ordinal=day_ordinal, month=month, year=now.year)
         
         return IntentResult(
             text=date_str,
