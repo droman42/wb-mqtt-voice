@@ -376,9 +376,13 @@ class NLUComponent(Component, NLUPlugin, WebAPIPlugin):
         self.confidence_threshold = config.get("confidence_threshold", 0.7)
         self.fallback_intent = config.get("fallback_intent", "conversation.general")
         
-        # Cascading provider coordination configuration
+        # Cascading provider coordination configuration.
+        # Defaults MUST be real registered entry-point names (irene.providers.nlu): the old
+        # ["keyword_matcher", "spacy_rules_sm", "spacy_semantic_md"] were all phantom, so any
+        # config omitting provider_cascade_order recognized nothing → every utterance fell to
+        # the fallback intent (QUAL-11; QUAL-23 asserts these resolve at startup).
         self.provider_cascade_order = config.get("provider_cascade_order", [
-            "keyword_matcher", "spacy_rules_sm", "spacy_semantic_md"
+            "hybrid_keyword_matcher", "spacy_nlu"
         ])
         self.max_cascade_attempts = config.get("max_cascade_attempts", 4)
         self.cascade_timeout_ms = config.get("cascade_timeout_ms", 200)
@@ -392,9 +396,10 @@ class NLUComponent(Component, NLUPlugin, WebAPIPlugin):
         enabled_providers = [name for name, provider_config in providers_config.items() 
                             if provider_config.get("enabled", False)]
         
-        # Always include keyword_matcher as fallback if not already included
-        if "keyword_matcher" not in enabled_providers and providers_config.get("keyword_matcher", {}).get("enabled", True):
-            enabled_providers.append("keyword_matcher")
+        # Always include the hybrid keyword matcher as fallback if not already included
+        # (real entry-point name; "keyword_matcher" was phantom — it never resolved).
+        if "hybrid_keyword_matcher" not in enabled_providers and providers_config.get("hybrid_keyword_matcher", {}).get("enabled", True):
+            enabled_providers.append("hybrid_keyword_matcher")
             
         self._provider_classes = dynamic_loader.discover_providers("irene.providers.nlu", enabled_providers)
         logger.info(f"Discovered {len(self._provider_classes)} enabled NLU providers: {list(self._provider_classes.keys())}")

@@ -840,11 +840,13 @@ class HybridKeywordMatcherProvider(NLUProvider):
     
     def _normalize_text(self, text: str) -> str:
         """Improved text normalization for matching"""
-        # Unicode normalization first (before case folding)
+        # Unicode normalization + case folding.
+        # NFC (compose), NOT NFKD-decompose-then-strip-combining: the latter silently folded
+        # precomposed Cyrillic letters away — «й»→«и», «ё»→«е» — so patterns built from raw
+        # donation phrases (e.g. «таймер») never matched the normalized input («таимер»),
+        # breaking recognition for every Russian phrase containing й/ё (QUAL-11).
         if self.normalize_unicode:
-            text = unicodedata.normalize('NFKD', text.casefold())
-            # Remove combining characters
-            text = ''.join(ch for ch in text if not unicodedata.combining(ch))
+            text = unicodedata.normalize('NFC', text.casefold())
         elif not self.case_sensitive:
             text = text.lower()
         

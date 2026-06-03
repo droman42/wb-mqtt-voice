@@ -11,6 +11,29 @@ newest entries near the top of each dated section.
 
 ## Action journal
 
+### 2026-06-03
+- **QUAL-11 [PEX] Stage A — fixed the timer recognition gap (root cause) + the phantom cascade defaults.
+  `test_set_timer_end_to_end` flips xfail→PASS.** Reconciled QUAL-11 against current code first (Invariant #8):
+  every P0/P1 still live as written (nothing silently fixed by QUAL-23/27/29) → valid, proceed.
+  - **Root cause of the recognition gap (verified empirically, not the review's "threshold too high" guess):**
+    a **Cyrillic normalization asymmetry** in `hybrid_keyword_matcher._normalize_text`. It applied
+    `NFKD` + combining-mark stripping, which folds precomposed Cyrillic **«й»→«и»** and **«ё»→«е»** (`таймер`→
+    `таимер`). But regex patterns are built from the **raw** donation phrase (`таймер`, with «й») and matched
+    against normalized text — so `\bпоставь таймер\b` could never match `поставь таимер на 5 минут`. This
+    silently broke recognition for **every** Russian phrase containing й/ё (а huge class: таймер, какой, мой…).
+    Fix: normalize with **`NFC` (compose), no combining-strip** — patterns and text are symmetric again; English
+    unaffected. (The NFKD+strip only ever provided Latin accent-folding, irrelevant for a RU/EN assistant.)
+  - **Phantom cascade defaults (P0 #1):** `provider_cascade_order` defaulted to
+    `["keyword_matcher","spacy_rules_sm","spacy_semantic_md"]` — all three non-existent; the
+    `"keyword_matcher"` always-on fallback was phantom too. Repointed both to the real entry-points
+    (`hybrid_keyword_matcher`, `spacy_nlu`). QUAL-23 only *asserts* these at startup; it never fixed the default,
+    so a config omitting the order recognized nothing.
+  - **Result:** the timer flow now works end-to-end (recognition this stage + F&F from QUAL-28); the TEST-0
+    `test_set_timer_end_to_end` xfail is removed and now a real green assertion. Maintained suite green
+    (smoke + action-store + import-contracts: 17/17). **QUAL-11 remains open** — Stage A is the recognition/
+    cascade slice; the shared-extraction-base + required-param contract, resolver de-fatalization, entity_type
+    consumption, typed accessor, `_create_error_result` unification, and QUAL-22 are the remaining stages.
+
 ### 2026-06-01
 - **ARCH-0** — Architecture map + doc-harmonization audit + pattern review. → `docs/review/phase1_architecture_map.md`.
   Key results: module-level graph shows only **2 real cycles** (Phase-0's "giant SCC" was a package-grouping

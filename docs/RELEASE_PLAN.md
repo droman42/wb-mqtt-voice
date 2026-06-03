@@ -321,7 +321,18 @@ See `docs/review/phase1_architecture_map.md` §5.
       extraction_patterns`) are validated-then-discarded **dead code**; the two NLU providers extract with divergent
       contracts; failures are swallowed silently; resolvers *fatally crash* on asset-loader timing while the rest
       *silently no-ops*.
-- [ ] **QUAL-11** [PEX] (P1) — Remediate parameter-extraction gaps (ranked in the review). **P0s:** (1) fix the
+- [~] **QUAL-11** [PEX] (P1) — **DOING (staged 2026-06-03).** Remediate parameter-extraction gaps (ranked in the review).
+      **Stage A DONE (2026-06-03):** fixed the **timer recognition gap at its root** — a Cyrillic normalization
+      asymmetry in `hybrid_keyword_matcher._normalize_text` (NFKD+combining-strip folded «й»→«и»/«ё»→«е», so raw
+      donation patterns like `таймер` never matched normalized input → every й/ё phrase silently unrecognized);
+      switched to non-destructive `NFC`. Also fixed P0 #1 — the phantom default `provider_cascade_order`
+      (`keyword_matcher`/`spacy_rules_sm`/`spacy_semantic_md` → real `hybrid_keyword_matcher`/`spacy_nlu`) and the
+      phantom `keyword_matcher` always-on fallback. `test_set_timer_end_to_end` flipped **xfail→PASS** (timer works
+      end-to-end: recognition + QUAL-28 F&F). **Remaining stages:** shared-extraction-base + required-param contract
+      (P0 #3) · resolver de-fatalization (P0 #4) · `entity_type`/`room_context` consumption + heuristic swap (Q7b) ·
+      typed `ParameterSpec` accessor (P1) + `_create_error_result` unification (P1-t) · QUAL-22 (P0 #5) · the
+      slot/extraction-pattern decision (P0 #2, design fork). _Original P0/P1 detail below:_
+      **P0s:** (1) fix the default `provider_cascade_order`
       default `provider_cascade_order` — it names non-existent providers (`keyword_matcher`/`spacy_rules_sm`/
       `spacy_semantic_md` vs real `hybrid_keyword_matcher`/`spacy_nlu`, `nlu_component.py:380`) + add a startup
       assertion; (2) decide the slot/extraction-pattern story (implement, or remove the dead author-visible fields);
@@ -594,8 +605,8 @@ _Apply to every remediation task below (from the 4 review docs + QUAL-25/26). So
       2026-06-01** → `irene/tests/test_smoke_e2e.py` (**5 passed / 1 xfailed**, ~21s; boots the WebAPI runner once
       as a subprocess + a CLI headless check). Green flows: WebAPI boots, `привет`→`greeting.hello`, `/nlu/recognize`
       responds, LLM-offline conversation degrades gracefully (200, no crash — guards QUAL-14/15), CLI headless
-      executes. **xfail:** `test_set_timer_end_to_end` — documents the timer breakage (QUAL-9 + QUAL-11), auto-flips
-      when fixed. **New finding via TEST-0:** `поставь таймер на 5 минут` is **not recognized** (falls to
+      executes. ~~**xfail:** `test_set_timer_end_to_end`~~ — **now a real PASS** (the timer breakage closed: QUAL-9
+      F&F via QUAL-28 + QUAL-11 Stage A recognition fix, 2026-06-03); the smoke suite guards it green. **New finding via TEST-0:** `поставь таймер на 5 минут` is **not recognized** (falls to
       `conversation.general`) *despite the timer donation being loaded* — a recognition/matching gap → logged under
       QUAL-11. So timers are **doubly broken** (recognition AND the F&F launch crash). Still TODO: wire into CI (BUILD-2).
 - [x] **TEST-1** (P1) — Fix broken tests referencing removed/renamed symbols. **DONE 2026-06-01**:

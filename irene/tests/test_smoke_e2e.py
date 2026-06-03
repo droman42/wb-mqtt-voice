@@ -123,15 +123,13 @@ def test_conversation_offline_degrades_gracefully(webapi):
     assert isinstance(r["response"], str) and r["response"].strip(), r
 
 
-@pytest.mark.xfail(
-    reason="Timer flow is doubly broken: (1) NLU does not recognize 'поставь таймер на 5 минут' "
-    "(falls to conversation.general despite the timer donation being loaded) — recognition gap "
-    "[QUAL-11]; and (2) the F&F launch crashes on a duplicate session_id kwarg [QUAL-9]. "
-    "Flips green when both land.",
-    strict=False,
-)
 def test_set_timer_end_to_end(webapi):
-    """Setting a timer should resolve to a timer intent and succeed."""
+    """Setting a timer should resolve to a timer intent and succeed.
+
+    Was doubly broken: (1) NLU dropped 'поставь таймер на 5 минут' to conversation.general —
+    a Cyrillic normalization asymmetry (NFKD+combining-strip folded «й»→«и» so raw donation
+    patterns never matched normalized input) [QUAL-11]; (2) the F&F launch crashed on a
+    duplicate session_id kwarg [QUAL-9]. Both now fixed (QUAL-11 normalization + QUAL-28 F&F)."""
     code, r = _post(webapi, "/execute/command", {"command": "поставь таймер на 5 минут"})
     assert code == 200, r
     assert r["success"] is True, r
