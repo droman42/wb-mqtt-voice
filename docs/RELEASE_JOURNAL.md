@@ -12,6 +12,23 @@ newest entries near the top of each dated section.
 ## Action journal
 
 ### 2026-06-03
+- **Decision (user) — QUAL-11 goes LIGHTWEIGHT (T1); the heavy NLU tiers split out. Filed QUAL-35; entity_type → ARCH-6.**
+  Worked through the slot/extraction-pattern fork (P0 #2) and the entity_type fork (Q7b) together — they're the **same
+  species** (heavy declarative extraction), and a three-tier picture clarified the call: **T1** = keyword/NER + regex +
+  CHOICE surfaces + lemmas (what `hybrid_keyword_matcher`, the hot path, actually runs); **T2** = spaCy `Matcher`/
+  `EntityRuler` slot-filling (the authored-but-discarded `token_patterns`/`slot_patterns`/`extraction_patterns`);
+  **T3** = dependency-parse / local-LLM NLU. Key facts that drove it: the cascade is `[hybrid, spacy]` fast→slow with a
+  0.7 gate, so **T2 lives only in the spaCy fallback** (hybrid explicitly ignores advanced patterns) — and all 66
+  `entity_type` decls are `generic`, so entity_type dispatch would be an inert branch. T1 covers the easy ~80%; T2's
+  sweet spot is real but narrow (compound durations "2 часа 30 минут"→150min, source/dest by preposition, multi
+  param=value in any order, free-text spans, morphology at real-home scale); T3 (negation "кроме", anaphora "его",
+  conditionals "если") is what **neither** T1 nor T2 reach. **User's call:** T2+T3 are a **must-have for smart-home/MQTT**
+  (not overkill there) → **filed QUAL-35 `[PEX][MQTT]`** (T2 in the spaCy fallback + T3 via local-LLM; gated on ARCH-7/8;
+  patterns **parked, not deleted** — optionality preserved, no authoring lost, no schema change so no UI-5 impact).
+  **entity_type/room_context consumption + the heuristic swap (Q7b) → moved into ARCH-6** (activates with real
+  room/device registration; ARCH-6 now explicitly owns authoring the non-generic types + the `_is_device/location_entity`
+  → `entity_type` swap). QUAL-11 keeps only the safe cleanup (dedupe device path + `_resolution_failed`) and refocuses its
+  remaining energy on the universal hot-path wins: shared extraction base + required-param contract + typed accessor.
 - **QUAL-11 [PEX] Stage B — de-fatalized the entity resolvers (P0 #4).** `DeviceEntityResolver._load_device_types`
   and `LocationEntityResolver._load_location_keywords` raised uncaught `RuntimeError` ("fatal configuration error")
   when the asset loader wasn't wired or localization data was missing/empty — and the resolver is built **asset-less**

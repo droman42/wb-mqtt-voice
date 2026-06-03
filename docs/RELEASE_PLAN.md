@@ -85,7 +85,7 @@ Living findings behind the tasks (Invariant #5). `[x]` = exists; others are prod
 | `phase0_static_baseline.md` `[x]` | static baseline: phantom refs, hidden type debt, dead code, layering | QUAL-1/2 ✓, QUAL-3/4/5/6, TEST-1 |
 | `phase1_architecture_map.md` `[x]` | architecture map, doc-harmonization audit, hexagon target | ARCH-0 ✓, ARCH-1..8, ARCH-11/12, DOC-4/5✓/5b/6✓ |
 | `fire_and_forget_review.md` `[x]` | F&F lifecycle + gap analysis (6 legacy issues re-validated) | QUAL-8 ✓, QUAL-9, TEST-3, DOC-4 |
-| `parameter_extraction_review.md` `[x]` | text→parameters review + gaps | QUAL-10 ✓, QUAL-11, TEST-4, DOC-7, UI-1/2/3, QUAL-22 |
+| `parameter_extraction_review.md` `[x]` | text→parameters review + gaps | QUAL-10 ✓, QUAL-11, QUAL-35, TEST-4, DOC-7, UI-1/2/3, QUAL-22 |
 | `text_processing_review.md` `[x]` | text-processor subsystem review + LLM-text-proc question | QUAL-12 ✓, QUAL-13, TEST-5 |
 | `llm_usage_review.md` `[x]` | LLM usage + offline-first + NLU-LLM decision | QUAL-14 ✓, QUAL-15, QUAL-16 |
 | `dataflow_review.md` `[x]` | full input→action flow map + defect hunt (~9 P0/~20 P1; gates Gate 2) | QUAL-25 ✓, QUAL-26 ✓, DOC-8 |
@@ -226,6 +226,15 @@ See `docs/review/phase1_architecture_map.md` §5.
       function** to return the registered `client_id`/room from the WS handshake, activating real room/device keying +
       device resolution with **no re-refactor**. Sequence: do ARCH-6's design session **after the Gate-2 foundation
       (QUAL-28/29/11) stabilizes**; it's one of the 3 design-gated threads (ARCH-6 [WS] · ARCH-7 [MQTT] · ARCH-9 [INFER]).
+      **★ OWNS `entity_type`/`room_context` CONSUMPTION (moved from QUAL-11, user 2026-06-03):** QUAL-29 declared
+      `entity_type` (device/location/room/person/generic) + `room_context` (required/none/conditional) but all 66 decls
+      are `generic` and nothing reads them, so the declarative resolver swap would be an **inert branch** until there are
+      real rooms/devices. ARCH-6 is where that becomes real, so it owns: **(a)** authoring the non-generic `entity_type`/
+      `room_context` on the handlers that take device/room params; **(b)** replacing the brittle `_is_device_entity`/
+      `_is_location_entity` name-heuristics (`entity_resolver.py`) with `entity_type`-driven resolver selection (the Q7b
+      "typed accessor IS the replacement" swap — atomic, no broken window); **(c)** the `room_context` resolve-or-clarify
+      policy (with QUAL-30). QUAL-11 left the seam clean (resolvers degrade gracefully; duplicate device path unified;
+      `_resolution_failed` markers). Pairs with **QUAL-35** (T2/T3 NLU for the complex device commands MQTT needs).
 - [ ] **ARCH-7** [MQTT] (P-TBD) — **Design session** (needs live collaboration): place MQTT publication as a driven
       **output adapter** in the hexagon (intent result/action → output port → MQTT adapter). Defines the general
       output-port seam — MQTT is the **first non-audio output** (today output is TTS/audio-only via
@@ -333,10 +342,21 @@ See `docs/review/phase1_architecture_map.md` §5.
       `_load_location_keywords` no longer raise uncaught `RuntimeError` (which aborted any device/location request
       before deferred asset-coordination ran); they now warn-once + return `{}`, so resolve() degrades (skips
       type/here-inference, keeps exact/fuzzy name matching) instead of crashing.
-      **Remaining stages:** shared-extraction-base + required-param contract
-      (P0 #3) · `entity_type`/`room_context` consumption + heuristic swap + duplicate-device-path unify + `_resolution_failed` (Q7b/P1 #9) ·
-      typed `ParameterSpec` accessor (P1) + `_create_error_result` unification (P1-t) · QUAL-22 (P0 #5) · the
-      slot/extraction-pattern decision (P0 #2, design fork). _Original P0/P1 detail below:_
+      **Decision (2026-06-03, user) — QUAL-11 takes the LIGHTWEIGHT extraction contract (T1):** keyword/NER + regex +
+      CHOICE surfaces + lemmas (what the hybrid matcher — the hot path — actually runs). The heavy declarative tiers
+      are split OUT of QUAL-11, not built here:
+      • **P0 #2 (slot/token/extraction patterns = T2 spaCy-Matcher slot-filling) → PARKED, retargeted to QUAL-35**
+        (must-have for smart-home/MQTT, ARCH-7/8). NOT removed (keeps the authored patterns + the option); but the
+        silent validate-then-discard is made honest (the active contract is T1; T2 is a tracked future). No schema
+        change → no UI-5 impact.
+      • **`entity_type`/`room_context` consumption + the `_is_device_entity`/`_is_location_entity` heuristic swap (Q7b)
+        → MOVED to ARCH-6** (activates with real room/device registration; all 66 `entity_type` decls are `generic`
+        today, so the dispatch would be inert until ARCH-6 authors them). QUAL-11 keeps only the **safe, now-valuable
+        cleanup**: unify the duplicate device-resolution path + add `_resolution_failed` markers.
+      **Remaining stages (lightweight scope):** Stage C — duplicate-device-path unify + `_resolution_failed` + honest
+      "patterns parked (QUAL-35)" note · Stage D — shared-extraction-base + required-param contract (P0 #3) + typed
+      `ParameterSpec` accessor (P1 #6) + `_create_error_result` unification (P1-t) · Stage E — QUAL-22 (P0 #5).
+      _Original P0/P1 detail below (P0 #2 → QUAL-35; P0 #4 ✓ Stage B; the entity_type half of P0 #4 → ARCH-6):_
       **P0s:** (1) fix the default `provider_cascade_order`
       default `provider_cascade_order` — it names non-existent providers (`keyword_matcher`/`spacy_rules_sm`/
       `spacy_semantic_md` vs real `hybrid_keyword_matcher`/`spacy_nlu`, `nlu_component.py:380`) + add a startup
@@ -597,6 +617,29 @@ _Apply to every remediation task below (from the 4 review docs + QUAL-25/26). So
       (typed `ParameterSpec` accessor; same as QUAL-25 P1-r/P1-s). Also decide the `language`-as-pseudo-param pattern
       (declared CHOICE in most handlers but satisfied by `context.language`). Done when every declared param is either
       consumed or removed, and the audit re-runs clean. Refs: `declared_param_audit.md`, QUAL-11, QUAL-33, Q6/Q7.
+- [ ] **QUAL-35** `[release]` [PEX][MQTT] (P-TBD) — **Declarative NLU tiers T2 + T3 — MUST-HAVE for smart-home/MQTT
+      (gated on ARCH-7/8). Split out of QUAL-11 (2026-06-03, user).** QUAL-11 deliberately shipped the **lightweight (T1)**
+      extraction contract — keyword/NER + regex + CHOICE surfaces + lemmas, which is what the `hybrid_keyword_matcher`
+      (the hot path) actually runs. T1 covers the easy ~80% of commands but **fails on the complex commands smart-home
+      control needs.** This task builds the two heavier tiers when MQTT/smart-home lands:
+      • **T2 — spaCy `Matcher`/`EntityRuler` slot-filling** (the currently-**parked** `token_patterns`/`slot_patterns`/
+        `extraction_patterns`, authored across all 14 handlers but validated-then-discarded today). Implement in the
+        **spaCy provider as the cascade fallback** (lemma/POS-aware recognition + span→`ParameterSpec` slot extraction).
+        Wins where T1 provably fails: **compound values** ("таймер на 2 часа 30 минут" → 150 min, not 2), **two
+        same-type entities by role/preposition** ("со спальни **на** кухню" → source vs dest), **multiple param=value
+        pairs in any order** ("яркость 30 и температуру 22"), **free-text spans into a slot** ("напомни выключить
+        плиту"), and **morphology/name-collisions at real-home scale** (`{LEMMA: лампа}` vs `{LEMMA: лампочка}`,
+        deterministic vs fuzzy). _Stop the silent validate-then-discard now (QUAL-11 Stage C documents the patterns as
+        parked here)._
+      • **T3 — dependency-parse / local-LLM NLU** for what T2 **also** can't do (linear Matcher has no scope):
+        **negation/exceptions** ("все лампы **кроме** торшера"), **anaphora** ("сделай **его** поярче"), **conditionals**
+        ("**если** темно, включи свет"). Ties to the local-LLM-assist lane (QUAL-15) + ARCH-9/10 [INFER]; opt-in,
+        local-only.
+      **Sequencing:** design with **ARCH-7** (MQTT/output-port + room/device model) and land before/with **ARCH-8**
+      (smart-home actuation) — complex device commands are unusable on T1 alone. Also activates the `entity_type`/
+      `room_context` resolution authored under **ARCH-6**. Gated by Invariant #4 (any donation-schema change → config-ui;
+      note the parked T2 pattern fields already exist, so no new schema surface unless extended). Refs:
+      `parameter_extraction_review.md` (T2 = the "dead best mechanisms" themes 1+3), QUAL-11 (T1 baseline), Q6/Q7.
 
 ### Tests (TEST)
 > **Strategy (decided 2026-06-01): do NOT keep repairing the existing suite.** Most tests were written against
