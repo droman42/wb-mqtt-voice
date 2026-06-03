@@ -180,13 +180,17 @@ class SystemIntentHandler(IntentHandler):
         # Use language from context (detected by NLU)
         language = context.language
         
+        # QUAL-34: optional `topic` (string) — the help subject the user asked about, consumed + surfaced.
+        topic = self.get_param(intent, "topic", default=None)
+
         help_text = self._get_template("help", language)
-        
+
         return IntentResult(
             text=help_text,
             should_speak=True,
             metadata={
                 "help_type": "general",
+                "topic": topic,
                 "language": language,
                 "capabilities_listed": True
             }
@@ -212,10 +216,13 @@ class SystemIntentHandler(IntentHandler):
             else:
                 uptime_str = f"{uptime_minutes} минут"
         
+        # QUAL-34: optional `component` (string) — status scope requested by the user, consumed + surfaced.
+        component = self.get_param(intent, "component", default=None)
+
         # TODO #15: Move hardcoded version to TOML configuration (not JSON donations)
         version = __version__
         status_text = self._get_template("status", language, uptime_str=uptime_str, version=version)
-        
+
         return IntentResult(
             text=status_text,
             should_speak=True,
@@ -223,6 +230,7 @@ class SystemIntentHandler(IntentHandler):
                 "status": "running",
                 "uptime_seconds": uptime_seconds,
                 "version": version,
+                "component": component,
                 "language": language
             }
         )

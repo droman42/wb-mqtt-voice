@@ -129,8 +129,10 @@ class TextEnhancementIntentHandler(IntentHandler):
         if not text_to_improve:
             return self._error_result(context, "Text to improve not found")
         
+        # QUAL-34: optional improvement_type (CHOICE) steers the LLM via a focus directive.
+        focus = self.get_param(intent, "improvement_type", default=None)
         try:
-            improved = await llm_component.enhance_text(text_to_improve, task="improve", language=context.language, trace_context=self._trace_context)
+            improved = await llm_component.enhance_text(text_to_improve, task="improve", language=context.language, focus=focus, trace_context=self._trace_context)
             
             # Use language from context (detected by NLU)
             language = context.language
@@ -171,8 +173,10 @@ class TextEnhancementIntentHandler(IntentHandler):
         if not text_to_correct:
             return self._error_result(context, "Text to correct not found")
         
+        # QUAL-34: optional correction_type (CHOICE) steers the LLM via a focus directive.
+        focus = self.get_param(intent, "correction_type", default=None)
         try:
-            corrected = await llm_component.enhance_text(text_to_correct, task="grammar_correction", language=context.language, trace_context=self._trace_context)
+            corrected = await llm_component.enhance_text(text_to_correct, task="grammar_correction", language=context.language, focus=focus, trace_context=self._trace_context)
             
             # Use language from context (detected by NLU)
             language = context.language

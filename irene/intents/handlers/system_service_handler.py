@@ -106,10 +106,13 @@ class SystemServiceIntentHandler(IntentHandler):
         
         # Use language from context (detected by NLU)
         language = context.language
-        
+
+        # QUAL-34: optional component scope (string) — consumed and surfaced in metadata.
+        component = self.get_param(intent, "component", default=None)
+
         # Format response using external template
         status_text = self._get_template(
-            "service_status_info", 
+            "service_status_info",
             language,
             heartbeats=self._status_count,
             last_heartbeat=self._last_heartbeat.strftime('%H:%M:%S'),
@@ -126,6 +129,7 @@ class SystemServiceIntentHandler(IntentHandler):
                 "heartbeats": self._status_count,
                 "last_heartbeat": self._last_heartbeat.isoformat(),
                 "uptime_seconds": (datetime.now() - self._start_time).total_seconds(),
+                "component": component,
                 "language": language
             },
             success=True
@@ -142,7 +146,10 @@ class SystemServiceIntentHandler(IntentHandler):
         
         # Use language from context (detected by NLU)
         language = context.language
-        
+
+        # QUAL-34: optional metric_type (CHOICE) — the requested metric scope, consumed + surfaced.
+        metric_type = self.get_param(intent, "metric_type", default=None)
+
         # Format response using external template
         stats_text = self._get_template(
             "service_stats_info",
@@ -162,6 +169,7 @@ class SystemServiceIntentHandler(IntentHandler):
                 "memory_efficient": True,
                 "non_blocking": True,
                 "resource_usage": "minimal",
+                "metric_type": metric_type,
                 "language": language
             },
             success=True
@@ -191,9 +199,14 @@ class SystemServiceIntentHandler(IntentHandler):
             uptime=self._get_uptime(language),
             last_activity=self._last_heartbeat.strftime('%H:%M:%S')
         )
-        
-        self.logger.info(f"Service health check - score: {health_score}%")
-        
+
+        # QUAL-34: optional `detailed` (bool) appends a verbose breakdown.
+        detailed = self.get_param(intent, "detailed", default=False)
+        if detailed:
+            health_text = f"{health_text} {self._get_template('service_health_detail', language, heartbeats=self._status_count, uptime=self._get_uptime(language))}"
+
+        self.logger.info(f"Service health check - score: {health_score}%, detailed={detailed}")
+
         return IntentResult(
             text=health_text,
             should_speak=True,
@@ -203,6 +216,7 @@ class SystemServiceIntentHandler(IntentHandler):
                 "last_activity": self._last_heartbeat.isoformat(),
                 "issues_detected": 0,
                 "performance": "optimal",
+                "detailed": detailed,
                 "language": language
             },
             success=True

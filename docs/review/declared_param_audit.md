@@ -52,3 +52,16 @@ sub-pattern worth deciding during triage.
 - **Bucket A → QUAL-34**: per-param wire-or-remove decisions (the QUAL-33 precedent: build the feature, or stop
   declaring it). For CHOICE params kept, author bilingual `choice_surfaces` (QUAL-29) so they're reachable.
 - Re-run this audit after QUAL-11 + QUAL-34 land; the validator's surface-completeness check is a partial net.
+
+## Resolution (QUAL-34, 2026-06-03)
+All 19 triaged with user per-handler input. **Removed (9):** `audio_playback.file_path`;
+`conversation.{topic,query_topic,context_reference}` (query_topic was wrongly `required`);
+`datetime.{location,timezone}`; `greetings.return_time`; `timer.retain`. **Whole handler removed:**
+`train_schedule` (bogus, external Yandex API) — incl. its `language` param. **Wired (10, via the typed
+`get_param` accessor + bilingual choice_surfaces):** `voice_synthesis.voice` (Bucket B → consume NLU entity,
+stop re-parsing raw_text); `datetime.relative` (real date offset); `greetings.time_of_day` (explicit
+time-of-day greeting); `text_enhancement.{improvement_type,correction_type}` (LLM focus directive);
+`system_service.{component,metric_type,detailed}` + `system.{topic,component}` (consumed; `detailed` is a real
+verbosity toggle, the rest surfaced as requested scope where the handlers are generic). Fixed several
+choice_surfaces that were wrongly English on the ru side / missing on the en side. Audit now clean: no
+declared-but-unconsumed param remains.

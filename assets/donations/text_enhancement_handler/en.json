@@ -340,7 +340,24 @@
             }
           ],
           "aliases": [],
-          "default_value": "general"
+          "default_value": "general",
+          "choice_surfaces": {
+            "grammar": [
+              "grammar"
+            ],
+            "style": [
+              "style"
+            ],
+            "clarity": [
+              "clarity"
+            ],
+            "general": [
+              "general"
+            ],
+            "vocabulary": [
+              "vocabulary"
+            ]
+          }
         }
       ]
     },
@@ -532,7 +549,24 @@
             }
           ],
           "aliases": [],
-          "default_value": "all"
+          "default_value": "all",
+          "choice_surfaces": {
+            "grammar": [
+              "grammar"
+            ],
+            "spelling": [
+              "spelling"
+            ],
+            "punctuation": [
+              "punctuation"
+            ],
+            "style": [
+              "style"
+            ],
+            "all": [
+              "all"
+            ]
+          }
         }
       ]
     }

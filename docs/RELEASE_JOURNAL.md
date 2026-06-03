@@ -12,6 +12,23 @@ newest entries near the top of each dated section.
 ## Action journal
 
 ### 2026-06-03
+- **QUAL-34 DONE — declared-but-unconsumed donation params triaged per-handler WITH the user, then wired-or-removed.**
+  The user drove the wire-vs-remove call for each of the 19 (and asked good clarifying questions — e.g. confirmed the
+  conversation handler is fundamentally raw_text→LLM so its `topic`/`query_topic`/`context_reference` slots add nothing;
+  flagged `train_schedule` as bogus → remove the whole handler; chose to BUILD capability rather than minimize surface).
+  **Outcome:** removed 9 params + the whole train_schedule handler; wired 10 via the typed `get_param` accessor (the same
+  accessor that activates the QUAL-30 clarification boundary). Highlights: `voice_synthesis.voice` migrated off the
+  raw_text re-parse to the canonical NLU entity (Bucket B); `datetime.relative` got a real date-offset + localized
+  lead template (`date_relative`/`relative_leads`, "Завтра: …" / "Tomorrow: …"); `greetings.time_of_day` honours an
+  explicit "good evening" over the clock; `text_enhancement.{improvement_type,correction_type}` steer the LLM via a
+  SYSTEM-prompt focus directive (kept out of the user text, QUAL-16 injection-safe); the system/system_service params
+  are consumed (with `detailed` a real verbosity toggle) where the handlers have real data, surfaced-as-scope where
+  they're generic stubs. **Surface fixes:** several CHOICE params had wrong-English ru surfaces / missing en surfaces
+  (e.g. correction_type, metric_type) — authored proper bilingual ones per the donation-choice-surfaces rule.
+  **Discipline:** committed in 3 parts (removals → 2a wirings → 2b wirings); caught a missed
+  `assets/templates/train_schedule_handler/` (part 1's `git rm` only took the donations dir — user flagged "did we
+  remove ALL assets?"). New `test_qual34_param_wiring.py`; audit doc marked resolved; 0 net suite regressions across all
+  parts; donations load 0 warnings. The declared-param audit is now clean.
 - **QUAL-21 DONE — settings-runner `ComponentConfig` crash-bug resolved by REMOVAL (user decision).** The
   `irene-settings` Gradio runner constructed `ComponentConfig(audio_output=…, microphone=…, web_api=…)` — fields
   removed in the architecture migration (mic/web → `config.inputs.*` / `config.system.web_api_enabled`,

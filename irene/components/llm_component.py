@@ -288,9 +288,14 @@ class LLMComponent(Component, LLMPlugin, WebAPIPlugin):
         text if every provider fails (the console stub returns the original as a no-op)."""
         # QUAL-16: resolve the externalized, hardened system prompt for (task, user-language) once and
         # pass it to the provider — the provider no longer holds task prompts.
+        # QUAL-34: optional `focus` (e.g. an improvement_type/correction_type) refines the task as a
+        # SYSTEM-prompt directive — kept out of the user text so injection-resistance (QUAL-16) holds.
+        focus = kwargs.pop("focus", None)
         if "system_prompt" not in kwargs:
             kwargs["system_prompt"] = self._get_task_prompt(
                 task, kwargs.get("language"), target_language=kwargs.get("target_language", "русский"))
+        if focus:
+            kwargs["system_prompt"] = f"{kwargs['system_prompt']} Focus specifically on: {focus}."
         chain = self._provider_chain(preferred)
         last_err = None
         for name in chain:

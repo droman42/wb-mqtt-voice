@@ -211,7 +211,24 @@
               "label": "METRIC_TYPE"
             }
           ],
-          "aliases": []
+          "aliases": [],
+          "choice_surfaces": {
+            "performance": [
+              "performance"
+            ],
+            "memory": [
+              "memory"
+            ],
+            "cpu": [
+              "cpu"
+            ],
+            "network": [
+              "network"
+            ],
+            "all": [
+              "all"
+            ]
+          }
         }
       ]
     },

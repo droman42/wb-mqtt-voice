@@ -460,19 +460,21 @@
           "default_value": "general",
           "choice_surfaces": {
             "grammar": [
-              "грамматика"
+              "грамматика",
+              "грамматику"
             ],
             "style": [
               "стиль"
             ],
-            "general": [
-              "общее"
-            ],
             "clarity": [
               "ясность"
             ],
+            "general": [
+              "общее"
+            ],
             "vocabulary": [
-              "словарь"
+              "словарь",
+              "лексика"
             ]
           }
         }
@@ -721,19 +723,23 @@
           "default_value": "all",
           "choice_surfaces": {
             "grammar": [
-              "grammar"
+              "грамматика",
+              "грамматику"
             ],
             "spelling": [
-              "spelling"
+              "орфография",
+              "орфографию"
             ],
             "punctuation": [
-              "punctuation"
+              "пунктуация",
+              "пунктуацию"
             ],
             "style": [
-              "style"
+              "стиль"
             ],
             "all": [
-              "all"
+              "всё",
+              "все"
             ]
           }
         }

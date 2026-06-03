@@ -327,19 +327,21 @@
           ],
           "choice_surfaces": {
             "performance": [
-              "performance"
+              "производительность"
             ],
             "memory": [
-              "memory"
+              "память"
             ],
             "cpu": [
-              "cpu"
+              "процессор",
+              "цпу"
             ],
             "network": [
-              "network"
+              "сеть"
             ],
             "all": [
-              "all"
+              "всё",
+              "все"
             ]
           }
         }

@@ -46,3 +46,4 @@ uptime_hours: '{hours} час{plural_ov}'
 uptime_no_heartbeats: Пульсов пока не было
 general_error: Извините, произошла ошибка при проверке системного сервиса.
 unavailable_error: Мониторинг системного сервиса в настоящее время недоступен.
+service_health_detail: 'Подробности: всего проверок {heartbeats}, время работы {uptime}.'

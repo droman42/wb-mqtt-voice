@@ -715,8 +715,18 @@ _Apply to every remediation task below (from the 4 review docs + QUAL-25/26). So
       for both (`datetime.format` en+ru; `system.info_type` en+ru), making the values reachable (QUAL-29's matcher
       extracts CHOICE via surfaces). Validator now reports `datetime`/`system` surface-complete. _ru surfaces are a
       proposal pending native-speaker review._ Refs: `qual29_choices_decisions.md` Cases 1–2.
-- [ ] **QUAL-34** `[release]` [DFLOW] (P2) — **Triage declared-but-unconsumed donation params (systemic; audit →
-      `declared_param_audit.md`).** The QUAL-33 bug class is **not** limited to datetime/system: **19 of ~56 declared
+- [x] **QUAL-34** `[release]` [DFLOW] (P2) — **Triage declared-but-unconsumed donation params. DONE 2026-06-03 (per-
+      handler triage with user input).** All 19 resolved: **removed 9** (`audio_playback.file_path`;
+      `conversation.{topic,query_topic,context_reference}` — query_topic was wrongly `required`, a latent clarification
+      bug; `datetime.{location,timezone}`; `greetings.return_time`; `timer.retain`); **removed the whole `train_schedule`
+      handler** (bogus external-API handler — code/donation/templates/demo/doc/config/registration); **wired 10 via the
+      typed `get_param` accessor + bilingual choice_surfaces** (`voice_synthesis.voice` Bucket-B migration off raw_text;
+      `datetime.relative` real date-offset; `greetings.time_of_day` explicit greeting; `text_enhancement.{improvement_type,
+      correction_type}` LLM focus directive; `system_service.{component,metric_type,detailed}` + `system.{topic,component}`
+      — `detailed` a real verbosity toggle, rest consumed-as-scope where handlers are generic). Fixed wrong-English ru
+      surfaces + missing en surfaces on several CHOICE params. New `test_qual34_param_wiring.py` (3) + audit doc marked
+      resolved; 0 net suite regressions; donations load 0 warnings. **Original triage detail follows.** The QUAL-33 bug class
+      is **not** limited to datetime/system: **19 of ~56 declared
       params across 11 of 14 handlers are never read as `intent.entities[...]`** (7 are CHOICE params). Two buckets:
       **A — genuinely dead** (feature not built; e.g. `greetings.time_of_day`, `text_enhancement.improvement_type`,
       `system_service.metric_type`, `datetime.relative/location/timezone`, `conversation.topic/query_topic/context_
