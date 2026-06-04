@@ -12,6 +12,17 @@ newest entries near the top of each dated section.
 ## Action journal
 
 ### 2026-06-04
+- **ARCH-10 PR-4 DONE (`b5dd978`) — VAD engine seam (`energy` | `silero`, toml-selected).** Promoted VAD to a small
+  port per design §11.2(iii): a `VADEngine` ABC in `utils/vad.py` that both impls satisfy, selected by
+  `VADConfig.vad_implementation` (mutually exclusive) — no entry-points/component (VAD has no discovery/fallback need).
+  `energy` = existing `SimpleVAD`/`AdvancedVAD` **unchanged** (user: no rewrite — the sibilant bug was already fixed; the
+  improvement is silero + the seam). `silero` = new `utils/vad_silero.py` wrapping sherpa-onnx `VoiceActivityDetector`
+  into the per-frame port (`is_speech_detected`), model auto-downloaded once into the asset folder. **64-bit only** (VAD
+  runs in Irene only in the local-mic scenario; the WB7 delegates to the ESP32) → reuses sherpa-onnx (`asr-onnx`) + core
+  numpy, **no new deps**. **Hexagon catch (caught by the import-contract test):** `utils` must not import `core`
+  (ARCH-12 #9), so the **workflows** layer (`audio_processor`, already core-importing) resolves the AssetManager path and
+  **injects** it into `SileroVADEngine` — contract green. Config fields surfaced in config-master `[vad]`; 11 seam tests;
+  no real regression (one flaky perf test, passes in isolation). SileroVAD execution validated at WB7 re-validation.
 - **ARCH-10 PR-3 DONE (`4902438`) — streaming ASR via `OnlineRecognizer` (`model_type="vosk-streaming"`).** Third
   model family on the provider: `OnlineRecognizer.from_transducer` with endpoint detection. `transcribe_stream` now does
   **real incremental streaming** for online models (feed chunks → emit partials → segment + `reset` on each endpoint →
