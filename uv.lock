@@ -1135,6 +1135,12 @@ dev = [
     { name = "mypy" },
     { name = "pytest" },
     { name = "pytest-asyncio" },
+    { name = "types-beautifulsoup4" },
+    { name = "types-pillow" },
+    { name = "types-pyyaml" },
+    { name = "types-requests" },
+    { name = "types-setuptools" },
+    { name = "types-urllib3" },
 ]
 llm = [
     { name = "anthropic" },
@@ -1199,17 +1205,6 @@ web-api = [
     { name = "websockets" },
 ]
 
-[package.dev-dependencies]
-dev = [
-    { name = "mypy" },
-    { name = "types-beautifulsoup4" },
-    { name = "types-pillow" },
-    { name = "types-pyyaml" },
-    { name = "types-requests" },
-    { name = "types-setuptools" },
-    { name = "types-urllib3" },
-]
-
 [package.metadata]
 requires-dist = [
     { name = "aiohttp", specifier = ">=3.12.15" },
@@ -1268,23 +1263,18 @@ requires-dist = [
     { name = "tomlkit", specifier = ">=0.12.0" },
     { name = "torch", marker = "extra == 'advanced-asr'", specifier = ">=1.13.0" },
     { name = "torchaudio", marker = "extra == 'advanced-asr'", specifier = ">=0.13.0" },
+    { name = "types-beautifulsoup4", marker = "extra == 'dev'", specifier = ">=4.12.0.20250516" },
+    { name = "types-pillow", marker = "extra == 'dev'", specifier = ">=10.2.0.20240822" },
+    { name = "types-pyyaml", marker = "extra == 'dev'", specifier = ">=6.0.12.20250516" },
+    { name = "types-requests", marker = "extra == 'dev'", specifier = ">=2.32.4.20250611" },
+    { name = "types-setuptools", marker = "extra == 'dev'", specifier = ">=80.9.0.20250801" },
+    { name = "types-urllib3", marker = "extra == 'dev'", specifier = ">=1.26.25.14" },
     { name = "uvicorn", extras = ["standard"], marker = "extra == 'web-api'", specifier = ">=0.20.0" },
     { name = "vosk", marker = "extra == 'audio-input'", specifier = ">=0.3.45" },
     { name = "vosk-tts", marker = "extra == 'tts'", specifier = ">=0.3.0" },
     { name = "websockets", marker = "extra == 'web-api'", specifier = ">=11.0.0" },
 ]
 provides-extras = ["audio-input", "advanced-asr", "audio-input-enhanced", "audio-input-complete", "tts", "audio-output", "voice-trigger", "web-api", "cloud-asr", "llm", "nlu", "config-writing", "text-multilingual", "dev", "voice", "api", "headless", "all"]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "mypy", specifier = "==1.15.0" },
-    { name = "types-beautifulsoup4", specifier = ">=4.12.0.20250516" },
-    { name = "types-pillow", specifier = ">=10.2.0.20240822" },
-    { name = "types-pyyaml", specifier = ">=6.0.12.20250516" },
-    { name = "types-requests", specifier = ">=2.32.4.20250611" },
-    { name = "types-setuptools", specifier = ">=80.9.0.20250801" },
-    { name = "types-urllib3", specifier = ">=1.26.25.14" },
-]
 
 [[package]]
 name = "isort"

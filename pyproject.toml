@@ -127,15 +127,25 @@ text-multilingual = [
 
 # Note: wake-word-training dependencies moved to separate project
 
-# Development dependencies - Fixed: Removed duplication
+# Development dependencies — single opt-in source (install via `--extra dev`).
+# Consolidated 2026-06-04: the former [dependency-groups].dev (PEP 735, auto-installed
+# by uv) duplicated mypy and split the toolchain; folded its type stubs in here so a
+# bare `uv sync` is runtime-only and `--extra dev` is the complete dev toolchain.
 dev = [
     "pytest>=7.0.0",
-    "pytest-asyncio>=0.21.0", 
+    "pytest-asyncio>=0.21.0",
     "black>=22.0.0",
     "isort>=5.0.0",
     "flake8>=4.0.0",
     "mypy==1.15.0",  # Pinned to match wb-mqtt-bridge version
     "import-linter>=2.0",  # ARCH-5: enforce the hexagon import contracts
+    # type stubs (were in [dependency-groups].dev)
+    "types-beautifulsoup4>=4.12.0.20250516",
+    "types-pillow>=10.2.0.20240822",
+    "types-pyyaml>=6.0.12.20250516",
+    "types-requests>=2.32.4.20250611",
+    "types-setuptools>=80.9.0.20250801",
+    "types-urllib3>=1.26.25.14",
 ]
 
 # Convenience groups - Fixed: Re-enabled with proper dependencies
@@ -463,17 +473,6 @@ reportAssignmentType = false
 reportAttributeAccessIssue = false
 reportGeneralTypeIssues = false
 reportIndexIssue = false
-
-[dependency-groups]
-dev = [
-    "mypy==1.15.0",
-    "types-beautifulsoup4>=4.12.0.20250516",
-    "types-pillow>=10.2.0.20240822",
-    "types-pyyaml>=6.0.12.20250516",
-    "types-requests>=2.32.4.20250611",
-    "types-setuptools>=80.9.0.20250801",
-    "types-urllib3>=1.26.25.14",
-]
 
 [tool.setuptools.dynamic]
 version = {attr = "irene.__version__.__version__"}
