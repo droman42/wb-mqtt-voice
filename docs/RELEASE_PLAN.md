@@ -944,6 +944,16 @@ _Apply to every remediation task below (from the 4 review docs + QUAL-25/26). So
       `== 'ru'` branch). **Kept (legitimate, per done-criteria):** `system_service_handler` Russian pluralization grammar
       (strings already templated), and Russian command-keyword *parsing*. **Verified:** templates load + resolve ru/en; 0 net
       suite regressions. Done: processing language derives from model/config; handler user-facing strings externalized.
+- [ ] **QUAL-39** [API] (P2) — **Audit the ~20% of REST endpoints that return raw `dict` (no `response_model`).**
+      Surfaced while scoping UI-5's OpenAPI type generation (2026-06-04): **104 of 123 routes carry a Pydantic
+      `response_model`** (so generation yields real TS types) — but **~19 don't**, and those generate weak/opaque types
+      (`Record<string, unknown>`), undercutting the drift-killing value of generation exactly where it's loosest.
+      Investigate each: **why** it returns a bare dict (genuinely dynamic/freeform shape · TOML/JSON passthrough ·
+      legacy/just-never-typed · component-contributed router) and **classify**: (a) **should be typed** → add a
+      `response_model` (best when the shape is stable — e.g. status/config/donation responses); (b) **legitimately
+      dynamic** → document why + give it an explicit typed envelope where possible. **Prioritize the endpoints UI-5
+      consumes** (donations contract/phrasing, config, NLU-recognize) so the generated types UI-5 adopts are strong.
+      **Gates the quality of UI-5's generated types** (cross-ref UI-5). Backend-side; no config-ui change. (Found 2026-06-04.)
 - [x] **QUAL-37** `[deferred]` [DFLOW] (P2) — **Targeted no-intent clarification (enhancement; split from QUAL-30).
       DONE 2026-06-03.** The online (LLM) path already consumed `_fallback_context.likely_domain` (via
       `_build_fallback_context_prompt`, QUAL-16); the gap was the **offline** path. **Delivered:** `_handle_fallback_
@@ -1149,8 +1159,35 @@ Governed by Invariant #4 (config-ui must stay functional).
       editor** (canonical → per-language spoken forms); **(4)** rework the cross-language panel (param parity is
       structural now — surface-completeness + method-phrasing only; drop the sync button). **Coordinate with UI-1/2/3**
       (same files: `DonationsPage`, the editors, `LanguageTabs`) — do it as ONE donations-editor redesign, not twice.
-      DoD: `cd config-ui && npm run type-check && npm run build` passes + the editing page round-trips contract +
-      phrasing. **This is the remaining Invariant #4 obligation deferred from QUAL-29 (user-approved 2026-06-03).**
+      **★ TYPE GENERATION — folded in (user-approved 2026-06-04, "stop fighting type drift"):** step (2) is done by
+      **generating** `src/types/*` from the backend OpenAPI schema (`openapi-typescript`), **not** by hand-authoring them
+      — hand-maintained types are the drift source this task exists to fix (Invariant #4). The backend is ~80% typed
+      (104/123 routes carry a Pydantic `response_model`), so generation yields real types. **Prerequisite (backend side):**
+      add a small script that dumps `app.openapi()` (static, no running server) to a **committed** `openapi.json`,
+      regenerated on contract change — mirrors the bridge's committed-schema model; then a frontend `gen:api-types` script
+      (`openapi-typescript <schema> -o src/types/openapi.gen.ts`) like `../wb-mqtt-bridge/ui`. **Transport stays the
+      existing `fetch`-based `apiClient.ts`** (typed against the generated `paths`; optionally the tiny `openapi-fetch`).
+      **OUT OF SCOPE (user, 2026-06-04): axios and react-query** — config-ui's job is load-edit-save, not server-cache;
+      we adopt generation only, not the bridge's full data-layer pattern. **Generated-type quality for the ~20% dict
+      endpoints is gated by QUAL-39.** DoD: `cd config-ui && npm run check` (type-check + the harmonized strict lint) **&&
+      npm run build** passes + the editing page round-trips contract + phrasing.
+      **This is the remaining Invariant #4 obligation deferred from QUAL-29 (user-approved 2026-06-03).**
+- [ ] **UI-6** `[release]` (P1) — **config-ui stack harmonization with `../wb-mqtt-bridge/ui` (precedes UI-1/2/3/5).**
+      **LANDED 2026-06-04:** **strict linting (user-insisted, same level as the bridge)** — added a bridge-identical
+      `.eslintrc.cjs` (type-aware `@typescript-eslint/recommended-type-checked`; `no-floating-promises`/`no-misused-promises`
+      as errors; the `any`-noise rules off), the `eslint`/`@typescript-eslint/*` + react-hooks/react-refresh devDeps, and
+      `lint`/`lint:fix`/`check` scripts at `--max-warnings 0`; **fixed the runtime↔types version skew** (`@types/react`
+      19→18, `@types/react-dom` 19→18, `@types/node` 24→20 to match `react@18`); added `engines: node>=18`.
+      `npm run type-check` stays green. **PENDING (open execution decision):** the strict gate surfaces **71 pre-existing
+      issues** (57 err / 14 warn) that must be resolved for `npm run lint` to pass — incl. a **real latent bug**
+      (`PromptEditor.tsx:142` duplicate `else-if`, dead branch), **51 async** (floating/misused promises → `void`/wrap;
+      low-risk, preserves today's non-awaiting behavior), **14 `exhaustive-deps`** (conservative: add deps only when clearly
+      safe, else `eslint-disable` + reason — config-ui has **no test net**), **5** redundant type-assertions (auto-fix).
+      _Decide: clean all 71 now (green gate before UI work) vs. clean as the first step of UI-5._ **ON GREEN:** fold
+      `npm run lint` into the Invariant-#4 config-ui DoD + **BUILD-4** (the bridge gates on typecheck **and** lint).
+      **OUT OF SCOPE (user, 2026-06-04):** axios, react-query (config-ui is load-edit-save, not a server-cache dashboard);
+      OpenAPI **type generation** was folded into **UI-5** (generation-only), not here. Refs: stack comparison
+      (journal 2026-06-04), `../wb-mqtt-bridge/ui/.eslintrc.cjs`.
 
 ### Release Readiness (REL)
 - [ ] **REL-1** (P0) — Sign off the Definition-of-release checklist above (fill target + criteria).

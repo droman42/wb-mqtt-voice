@@ -11,6 +11,23 @@ newest entries near the top of each dated section.
 
 ## Action journal
 
+### 2026-06-04
+- **config-ui ↔ `../wb-mqtt-bridge/ui` stack comparison + harmonization kickoff (pre-UI-1/2/3/5).** Compared the two UI
+  stacks: same foundation (React 18 / Vite 5 / TS-strict / Tailwind / react-router 6) but very different altitude — the
+  bridge is a tested, lint-gated, MUI + react-query + zustand + OpenAPI-generated dashboard; config-ui is a lean,
+  test-less, un-linted Monaco editor on native `fetch` + ~37KB hand-written types. **User decisions:**
+  (1) **Strict linting (insisted) → UI-6:** added a **bridge-identical** `.eslintrc.cjs` (type-aware
+  `recommended-type-checked`; `no-floating-promises`/`no-misused-promises` errors; `any`-noise rules off) + the eslint
+  devDeps + `lint`/`lint:fix`/`check` scripts at `--max-warnings 0`; fixed the runtime↔types version skew
+  (`@types/react` 19→18, `@types/node` 24→20 to match `react@18`); added `engines`. `npm run type-check` stays green.
+  The strict gate immediately surfaced **71 pre-existing issues** incl. a **real latent bug** (`PromptEditor.tsx:142`
+  duplicate `else-if`) — cleanup is UI-6's pending step (config-ui has no test net). (2) **Data-layer: "stop fighting
+  type drift" → generation-only, folded into UI-5:** rebuild UI-5's `src/types/*` by **generating** from the FastAPI
+  OpenAPI schema (`openapi-typescript`), not hand-authoring — the backend is ~80% typed (104/123 routes have a
+  `response_model`). Prereq: a backend script to dump `app.openapi()` to a committed `openapi.json`. **axios + react-query
+  ruled OUT** (config-ui is load-edit-save, not a server-cache dashboard). (3) **Filed QUAL-39** to audit the ~19 routes
+  that return raw `dict` (weak generated types) — gates UI-5's generated-type quality. No behavioral code changed yet.
+
 ### 2026-06-03
 - **QUAL-7 CLOSED-AS-OBSOLETE (Invariant #8, user-approved).** Surfaced while reconciling the QUAL-3..7 static-baseline
   backlog against Gate-2 relevance: QUAL-7's premise (a `train_schedule` config-master-vs-model mismatch) no longer exists
