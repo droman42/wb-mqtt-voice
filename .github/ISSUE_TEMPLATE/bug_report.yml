@@ -1,0 +1,107 @@
+name: Bug report
+description: Report something that doesn't work — a crash, wrong behavior, or a broken runner/provider.
+labels: ["bug", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for filing a bug. Structured reports get triaged faster — please fill in every required field.
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: One or two sentences — what went wrong?
+    validations:
+      required: true
+  - type: dropdown
+    id: runner
+    attributes:
+      label: Runner
+      description: Which runner were you using?
+      options:
+        - cli (irene.runners.cli)
+        - webapi (irene.runners.webapi_runner)
+        - vosk (irene.runners.vosk_runner)
+        - other / not applicable
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area / component
+      description: Best guess is fine — it's a triage hint, not binding.
+      options:
+        - ASR (speech-to-text)
+        - TTS (text-to-speech)
+        - Wake word / voice trigger
+        - VAD (voice activity detection)
+        - NLU / intents
+        - LLM
+        - Audio input/output
+        - Web API / WebSocket
+        - Build / dependencies / Docker
+        - Configuration (TOML)
+        - Documentation
+        - Other / not sure
+    validations:
+      required: true
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform
+      options:
+        - x86_64 (64-bit desktop/server)
+        - armv7 (Wirenboard 7 / edge)
+        - other
+    validations:
+      required: true
+  - type: input
+    id: config
+    attributes:
+      label: Config profile
+      description: Which `configs/*.toml` (or a custom file)?
+      placeholder: configs/minimal.toml
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      description: Exact commands + inputs, including the `uv run …` command line.
+      placeholder: |
+        1. uv sync --extra voice
+        2. uv run python -m irene.runners.cli --command "привет"
+        3. …
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs / traceback
+      description: Paste the relevant output — this renders as a code block.
+      render: shell
+  - type: input
+    id: version
+    attributes:
+      label: Version / commit
+      description: Output of `git rev-parse --short HEAD` (or the release/version you ran).
+      placeholder: e08fa1b
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: I searched existing issues and this isn't a duplicate.
+          required: true
+        - label: I'm on a checkout of `main` (or I stated the commit above).
+          required: false

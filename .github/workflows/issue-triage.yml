@@ -1,0 +1,68 @@
+name: Issue triage
+
+# Deterministic, rule-based triage (no AI). On a new issue:
+#   1. add area:* / platform:* labels by keyword (a hint — the form's dropdowns drive most of it)
+#   2. post a short acknowledgment comment
+# The issue forms already apply `bug`/`enhancement` + `needs-triage`.
+
+on:
+  issues:
+    types: [opened]
+
+permissions:
+  issues: write
+  contents: read
+
+jobs:
+  triage:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Label by keyword + acknowledge
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issue = context.payload.issue;
+            const hay = `${issue.title}\n${issue.body || ''}`.toLowerCase();
+
+            const AREA = {
+              'area:asr':       ['asr', 'speech-to-text', 'transcri', 'vosk', 'whisper', 'recogni'],
+              'area:tts':       ['tts', 'text-to-speech', 'silero', 'synthesi', 'speak'],
+              'area:wake-word': ['wake word', 'wakeword', 'wake-word', 'voice trigger', 'openwakeword', 'microwakeword', 'kws'],
+              'area:vad':       ['vad', 'voice activity', 'silence detect'],
+              'area:nlu':       ['nlu', 'intent', 'donation', 'fuzzy'],
+              'area:llm':       ['llm', 'language model', 'gpt'],
+              'area:web-api':   ['web api', 'webapi', 'websocket', '/ws', 'rest', 'endpoint', 'fastapi'],
+              'area:build':     ['docker', 'dependenc', 'uv sync', 'pyproject', 'wheel', 'install', 'build'],
+              'area:config':    ['config', 'toml', 'profile'],
+              'area:docs':      ['readme', 'documentation', 'docs/'],
+            };
+            const PLATFORM = {
+              'platform:armv7':  ['armv7', 'wirenboard', 'wb7', 'arm32', 'edge'],
+              'platform:x86_64': ['x86_64', 'x86-64', 'amd64', '64-bit'],
+            };
+
+            const labels = [];
+            for (const [label, kws] of Object.entries({ ...AREA, ...PLATFORM })) {
+              if (kws.some(k => hay.includes(k))) labels.push(label);
+            }
+
+            if (labels.length) {
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner, repo: context.repo.repo,
+                issue_number: issue.number, labels,
+              });
+            }
+
+            const body = [
+              `👋 Thanks for the report, @${issue.user.login}! Marked \`needs-triage\`` +
+              (labels.length ? ` and auto-labeled: ${labels.map(l => '`' + l + '`').join(', ')}.` : '.'),
+              '',
+              'The maintainer will review shortly. If this is a bug, please make sure you included the exact ' +
+              '`uv run …` command, the config profile, and the logs/traceback — missing repro details are the ' +
+              '#1 cause of `needs-repro` round-trips.',
+            ].join('\n');
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner, repo: context.repo.repo,
+              issue_number: issue.number, body,
+            });
