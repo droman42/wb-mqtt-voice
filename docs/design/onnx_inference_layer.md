@@ -258,11 +258,19 @@ the pyproject extra that `uv sync` resolves in the per-arch build — not in a p
 - **Models: first-run download** into the asset-loader folder (mounted volume), not baked into the image (§6).
 - **armv7 image Alpine→Debian** + the system-dep flow flip (apk→apt, `linux.alpine`→`linux.ubuntu`) — approved
   ("modify both; never tested yet"). Required for sherpa-onnx to load on armv7 (§4.7/§9).
+- **WB7 VAD + wake-word = on the ESP32 satellite, NOT in Irene** (reconciled with ARCH-6, 2026-06-04). **Wake-word:**
+  microWakeWord *tool* (GitHub) → **C-header** → ESP32 firmware (tflite-micro on the MCU). **VAD:** **numeric/energy
+  on-device** (no VAD micro-model for the ESP32) — detects speech start + end-of-utterance. **On wake** the ESP32 opens
+  the ARCH-6 WS (`/ws/audio`), registers (ClientRegistry), and streams raw PCM until its VAD closes the utterance
+  (`{"type":"end"}`); Irene runs **offline sherpa-onnx ASR with `skip_wake_word=True`** — no server-side wake-word/VAD on
+  this path. Matches `ws_esp32_transport.md` + the `/ws/audio` adapter exactly. **⇒ the WB7/armv7 Irene image needs no
+  wake-word/VAD providers → the `tflite-runtime` armv7 question is MOOT; the edge image is ASR-only.** (Irene's
+  server-side `microwakeword` *provider* is broken/placeholder per QUAL-19, but irrelevant to this path.)
 
 **Still open:**
-- **VAD + wake-word placement** (next discussion): keep energy-VAD vs move to Silero-VAD-ONNX; keep
-  openWakeWord/microWakeWord (TFLite) — sherpa-KWS has no RU model; edge vs server; ESP32/QUAL-19/20 intersection.
-  Also verify **`tflite-runtime` has an armv7 wheel** for the edge.
+- **VAD + wake-word — the *standalone 64-bit (local-mic)* scenario** (next): the WB7/ESP32 path is resolved above; the
+  local-mic path is where Irene's *own* VAD (energy vs Silero-VAD-ONNX) and voice-trigger (openWakeWord works;
+  microWakeWord broken per QUAL-19; sherpa-KWS has no RU model) actually live. To settle next.
 - **38 s load — handled** by the existing warm-up (`preload_models=True` on armv7 → paid at boot, §4.4); optional
   later spike: onnxruntime optimized-graph caching to shrink the warm-up window.
 - **Build-system fix** — `get_python_dependencies` should return extra *group names* across all providers (§7.1) → BUILD-5.
