@@ -12,7 +12,20 @@ newest entries near the top of each dated section.
 ## Action journal
 
 ### 2026-06-04
-- **ARCH-9 design session (in progress) → drafted `docs/design/onnx_inference_layer.md`.** Re-anchored the task on its
+- **ARCH-9 DONE → `docs/design/onnx_inference_layer.md` complete.** Closing additions after the draft: (a) confirmed the
+  **system-dependency** path and found the **armv7 image must move Alpine→glibc/Debian** — sherpa-onnx has no musl build
+  (proven on WB7: `import sherpa_onnx` fails on Alpine, works on `arm32v7/python:3.11-slim-bullseye`); the contribution
+  *mechanism* is fine, only the base/pkg-manager/platform-key flip (apk→apt, `linux.alpine`→`linux.ubuntu`). (b) Recorded
+  the **contribution principle as an invariant** (providers self-declare deps → build_analyzer collects enabled → Dockerfiles
+  consume); *what* is contributed and the platform taxonomy are mutable (alpine now vestigial). (c) **VAD + wake-word
+  resolved for both scenarios:** **WB7** delegates both to an **ESP32 satellite** (microWakeWord C-header + numeric VAD →
+  WS to Irene → offline ASR `skip_wake_word=True`; matches ARCH-6/`ws_esp32_transport.md` exactly → armv7 image is ASR-only,
+  `tflite-runtime` moot). **Standalone 64-bit** (the only path where Irene does its own): **two wake-word providers**
+  (`openwakeword` ONNX / `microwakeword` tflite) **mutually exclusive via toml**, and **two VAD impls** (`energy` bug-fixed
+  / `silero` SileroVAD-onnx) **mutually exclusive via toml**; today's voice-trigger providers are hallucinated cruft →
+  **greenfield rebuild** (QUAL-19/20); sherpa-KWS is the future swap-in once a Russian base model exists. ARCH-10 sliced
+  PR-1..5 (§12). Draft history below.
+- **ARCH-9 design session (drafting) → `docs/design/onnx_inference_layer.md`.** Re-anchored the task on its
   real trigger (the new **alphacep VOSK** Zipformer2-ONNX models + which Irene models have sherpa-onnx counterparts), not
   a generic sherpa survey. **Proved armv7 feasibility on the real target (Wirenboard 7.2, A40i)** — SSH'd in, ran the
   alphacep `vosk-model-small-ru` in an `arm32v7/python:3.11-slim` container (matching the deployment): **correct Russian

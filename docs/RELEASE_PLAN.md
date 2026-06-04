@@ -96,7 +96,7 @@ Living findings behind the tasks (Invariant #5). `[x]` = exists; others are prod
 | `streaming_api_review.md` `[x]` | AsyncAPI streaming-API tooling — Hybrid: replace renderer / keep+improve generator | QUAL-17 ✓, QUAL-18 |
 | `esp32_wakeword_review.md` | ESP32 + wakeword keep/fix/cut | QUAL-19/20 |
 | `docs/design/mqtt_integration.md` | MQTT output-port design | ARCH-7/8 |
-| `docs/design/onnx_inference_layer.md` `[x]` (drafted 2026-06-04; ASR/platform/build locked, VAD+wake-word open) | shared sherpa-onnx inference layer — ASR-centric; WB7 armv7 feasibility proven on hardware | ARCH-9/10 |
+| `docs/design/onnx_inference_layer.md` `[x]` (complete 2026-06-04; ASR/platform/build + VAD/wake-word all resolved) | shared sherpa-onnx inference layer — ASR-centric; WB7 armv7 feasibility proven on hardware | ARCH-9/10 |
 | `config-ui/docs/donation_editor_ux.md` | human-friendly donations editor design | UI-1/2/3 |
 
 ---
@@ -263,7 +263,11 @@ See `docs/review/phase1_architecture_map.md` §5.
       swap, relocated from ARCH-6 2026-06-03) — pair the two. → `docs/design/mqtt_integration.md`.
 - [ ] **ARCH-8** [MQTT] (P-TBD) — Implement per ARCH-7 (output-port seam + MQTT adapter + config + handler/action
       integration + tests). Split into PR-sized tasks from the design.
-- [ ] **ARCH-9** [INFER] (P-TBD) — **Design session** (needs live collaboration): a **shared sherpa-onnx (k2-fsa)
+- [x] **ARCH-9** [INFER] — **✓ DONE 2026-06-04** (design deliverable `docs/design/onnx_inference_layer.md` complete; all
+      open questions resolved — sherpa one-provider ASR, WB7 armv7 feasibility proven on hardware, two build corrections,
+      AssetManager+warm-up, contribution-principle invariant, and VAD+wake-word for **both** scenarios: WB7=ESP32-satellite
+      delegated, standalone-64bit = two mutually-exclusive wake-word providers + two mutually-exclusive VAD impls.
+      Implementation = ARCH-10, sliced into PR-1..5 in §12). — **Design session** (needs live collaboration): a **shared sherpa-onnx (k2-fsa)
       inference layer** behind the existing ASR/TTS/VoiceTrigger ports. Today inference is **provider-owned and
       fragmented** — whisper→torch, silero v3/v4→torch, vosk→Kaldi C++, openWakeWord & vosk-tts→onnxruntime
       (black-boxed); 2–3 runtimes loaded in one process, no shared session/asset management. Key enabler:
