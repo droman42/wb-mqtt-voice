@@ -287,13 +287,14 @@ See `docs/review/phase1_architecture_map.md` §5.
       win); **wake-word consolidation** (sherpa KWS vs openWakeWord/microWakeWord — intersects **QUAL-19/20
       [ESP32]**); config model + Invariant #4; dependency/image + armv7 impact of the sherpa-onnx wheel.
       Intersects ASR/TTS providers, ASSET (model zoo/format), ARCH-4 (ports). → `docs/design/onnx_inference_layer.md`.
-- [~] **ARCH-10** [INFER] (P-TBD) — Implement per ARCH-9, sliced PR-1..5 (design §12). **PR-1+PR-2 DONE 2026-06-04**
-      (`6e1a88a`, `b373633`): `sherpa_onnx` ASR provider alongside vosk/whisper — **two offline families on one runtime
-      via `model_type`**: `vosk-transducer` (`from_transducer`) + `whisper` (`from_whisper`, no joiner). numpy-free
+- [~] **ARCH-10** [INFER] (P-TBD) — Implement per ARCH-9, sliced PR-1..5 (design §12). **PR-1/2/3 DONE 2026-06-04**
+      (`6e1a88a`, `b373633`, `4902438`): `sherpa_onnx` ASR provider alongside vosk/whisper — **three families on one
+      runtime via `model_type`**: `vosk-transducer` (`from_transducer`) + `whisper` (`from_whisper`, no joiner) +
+      `vosk-streaming` (`OnlineRecognizer`, real incremental `transcribe_stream` w/ endpoint segmentation). numpy-free
       PCM/WAV→float (armv7-safe); `SherpaInferencePolicy`; **AssetManager member-aware multi-file model-pack download**
-      (HF, int8; transducer=4 files, whisper=3); `asr-onnx` extra w/ arch markers + entry-point; config-master +
-      embedded-armv7 + full profiles; Invariant #4 via `SherpaOnnxASRProviderSchema` in AutoSchemaRegistry; unit tests;
-      0 net suite regressions. **Remaining:** PR-3 streaming · PR-4 VAD seam · PR-5 wake-word greenfield. **Flag:**
+      (HF; transducer=4 files/int8, whisper=3, streaming=chunk64); `asr-onnx` extra w/ arch markers + entry-point;
+      config-master + embedded-armv7 + full profiles; Invariant #4 via `SherpaOnnxASRProviderSchema` in AutoSchemaRegistry;
+      18 unit tests; 0 net suite regressions. **Remaining:** PR-4 VAD seam · PR-5 wake-word greenfield. **Flag:**
       `import sherpa_onnx` fails on the x86 dev box (uv wheel `libonnxruntime.so` not found) — armv7/WB7 proven; verify
       x86_64 at the **BUILD-3** image stage. WB7 hardware re-validation deferred to ARCH-10 completion (user).
       Build/Docker corrections = BUILD-5/3.

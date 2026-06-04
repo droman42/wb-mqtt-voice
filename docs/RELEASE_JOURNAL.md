@@ -12,6 +12,17 @@ newest entries near the top of each dated section.
 ## Action journal
 
 ### 2026-06-04
+- **ARCH-10 PR-3 DONE (`4902438`) — streaming ASR via `OnlineRecognizer` (`model_type="vosk-streaming"`).** Third
+  model family on the provider: `OnlineRecognizer.from_transducer` with endpoint detection. `transcribe_stream` now does
+  **real incremental streaming** for online models (feed chunks → emit partials → segment + `reset` on each endpoint →
+  flush tail on `input_finished`); offline model_types keep the buffer-then-transcribe fallback; `transcribe_audio`
+  one-shots the online recognizer (feed + tail-pad + finish + drain). Pack `vosk-model-small-streaming-ru` (verified on
+  HF) — **key gotcha:** that repo ships *both* offline (`encoder.int8.onnx`) and streaming (`encoder.chunk64.onnx`)
+  exports, so the descriptor uses `prefer="chunk64"` to select the online variant (PR-2's member-aware
+  `_pick_pack_files` handles it). The big `vosk-model-streaming-ru` has a different layout (no chunk64) → addable later.
+  Capabilities reflect streaming/real_time/offline by model_type; config-master surfaces the option. No assets/pyproject/
+  schema change. 18 sherpa unit tests; **0 net suite regressions**. Streaming execution validated at WB7 re-validation
+  (sherpa still won't import on the x86 dev box).
 - **ARCH-10 PR-2 DONE (`b373633`) — Whisper-ONNX on the same `sherpa_onnx` provider.** A second offline model family
   on one provider/runtime, selected by config `model_type`: `whisper` → `OfflineRecognizer.from_whisper`
   (encoder/decoder/tokens — **no joiner**, whisper's own frontend; `language=""` = auto-detect), `vosk-transducer`
