@@ -76,3 +76,38 @@ class TestBuildContract:
         urls = SherpaOnnxASRProvider._get_default_model_urls()
         assert "vosk-model-small-ru" in urls
         assert urls["vosk-model-small-ru"]["repo"] == "alphacep/vosk-model-small-ru"
+
+
+class TestModelPacks:
+    """PR-2: whisper packs (no joiner) vs transducer packs (joiner)."""
+
+    def test_transducer_pack_has_joiner(self):
+        urls = SherpaOnnxASRProvider._get_default_model_urls()
+        assert urls["vosk-model-small-ru"]["members"] == ["encoder", "decoder", "joiner", "tokens"]
+
+    def test_whisper_pack_has_no_joiner(self):
+        urls = SherpaOnnxASRProvider._get_default_model_urls()
+        assert "whisper-base" in urls
+        assert urls["whisper-base"]["members"] == ["encoder", "decoder", "tokens"]
+        assert urls["whisper-base"]["repo"] == "csukuangfj/sherpa-onnx-whisper-base"
+
+    def test_pick_files_whisper_3_members_int8(self):
+        from irene.core.assets import AssetManager
+        siblings = [
+            "base-encoder.int8.onnx", "base-encoder.onnx",
+            "base-decoder.int8.onnx", "base-decoder.onnx", "base-tokens.txt",
+        ]
+        picks = AssetManager._pick_pack_files(siblings, "int8", ["encoder", "decoder", "tokens"])
+        assert picks == {
+            "encoder": "base-encoder.int8.onnx",
+            "decoder": "base-decoder.int8.onnx",
+            "tokens": "base-tokens.txt",
+        }
+        assert "joiner" not in picks
+
+    def test_pick_files_transducer_default_members(self):
+        from irene.core.assets import AssetManager
+        siblings = ["encoder.onnx", "encoder.int8.onnx", "decoder.int8.onnx", "joiner.int8.onnx", "tokens.txt"]
+        picks = AssetManager._pick_pack_files(siblings, "int8")  # default 4 members
+        assert set(picks) == {"encoder", "decoder", "joiner", "tokens"}
+        assert picks["encoder"] == "encoder.int8.onnx"  # int8 preferred

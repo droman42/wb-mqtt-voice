@@ -565,12 +565,19 @@ class AssetManager:
             return await self._download_model_pack_impl(provider, model_id, force)
 
     async def _download_model_pack_impl(self, provider: str, model_id: str, force: bool) -> Dict[str, "Path"]:
+        info = self.get_model_info(provider, model_id)
+        repo = info.get("repo")
+        if not repo:
+            raise ValueError(f"No 'repo' configured for model pack {provider}/{model_id}")
+        # Member set is descriptor-driven: transducer = encoder/decoder/joiner/tokens,
+        # whisper = encoder/decoder/tokens (no joiner).
+        member_names = info.get("members", ["encoder", "decoder", "joiner", "tokens"])
+        prefer = info.get("prefer", "int8")
+
         pack_dir = self.get_model_path(provider, model_id)
         members = {
-            "encoder": pack_dir / "encoder.onnx",
-            "decoder": pack_dir / "decoder.onnx",
-            "joiner": pack_dir / "joiner.onnx",
-            "tokens": pack_dir / "tokens.txt",
+            m: pack_dir / ("tokens.txt" if m == "tokens" else f"{m}.onnx")
+            for m in member_names
         }
 
         def complete() -> bool:
@@ -579,15 +586,9 @@ class AssetManager:
         if not force and complete():
             return members
 
-        info = self.get_model_info(provider, model_id)
-        repo = info.get("repo")
-        if not repo:
-            raise ValueError(f"No 'repo' configured for model pack {provider}/{model_id}")
-        prefer = info.get("prefer", "int8")
-
         siblings = await self._hf_list_repo_files(repo)
-        picks = self._pick_pack_files(siblings, prefer)
-        missing = [m for m in members if m not in picks]
+        picks = self._pick_pack_files(siblings, prefer, member_names)
+        missing = [m for m in member_names if m not in picks]
         if missing:
             raise ValueError(
                 f"Could not resolve pack member(s) {missing} in HF repo '{repo}' "
@@ -619,8 +620,12 @@ class AssetManager:
         return [s.get("rfilename", "") for s in data.get("siblings", [])]
 
     @staticmethod
-    def _pick_pack_files(siblings: List[str], prefer: str) -> Dict[str, str]:
-        """Pick encoder/decoder/joiner (.onnx, ``prefer`` variant first) + tokens.txt."""
+    def _pick_pack_files(
+        siblings: List[str],
+        prefer: str,
+        members=("encoder", "decoder", "joiner", "tokens"),
+    ) -> Dict[str, str]:
+        """Pick the requested pack members by keyword (.onnx, ``prefer`` variant first; tokens.txt)."""
         onnx = [f for f in siblings if f.lower().endswith(".onnx")]
 
         def pick(keyword: str) -> Optional[str]:
@@ -631,13 +636,15 @@ class AssetManager:
             return (preferred or cands)[0]
 
         picks: Dict[str, str] = {}
-        for member in ("encoder", "decoder", "joiner"):
-            chosen = pick(member)
-            if chosen:
-                picks[member] = chosen
-        tokens = next((f for f in siblings if f.lower().endswith("tokens.txt")), None)
-        if tokens:
-            picks["tokens"] = tokens
+        for member in members:
+            if member == "tokens":
+                tokens = next((f for f in siblings if f.lower().endswith("tokens.txt")), None)
+                if tokens:
+                    picks["tokens"] = tokens
+            else:
+                chosen = pick(member)
+                if chosen:
+                    picks[member] = chosen
         return picks
 
     def model_exists(self, provider: str, model_id: str) -> bool:

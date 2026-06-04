@@ -4,8 +4,11 @@ sherpa-onnx ASR provider — ONNX inference for the alphacep VOSK Zipformer2 fam
 Part of ARCH-10 / PR-1 (see docs/design/onnx_inference_layer.md). Runs **alongside**
 the Kaldi `vosk` and torch `whisper` providers — a config choice, not a replacement.
 
-PR-1 scope: offline VOSK Zipformer2 transducer (`OfflineRecognizer.from_transducer`).
-Whisper-ONNX on the same runtime is PR-2.
+Two offline model families on one provider/runtime, selected by config `model_type`:
+- `vosk-transducer` → `OfflineRecognizer.from_transducer` (encoder/decoder/joiner/tokens)
+- `whisper`         → `OfflineRecognizer.from_whisper`    (encoder/decoder/tokens, no joiner)
+
+Whisper-ONNX (PR-2) drops torch from 64-bit ASR images that don't otherwise need it.
 
 Design notes baked in here:
 - **numpy-free** audio conversion (stdlib `array`) — armv7 has no numpy wheel, proven on
@@ -65,7 +68,7 @@ class SherpaOnnxASRProvider(ASRProvider):
 
         # Model pack selection (id resolves against _get_default_model_urls()).
         self.model_id: str = config.get("model", "vosk-model-small-ru")
-        # PR-1 supports only the VOSK transducer family; whisper-onnx lands in PR-2.
+        # Model family: "vosk-transducer" (RU Zipformer2) | "whisper" (whisper-onnx).
         self.model_type: str = config.get("model_type", "vosk-transducer")
 
         self.default_language: str = config.get("default_language", "ru")
@@ -103,32 +106,47 @@ class SherpaOnnxASRProvider(ASRProvider):
             return
         import sherpa_onnx
 
-        if self.model_type != "vosk-transducer":
-            raise NotImplementedError(
-                f"model_type '{self.model_type}' is not supported in PR-1 "
-                "(only 'vosk-transducer'; whisper-onnx arrives in PR-2)"
-            )
-
         # First-run download of the multi-file pack into the mounted asset folder (§6).
+        # The descriptor declares its member set (transducer=4 files, whisper=3).
         files = await self.asset_manager.download_model_pack("sherpa_onnx", self.model_id)
 
-        def build():
-            return sherpa_onnx.OfflineRecognizer.from_transducer(
-                encoder=str(files["encoder"]),
-                decoder=str(files["decoder"]),
-                joiner=str(files["joiner"]),
-                tokens=str(files["tokens"]),
-                num_threads=self.policy.num_threads,
-                sample_rate=self.sample_rate,
-                feature_dim=self.feature_dim,
-                decoding_method=self.decoding_method,
+        if self.model_type == "vosk-transducer":
+            def build():
+                return sherpa_onnx.OfflineRecognizer.from_transducer(
+                    encoder=str(files["encoder"]),
+                    decoder=str(files["decoder"]),
+                    joiner=str(files["joiner"]),
+                    tokens=str(files["tokens"]),
+                    num_threads=self.policy.num_threads,
+                    sample_rate=self.sample_rate,
+                    feature_dim=self.feature_dim,
+                    decoding_method=self.decoding_method,
+                )
+        elif self.model_type in ("whisper", "whisper-onnx"):
+            # Whisper has no joiner and its own fixed frontend (no sample_rate/feature_dim
+            # here). "" language → whisper's own language detection.
+            language = "" if self.default_language in (None, "", "auto") else self.default_language
+
+            def build():
+                return sherpa_onnx.OfflineRecognizer.from_whisper(
+                    encoder=str(files["encoder"]),
+                    decoder=str(files["decoder"]),
+                    tokens=str(files["tokens"]),
+                    num_threads=self.policy.num_threads,
+                    decoding_method=self.decoding_method,
+                    language=language,
+                    task="transcribe",
+                )
+        else:
+            raise NotImplementedError(
+                f"model_type '{self.model_type}' not supported (use 'vosk-transducer' or 'whisper')"
             )
 
         # onnxruntime graph init is blocking (~38 s on armv7) — keep it off the loop.
         self._recognizer = await asyncio.to_thread(build)
         logger.info(
             f"Loaded sherpa-onnx recognizer: model={self.model_id} "
-            f"threads={self.policy.num_threads}"
+            f"type={self.model_type} threads={self.policy.num_threads}"
         )
 
     async def warm_up(self) -> None:
@@ -195,8 +213,9 @@ class SherpaOnnxASRProvider(ASRProvider):
 
     # -------------------------------------------------------------- capabilities
     def get_supported_languages(self) -> List[str]:
-        # The alphacep VOSK packs wired here are Russian.
-        return ["ru"]
+        if self.model_type in ("whisper", "whisper-onnx"):
+            return ["ru", "en", "auto"]  # whisper packs are multilingual
+        return ["ru"]  # the alphacep VOSK packs wired here are Russian
 
     def get_supported_formats(self) -> List[str]:
         return ["pcm16", "wav", "raw"]
@@ -231,18 +250,37 @@ class SherpaOnnxASRProvider(ASRProvider):
     def _get_default_model_urls(cls) -> Dict[str, Any]:
         # Multi-file packs — resolved by AssetManager.download_model_pack via the HF API
         # (picks encoder/decoder/joiner + tokens, int8 preferred). Apache-2.0.
+        transducer = ["encoder", "decoder", "joiner", "tokens"]
+        whisper = ["encoder", "decoder", "tokens"]  # no joiner
         return {
             "vosk-model-small-ru": {
                 "type": "sherpa-pack",
                 "repo": "alphacep/vosk-model-small-ru",
+                "members": transducer,
                 "prefer": "int8",
                 "size": "~27MB int8",
             },
             "vosk-model-ru": {
                 "type": "sherpa-pack",
                 "repo": "alphacep/vosk-model-ru",
+                "members": transducer,
                 "prefer": "int8",
                 "size": "large (64-bit only)",
+            },
+            # Whisper exported to ONNX (sherpa-onnx) — multilingual, 64-bit only.
+            "whisper-tiny": {
+                "type": "sherpa-pack",
+                "repo": "csukuangfj/sherpa-onnx-whisper-tiny",
+                "members": whisper,
+                "prefer": "int8",
+                "size": "tiny multilingual",
+            },
+            "whisper-base": {
+                "type": "sherpa-pack",
+                "repo": "csukuangfj/sherpa-onnx-whisper-base",
+                "members": whisper,
+                "prefer": "int8",
+                "size": "base multilingual",
             },
         }
 
