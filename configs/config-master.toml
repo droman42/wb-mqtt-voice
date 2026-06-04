@@ -233,8 +233,8 @@ preload_models = true              # Preload AI models during provider initializ
 # The only ASR provider that runs on armv7 (Wirenboard 7) — no torch, no Kaldi.
 [asr.providers.sherpa_onnx]
 enabled = false                    # Enable sherpa-onnx provider
-model = "vosk-model-small-ru"      # Pack: vosk-model-small-ru (edge) | vosk-model-ru (64-bit) | whisper-tiny | whisper-base
-model_type = "vosk-transducer"     # "vosk-transducer" (RU Zipformer2) | "whisper" (whisper-onnx, 64-bit, multilingual)
+model = "vosk-model-small-ru"      # Pack: vosk-model-small-ru | vosk-model-ru | vosk-model-small-streaming-ru | whisper-tiny | whisper-base
+model_type = "vosk-transducer"     # "vosk-transducer" | "whisper" (multilingual) | "vosk-streaming" (online/low-latency, 64-bit)
 default_language = "ru"            # Model language (alphacep VOSK packs are Russian)
 sample_rate = 16000                # Audio sample rate (Zipformer2 frontend is 16 kHz)
 num_threads = 4                    # Inference threads (omit → platform default: armv7=2, else min(4,cores))

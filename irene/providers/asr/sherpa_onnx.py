@@ -76,6 +76,7 @@ class SherpaOnnxASRProvider(ASRProvider):
         self.feature_dim: int = config.get("feature_dim", 80)
         self.decoding_method: str = config.get("decoding_method", "greedy_search")
         self.policy = SherpaInferencePolicy.for_platform(config.get("num_threads"))
+        self._is_streaming = self.model_type in ("vosk-streaming", "vosk-streaming-transducer")
 
         self._recognizer: Any = None
 
@@ -137,9 +138,25 @@ class SherpaOnnxASRProvider(ASRProvider):
                     language=language,
                     task="transcribe",
                 )
+        elif self._is_streaming:
+            # Online/streaming transducer (chunk-wise encoder). Endpoint detection on so
+            # transcribe_stream can segment utterances live.
+            def build():
+                return sherpa_onnx.OnlineRecognizer.from_transducer(
+                    tokens=str(files["tokens"]),
+                    encoder=str(files["encoder"]),
+                    decoder=str(files["decoder"]),
+                    joiner=str(files["joiner"]),
+                    num_threads=self.policy.num_threads,
+                    sample_rate=self.sample_rate,
+                    feature_dim=self.feature_dim,
+                    decoding_method=self.decoding_method,
+                    enable_endpoint_detection=True,
+                )
         else:
             raise NotImplementedError(
-                f"model_type '{self.model_type}' not supported (use 'vosk-transducer' or 'whisper')"
+                f"model_type '{self.model_type}' not supported "
+                "(use 'vosk-transducer', 'whisper', or 'vosk-streaming')"
             )
 
         # onnxruntime graph init is blocking (~38 s on armv7) — keep it off the loop.
@@ -170,26 +187,83 @@ class SherpaOnnxASRProvider(ASRProvider):
             if not samples:
                 return ""
 
-            text = await asyncio.to_thread(self._decode, samples, rate)
+            decode = self._decode_online_oneshot if self._is_streaming else self._decode
+            text = await asyncio.to_thread(decode, samples, rate)
             return text.strip()
         except Exception as e:
             logger.error(f"sherpa-onnx transcription error: {e}")
             return ""
 
     def _decode(self, samples: List[float], rate: int) -> str:
+        """Offline recognizer: decode the whole buffer at once."""
         stream = self._recognizer.create_stream()
         stream.accept_waveform(rate, samples)
         self._recognizer.decode_stream(stream)
         return stream.result.text or ""
 
+    def _decode_online_oneshot(self, samples: List[float], rate: int) -> str:
+        """Online recognizer over a complete buffer: feed, pad tail, finish, drain."""
+        rec = self._recognizer
+        stream = rec.create_stream()
+        stream.accept_waveform(rate, samples)
+        stream.accept_waveform(rate, [0.0] * int(rate * 0.3))  # tail padding flushes the last words
+        stream.input_finished()
+        while rec.is_ready(stream):
+            rec.decode_stream(stream)
+        return rec.get_result(stream) or ""
+
     async def transcribe_stream(self, audio_stream: AsyncIterator[bytes]) -> AsyncIterator[str]:
-        """Offline model: buffer the stream, then emit one final transcription."""
-        chunks = bytearray()
+        """Streaming transcription.
+
+        For an **offline** model_type: buffer the stream, emit one final transcription.
+        For a **streaming** model_type (`vosk-streaming`): feed chunks to the
+        `OnlineRecognizer`, emitting incremental results and a segment on each endpoint.
+        """
+        if not self._is_streaming:
+            chunks = bytearray()
+            async for chunk in audio_stream:
+                chunks.extend(chunk)
+            text = await self.transcribe_audio(bytes(chunks))
+            if text:
+                yield text
+            return
+
+        if self._recognizer is None:
+            await self._load_recognizer()
+        rec = self._recognizer
+        stream = rec.create_stream()
+        last = ""
+
         async for chunk in audio_stream:
-            chunks.extend(chunk)
-        text = await self.transcribe_audio(bytes(chunks))
-        if text:
-            yield text
+            samples, rate = self._to_float_samples(chunk, self.sample_rate)
+            if not samples:
+                continue
+
+            def step():
+                stream.accept_waveform(rate, samples)
+                while rec.is_ready(stream):
+                    rec.decode_stream(stream)
+                return (rec.get_result(stream) or ""), rec.is_endpoint(stream)
+
+            text, endpoint = await asyncio.to_thread(step)
+            if endpoint:
+                if text:
+                    yield text.strip()
+                rec.reset(stream)
+                last = ""
+            elif text and text != last:
+                yield text.strip()
+                last = text
+
+        def finalize():
+            stream.input_finished()
+            while rec.is_ready(stream):
+                rec.decode_stream(stream)
+            return rec.get_result(stream) or ""
+
+        final = await asyncio.to_thread(finalize)
+        if final and final != last:
+            yield final.strip()
 
     @staticmethod
     def _to_float_samples(data: bytes, default_rate: int):
@@ -230,10 +304,10 @@ class SherpaOnnxASRProvider(ASRProvider):
         return {
             "languages": self.get_supported_languages(),
             "formats": self.get_supported_formats(),
-            "streaming": False,   # offline in PR-1; OnlineRecognizer is PR-3
-            "real_time": False,
+            "streaming": self._is_streaming,   # true for model_type="vosk-streaming"
+            "real_time": self._is_streaming,
             "confidence_scores": False,
-            "offline": True,
+            "offline": not self._is_streaming,
             "model_based": True,
         }
 
@@ -266,6 +340,16 @@ class SherpaOnnxASRProvider(ASRProvider):
                 "members": transducer,
                 "prefer": "int8",
                 "size": "large (64-bit only)",
+            },
+            # Streaming (online) transducer — repo also ships offline int8, so prefer the
+            # chunk-wise "chunk64" export. Use with model_type="vosk-streaming".
+            "vosk-model-small-streaming-ru": {
+                "type": "sherpa-pack",
+                "repo": "alphacep/vosk-model-small-streaming-ru",
+                "members": transducer,
+                "prefer": "chunk64",
+                "streaming": True,
+                "size": "small streaming",
             },
             # Whisper exported to ONNX (sherpa-onnx) — multilingual, 64-bit only.
             "whisper-tiny": {

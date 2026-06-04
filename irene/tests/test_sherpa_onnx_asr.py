@@ -111,3 +111,36 @@ class TestModelPacks:
         picks = AssetManager._pick_pack_files(siblings, "int8")  # default 4 members
         assert set(picks) == {"encoder", "decoder", "joiner", "tokens"}
         assert picks["encoder"] == "encoder.int8.onnx"  # int8 preferred
+
+
+class TestStreaming:
+    """PR-3: online/streaming packs select the chunk64 export, not int8."""
+
+    def test_streaming_pack_prefers_chunk64(self):
+        p = SherpaOnnxASRProvider._get_default_model_urls()["vosk-model-small-streaming-ru"]
+        assert p["prefer"] == "chunk64"
+        assert p.get("streaming") is True
+        assert p["members"] == ["encoder", "decoder", "joiner", "tokens"]
+
+    def test_pick_files_streaming_selects_chunk64_over_int8(self):
+        from irene.core.assets import AssetManager
+        # repo ships BOTH offline (int8/onnx) and streaming (chunk64) — must pick chunk64.
+        siblings = [
+            "am-onnx/encoder.chunk64.onnx", "am-onnx/encoder.int8.onnx", "am-onnx/encoder.onnx",
+            "am-onnx/decoder.chunk64.onnx", "am-onnx/decoder.int8.onnx",
+            "am-onnx/joiner.chunk64.onnx", "am-onnx/joiner.int8.onnx", "lang/tokens.txt",
+        ]
+        picks = AssetManager._pick_pack_files(siblings, "chunk64")
+        assert picks["encoder"] == "am-onnx/encoder.chunk64.onnx"
+        assert picks["decoder"] == "am-onnx/decoder.chunk64.onnx"
+        assert picks["joiner"] == "am-onnx/joiner.chunk64.onnx"
+        assert picks["tokens"] == "lang/tokens.txt"
+
+    def test_streaming_flag_routes(self):
+        # Construction-free check of the model_type → streaming routing flag.
+        p = SherpaOnnxASRProvider.__new__(SherpaOnnxASRProvider)
+        p.model_type = "vosk-streaming"
+        p._is_streaming = p.model_type in ("vosk-streaming", "vosk-streaming-transducer")
+        assert p._is_streaming is True
+        assert p.get_capabilities()["streaming"] is True
+        assert p.get_capabilities()["offline"] is False
