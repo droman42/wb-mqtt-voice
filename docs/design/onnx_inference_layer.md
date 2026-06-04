@@ -113,6 +113,13 @@ MODEL DISK : 26.7 MB int8   |   LOAD: 38.2 s
 5. Needs **`libasound2`** (sherpa links ALSA).
 6. **armv7 = no TTS** (user decision): silero needs torch (✗ armv7), vosk-tts needs pip-onnxruntime (✗ armv7), and
    sherpa-`OfflineTts` is available but out of scope per the decision. The edge does **input only**.
+7. **🔴 The armv7 image MUST be Debian/glibc, NOT Alpine/musl — required change (user-approved 2026-06-04).**
+   The *current* `Dockerfile.armv7` is **Alpine** (`FROM python:3.11-alpine`, `apk add`, analyzer `--platform
+   linux.alpine`). **Proven on the WB7:** on Alpine/musl, sherpa-onnx's compiled native module is absent →
+   `import sherpa_onnx` fails (`No module named 'sherpa_onnx.lib._sherpa_onnx'`); its bundled onnxruntime is glibc-built
+   and there is no musllinux build. On **Debian/glibc** (`arm32v7/python:3.11-slim-bullseye`) it installs and transcribes
+   (the §4 benchmark). So `Dockerfile.armv7` must **switch Alpine→Debian** (matching wb-mqtt-bridge's armv7 image). The
+   armv7 Docker build was **never tested yet**, so this is a clean change. Consequences in §7.1/§9.
 
 ---
 
@@ -219,9 +226,16 @@ the pyproject extra that `uv sync` resolves in the per-arch build — not in a p
 
 ## 9. Two Docker builds
 
-- **`Dockerfile.armv7`** (`arm32v7/python:3.11-slim-bullseye`): `sherpa-onnx==1.10.46`, `libasound2`, the small VOSK pack,
-  **no torch / no Kaldi / no pip-onnxruntime / no TTS**. Tight RAM/CPU budget.
-- **`Dockerfile.x86_64`**: latest sherpa-onnx, big VOSK pack + whisper-onnx; torch only where silero TTS is configured.
+- **`Dockerfile.armv7` — rewrite Alpine→Debian (required, user-approved; never tested yet):**
+  - **Base:** all three stages (analyzer/builder/runtime) `python:3.11-alpine` → **`arm32v7/python:3.11-slim-bullseye`**
+    (glibc — matches wb-mqtt-bridge). This is what makes sherpa-onnx work (§4.7).
+  - **System packages:** `apk add` → **`apt-get install`**; analyzer call `--platform linux.alpine` → **`linux.ubuntu`**;
+    extract `system_packages['ubuntu']` instead of `['alpine']`. The sherpa provider's `get_platform_dependencies`
+    already declares both keys, so the Debian base just selects **`libasound2`** (the `linux.ubuntu` value).
+  - **Result:** `sherpa-onnx==1.10.46` (via the `asr-onnx` extra marker), `libasound2`, small VOSK pack downloaded to the
+    mounted asset folder, **no torch / no Kaldi / no pip-onnxruntime / no TTS**.
+- **`Dockerfile.x86_64`** (already Debian `python:3.11-slim` + apt): add the `asr-onnx` extra → latest sherpa-onnx, big
+  VOSK pack + whisper-onnx; torch only where silero TTS is configured. No base change needed.
 
 ---
 
@@ -232,6 +246,8 @@ the pyproject extra that `uv sync` resolves in the per-arch build — not in a p
   (`vosk-transducer` → `OfflineRecognizer.from_transducer`; `whisper` → `OfflineRecognizer.from_whisper`). Confirmed
   feasible — both are `OfflineRecognizer` factory methods on the same runtime.
 - **Models: first-run download** into the asset-loader folder (mounted volume), not baked into the image (§6).
+- **armv7 image Alpine→Debian** + the system-dep flow flip (apk→apt, `linux.alpine`→`linux.ubuntu`) — approved
+  ("modify both; never tested yet"). Required for sherpa-onnx to load on armv7 (§4.7/§9).
 
 **Still open:**
 - **VAD + wake-word placement** (next discussion): keep energy-VAD vs move to Silero-VAD-ONNX; keep
