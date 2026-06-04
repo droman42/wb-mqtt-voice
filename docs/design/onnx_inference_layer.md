@@ -102,11 +102,14 @@ MODEL DISK : 26.7 MB int8   |   LOAD: 38.2 s
    **bundles its own onnxruntime**. This is why **vosk-tts and any plain-onnxruntime model cannot run on armv7**.
 3. **RTF ≈ 1.15 → offline only, with a latency tax** (a 3 s command ≈ 3.5 s to transcribe). Rules out streaming on this
    box and **rules out the big 6.1-WER model** (would be ~5–10× — unusable). **armv7 = small model only.**
-4. **~38 s model load — per *process start*, not first-run-only.** This is the onnxruntime graph init when the
-   recognizer is constructed; it happens **every time Irene starts** (reboot, image update, container restart) — distinct
-   from the model *download*, which is first-run-only and cached on the mounted asset folder (§6). So on a reboot the WB7
-   is ~38 s from container start to ASR-ready. Optimizable by serializing onnxruntime's **optimized graph** once and
-   loading that on subsequent starts (`SessionOptions.optimized_model_filepath`) — worth a small spike (§10).
+4. **~38 s model load — absorbed by the existing warm-up.** It's the onnxruntime graph init when the recognizer is
+   constructed (every process start, distinct from the first-run *download* which is cached on the mount, §6). Irene
+   already has a **warm-up procedure** — providers implement `warm_up()` gated by the **`preload_models`** config flag
+   (whisper/vosk/silero/vosk-tts do this; plus a global `preload_essential_models`). The new provider follows the same
+   pattern, and the **`embedded-armv7` profile sets `preload_models=True`** → the 38 s is paid **at boot during warm-up**
+   (off the first-command critical path), not on the first user utterance. Lower-urgency further optimization:
+   serialize onnxruntime's **optimized graph** once (`SessionOptions.optimized_model_filepath`) to shrink the warm-up
+   window itself.
 5. Needs **`libasound2`** (sherpa links ALSA).
 6. **armv7 = no TTS** (user decision): silero needs torch (✗ armv7), vosk-tts needs pip-onnxruntime (✗ armv7), and
    sherpa-`OfflineTts` is available but out of scope per the decision. The edge does **input only**.
@@ -234,7 +237,8 @@ the pyproject extra that `uv sync` resolves in the per-arch build — not in a p
 - **VAD + wake-word placement** (next discussion): keep energy-VAD vs move to Silero-VAD-ONNX; keep
   openWakeWord/microWakeWord (TFLite) — sherpa-KWS has no RU model; edge vs server; ESP32/QUAL-19/20 intersection.
   Also verify **`tflite-runtime` has an armv7 wheel** for the edge.
-- **38 s per-start load** — spike onnxruntime optimized-graph caching to shrink it (§4.4).
+- **38 s load — handled** by the existing warm-up (`preload_models=True` on armv7 → paid at boot, §4.4); optional
+  later spike: onnxruntime optimized-graph caching to shrink the warm-up window.
 - **Build-system fix** — `get_python_dependencies` should return extra *group names* across all providers (§7.1) → BUILD-5.
 
 ---
