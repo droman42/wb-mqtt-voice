@@ -19,8 +19,9 @@ newest entries near the top of each dated section.
   normal Actuate). Irene **never iterates rooms or synthesizes a group** — group/scene controls are aggregate *devices* in
   the catalog and Irene relies on their availability. Simpler on Irene's side (no fan-out, no N-call partial-failure
   handling; PR-5 reduces to just the sensor-read flow). Updated `mqtt_integration.md` §5a/§6/§10/§11 + the ARCH-7/8 ledger
-  lines. **NOTE:** the bridge contract `voice_integration_contract_draft.md` §B/§C.5 still say "Irene iterates rooms" —
-  now stale; flag for the bridge session to align.
+  lines, **and aligned the bridge contract** `voice_integration_contract_draft.md` (§B catalog example now shows an
+  `all_lights` aggregate device in `global`; §B/§C.5 prose, sequencing, and deferred-v2 all rewritten to the
+  aggregate-device model — no more "Irene iterates rooms"/"N parallel calls").
 - **QUAL-5 DONE — cruft cleanup (verifiable cruft → 0; vulture pool not pursued, user decision).** Reconciled the §G
   counts against post-QUAL-4 reality (import churn dropped them: F401 360→237, star 62→5+57 F405, F841 22→15). Cleared all
   of it: 189 unused imports ruff-auto-fixed; the 41 unsafe-to-autofix tail classified by one verified sub-agent — pure
