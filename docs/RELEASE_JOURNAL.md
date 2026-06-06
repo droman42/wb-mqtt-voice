@@ -12,6 +12,20 @@ newest entries near the top of each dated section.
 ## Action journal
 
 ### 2026-06-06
+- **UI-1 DONE — designed the human-friendly donation editor → `config-ui/docs/donation_editor_ux.md`.** Started from a
+  user question — must UI-1/2/3/5 be built together? — and a user correction (the ledger's "`ParameterSpecEditor` is
+  already fine" is wrong: it embeds raw `extraction_patterns` + a regex `pattern`). Traced the code + a 28-file survey
+  of real spaCy usage (vocabulary is small: TEXT/LEMMA/LOWER/IS_ALPHA/LIKE_NUM/IN/REGEX/`OP:"+"`; no NOT_IN/TAG/ENT_TYPE,
+  no `?`/`*`/`!`). Key insight: **the v1.1 split IS the clean/spaCy line** — contract.json is structural/no-spaCy,
+  `<lang>.json` holds 100% of the raw spaCy — so the redesign is **two editors** and the spaCy abstraction is
+  quarantined to the phrasing side. **Persona-driven model** (knows handlers, zero spaCy/NLU): five everyday cards +
+  an Advanced escape hatch, example-sentence language, regex hidden (mostly reduces to cards); the three pattern
+  locations collapse to two questions. **User-settled decisions:** translation **frontend-only** (`patternModel.ts`,
+  lossless round-trip, backend keeps validate+test-match); raw spaCy = **advanced escape hatch behind a button**;
+  **structural-first phasing** (UI-5 builds the functional editor + all scaffolding once; UI-3 swaps in the cards — no
+  double build). **User-directed scope addition → filed UI-7:** config-ui-wide **bilingual UI** via `react-i18next`
+  (harmonized with the bridge per UI-6), keeping UI-language (chrome) orthogonal to content-language (which phrasing
+  file). Ledger 90 tasks · 55 done · 33 open · 2 paused; scope guard clean.
 - **QUAL-6 DONE — killed the startup "CoreConfig fields without section models" warning as a structural false
   positive (Invariant #8).** Reconciled against reality: the §H "9 fields" is now 11 (QUAL-36 added
   `default_language`/`supported_languages`), and crucially they are *all* scalar top-level settings — instance

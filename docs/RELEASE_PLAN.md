@@ -1302,11 +1302,21 @@ _Apply to every remediation task below (from the 4 review docs + QUAL-25/26). So
 ### UI / config-ui (UI)
 React/Vite donation+config editor. Front-end feature/UX work (the BUILD-4 build gate stays under Build & CI).
 Governed by Invariant #4 (config-ui must stay functional).
-- [ ] **UI-1** [DEDITOR] (P2) — Design a human-friendly donation/pattern authoring model: an abstraction over raw
-      spaCy `token_patterns`/`slot_patterns` usable by a non-spaCy intent developer (literals, parameter slots
-      mapped to the 8 ParameterTypes + entity resolvers, optionality/repetition, synonyms/lemmas) + an
-      **"advanced (raw spaCy)" escape hatch**. → `config-ui/docs/donation_editor_ux.md`. **Depends on QUAL-10 [PEX].**
-      (Today `TokenPatternsEditor`/`SlotPatternsEditor` expose raw spaCy directly; `ParameterSpecEditor` is already fine.)
+- [x] **UI-1** [DEDITOR] (P2) — **DONE 2026-06-06.** Designed the human-friendly donation/pattern authoring model →
+      `config-ui/docs/donation_editor_ux.md`. **Persona-driven** (author knows handlers, **zero spaCy/NLU**): the model
+      is **five everyday cards + an Advanced escape hatch** (a word [+"include its forms"] / one-of-several-words /
+      a number / any word / the rest), all in example-sentence language — "token/lemma/regex/pattern" never surface.
+      Organizing principle: **the v1.1 split IS the clean/spaCy line** → two editors, a clean **Contract Editor** (no
+      spaCy; the good half of `ParameterSpecEditor`) and a **Phrasing Editor** that quarantines all raw spaCy. The
+      three pattern locations (`token_patterns`/`slot_patterns`/`extraction_patterns`) collapse to two questions
+      ("what might the user say?" / "how to find each value?"). Grounded in a 28-file survey (real spaCy vocabulary is
+      small; regex mostly reduces to friendly cards). **Decisions settled here (user-approved):** translation layer is
+      **frontend-only** (`patternModel.ts`, lossless-by-construction round-trip, backend keeps validate + test-match);
+      raw spaCy survives as an **advanced escape hatch behind a button**, never default; **structural-first phasing**
+      (UI-5 ships the functional editor + all scaffolding with the existing raw editors as interim, UI-3 swaps the
+      cards into the one widget — no double build). **Scope correction (supersedes prior note):** `ParameterSpecEditor`
+      is NOT "already fine" — it embeds raw `extraction_patterns` + a regex `pattern` that move to the phrasing side, so
+      all three editors are in scope. **Surfaced UI-7** (config-ui-wide i18n). **Depended on QUAL-10 [PEX] ✓.**
 - [ ] **UI-2** [DEDITOR] (P2) — Bidirectional translation layer (human model ↔ spaCy token/slot patterns) with
       round-trip fidelity + validation (must emit schema-valid spaCy). Decide frontend-only vs. a backend
       `compile/decompile` endpoint reusing the real spaCy logic.
@@ -1370,6 +1380,16 @@ Governed by Invariant #4 (config-ui must stay functional).
       **OUT OF SCOPE (user, 2026-06-04):** axios, react-query (config-ui is load-edit-save, not a server-cache dashboard);
       OpenAPI **type generation** was folded into **UI-5** (generation-only), not here. Refs: stack comparison
       (journal 2026-06-04), `../wb-mqtt-bridge/ui/.eslintrc.cjs`.
+- [ ] **UI-7** [DEDITOR/I18N] (P2) — **config-ui-wide bilingual UI (user-directed 2026-06-06, surfaced during UI-1).**
+      Make the **editor chrome** (labels, buttons, help text, validation messages) fully localizable — ship **ru + en**,
+      adding more languages later being cheap. **Harmonize with the bridge (UI-6 precedent):** `../wb-mqtt-bridge/ui`
+      already uses **`react-i18next`** (`i18next ^23` / `react-i18next ^13`); config-ui has none → adopt the same +
+      `en`/`ru` resource bundles + a global **UI-language switcher**. **Keep the two language axes orthogonal:** the
+      *UI language* (chrome) is independent of the *content language* (which phrasing file you edit, via `LanguageTabs`)
+      — a Russian author editing the English phrasing with a Russian UI is a normal case. Cross-cutting across all
+      config-ui pages, so it's its own task — but **foreseen now**: UI-2/3/5 author their new strings as i18n keys from
+      day one (the §3.2 donation-editor card vocabulary is the first bundle) so nothing needs retrofitting. Design:
+      `config-ui/docs/donation_editor_ux.md` §7. Refs: UI-1/2/3/5.
 
 ### Release Readiness (REL)
 - [ ] **REL-1** (P0) — Sign off the Definition-of-release checklist above (fill target + criteria).
