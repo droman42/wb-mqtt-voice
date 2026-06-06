@@ -1363,7 +1363,27 @@ Governed by Invariant #4 (config-ui must stay functional).
       `MonitoringPage` placeholder and the **ARCH-7 [MQTT]** output-seam work (both touch live pipeline observability).
       Re-scope against the *fixed* pipeline + real endpoints when it's actually picked up. Captured from a config-ui
       doc reviewed during QUAL-25 (2026-06-02).
-- [ ] **UI-5** `[release]` [DEDITOR] (P1) — **Rebuild the donations editor on the v1.1 split model (config-ui;
+- [x] **UI-5** `[release]` [DEDITOR] (P1) — **DONE 2026-06-06.** Rebuilt the donations editor on the v1.1 split model
+      (config-ui), with the QUAL-42 validations wired in and the v1.0 cruft removed. **Delivered (6 green slices):**
+      **(0)** type-gen toolchain — backend `scripts/dump_openapi.py` → committed `config-ui/openapi.json` (109 paths,
+      built from the runner's router factory + component routers with `core=None`, since routes build independently of
+      request state); `gen:api-types` generates `src/types/openapi.gen.ts` (envelopes, via openapi-typescript) +
+      `donation-{contract,language}.gen.ts` (bodies, via json-schema-to-typescript from the two v1.1 JSON Schemas).
+      **(1)** `apiClient` → v1.1: `getDonationContract`/`updateDonationContract` + the QUAL-42 `getContractValidation`/
+      `validateTranslation`/`translateDonation`; **removed the dead `syncParameters` (404) and rule-based
+      `suggestTranslations`** (superseded by the LLM service). **(2)** `src/types/donations.ts` — generated contract/
+      phrasing + envelope types (no hand-maintained drift). **(3)** new **ContractEditor** (structural: per-method
+      room_context + param specs name/type/required/canonical-choices/min-max/entity_type/pattern; method names
+      read-only) and **DonationValidationPanel** (QUAL-42 wiring report + LLM validate/draft, with the graceful no-LLM
+      message). **(4)** new **ChoiceSurfacesEditor** (canonical → per-language spoken forms) wired into the phrasing
+      method editor. **(5)** reworked the cross-language panel + LanguageTabs — **dropped the sync button/handler/prop**
+      end-to-end (params are single-source under v1.1). **Drive-by:** fixed a stale `configureIntentSystem` path
+      (`/intent_system/configure` → `/intents/configure`, a 404 the codegen coverage-check surfaced). **Interim/deferred
+      (by design):** the raw spaCy pattern editors remain (human-card model = UI-3); editor chrome i18n = UI-7; backend
+      v1.0 dead-validation removal = QUAL-43. **DoD met:** `cd config-ui && npm run check && npm run build` pass; the
+      page round-trips contract + phrasing + choice_surfaces. Design: `donation_editor_ux.md` §9. **This clears the
+      Invariant #4 debt deferred from QUAL-29.** _Original scope below:_
+      **Rebuild the donations editor on the v1.1 split model (config-ui;
       Invariant #4 debt from QUAL-29).** QUAL-29 retired the v1.0 per-language-with-params concept on the **backend**
       (contract.json = neutral core; `<lang>.json` = phrasing) and the REST API now reflects it (`GET/PUT
       /donations/{handler}/contract`; the per-`{language}` endpoints serve phrasing; `/donations/schema` → both v1.1

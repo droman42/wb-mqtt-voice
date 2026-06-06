@@ -12,6 +12,20 @@ newest entries near the top of each dated section.
 ## Action journal
 
 ### 2026-06-06
+- **UI-5 DONE — rebuilt the donations editor on the v1.1 split (config-ui), QUAL-42 validations wired, v1.0 cruft out.**
+  Six green slices, each committed at a passing `npm run check && npm run build`: (0) type-gen foundation — a backend
+  `scripts/dump_openapi.py` produces a committed `config-ui/openapi.json` (assembled from the runner's router factory +
+  component routers with `core=None`, since routes build independently of request-time state), and `gen:api-types`
+  generates envelope types (openapi-typescript) + contract/phrasing body types (json-schema-to-typescript from the two
+  v1.1 JSON Schemas); (1) apiClient → v1.1 contract get/put + the three QUAL-42 methods, dropping the dead
+  `syncParameters`/`suggestTranslations`; (2) generated `donations.ts` types; (3) new ContractEditor (structural) +
+  DonationValidationPanel (wiring report + LLM validate/draft); (4) ChoiceSurfacesEditor wired into phrasing; (5)
+  dropped the parameter-sync UI from LanguageTabs + CrossLanguageValidation. **Verification answered a user question**
+  (does the rest of config-ui work with the generated types?): whole-app build green; the dump covers all 52 endpoints
+  the apiClient uses except the known-dead `sync-parameters` (expected) and a pre-existing stale
+  `/intent_system/configure` client path (fixed in passing → `/intents/configure`). Deferred by design: raw pattern
+  editors stay (cards = UI-3), chrome i18n = UI-7, backend v1.0 dead-validation removal = QUAL-43 (filed). Clears the
+  Invariant #4 debt from QUAL-29.
 - **QUAL-42 DONE — donation contract↔code validator + LLM translation services (user-directed, "do this validator
   right away").** Built on the donation-validation investigation, which found that nothing reconciled a *contract*
   against the *handler code* it drives (only contract→method existence; never params, never reverse coverage), the UI
