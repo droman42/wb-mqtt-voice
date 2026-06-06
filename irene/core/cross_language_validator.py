@@ -48,18 +48,6 @@ class CompletenessReport:
     timestamp: float
 
 
-@dataclass
-class TranslationSuggestions:
-    """Suggestions for missing translations"""
-    handler_name: str
-    source_language: str
-    target_language: str
-    missing_phrases: List[Dict[str, Any]]  # {method_key, source_phrases, target_phrases, missing_count, coverage_ratio}
-    missing_methods: List[str]             # Method keys missing in target language
-    confidence_scores: Dict[str, float]    # Confidence in suggestions
-    timestamp: float
-
-
 # The language whose surface forms equal the canonical tokens (canonical is authored in English),
 # so it never needs an explicit choice_surfaces map.
 CANONICAL_IDENTITY_LANG = "en"
@@ -71,10 +59,6 @@ class CrossLanguageValidator:
     def __init__(self, assets_root: Path, asset_loader=None):
         self.assets_root = Path(assets_root)
         self.asset_loader = asset_loader
-
-        # Language detection helpers
-        self.russian_indicators = {'а', 'е', 'и', 'о', 'у', 'ы', 'э', 'ю', 'я', 'ё'}
-        self.english_indicators = {'a', 'e', 'i', 'o', 'u'}
 
     # ----- loading (v1.1 raw structure: neutral contract + per-language phrasing) -----
 
@@ -178,80 +162,13 @@ class CrossLanguageValidator:
         return CompletenessReport(handler_name, list(languages), complete, missing_methods, extra_methods,
                                   contract_methods, counts, warnings, time.time())
 
-    def suggest_translations(self, handler_name: str, source_lang: str, target_lang: str) -> TranslationSuggestions:
-        """Suggest phrases present in the source language but missing in the target language."""
-        import time
-        _, languages = self._load_v11(handler_name)
-        if source_lang not in languages:
-            return TranslationSuggestions(handler_name, source_lang, target_lang, [], [], {}, time.time())
+    # QUAL-43: suggest_translations + its confidence/language-detection helpers were removed — the rule-based
+    # phrase-gap suggester is superseded by the LLM translation service (POST /donations/{h}/translate).
 
-        source = self._lang_method_phrases(languages[source_lang])
-        target = self._lang_method_phrases(languages.get(target_lang, {})) if target_lang in languages else None
-
-        missing_phrases: List[Dict[str, Any]] = []
-        missing_methods: List[str] = []
-        confidence_scores: Dict[str, float] = {}
-        for method_key, src_phrases in source.items():
-            tgt_phrases = None if target is None else target.get(method_key)
-            if tgt_phrases is None:
-                missing_methods.append(method_key)
-                missing_phrases.append({'method_key': method_key, 'source_phrases': src_phrases,
-                                        'target_phrases': [], 'missing_count': len(src_phrases),
-                                        'coverage_ratio': 0.0})
-                confidence_scores[method_key] = 0.9 if target is None else 0.8
-            elif len(tgt_phrases) < len(src_phrases):
-                missing_phrases.append({'method_key': method_key, 'source_phrases': src_phrases,
-                                        'target_phrases': tgt_phrases,
-                                        'missing_count': len(src_phrases) - len(tgt_phrases),
-                                        'coverage_ratio': len(tgt_phrases) / len(src_phrases) if src_phrases else 1.0})
-                confidence_scores[method_key] = self._calculate_translation_confidence(src_phrases, tgt_phrases)
-
-        return TranslationSuggestions(handler_name, source_lang, target_lang,
-                                      missing_phrases, missing_methods, confidence_scores, time.time())
-
-    def sync_parameters_across_languages(self, handler_name: str, source_lang: str,
-                                         target_languages: List[str]) -> Dict[str, bool]:
-        """v1.1 NO-OP: parameters live once in contract.json — there is nothing to synchronise across
-        languages. Retained for REST/API compatibility; always reports success."""
-        logger.info(f"sync_parameters is a no-op under donation v1.1 (params are single-source in "
-                    f"contract.json) for handler '{handler_name}'")
-        return {lang: True for lang in target_languages}
-
-    # ----- helpers (unchanged) -----
+    # ----- helpers -----
 
     def _get_asset_handler_name(self, handler_name: str) -> str:
         """Map handler file name to asset directory name"""
         if handler_name.endswith("_handler"):
             return handler_name
         return f"{handler_name}_handler"
-
-    def _calculate_translation_confidence(self, source_phrases: List[str], target_phrases: List[str]) -> float:
-        """Calculate confidence score for translation suggestions"""
-        if not source_phrases:
-            return 1.0
-        if not target_phrases:
-            return 0.8  # High confidence for completely missing translations
-
-        coverage_ratio = len(target_phrases) / len(source_phrases)
-        target_lang_consistency = self._check_language_consistency(target_phrases)
-        base_confidence = min(coverage_ratio, 1.0)
-        language_penalty = 0.1 if not target_lang_consistency else 0.0
-        return max(0.0, base_confidence - language_penalty)
-
-    def _check_language_consistency(self, phrases: List[str]) -> bool:
-        """Check if phrases are in a consistent language"""
-        if not phrases:
-            return True
-        sample_size = min(5, len(phrases))
-        sample_phrases = phrases[:sample_size]
-        language_scores = {'ru': 0, 'en': 0}
-        for phrase in sample_phrases:
-            language_scores[self._detect_phrase_language(phrase)] += 1
-        return (max(language_scores.values()) / sample_size) >= 0.8
-
-    def _detect_phrase_language(self, phrase: str) -> str:
-        """Simple language detection based on character sets"""
-        phrase_lower = phrase.lower()
-        russian_chars = sum(1 for char in phrase_lower if char in self.russian_indicators)
-        english_chars = sum(1 for char in phrase_lower if char in self.english_indicators)
-        return "ru" if russian_chars > english_chars else "en"

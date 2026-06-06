@@ -597,59 +597,6 @@
         }
       }
     },
-    "/intents/donations/{handler_name}/suggest-translations": {
-      "post": {
-        "tags": [
-          "Intent System"
-        ],
-        "summary": "Suggest Translations",
-        "description": "Get translation suggestions for missing phrases",
-        "operationId": "suggest_translations_intents_donations__handler_name__suggest_translations_post",
-        "parameters": [
-          {
-            "name": "handler_name",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Handler Name"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/SuggestTranslationsRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/SuggestTranslationsResponse"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/intents/donations/validation": {
       "get": {
         "tags": [
@@ -9441,53 +9388,6 @@
         "title": "MicrophoneInputConfig",
         "description": "Microphone input configuration with Phase 5 audio enhancements"
       },
-      "MissingPhraseInfo": {
-        "properties": {
-          "method_key": {
-            "type": "string",
-            "title": "Method Key",
-            "description": "Method key (method_name#intent_suffix)"
-          },
-          "source_phrases": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array",
-            "title": "Source Phrases",
-            "description": "Phrases available in source language"
-          },
-          "target_phrases": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array",
-            "title": "Target Phrases",
-            "description": "Phrases available in target language"
-          },
-          "missing_count": {
-            "type": "integer",
-            "title": "Missing Count",
-            "description": "Number of missing phrases"
-          },
-          "coverage_ratio": {
-            "type": "number",
-            "maximum": 1.0,
-            "minimum": 0.0,
-            "title": "Coverage Ratio",
-            "description": "Ratio of target to source phrases"
-          }
-        },
-        "type": "object",
-        "required": [
-          "method_key",
-          "source_phrases",
-          "target_phrases",
-          "missing_count",
-          "coverage_ratio"
-        ],
-        "title": "MissingPhraseInfo",
-        "description": "Information about missing phrases for translation"
-      },
       "MonitoringConfig": {
         "properties": {
           "enabled": {
@@ -11513,52 +11413,6 @@
         ],
         "title": "StatusResponse"
       },
-      "SuggestTranslationsRequest": {
-        "properties": {
-          "source_language": {
-            "type": "string",
-            "title": "Source Language",
-            "description": "Source language for suggestions"
-          },
-          "target_language": {
-            "type": "string",
-            "title": "Target Language",
-            "description": "Target language for suggestions"
-          }
-        },
-        "type": "object",
-        "required": [
-          "source_language",
-          "target_language"
-        ],
-        "title": "SuggestTranslationsRequest",
-        "description": "Request for translation suggestions"
-      },
-      "SuggestTranslationsResponse": {
-        "properties": {
-          "success": {
-            "type": "boolean",
-            "title": "Success",
-            "description": "Whether the operation was successful"
-          },
-          "timestamp": {
-            "type": "number",
-            "title": "Timestamp",
-            "description": "Unix timestamp when response was generated"
-          },
-          "suggestions": {
-            "$ref": "#/components/schemas/TranslationSuggestionsSchema",
-            "description": "Translation suggestions"
-          }
-        },
-        "type": "object",
-        "required": [
-          "success",
-          "suggestions"
-        ],
-        "title": "SuggestTranslationsResponse",
-        "description": "Response for translation suggestions"
-      },
       "SystemCapabilitiesResponse": {
         "properties": {
           "version": {
@@ -13035,65 +12889,6 @@
         ],
         "title": "TranslationIssueSchema",
         "description": "A single cross-language translation problem found by the LLM."
-      },
-      "TranslationSuggestionsSchema": {
-        "properties": {
-          "handler_name": {
-            "type": "string",
-            "title": "Handler Name",
-            "description": "Handler name"
-          },
-          "source_language": {
-            "type": "string",
-            "title": "Source Language",
-            "description": "Source language for suggestions"
-          },
-          "target_language": {
-            "type": "string",
-            "title": "Target Language",
-            "description": "Target language for suggestions"
-          },
-          "missing_phrases": {
-            "items": {
-              "$ref": "#/components/schemas/MissingPhraseInfo"
-            },
-            "type": "array",
-            "title": "Missing Phrases",
-            "description": "Information about missing phrases"
-          },
-          "missing_methods": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array",
-            "title": "Missing Methods",
-            "description": "Method keys completely missing in target language"
-          },
-          "confidence_scores": {
-            "additionalProperties": {
-              "type": "number"
-            },
-            "type": "object",
-            "title": "Confidence Scores",
-            "description": "Confidence scores for suggestions"
-          },
-          "timestamp": {
-            "type": "number",
-            "title": "Timestamp",
-            "description": "Suggestion generation timestamp"
-          }
-        },
-        "type": "object",
-        "required": [
-          "handler_name",
-          "source_language",
-          "target_language",
-          "missing_phrases",
-          "missing_methods",
-          "confidence_scores"
-        ],
-        "title": "TranslationSuggestionsSchema",
-        "description": "Schema for translation suggestions response"
       },
       "TranslationValidationRequest": {
         "properties": {

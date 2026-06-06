@@ -385,26 +385,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/intents/donations/{handler_name}/suggest-translations": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Suggest Translations
-         * @description Get translation suggestions for missing phrases
-         */
-        post: operations["suggest_translations_intents_donations__handler_name__suggest_translations_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/intents/donations/validation": {
         parameters: {
             query?: never;
@@ -5777,37 +5757,6 @@ export interface components {
             resample_quality: string;
         };
         /**
-         * MissingPhraseInfo
-         * @description Information about missing phrases for translation
-         */
-        MissingPhraseInfo: {
-            /**
-             * Method Key
-             * @description Method key (method_name#intent_suffix)
-             */
-            method_key: string;
-            /**
-             * Source Phrases
-             * @description Phrases available in source language
-             */
-            source_phrases: string[];
-            /**
-             * Target Phrases
-             * @description Phrases available in target language
-             */
-            target_phrases: string[];
-            /**
-             * Missing Count
-             * @description Number of missing phrases
-             */
-            missing_count: number;
-            /**
-             * Coverage Ratio
-             * @description Ratio of target to source phrases
-             */
-            coverage_ratio: number;
-        };
-        /**
          * MonitoringConfig
          * @description Monitoring component configuration (Phase 5 unified metrics system)
          */
@@ -7402,40 +7351,6 @@ export interface components {
             /** Web Clients */
             web_clients: number;
         };
-        /**
-         * SuggestTranslationsRequest
-         * @description Request for translation suggestions
-         */
-        SuggestTranslationsRequest: {
-            /**
-             * Source Language
-             * @description Source language for suggestions
-             */
-            source_language: string;
-            /**
-             * Target Language
-             * @description Target language for suggestions
-             */
-            target_language: string;
-        };
-        /**
-         * SuggestTranslationsResponse
-         * @description Response for translation suggestions
-         */
-        SuggestTranslationsResponse: {
-            /**
-             * Success
-             * @description Whether the operation was successful
-             */
-            success: boolean;
-            /**
-             * Timestamp
-             * @description Unix timestamp when response was generated
-             */
-            timestamp?: number;
-            /** @description Translation suggestions */
-            suggestions: components["schemas"]["TranslationSuggestionsSchema"];
-        };
         /** SystemCapabilitiesResponse */
         SystemCapabilitiesResponse: {
             /** Version */
@@ -8499,49 +8414,6 @@ export interface components {
              * @description Human-readable description of the inconsistency
              */
             message: string;
-        };
-        /**
-         * TranslationSuggestionsSchema
-         * @description Schema for translation suggestions response
-         */
-        TranslationSuggestionsSchema: {
-            /**
-             * Handler Name
-             * @description Handler name
-             */
-            handler_name: string;
-            /**
-             * Source Language
-             * @description Source language for suggestions
-             */
-            source_language: string;
-            /**
-             * Target Language
-             * @description Target language for suggestions
-             */
-            target_language: string;
-            /**
-             * Missing Phrases
-             * @description Information about missing phrases
-             */
-            missing_phrases: components["schemas"]["MissingPhraseInfo"][];
-            /**
-             * Missing Methods
-             * @description Method keys completely missing in target language
-             */
-            missing_methods: string[];
-            /**
-             * Confidence Scores
-             * @description Confidence scores for suggestions
-             */
-            confidence_scores: {
-                [key: string]: number;
-            };
-            /**
-             * Timestamp
-             * @description Suggestion generation timestamp
-             */
-            timestamp?: number;
         };
         /**
          * TranslationValidationRequest
@@ -9677,41 +9549,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CrossLanguageValidationResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    suggest_translations_intents_donations__handler_name__suggest_translations_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                handler_name: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["SuggestTranslationsRequest"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["SuggestTranslationsResponse"];
                 };
             };
             /** @description Validation Error */

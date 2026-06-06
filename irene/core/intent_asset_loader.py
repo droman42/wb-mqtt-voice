@@ -140,43 +140,6 @@ class IntentAssetLoader:
         """Get JSON donation (existing functionality)"""
         return self.donations.get(handler_name)
     
-    async def load_donation_on_demand(self, handler_name: str) -> Optional[HandlerDonation]:
-        """
-        Load donation from file for configuration UI only.
-        
-        This method loads donation data directly from the filesystem without
-        caching it in memory or registering it with the runtime system.
-        Used exclusively by the configuration UI to access donations for
-        handlers that may not be currently enabled.
-        
-        Args:
-            handler_name: Name of the handler to load donation for
-            
-        Returns:
-            HandlerDonation object if file exists and is valid, None otherwise
-            
-        Note:
-            - Does NOT add to self.donations cache
-            - Does NOT register handler with runtime system  
-            - Read-only access for configuration purposes only
-        """
-        donations_dir = self.assets_root / "donations"
-        json_path = donations_dir / f"{handler_name}.json"
-        
-        try:
-            if not json_path.exists():
-                logger.debug(f"No donation file found for handler '{handler_name}': {json_path}")
-                return None
-            
-            # Load and validate donation directly from file
-            donation = await self._load_and_validate_donation(json_path, handler_name)
-            logger.debug(f"Loaded donation on-demand for handler '{handler_name}' (configuration UI)")
-            return donation
-            
-        except Exception as e:
-            logger.warning(f"Failed to load donation on-demand for handler '{handler_name}': {e}")
-            return None
-    
     async def save_donation(self, handler_name: str, donation_data: dict, create_backup: bool = True) -> bool:
         """Save donation JSON to file with backup support"""
         donations_dir = self.assets_root / "donations"
@@ -262,59 +225,6 @@ class IntentAssetLoader:
             logger.error(f"Failed to create backup for {file_path}: {e}")
             return False
 
-    async def validate_donation_data(self, handler_name: str, donation_data: dict) -> tuple[bool, list, list]:
-        """Validate donation data without saving (dry-run)
-        
-        Returns:
-            tuple: (is_valid, errors, warnings)
-        """
-        validation_errors = []
-        validation_warnings = []
-        
-        try:
-            # JSON Schema validation (if available)
-            if self.config.validate_json_schema:
-                try:
-                    await self._validate_json_schema(donation_data, Path(f"validation_{handler_name}.json"))
-                except Exception as e:
-                    validation_errors.append({
-                        "type": "schema",
-                        "message": f"JSON schema validation failed: {e}",
-                        "path": None
-                    })
-            
-            # Pydantic validation
-            try:
-                donation = HandlerDonation(**donation_data)
-            except Exception as e:
-                validation_errors.append({
-                    "type": "pydantic",
-                    "message": f"Data validation failed: {e}",
-                    "path": None
-                })
-                return False, validation_errors, validation_warnings
-            
-            # Method existence validation (if available)
-            if self.config.validate_method_existence:
-                try:
-                    await self._validate_method_existence(donation, handler_name)
-                except Exception as e:
-                    validation_warnings.append({
-                        "type": "method_existence",
-                        "message": f"Method validation warning: {e}",
-                        "path": None
-                    })
-            
-            return len(validation_errors) == 0, validation_errors, validation_warnings
-            
-        except Exception as e:
-            validation_errors.append({
-                "type": "general",
-                "message": f"Validation error: {e}",
-                "path": None
-            })
-            return False, validation_errors, validation_warnings
-    
     def get_donation_metadata(self, handler_name: str) -> Optional[dict]:
         """Get metadata about a donation file"""
         donations_dir = self.assets_root / "donations"
@@ -1566,34 +1476,6 @@ class IntentAssetLoader:
     # HELPER METHODS
     # ============================================================
     
-    async def _load_and_validate_donation(self, json_path: Path, handler_name: str) -> HandlerDonation:
-        """Load and validate a single JSON donation file (reused from DonationLoader)"""
-        
-        # Load JSON
-        try:
-            with open(json_path, 'r', encoding='utf-8') as f:
-                json_data = json.load(f)
-        except json.JSONDecodeError as e:
-            raise DonationDiscoveryError(f"Invalid JSON syntax in {json_path}: {e}")
-        except Exception as e:
-            raise DonationDiscoveryError(f"Failed to read {json_path}: {e}")
-        
-        # JSON Schema validation (if available)
-        if self.config.validate_json_schema:
-            await self._validate_json_schema(json_data, json_path)
-        
-        # Validate with pydantic
-        try:
-            donation = HandlerDonation(**json_data)
-        except Exception as e:
-            raise DonationDiscoveryError(f"Pydantic validation failed for {json_path}: {e}")
-        
-        # Additional validations
-        if self.config.validate_method_existence:
-            await self._validate_method_existence(donation, handler_name)
-        
-        return donation
-    
     async def _validate_donation_schema(self, json_data: dict, json_path: Path, schema_filename: str) -> None:
         """QUAL-29: validate a v1.1 contract/language file against its JSON Schema (graceful if jsonschema absent)."""
         try:
@@ -1616,36 +1498,6 @@ class IntentAssetLoader:
                 raise DonationDiscoveryError(error_msg)
             self._add_error(error_msg)
 
-    async def _validate_json_schema(self, json_data: dict, json_path: Path) -> None:
-        """Validate JSON data against JSON Schema"""
-        try:
-            import jsonschema
-            
-            # Load schema file
-            schema_path = self.assets_root / "v1.0.json"
-            if not schema_path.exists():
-                logger.warning(f"JSON Schema not found at {schema_path} - skipping schema validation")
-                return
-            
-            with open(schema_path, 'r', encoding='utf-8') as f:
-                schema = json.load(f)
-            
-            # Validate JSON data against schema
-            jsonschema.validate(instance=json_data, schema=schema)
-            logger.debug(f"JSON Schema validation passed for {json_path.name}")
-            
-        except ImportError:
-            if self.config.strict_mode:
-                raise DonationDiscoveryError(f"jsonschema library not available for validation of {json_path}")
-            else:
-                logger.warning("jsonschema library not available - skipping JSON Schema validation")
-        except Exception as e:
-            error_msg = f"JSON Schema validation failed for {json_path}: {e}"
-            if self.config.strict_mode:
-                raise DonationDiscoveryError(error_msg)
-            else:
-                self._add_error(error_msg)
-    
     async def _validate_method_existence(self, donation: HandlerDonation, handler_name: str):
         """Validate that donated methods exist in Python handler"""
         try:

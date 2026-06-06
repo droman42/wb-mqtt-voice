@@ -12,6 +12,19 @@ newest entries near the top of each dated section.
 ## Action journal
 
 ### 2026-06-06
+- **QUAL-43 DONE — removed donation v1.0 dead validation code + repointed the build analyzer at v1.1 (user-directed).**
+  Verified each target was genuinely dead before deleting (0 callers): the `IntentAssetLoader` v1.0 schema-validation
+  chain (`load_donation_on_demand`/`_load_and_validate_donation`/`_validate_json_schema`/`validate_donation_data`),
+  `irene/tools/intent_validator.py` + its CLI script + `assets/v1.0.json`, the orphaned
+  `sync_parameters_across_languages` (+ its now-dead confidence/lang-detect helpers + `TranslationSuggestions`), and
+  the rule-based `suggest_translations` endpoint/method + 6 dead schemas. **Mid-task the user added: "build analyser
+  should use new v1.1 validations"** — so instead of deleting build_analyzer's intent-JSON check, rewrote it to
+  validate each enabled handler's v1.1 `contract.json` + `<lang>.json` against the two v1.1 JSON Schemas via
+  jsonschema. This also fixed a latent bug: the old check pointed at the non-existent v1.0 monolithic
+  `assets/donations/<h>.json`, so under v1.1 it would have emitted false "file not found" build errors. Regenerated
+  the committed `openapi.json` (109→108 paths) + frontend types. Gates: pyright 0, import-contracts 9/9,
+  dep-validator 55/55, backend suite 84=baseline, config-ui check+build green. (Answered a user question: no v1.0
+  schema file is needed anymore — only the two v1.1 schemas remain.)
 - **UI-5 DONE — rebuilt the donations editor on the v1.1 split (config-ui), QUAL-42 validations wired, v1.0 cruft out.**
   Six green slices, each committed at a passing `npm run check && npm run build`: (0) type-gen foundation — a backend
   `scripts/dump_openapi.py` produces a committed `config-ui/openapi.json` (assembled from the runner's router factory +

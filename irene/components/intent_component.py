@@ -449,8 +449,6 @@ class IntentComponent(Component, WebAPIPlugin):
                 DonationSchemaResponse, ValidationError, ValidationWarning,
                 # Phase 4: Cross-language validation schemas
                 CrossLanguageValidationResponse, ValidationReportSchema, CompletenessReportSchema,
-                SuggestTranslationsRequest, SuggestTranslationsResponse,
-                TranslationSuggestionsSchema, MissingPhraseInfo,
                 # QUAL-42: contract↔code wiring + LLM translation validation/service
                 ContractValidationResponse, ContractWiringReportSchema,
                 TranslationValidationRequest, TranslationValidationResponse, TranslationIssueSchema,
@@ -734,65 +732,9 @@ class IntentComponent(Component, WebAPIPlugin):
                 except Exception as e:
                     raise HTTPException(500, f"Failed to validate cross-language consistency: {str(e)}")
             
-            @router.post("/donations/{handler_name}/suggest-translations", response_model=SuggestTranslationsResponse)
-            async def suggest_translations(handler_name: str, request: SuggestTranslationsRequest):
-                """Get translation suggestions for missing phrases"""
-                if not self.handler_manager:
-                    raise HTTPException(503, "Intent system not initialized")
-                
-                try:
-                    asset_loader = self._require_asset_loader()
-                    
-                    # Import the validator
-                    from ..core.cross_language_validator import CrossLanguageValidator
-                    validator = CrossLanguageValidator(asset_loader.assets_root, asset_loader)
-                    
-                    # Check languages exist
-                    available_languages = asset_loader.get_available_languages_for_handler(handler_name)
-                    if request.source_language not in available_languages:
-                        raise HTTPException(404, f"Source language '{request.source_language}' not found for handler '{handler_name}'")
-                    
-                    # Target language may not exist yet - that's fine for suggestions
-                    
-                    # Get translation suggestions
-                    suggestions = validator.suggest_translations(
-                        handler_name,
-                        request.source_language,
-                        request.target_language
-                    )
-                    
-                    # Convert to schema
-                    
-                    missing_phrases_schema = []
-                    for phrase_info in suggestions.missing_phrases:
-                        missing_phrases_schema.append(MissingPhraseInfo(
-                            method_key=phrase_info['method_key'],
-                            source_phrases=phrase_info['source_phrases'],
-                            target_phrases=phrase_info['target_phrases'],
-                            missing_count=phrase_info['missing_count'],
-                            coverage_ratio=phrase_info['coverage_ratio']
-                        ))
-                    
-                    suggestions_schema = TranslationSuggestionsSchema(
-                        handler_name=suggestions.handler_name,
-                        source_language=suggestions.source_language,
-                        target_language=suggestions.target_language,
-                        missing_phrases=missing_phrases_schema,
-                        missing_methods=suggestions.missing_methods,
-                        confidence_scores=suggestions.confidence_scores,
-                        timestamp=suggestions.timestamp
-                    )
-                    
-                    return SuggestTranslationsResponse(
-                        success=True,
-                        suggestions=suggestions_schema
-                    )
-                    
-                except HTTPException:
-                    raise
-                except Exception as e:
-                    raise HTTPException(500, f"Failed to generate translation suggestions: {str(e)}")
-            
+            # QUAL-43: the rule-based POST /donations/{handler}/suggest-translations was removed — it only counted
+            # phrase gaps and is superseded by the LLM translation service (POST .../translate, below).
+
             # ============================================================
             # QUAL-42: contract↔code wiring report + LLM translation validation/service
             # ============================================================

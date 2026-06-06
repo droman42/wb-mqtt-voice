@@ -739,16 +739,14 @@ class IreneBuildAnalyzer:
                 module_path = f"irene.intents.handlers.{handler_name}"
                 requirements.python_modules.add(module_path)
             
-            # Add JSON configuration files to requirements - these must be included and validated
+            # Add donation contract files to requirements (v1.1 split: a directory per handler with
+            # contract.json + per-language phrasing). These must be present and schema-valid.
             for handler_name in unique_enabled:
-                json_config_path = f"assets/donations/{handler_name}.json"
-                # Store JSON files as a special requirement category
-                if not hasattr(requirements, 'intent_json_files'):
-                    requirements.intent_json_files = set()
-                requirements.intent_json_files.add(json_config_path)
-            
+                asset_dir = handler_name if handler_name.endswith("_handler") else f"{handler_name}_handler"
+                requirements.intent_json_files.add(f"assets/donations/{asset_dir}/contract.json")
+
             logger.debug(f"Intent handlers found: {namespace} -> {unique_enabled}")
-            logger.debug(f"Intent JSON configs required: {getattr(requirements, 'intent_json_files', set())}")
+            logger.debug(f"Intent donation contracts required: {requirements.intent_json_files}")
     
     def _generate_dependencies_from_metadata(self, requirements: BuildRequirements):
         """
@@ -851,42 +849,58 @@ class IreneBuildAnalyzer:
                     result.errors.append(f"Provider '{provider_name}' metadata validation failed: {e}")
     
     def _validate_intent_json_files(self, requirements: BuildRequirements, result: ValidationResult):
-        """Validate that all required intent JSON files exist and are valid."""
+        """Validate that each enabled handler's donation files exist and are valid against the v1.1 schemas.
+
+        QUAL-43: the v1.0 monolithic `<handler>.json` + `assets/v1.0.json` validator was retired with the v1.1
+        split. Each handler is now a directory (`assets/donations/<handler>/`) holding a `contract.json`
+        (validated against `donation_contract_v1.1.json`) plus per-language phrasing files (validated against
+        `donation_language_v1.1.json`)."""
         if not requirements.intent_json_files:
             return  # No intent handlers enabled, nothing to validate
-        
-        # Import the intent validator - only when needed to avoid circular imports
+
         try:
-            from irene.tools.intent_validator import IntentJSONValidator
+            import jsonschema
         except ImportError:
-            result.warnings.append("Could not import intent validator - JSON validation skipped")
+            result.warnings.append("jsonschema not available - donation schema validation skipped")
             return
-        
-        try:
-            validator = IntentJSONValidator(self.project_root)
-            
-            for json_file_path in requirements.intent_json_files:
-                file_path = self.project_root / json_file_path
-                
-                # Check if file exists
-                if not file_path.exists():
-                    result.errors.append(f"Required intent JSON file not found: {json_file_path}")
-                    continue
-                
-                # Validate the JSON file
-                validation_result = validator.validate_intent_file(file_path)
-                
-                if not validation_result.is_valid:
-                    result.errors.append(f"Intent JSON validation failed for {json_file_path}:")
-                    for error in validation_result.errors + validation_result.schema_errors:
-                        result.errors.append(f"  - {error}")
-                
-                # Add warnings as well
-                for warning in validation_result.warnings:
-                    result.warnings.append(f"Intent JSON warning for {json_file_path}: {warning}")
-                    
-        except Exception as e:
-            result.warnings.append(f"Intent JSON validation failed: {e}")
+
+        def _load_schema(name: str) -> Optional[dict]:
+            path = self.project_root / "assets" / name
+            if not path.exists():
+                result.warnings.append(f"v1.1 schema not found: assets/{name} - validation skipped")
+                return None
+            return json.loads(path.read_text(encoding="utf-8"))
+
+        contract_schema = _load_schema("donation_contract_v1.1.json")
+        language_schema = _load_schema("donation_language_v1.1.json")
+
+        for contract_rel in requirements.intent_json_files:
+            contract_path = self.project_root / contract_rel
+            if not contract_path.exists():
+                result.errors.append(f"Required donation contract not found: {contract_rel}")
+                continue
+            try:
+                contract = json.loads(contract_path.read_text(encoding="utf-8"))
+                if contract_schema is not None:
+                    jsonschema.validate(instance=contract, schema=contract_schema)
+            except (json.JSONDecodeError, jsonschema.ValidationError) as e:
+                msg = getattr(e, "message", str(e))
+                result.errors.append(f"Donation contract invalid ({contract_rel}): {msg}")
+                continue
+
+            # Validate the sibling per-language phrasing files.
+            donation_dir = contract_path.parent
+            lang_files = [p for p in donation_dir.glob("*.json") if p.name != "contract.json"]
+            if not lang_files:
+                result.warnings.append(f"Donation '{donation_dir.name}' has no language phrasing files")
+            for lf in lang_files:
+                try:
+                    phrasing = json.loads(lf.read_text(encoding="utf-8"))
+                    if language_schema is not None:
+                        jsonschema.validate(instance=phrasing, schema=language_schema)
+                except (json.JSONDecodeError, jsonschema.ValidationError) as e:
+                    msg = getattr(e, "message", str(e))
+                    result.errors.append(f"Donation phrasing invalid ({lf.relative_to(self.project_root)}): {msg}")
 
 
 def main():

@@ -1673,26 +1673,6 @@ class CompletenessReportSchema(BaseModel):
     timestamp: float = Field(default_factory=time.time, description="Validation timestamp")
 
 
-class MissingPhraseInfo(BaseModel):
-    """Information about missing phrases for translation"""
-    method_key: str = Field(description="Method key (method_name#intent_suffix)")
-    source_phrases: List[str] = Field(description="Phrases available in source language")
-    target_phrases: List[str] = Field(description="Phrases available in target language")
-    missing_count: int = Field(description="Number of missing phrases")
-    coverage_ratio: float = Field(description="Ratio of target to source phrases", ge=0.0, le=1.0)
-
-
-class TranslationSuggestionsSchema(BaseModel):
-    """Schema for translation suggestions response"""
-    handler_name: str = Field(description="Handler name")
-    source_language: str = Field(description="Source language for suggestions")
-    target_language: str = Field(description="Target language for suggestions")
-    missing_phrases: List[MissingPhraseInfo] = Field(description="Information about missing phrases")
-    missing_methods: List[str] = Field(description="Method keys completely missing in target language")
-    confidence_scores: Dict[str, float] = Field(description="Confidence scores for suggestions")
-    timestamp: float = Field(default_factory=time.time, description="Suggestion generation timestamp")
-
-
 class CrossLanguageValidationRequest(BaseAPIRequest):
     """Request for cross-language validation"""
     validation_type: str = Field(
@@ -1713,30 +1693,9 @@ class CrossLanguageValidationResponse(BaseAPIResponse):
     )
 
 
-class SyncParametersRequest(BaseAPIRequest):
-    """Request to sync parameter structures across languages"""
-    source_language: str = Field(description="Source language to sync from")
-    target_languages: List[str] = Field(description="Target languages to sync to")
-
-
-class SyncParametersResponse(BaseAPIResponse):
-    """Response for parameter synchronization operation"""
-    handler_name: str = Field(description="Handler that was synced")
-    source_language: str = Field(description="Source language used")
-    sync_results: Dict[str, bool] = Field(description="Sync success status per target language")
-    updated_languages: List[str] = Field(description="Languages that were actually updated")
-    skipped_languages: List[str] = Field(description="Languages that were skipped")
-
-
-class SuggestTranslationsRequest(BaseAPIRequest):
-    """Request for translation suggestions"""
-    source_language: str = Field(description="Source language for suggestions")
-    target_language: str = Field(description="Target language for suggestions")
-
-
-class SuggestTranslationsResponse(BaseAPIResponse):
-    """Response for translation suggestions"""
-    suggestions: TranslationSuggestionsSchema = Field(description="Translation suggestions")
+# QUAL-43: SyncParameters{Request,Response}, SuggestTranslations{Request,Response},
+# TranslationSuggestionsSchema and MissingPhraseInfo removed — parameter sync is gone (params are
+# single-source under v1.1) and rule-based suggest-translations is superseded by the LLM translate service.
 
 
 # ============================================================
