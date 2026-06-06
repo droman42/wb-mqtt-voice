@@ -22,5 +22,6 @@ For current, maintained documentation see:
 | Completed migration guides | `VAD_MIGRATION_GUIDE.md`, `CONTEXTUAL_COMMANDS_MIGRATION_GUIDE.md` |
 | Superseded refs / completed plans (ARCH-0 / DOC-6) | `config_schemas.md`, `language_support.md`, `configuration_guide.md` (v13), `PIPELINE_IMPLEMENTATION.md` (plugin-era), `irene_current.md` (pre-refactor VACore/Jaa) |
 | Deferred UI designs (never built; idea kept in plan) | `workflow_control.md` (config-ui pipeline-viz page → **UI-4 [WORKFLOWVIZ]**) |
+| Superseded design (rejected approach) | `intent_mqtt.md` (v13-era "MQTT intent handler with runtime method generation" — fat-handler anti-pattern; superseded by the bridge-as-authority design in `../design/mqtt_integration.md`, **ARCH-7**) |
 
 _Archived during the v15 documentation cleanup. Recover any file with `git mv docs/archive/<file> docs/<file>` if it turns out to still be needed._

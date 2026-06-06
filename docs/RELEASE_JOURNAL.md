@@ -11,6 +11,34 @@ newest entries near the top of each dated section.
 
 ## Action journal
 
+### 2026-06-06
+- **ARCH-7 [MQTT] design session — drafted `docs/design/mqtt_integration.md`; approach REDEFINED to
+  bridge-as-single-authority (Invariant #8(d), decided with the user across the session).** Started from the original
+  "Irene owns an MQTT output adapter + topic schema + device-topic resolution" framing and the archived `intent_mqtt.md`
+  fat-handler design, and reframed via the two-flows split (Flow 1 content-agnostic output vs Flow 2 device actuation) +
+  the "domain-typed `DeviceCommand`, never a topic" boundary. **Investigated the real deployment** (the sister project
+  `wb-mqtt-bridge` + the live WB7 controller, SSH + broker creds from the sister repo): one WB7 is broker + house; its
+  broker carries the whole home under the WB convention — **native WB gear** (lights/dimmers/RGB/curtains/HVAC/sensors via
+  `wb-mqtt-serial`+`wb-rules`, *not* in the bridge) alongside the **bridge's AV virtual devices** (TVs/AppleTV/eMotiva).
+  Explored the bridge's contract: it already has **rooms with ru names** (`config/rooms.json`, `GET /room/list`), a
+  **catalog API** (`GET /config/devices` — commands + param schemas), and an **action API** (`POST /devices/{id}/action`,
+  synchronous `CommandResponse`) — but the action input path is **native-command-only** (its capability map is
+  internal-only). **User decisions (locked):** (1) build **both** output seams [(a)]; (2) **bridge = single device
+  authority**, Irene talks only to the bridge [Y]; (3) **canonical** actuation vocabulary — Irene speaks
+  `capability.action(params)`, the bridge translates (needs a small new canonical endpoint exposing its internal
+  reconciler); (4) Irene **pulls the catalog from the bridge on startup** (REST; capability view so read/write vocab
+  match). **Hexagon (Irene):** `DeviceCommand` domain type + `ActuationPort`/`DeviceCatalogPort` (the QUAL-24 ABC pattern)
+  + a `BridgeClient` REST adapter under a new `irene.providers.outputs` group + an in-memory `DeviceCatalog` (distinct
+  from `ClientRegistry`: catalog = everything actuable; registry = what's wired to a satellite). Flow 1 (raw-MQTT output)
+  defined but deferred (no consumer). **Cross-project:** wrote a **bridge-side contract draft**
+  (`wb-mqtt-bridge/docs/voice_integration_contract_draft.md`) — the canonical action endpoint, a voice catalog read
+  surface, and **native-device onboarding** (a generic WB-passthrough driver for relay/dimmer/RGB/curtain/HVAC, since the
+  existing `WirenboardIRDevice` is IR-specific; room authoring; capability maps) — for the user to reconcile in the bridge
+  session. ARCH-8 (Irene implementation, PR-1..4) is **blocked** on that contract. Archived the superseded
+  `docs/intent_mqtt.md` → `docs/archive/` (rejected fat-handler/runtime-method-gen design). Indexed
+  `mqtt_integration.md` + the previously-unindexed `ws_esp32_transport.md` in the ledger review-doc table (clears the
+  check_scope UNINDEXED flag). ARCH-7 left `[~]` (design drafted; pending bridge-session reconciliation).
+
 ### 2026-06-04
 - **ARCH-10 PR-5 (wake-word) — PARKED (user) after a mapping that contradicts the design premise.** The design §11.1
   assumed *both* voice-trigger providers were hallucinated cruft to rebuild. The code says otherwise: **`openwakeword`
