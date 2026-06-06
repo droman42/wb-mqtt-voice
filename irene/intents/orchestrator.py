@@ -33,7 +33,7 @@ class IntentOrchestrator:
         self.metrics_collector = get_metrics_collector()  # Phase 2: Intent analytics integration
         
         # Phase 1 TODO16: Contextual command disambiguation support
-        self.context_manager = context_manager
+        self.context_manager: Any = context_manager
         self.domain_priorities = domain_priorities or {}
         
         # Cache for capabilities to prevent excessive provider availability checks

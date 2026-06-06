@@ -198,7 +198,10 @@ class OpenWakeWordProvider(VoiceTriggerProvider):
             import os
             
             # Get OpenWakeWord's expected models directory
-            openwakeword_pkg_path = Path(safe_import('openwakeword').__file__).parent
+            openwakeword_module = safe_import('openwakeword')
+            if openwakeword_module is None:
+                raise ImportError("openwakeword package is not available")
+            openwakeword_pkg_path = Path(openwakeword_module.__file__).parent
             expected_models_dir = openwakeword_pkg_path / "resources" / "models"
             
             # Create the resources/models directory structure if it doesn't exist

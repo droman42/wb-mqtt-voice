@@ -453,7 +453,15 @@ See `docs/review/phase1_architecture_map.md` §5.
         from `pyproject.toml` (JSON config is the single source of truth). Canonical gate command = `uv run pyright`
         (exit 1 on any error; requires a full-extras env — `uv sync --all-extras`). Verified 0 errors; suite 84=baseline
         (config-only, no runtime change). Wiring into CI = BUILD-2.
-      - **4b** — `reportOptionalMemberAccess` (238) — None-guards on Optional access (real None-deref bugs); enable rule.
+      - **4b ✓ DONE 2026-06-06** — `reportOptionalMemberAccess` (238) cleared and the rule **enabled** (deleted its
+        suppression — the ratchet moved up). Big lever: a typed `_require_asset_loader()` helper in `intent_component.py`
+        took it 91→0 (the `.config` accesses resolved as a side effect); the long tail (147 across 35 files) fixed by
+        explicit None-guards matching each file's idiom (handlers degrade gracefully; required deps fail-loud via the
+        file's own exception type; lazy optional-dep handles restored to their declared `Any`). **Hexagon preserved**
+        (user-flagged): 9/9 import-linter contracts kept, domain (`intents/`) + `utils/` gained ZERO outward imports
+        (guards use None-checks/builtins/`Any` only); the one new import is `intent_component→core.intent_asset_loader`
+        (allowed components→core). Verified: 0 `reportOptionalMemberAccess` repo-wide, gate green with the rule enforced,
+        suite 84=baseline (no behavior regression).
       - **4c** — `reportAttributeAccessIssue` (164) — phantom attributes (latent bugs, the §E `.core`/`.get_capabilities`
         class); enable rule.
       - **4d** — `reportIncompatible{Method,Variable}Override` (34+42) — impls diverging from their ABC/base contract

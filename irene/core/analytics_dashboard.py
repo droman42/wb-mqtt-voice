@@ -948,7 +948,9 @@ class AnalyticsDashboard:
             scores.append(("component", component_score, 0.2))
             
             # System stability score (10% weight)
-            uptime_seconds = self.metrics_collector.get_system_metrics().get("uptime_seconds", 0)
+            uptime_seconds = 0
+            if self.metrics_collector is not None:
+                uptime_seconds = self.metrics_collector.get_system_metrics().get("uptime_seconds", 0)
             stability_score = min(1.0, uptime_seconds / 86400.0)  # Max score after 24h uptime
             scores.append(("stability", stability_score, 0.1))
             

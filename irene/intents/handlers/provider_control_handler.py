@@ -63,7 +63,9 @@ class ProviderControlIntentHandler(IntentHandler):
         
         # Use JSON donation patterns exclusively
         donation = self.get_donation()
-        
+        if donation is None:
+            raise RuntimeError(f"ProviderControlIntentHandler: Missing JSON donation file - provider_control_handler.json is required")
+
         # Check domain patterns
         if hasattr(donation, 'domain_patterns') and intent.domain in donation.domain_patterns:
             return True
@@ -230,7 +232,13 @@ class ProviderControlIntentHandler(IntentHandler):
             )
         
         # Get localization data from asset loader
-        components_data = self.asset_loader.get_localization("components", language)
+        loader = self.asset_loader
+        if loader is None:
+            raise RuntimeError(
+                f"ProviderControlIntentHandler: Asset loader not initialized. "
+                f"Cannot access component mappings for language '{language}'."
+            )
+        components_data = loader.get_localization("components", language)
         if components_data is None:
             raise RuntimeError(
                 f"ProviderControlIntentHandler: Required component mappings for language '{language}' "
@@ -370,7 +378,13 @@ class ProviderControlIntentHandler(IntentHandler):
                 f"ProviderControlIntentHandler: Asset loader not initialized. "
                 f"Cannot access template '{template_name}' for language '{language}'."
             )
-        template_content = self.asset_loader.get_template("provider_control", template_name, language)
+        loader = self.asset_loader
+        if loader is None:
+            raise RuntimeError(
+                f"ProviderControlIntentHandler: Asset loader not initialized. "
+                f"Cannot access template '{template_name}' for language '{language}'."
+            )
+        template_content = loader.get_template("provider_control", template_name, language)
         if template_content is None:
             raise RuntimeError(
                 f"ProviderControlIntentHandler: Required template '{template_name}' for language "

@@ -75,7 +75,7 @@ class DeepSeekLLMProvider(LLMProvider):
             max_tokens=kwargs.get("max_tokens", self.max_tokens),
             temperature=kwargs.get("temperature", self.temperature),
         )
-        return response.choices[0].message.content.strip()
+        return (response.choices[0].message.content or "").strip()
 
     async def chat_completion(self, messages: List[Dict], **kwargs) -> str:
         """Chat completion via DeepSeek. Raises on failure (the component falls back to console)."""
@@ -87,7 +87,7 @@ class DeepSeekLLMProvider(LLMProvider):
             max_tokens=kwargs.get("max_tokens", self.max_tokens),
             temperature=kwargs.get("temperature", self.temperature),
         )
-        return response.choices[0].message.content.strip()
+        return (response.choices[0].message.content or "").strip()
 
     def get_available_models(self) -> List[str]:
         return ["deepseek-chat", "deepseek-reasoner"]

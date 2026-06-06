@@ -98,7 +98,9 @@ class RandomIntentHandler(IntentHandler):
         
         # Use JSON donation patterns exclusively
         donation = self.get_donation()
-        
+        if donation is None:
+            raise RuntimeError(f"RandomIntentHandler: Missing JSON donation file - random_handler.json is required")
+
         # Check domain patterns
         if hasattr(donation, 'domain_patterns') and intent.domain in donation.domain_patterns:
             return True
@@ -371,7 +373,13 @@ class RandomIntentHandler(IntentHandler):
             )
         
         # Get template directly from asset loader (template_name is the key from YAML)
-        template_data = self.asset_loader.get_template("random", template_name, language)
+        loader = self.asset_loader
+        if loader is None:
+            raise RuntimeError(
+                f"RandomIntentHandler: Asset loader not initialized. "
+                f"Cannot access template '{template_name}' for language '{language}'."
+            )
+        template_data = loader.get_template("random", template_name, language)
         if template_data is None:
             raise RuntimeError(
                 f"RandomIntentHandler: Required template '{template_name}' for language '{language}' "
@@ -399,7 +407,13 @@ class RandomIntentHandler(IntentHandler):
             )
         
         # Get template from asset loader
-        template_content = self.asset_loader.get_template("random", template_name, language)
+        loader = self.asset_loader
+        if loader is None:
+            raise RuntimeError(
+                f"RandomIntentHandler: Asset loader not initialized. "
+                f"Cannot access template '{template_name}' for language '{language}'."
+            )
+        template_content = loader.get_template("random", template_name, language)
         if template_content is None:
             raise RuntimeError(
                 f"RandomIntentHandler: Required template '{template_name}' for language '{language}' "

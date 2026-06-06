@@ -61,7 +61,9 @@ class GreetingsIntentHandler(IntentHandler):
         
         # Use JSON donation patterns exclusively
         donation = self.get_donation()
-        
+        if donation is None:
+            raise RuntimeError(f"GreetingsIntentHandler: Missing JSON donation file - greetings.json is required")
+
         # Check domain patterns
         if hasattr(donation, 'domain_patterns') and intent.domain in donation.domain_patterns:
             return True
@@ -113,7 +115,13 @@ class GreetingsIntentHandler(IntentHandler):
             )
         
         # Get template directly from asset loader (template_name is the key from YAML)
-        template_data = self.asset_loader.get_template("greetings", template_name, language)
+        loader = self.asset_loader
+        if loader is None:
+            raise RuntimeError(
+                f"GreetingsIntentHandler: Asset loader not initialized. "
+                f"Cannot access template '{template_name}' for language '{language}'."
+            )
+        template_data = loader.get_template("greetings", template_name, language)
         if template_data is None:
             raise RuntimeError(
                 f"GreetingsIntentHandler: Required template '{template_name}' for language '{language}' "
@@ -141,7 +149,13 @@ class GreetingsIntentHandler(IntentHandler):
             )
         
         # Get time-based greetings template directly
-        time_greetings = self.asset_loader.get_template("greetings", "time_based_greetings", language)
+        loader = self.asset_loader
+        if loader is None:
+            raise RuntimeError(
+                f"GreetingsIntentHandler: Asset loader not initialized. "
+                f"Cannot access time-based greeting for language '{language}'."
+            )
+        time_greetings = loader.get_template("greetings", "time_based_greetings", language)
         if time_greetings is None:
             raise RuntimeError(
                 f"GreetingsIntentHandler: Required time-based greetings for language '{language}' "

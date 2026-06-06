@@ -291,8 +291,8 @@ Note: CLI runner always uses CLI input only, regardless of config file settings.
             args.command = "привет"
             if not args.quiet:
                 print("🧪 Testing greeting command (legacy compatibility mode)")
-        
-        if not args.quiet:
+
+        if not args.quiet and self.core:
             profile = self.core.component_manager.get_deployment_profile()
             print(f"🚀 Irene started successfully in {profile} mode (CLI input only)")
             
@@ -310,6 +310,8 @@ Note: CLI runner always uses CLI input only, regardless of config file settings.
     
     async def _execute_runner_logic(self, args: argparse.Namespace) -> int:
         """Execute CLI runner logic"""
+        if not self.core:
+            return 1
         # Handle single command execution
         if args.command:
             try:
@@ -355,7 +357,11 @@ Note: CLI runner always uses CLI input only, regardless of config file settings.
         """Print system status in CLI interactive mode"""
         print("\n📊 System Status:")
         print("-" * 20)
-        
+
+        if not self.core:
+            print("🔧 Core: Stopped")
+            return
+
         # Core status
         print(f"🔧 Core: {'Running' if self.core._running else 'Stopped'}")
         

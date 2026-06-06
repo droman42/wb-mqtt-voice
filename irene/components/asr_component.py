@@ -212,6 +212,8 @@ class ASRComponent(Component, ASRPlugin, WebAPIPlugin, ASRPort):
         provider = self.providers[provider_name]
         
         # Get ASR configuration for resampling
+        if self.core is None:
+            raise RuntimeError("ASR component not initialized (core reference missing)")
         asr_config = self.core.config.asr.model_dump() if hasattr(self.core.config, 'asr') else {}
         config_sample_rate = asr_config.get('sample_rate')
         allow_resampling = asr_config.get('allow_resampling', True)

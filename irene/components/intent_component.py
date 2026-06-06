@@ -18,6 +18,7 @@ from ..core.interfaces.webapi import WebAPIPlugin
 from ..intents.manager import IntentHandlerManager
 from ..intents.registry import IntentRegistry
 from ..intents.orchestrator import IntentOrchestrator
+from ..core.intent_asset_loader import IntentAssetLoader
 
 logger = logging.getLogger(__name__)
 
@@ -250,6 +251,8 @@ class IntentComponent(Component, WebAPIPlugin):
 
             # Get available components - all should be initialized at this point
             components = component_manager.get_components()
+            if self.handler_manager is None:
+                raise RuntimeError("IntentHandlerManager was not initialized")
             handlers = self.handler_manager.get_handlers()
 
             injection_results = []
@@ -533,7 +536,7 @@ class IntentComponent(Component, WebAPIPlugin):
                     raise HTTPException(503, "Intent system not initialized")
                 
                 try:
-                    asset_loader = self.handler_manager._asset_loader
+                    asset_loader = self._require_asset_loader()
                     handlers_languages = asset_loader.get_all_handlers_with_languages()
                     
                     handlers_info = []
@@ -565,7 +568,7 @@ class IntentComponent(Component, WebAPIPlugin):
                     raise HTTPException(503, "Intent system not initialized")
                 
                 try:
-                    asset_loader = self.handler_manager._asset_loader
+                    asset_loader = self._require_asset_loader()
                     
                     # Import the validator
                     from ..core.cross_language_validator import CrossLanguageValidator
@@ -617,7 +620,7 @@ class IntentComponent(Component, WebAPIPlugin):
                     raise HTTPException(503, "Intent system not initialized")
                 
                 try:
-                    asset_loader = self.handler_manager._asset_loader
+                    asset_loader = self._require_asset_loader()
                     
                     # Import the validator
                     from ..core.cross_language_validator import CrossLanguageValidator
@@ -676,7 +679,7 @@ class IntentComponent(Component, WebAPIPlugin):
                     raise HTTPException(503, "Intent system not initialized")
                 
                 try:
-                    asset_loader = self.handler_manager._asset_loader
+                    asset_loader = self._require_asset_loader()
                     languages = asset_loader.get_available_languages_for_handler(handler_name)
                     
                     if not languages:
@@ -694,7 +697,7 @@ class IntentComponent(Component, WebAPIPlugin):
                 canonical choices/min-max/entity_type), per-method room_context, and the method list."""
                 if not self.handler_manager:
                     raise HTTPException(503, "Intent system not initialized")
-                asset_loader = self.handler_manager._asset_loader
+                asset_loader = self._require_asset_loader()
                 contract = asset_loader.get_contract_for_editing(handler_name)
                 if contract is None:
                     raise HTTPException(404, f"No contract.json for handler '{handler_name}'")
@@ -707,7 +710,7 @@ class IntentComponent(Component, WebAPIPlugin):
                 {contract: {...}, validate_before_save?: bool, trigger_reload?: bool}."""
                 if not self.handler_manager:
                     raise HTTPException(503, "Intent system not initialized")
-                asset_loader = self.handler_manager._asset_loader
+                asset_loader = self._require_asset_loader()
                 contract = request.get("contract")
                 if not isinstance(contract, dict):
                     raise HTTPException(400, "Body must contain a 'contract' object")
@@ -743,7 +746,7 @@ class IntentComponent(Component, WebAPIPlugin):
                     raise HTTPException(503, "Intent system not initialized")
                 
                 try:
-                    asset_loader = self.handler_manager._asset_loader
+                    asset_loader = self._require_asset_loader()
                     
                     # QUAL-29 (v1.1): a language file is phrasing-only; the param core lives in contract.json
                     # (see GET /donations/{handler}/contract).
@@ -793,7 +796,7 @@ class IntentComponent(Component, WebAPIPlugin):
                     raise HTTPException(503, "Intent system not initialized")
                 
                 try:
-                    asset_loader = self.handler_manager._asset_loader
+                    asset_loader = self._require_asset_loader()
                     validation_passed = True
                     errors = []
                     warnings = []
@@ -869,7 +872,7 @@ class IntentComponent(Component, WebAPIPlugin):
                     raise HTTPException(503, "Intent system not initialized")
                 
                 try:
-                    asset_loader = self.handler_manager._asset_loader
+                    asset_loader = self._require_asset_loader()
                     
                     is_valid, error_list, warning_list = await asset_loader.validate_phrasing_data(
                         handler_name, request.donation_data
@@ -899,7 +902,7 @@ class IntentComponent(Component, WebAPIPlugin):
                     raise HTTPException(503, "Intent system not initialized")
                 
                 try:
-                    asset_loader = self.handler_manager._asset_loader
+                    asset_loader = self._require_asset_loader()
                     asset_handler_name = asset_loader._get_asset_handler_name(handler_name)
                     lang_file = asset_loader.assets_root / "donations" / asset_handler_name / f"{language}.json"
                     
@@ -931,7 +934,7 @@ class IntentComponent(Component, WebAPIPlugin):
                     raise HTTPException(503, "Intent system not initialized")
                 
                 try:
-                    asset_loader = self.handler_manager._asset_loader
+                    asset_loader = self._require_asset_loader()
                     asset_handler_name = asset_loader._get_asset_handler_name(handler_name)
                     lang_file = asset_loader.assets_root / "donations" / asset_handler_name / f"{language}.json"
                     
@@ -984,7 +987,7 @@ class IntentComponent(Component, WebAPIPlugin):
                     raise HTTPException(503, "Intent system not initialized")
                 
                 try:
-                    asset_loader = self.handler_manager._asset_loader
+                    asset_loader = self._require_asset_loader()
                     
                     # Get available languages before reload
                     available_languages = asset_loader.get_available_languages_for_handler(handler_name)
@@ -1025,7 +1028,7 @@ class IntentComponent(Component, WebAPIPlugin):
                     raise HTTPException(503, "Intent system not initialized")
                 
                 try:
-                    asset_loader = self.handler_manager._asset_loader
+                    asset_loader = self._require_asset_loader()
                     handlers_languages = asset_loader.get_handlers_with_templates()
                     
                     handlers_info = []
@@ -1053,7 +1056,7 @@ class IntentComponent(Component, WebAPIPlugin):
                     raise HTTPException(503, "Intent system not initialized")
                 
                 try:
-                    asset_loader = self.handler_manager._asset_loader
+                    asset_loader = self._require_asset_loader()
                     languages = asset_loader.get_available_template_languages_for_handler(handler_name)
                     
                     if not languages:
@@ -1072,7 +1075,7 @@ class IntentComponent(Component, WebAPIPlugin):
                     raise HTTPException(503, "Intent system not initialized")
                 
                 try:
-                    asset_loader = self.handler_manager._asset_loader
+                    asset_loader = self._require_asset_loader()
                     
                     # Get language-specific template data
                     template_data = asset_loader.get_template_for_language_editing(handler_name, language)
@@ -1127,7 +1130,7 @@ class IntentComponent(Component, WebAPIPlugin):
                     raise HTTPException(503, "Intent system not initialized")
                 
                 try:
-                    asset_loader = self.handler_manager._asset_loader
+                    asset_loader = self._require_asset_loader()
                     validation_passed = True
                     errors = []
                     warnings = []
@@ -1194,7 +1197,7 @@ class IntentComponent(Component, WebAPIPlugin):
                     raise HTTPException(503, "Intent system not initialized")
                 
                 try:
-                    asset_loader = self.handler_manager._asset_loader
+                    asset_loader = self._require_asset_loader()
                     
                     is_valid, error_list, warning_list = await asset_loader.validate_template_data(
                         handler_name, request.template_data
@@ -1223,7 +1226,7 @@ class IntentComponent(Component, WebAPIPlugin):
                     raise HTTPException(503, "Intent system not initialized")
                 
                 try:
-                    asset_loader = self.handler_manager._asset_loader
+                    asset_loader = self._require_asset_loader()
                     asset_handler_name = asset_loader._get_asset_handler_name(handler_name)
                     lang_file = asset_loader.assets_root / "templates" / asset_handler_name / f"{language}.yaml"
                     
@@ -1256,7 +1259,7 @@ class IntentComponent(Component, WebAPIPlugin):
                     raise HTTPException(503, "Intent system not initialized")
                 
                 try:
-                    asset_loader = self.handler_manager._asset_loader
+                    asset_loader = self._require_asset_loader()
                     asset_handler_name = asset_loader._get_asset_handler_name(handler_name)
                     lang_file = asset_loader.assets_root / "templates" / asset_handler_name / f"{language}.yaml"
                     
@@ -1315,7 +1318,7 @@ class IntentComponent(Component, WebAPIPlugin):
                     raise HTTPException(503, "Intent system not initialized")
                 
                 try:
-                    asset_loader = self.handler_manager._asset_loader
+                    asset_loader = self._require_asset_loader()
                     handlers_languages = asset_loader.get_handlers_with_prompts()
                     
                     handlers_info = []
@@ -1343,7 +1346,7 @@ class IntentComponent(Component, WebAPIPlugin):
                     raise HTTPException(503, "Intent system not initialized")
                 
                 try:
-                    asset_loader = self.handler_manager._asset_loader
+                    asset_loader = self._require_asset_loader()
                     languages = asset_loader.get_available_prompt_languages_for_handler(handler_name)
                     
                     if not languages:
@@ -1362,7 +1365,7 @@ class IntentComponent(Component, WebAPIPlugin):
                     raise HTTPException(503, "Intent system not initialized")
                 
                 try:
-                    asset_loader = self.handler_manager._asset_loader
+                    asset_loader = self._require_asset_loader()
                     
                     # Get language-specific prompt data
                     prompt_data = asset_loader.get_prompt_for_language_editing(handler_name, language)
@@ -1427,7 +1430,7 @@ class IntentComponent(Component, WebAPIPlugin):
                     raise HTTPException(503, "Intent system not initialized")
                 
                 try:
-                    asset_loader = self.handler_manager._asset_loader
+                    asset_loader = self._require_asset_loader()
                     validation_passed = True
                     errors = []
                     warnings = []
@@ -1502,7 +1505,7 @@ class IntentComponent(Component, WebAPIPlugin):
                     raise HTTPException(503, "Intent system not initialized")
                 
                 try:
-                    asset_loader = self.handler_manager._asset_loader
+                    asset_loader = self._require_asset_loader()
                     
                     # Convert PromptDefinition objects to dict format for validation
                     prompt_data_dict = {}
@@ -1539,7 +1542,7 @@ class IntentComponent(Component, WebAPIPlugin):
                     raise HTTPException(503, "Intent system not initialized")
                 
                 try:
-                    asset_loader = self.handler_manager._asset_loader
+                    asset_loader = self._require_asset_loader()
                     asset_handler_name = asset_loader._get_asset_handler_name(handler_name)
                     lang_file = asset_loader.assets_root / "prompts" / asset_handler_name / f"{language}.yaml"
                     
@@ -1572,7 +1575,7 @@ class IntentComponent(Component, WebAPIPlugin):
                     raise HTTPException(503, "Intent system not initialized")
                 
                 try:
-                    asset_loader = self.handler_manager._asset_loader
+                    asset_loader = self._require_asset_loader()
                     asset_handler_name = asset_loader._get_asset_handler_name(handler_name)
                     lang_file = asset_loader.assets_root / "prompts" / asset_handler_name / f"{language}.yaml"
                     
@@ -1638,7 +1641,7 @@ class IntentComponent(Component, WebAPIPlugin):
                     raise HTTPException(503, "Intent system not initialized")
                 
                 try:
-                    asset_loader = self.handler_manager._asset_loader
+                    asset_loader = self._require_asset_loader()
                     domains_languages = asset_loader.get_domains_with_localizations()
                     
                     domains_info = []
@@ -1666,7 +1669,7 @@ class IntentComponent(Component, WebAPIPlugin):
                     raise HTTPException(503, "Intent system not initialized")
                 
                 try:
-                    asset_loader = self.handler_manager._asset_loader
+                    asset_loader = self._require_asset_loader()
                     languages = asset_loader.get_available_localization_languages_for_domain(domain)
                     
                     if not languages:
@@ -1685,7 +1688,7 @@ class IntentComponent(Component, WebAPIPlugin):
                     raise HTTPException(503, "Intent system not initialized")
                 
                 try:
-                    asset_loader = self.handler_manager._asset_loader
+                    asset_loader = self._require_asset_loader()
                     
                     # Get language-specific localization data
                     localization_data = asset_loader.get_localization_for_domain_editing(domain, language)
@@ -1740,7 +1743,7 @@ class IntentComponent(Component, WebAPIPlugin):
                     raise HTTPException(503, "Intent system not initialized")
                 
                 try:
-                    asset_loader = self.handler_manager._asset_loader
+                    asset_loader = self._require_asset_loader()
                     validation_passed = True
                     errors = []
                     warnings = []
@@ -1807,7 +1810,7 @@ class IntentComponent(Component, WebAPIPlugin):
                     raise HTTPException(503, "Intent system not initialized")
                 
                 try:
-                    asset_loader = self.handler_manager._asset_loader
+                    asset_loader = self._require_asset_loader()
                     
                     is_valid, error_list, warning_list = await asset_loader.validate_localization_data(
                         domain, request.localization_data
@@ -1836,7 +1839,7 @@ class IntentComponent(Component, WebAPIPlugin):
                     raise HTTPException(503, "Intent system not initialized")
                 
                 try:
-                    asset_loader = self.handler_manager._asset_loader
+                    asset_loader = self._require_asset_loader()
                     lang_file = asset_loader.assets_root / "localization" / domain / f"{language}.yaml"
                     
                     if not lang_file.exists():
@@ -1868,7 +1871,7 @@ class IntentComponent(Component, WebAPIPlugin):
                     raise HTTPException(503, "Intent system not initialized")
                 
                 try:
-                    asset_loader = self.handler_manager._asset_loader
+                    asset_loader = self._require_asset_loader()
                     lang_file = asset_loader.assets_root / "localization" / domain / f"{language}.yaml"
                     
                     if lang_file.exists():
@@ -2050,7 +2053,11 @@ class IntentComponent(Component, WebAPIPlugin):
         orchestrator_capabilities = {}
         if self.intent_orchestrator:
             orchestrator_capabilities = await self.intent_orchestrator.get_capabilities()
-        
+
+        # _config may be a dict, a Pydantic model, or None (dynamic) — hold as Any so the
+        # hasattr() guard governs at runtime (QUAL-4b: None-safety).
+        config_repr: Any = self._config
+
         return {
             "status": "active",
             "handlers_count": len(handlers),
@@ -2060,7 +2067,7 @@ class IntentComponent(Component, WebAPIPlugin):
             "registry_patterns": list(registry_handlers.keys()),
             "donation_routing_enabled": orchestrator_capabilities.get("donation_routing_enabled", False),
             "parameter_extraction_integrated": orchestrator_capabilities.get("parameter_extraction_integrated", True),  # PHASE 6: Updated to reflect new architecture
-            "configuration": self._config.model_dump() if hasattr(self._config, 'model_dump') else self._config
+            "configuration": config_repr.model_dump() if hasattr(config_repr, 'model_dump') else config_repr
         }
     
 
@@ -2077,6 +2084,19 @@ class IntentComponent(Component, WebAPIPlugin):
     def get_handler_manager(self) -> Optional[IntentHandlerManager]:
         """Get the handler manager for advanced operations"""
         return self.handler_manager
+
+    def _require_asset_loader(self) -> IntentAssetLoader:
+        """The intent asset loader, or a 503 if the intent system isn't fully initialized.
+
+        Folds the two-Optional guard (handler_manager + its `_asset_loader`) into one
+        typed accessor so the donation/phrasing API endpoints narrow cleanly instead of
+        risking an AttributeError-on-None (QUAL-4b: None-safety).
+        """
+        from fastapi import HTTPException
+        loader = self.handler_manager._asset_loader if self.handler_manager else None
+        if loader is None:
+            raise HTTPException(503, "Intent system not initialized")
+        return loader
 
     # Build dependency methods (TODO #5 Phase 2)
     @classmethod

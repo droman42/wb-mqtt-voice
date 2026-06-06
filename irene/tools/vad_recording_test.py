@@ -82,7 +82,10 @@ class VADRecordingTester:
         logger.info(f"Starting recording for {duration_seconds} seconds...")
         logger.info("VAD will detect voice segments and save them as WAV files")
         logger.info("Speak clearly into the microphone...")
-        
+
+        if self.microphone is None or self.vad_processor is None or self.config is None:
+            raise RuntimeError("VADRecordingTester not initialized; call initialize() first")
+
         # Start microphone
         await self.microphone.start_listening()
         
@@ -96,6 +99,8 @@ class VADRecordingTester:
         # Voice segment handler
         async def voice_segment_handler(voice_segment, ctx):
             """Save each voice segment as a WAV file"""
+            if self.config is None:
+                raise RuntimeError("VADRecordingTester not initialized; call initialize() first")
             self.segment_count += 1
             
             # Save original audio (44100Hz)
@@ -162,7 +167,10 @@ class VADRecordingTester:
         """Get audio stream from microphone"""
         start_time = time.time()
         duration = 30  # seconds
-        
+
+        if self.microphone is None:
+            raise RuntimeError("VADRecordingTester not initialized; call initialize() first")
+
         async for audio_data in self.microphone.listen():
             # Stop after duration
             if time.time() - start_time > duration:

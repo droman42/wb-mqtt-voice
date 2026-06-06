@@ -133,7 +133,7 @@ class TextProcessorComponent(Component, TextProcessorPlugin, WebAPIPlugin):
         stage_start = time.time()
         processed_text = await self.improve(text, context, stage)
         provider = self.get_current_provider()
-        normalizers_applied = provider.normalizers_for_stage(stage) if hasattr(provider, "normalizers_for_stage") else []
+        normalizers_applied = provider.normalizers_for_stage(stage) if provider is not None and hasattr(provider, "normalizers_for_stage") else []
         trace_context.record_stage(
             stage_name="text_processing",
             input_data=text,
@@ -266,6 +266,8 @@ class TextProcessorComponent(Component, TextProcessorPlugin, WebAPIPlugin):
             @router.post("/process", response_model=TextProcessingResponse)
             async def process_text(request: TextProcessingRequest):
                 """Process text through text processing pipeline with context"""
+                if self.context_manager is None:
+                    raise HTTPException(status_code=503, detail="Text processor context manager not initialized")
                 try:
                     # The endpoint needs a context to run the pipeline (QUAL-28: get_context is now
                     # non-creating, so use the explicit creator).
@@ -290,7 +292,7 @@ class TextProcessorComponent(Component, TextProcessorPlugin, WebAPIPlugin):
                         processed = await self.improve(request.text, context, request.stage)
                         prov = self.get_current_provider()
                         normalizers_applied = prov.normalizers_for_stage(request.stage) \
-                            if hasattr(prov, "normalizers_for_stage") else []
+                            if prov is not None and hasattr(prov, "normalizers_for_stage") else []
                 
                     return TextProcessingResponse(
                         success=True,

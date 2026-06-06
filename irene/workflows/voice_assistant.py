@@ -374,7 +374,12 @@ class UnifiedVoiceAssistantWorkflow(Workflow):
         # Record initial context state
         if trace_context:
             trace_context.record_context_snapshot("before", conversation_context)
-        
+
+        # Required components are guaranteed by initialize() (raises if missing); guard
+        # fail-loud here so the pipeline never silently dereferences an uninitialized stage.
+        if self.nlu is None or self.intent_orchestrator is None:
+            raise ConfigValidationError("Workflow not initialized: nlu/intent_orchestrator missing")
+
         processed_text = input_data
         
         # Stage 1: Text Processing (if enabled and component available)
@@ -435,16 +440,22 @@ class UnifiedVoiceAssistantWorkflow(Workflow):
         
         wake_word_detected = context.skip_wake_word  # If skipping, assume already "detected"
         voice_segment_count = 0
-        
+
+        # The VAD interface is required for audio workflows — initialize() raises if it is
+        # absent, so guard fail-loud here rather than silently dropping the audio stream.
+        if self.audio_processor_interface is None:
+            raise ConfigValidationError("VAD audio processor not initialized")
+
         # Voice segment handler for the audio processor interface
         async def voice_segment_handler(voice_segment: VoiceSegment, ctx):
             """Handle completed voice segments from VAD processor"""
             nonlocal voice_segment_count
             voice_segment_count += 1
-            
+
+            segment_bytes = len(voice_segment.combined_audio.data) if voice_segment.combined_audio else 0
             self.logger.info(f"🎯 Voice segment #{voice_segment_count} received: "
                            f"{voice_segment.chunk_count} chunks, {voice_segment.total_duration_ms:.1f}ms, "
-                           f"{len(voice_segment.combined_audio.data)} bytes")
+                           f"{segment_bytes} bytes")
         
         try:
             # Process audio stream through VAD interface
@@ -532,6 +543,8 @@ class UnifiedVoiceAssistantWorkflow(Workflow):
     
     async def _create_conversation_context(self, context: RequestContext) -> UnifiedConversationContext:
         """Create or retrieve conversation context with proper room context injection"""
+        if self.context_manager is None:
+            raise ConfigValidationError("Workflow not initialized: context_manager missing")
         return await self.context_manager.get_context_with_request_info(
             session_id=context.session_id,
             request_context=context  # Pass full RequestContext for room info extraction

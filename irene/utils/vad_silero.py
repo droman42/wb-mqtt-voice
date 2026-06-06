@@ -39,9 +39,9 @@ class SileroVADEngine(VADEngine):
         self._model_path = Path(model_path)
         self._vad = None  # lazy: built on first frame (downloads model, inits onnxruntime)
 
-    def _ensure(self) -> None:
+    def _ensure(self):
         if self._vad is not None:
-            return
+            return self._vad
         import sherpa_onnx
 
         if not (self._model_path.exists() and self._model_path.stat().st_size > 0):
@@ -57,16 +57,17 @@ class SileroVADEngine(VADEngine):
         cfg.sample_rate = self.sample_rate
         self._vad = sherpa_onnx.VoiceActivityDetector(cfg, buffer_size_in_seconds=30)
         logger.info(f"SileroVAD engine ready (threshold={self.threshold})")
+        return self._vad
 
     def process_frame(self, audio_data: AudioData) -> VADResult:
         t0 = time.time()
         is_voice = False
         try:
-            self._ensure()
+            vad = self._ensure()
             samples = self._to_float(audio_data.data)
             if samples.size:
-                self._vad.accept_waveform(samples)
-                is_voice = bool(self._vad.is_speech_detected())
+                vad.accept_waveform(samples)
+                is_voice = bool(vad.is_speech_detected())
         except Exception as e:
             logger.error(f"SileroVAD error: {e}")
         return VADResult(

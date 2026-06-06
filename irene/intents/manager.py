@@ -211,7 +211,10 @@ class IntentHandlerManager:
                 raise ValueError("No handler names available for donation loading")
             
             logger.info(f"Loading donations for enabled handlers: {handler_names}")
-            
+
+            if self._asset_loader is None:
+                raise ValueError("Asset loader not initialized before donation loading")
+
             # Load all assets using unified asset loader
             await self._asset_loader.load_all_assets(handler_names)
             

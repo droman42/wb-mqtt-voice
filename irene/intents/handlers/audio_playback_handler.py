@@ -61,6 +61,9 @@ class AudioPlaybackIntentHandler(IntentHandler):
         # Use JSON donation patterns exclusively
         donation = self.get_donation()
         
+        if donation is None:
+            return False
+
         # Check domain patterns
         if hasattr(donation, 'domain_patterns') and intent.domain in donation.domain_patterns:
             return True
@@ -267,7 +270,7 @@ class AudioPlaybackIntentHandler(IntentHandler):
         
     def _get_template(self, template_name: str, language: str, **format_args) -> str:
         """Get template from asset loader - raises fatal error if not available"""
-        if not self.has_asset_loader():
+        if self.asset_loader is None:
             raise RuntimeError(
                 f"AudioPlaybackIntentHandler: Asset loader not initialized. "
                 f"Cannot access template '{template_name}' for language '{language}'. "

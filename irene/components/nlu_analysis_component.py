@@ -124,7 +124,7 @@ class NLUAnalysisComponent(Component, WebAPIPlugin):
         
         # Get configuration
         if core:
-            config = self.get_config(core.config)
+            config = self.get_config(core.config) or NLUAnalysisConfig()
         else:
             config = NLUAnalysisConfig()
         
@@ -457,7 +457,9 @@ class NLUAnalysisComponent(Component, WebAPIPlugin):
             # Get conflicts from last batch analysis or run new analysis
             if not self.last_batch_analysis:
                 await self.run_batch_analysis(language)
-            
+            if self.last_batch_analysis is None:
+                return []
+
             # Filter conflicts for the specific handler
             handler_conflicts = []
             for conflict in self.last_batch_analysis.conflicts:

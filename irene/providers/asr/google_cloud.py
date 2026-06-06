@@ -108,6 +108,8 @@ class GoogleCloudASRProvider(ASRProvider):
             # Initialize client if not already done
             if self._client is None:
                 await self._initialize_client()
+            if self._client is None:
+                raise RuntimeError("Google Cloud Speech client failed to initialize")
             
             # Configure recognition request
             config = {
@@ -147,6 +149,8 @@ class GoogleCloudASRProvider(ASRProvider):
             # Initialize client if not already done
             if self._client is None:
                 await self._initialize_client()
+            if self._client is None:
+                raise RuntimeError("Google Cloud Speech client failed to initialize")
             
             # Configure streaming recognition
             config = {

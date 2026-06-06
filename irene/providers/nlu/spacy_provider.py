@@ -33,7 +33,7 @@ class SpaCyNLUProvider(NLUProvider):
     
     def __init__(self, config: Dict[str, Any]):
         super().__init__(config)
-        self.nlp = None
+        self.nlp: Any = None
         
         # Multi-model management for language awareness
         self.available_models: Dict[str, Any] = {}  # language -> spacy.Language object

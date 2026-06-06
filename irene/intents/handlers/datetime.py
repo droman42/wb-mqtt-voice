@@ -45,6 +45,9 @@ class DateTimeIntentHandler(IntentHandler):
         if intent.domain == "datetime":
             return True
         
+        if donation is None:
+            return False
+
         # Check intent name patterns
         if hasattr(donation, 'intent_name_patterns') and intent.name in donation.intent_name_patterns:
             return True
@@ -84,7 +87,7 @@ class DateTimeIntentHandler(IntentHandler):
     
     def _get_localization_data(self, language: str) -> Dict[str, List[str]]:
         """Get localization data from asset loader - raises fatal error if not available"""
-        if not self.has_asset_loader():
+        if self.asset_loader is None:
             raise RuntimeError(
                 f"DateTimeIntentHandler: Asset loader not initialized. "
                 f"Cannot access temporal data for language '{language}'. "

@@ -108,8 +108,8 @@ class HybridKeywordMatcherProvider(NLUProvider):
         
         # Import rapidfuzz for fuzzy matching (lazy import to handle optional dependency)
         self._rapidfuzz_available = False
-        self._fuzz = None
-        self._process = None
+        self._fuzz: Any = None
+        self._process: Any = None
         
         # Phase 1 TODO16: Contextual command patterns for disambiguation
         self.contextual_patterns: Dict[str, Dict[str, List[str]]] = {}  # language -> command_type -> patterns

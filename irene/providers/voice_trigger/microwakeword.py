@@ -37,7 +37,7 @@ class MicroWakeWordProvider(VoiceTriggerProvider):
     def __init__(self, config: Dict[str, Any]):
         super().__init__(config)
         self.tf_lite = None
-        self.interpreter = None
+        self.interpreter: Any = None
         self.input_details = None
         self.output_details = None
         

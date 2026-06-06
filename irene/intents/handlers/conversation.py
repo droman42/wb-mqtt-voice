@@ -97,7 +97,9 @@ class ConversationIntentHandler(IntentHandler):
         
         # Use JSON donation patterns exclusively
         donation = self.get_donation()
-        
+        if donation is None:
+            raise RuntimeError(f"ConversationIntentHandler: Missing JSON donation file - conversation.json is required")
+
         # Check domain patterns
         if hasattr(donation, 'domain_patterns') and intent.domain in donation.domain_patterns:
             return True
@@ -182,7 +184,13 @@ class ConversationIntentHandler(IntentHandler):
             )
         
         # Get prompt from asset loader
-        prompt = self.asset_loader.get_prompt("conversation", prompt_type, language)
+        loader = self.asset_loader
+        if loader is None:
+            raise RuntimeError(
+                f"ConversationIntentHandler: Asset loader not initialized. "
+                f"Cannot access prompt '{prompt_type}' for language '{language}'."
+            )
+        prompt = loader.get_prompt("conversation", prompt_type, language)
         if prompt is None:
             raise RuntimeError(
                 f"ConversationIntentHandler: Required prompt '{prompt_type}' for language '{language}' "
@@ -210,17 +218,19 @@ class ConversationIntentHandler(IntentHandler):
     def _context_label(self, key: str, language: str, **fmt) -> str:
         """Resolve a localized context label template (by the user's language) and format it."""
         template = self._CONTEXT_LABELS_FALLBACK[key]
-        if self.has_asset_loader():
-            loc = self.asset_loader.get_localization("conversation", language) or {}
+        loader = self.asset_loader
+        if self.has_asset_loader() and loader is not None:
+            loc = loader.get_localization("conversation", language) or {}
             template = (loc.get("context_labels") or {}).get(key, template)
         return template.format(**fmt)
 
     def _get_fallback_domain_labels(self, language: str) -> Dict[str, str]:
         """QUAL-37: localized map of NLU-guessed domain → a friendly action phrase, used to build a
         targeted no-intent clarification. Empty (→ generic responder) if the asset is unreachable."""
-        if not self.has_asset_loader():
+        loader = self.asset_loader
+        if not self.has_asset_loader() or loader is None:
             return {}
-        loc = self.asset_loader.get_localization("conversation", language) or {}
+        loc = loader.get_localization("conversation", language) or {}
         return loc.get("fallback_domain_labels") or {}
 
     def _get_template_data(self, template_name: str, language: str) -> List[str]:
@@ -233,7 +243,13 @@ class ConversationIntentHandler(IntentHandler):
             )
         
         # Get template from asset loader
-        template_data = self.asset_loader.get_template("conversation", template_name, language)
+        loader = self.asset_loader
+        if loader is None:
+            raise RuntimeError(
+                f"ConversationIntentHandler: Asset loader not initialized. "
+                f"Cannot access template '{template_name}' for language '{language}'."
+            )
+        template_data = loader.get_template("conversation", template_name, language)
         if template_data is None:
             raise RuntimeError(
                 f"ConversationIntentHandler: Required template '{template_name}' for language '{language}' "
@@ -260,7 +276,13 @@ class ConversationIntentHandler(IntentHandler):
             )
         
         # Get template from asset loader
-        template_content = self.asset_loader.get_template("conversation", template_name, language)
+        loader = self.asset_loader
+        if loader is None:
+            raise RuntimeError(
+                f"ConversationIntentHandler: Asset loader not initialized. "
+                f"Cannot access template '{template_name}' for language '{language}'."
+            )
+        template_content = loader.get_template("conversation", template_name, language)
         if template_content is None:
             raise RuntimeError(
                 f"ConversationIntentHandler: Required template '{template_name}' for language '{language}' "

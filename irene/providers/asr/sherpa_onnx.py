@@ -230,7 +230,7 @@ class SherpaOnnxASRProvider(ASRProvider):
 
         if self._recognizer is None:
             await self._load_recognizer()
-        rec = self._recognizer
+        rec: Any = self._recognizer
         stream = rec.create_stream()
         last = ""
 

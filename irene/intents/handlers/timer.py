@@ -105,6 +105,9 @@ class TimerIntentHandler(IntentHandler):
         if intent.domain == "timer":
             return True
         
+        if donation is None:
+            return False
+
         # Check intent name patterns
         if hasattr(donation, 'intent_name_patterns') and intent.name in donation.intent_name_patterns:
             return True
@@ -149,7 +152,7 @@ class TimerIntentHandler(IntentHandler):
     
     def _get_template(self, template_name: str, language: str, **format_args) -> str:
         """Get template from asset loader - raises fatal error if not available"""
-        if not self.has_asset_loader():
+        if self.asset_loader is None:
             raise RuntimeError(
                 f"TimerIntentHandler: Asset loader not initialized. "
                 f"Cannot access template '{template_name}' for language '{language}'. "

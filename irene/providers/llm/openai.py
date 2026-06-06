@@ -122,7 +122,7 @@ class OpenAILLMProvider(LLMProvider):
                     max_tokens=max_tokens,
                     temperature=temperature
                 )
-                return response.choices[0].message.content.strip()
+                return (response.choices[0].message.content or "").strip()
                 
             elif model in self._get_responses_compatible_models():
                 logger.debug("Using Responses API for model: %s", model)
@@ -149,7 +149,7 @@ class OpenAILLMProvider(LLMProvider):
                     max_tokens=max_tokens,
                     temperature=temperature
                 )
-                return response.choices[0].message.content.strip()
+                return (response.choices[0].message.content or "").strip()
             
         except Exception as e:
             logger.error("OpenAI enhancement failed for model '%s' at %s: %s", model, self.base_url, e)
@@ -174,7 +174,7 @@ class OpenAILLMProvider(LLMProvider):
                     max_tokens=max_tokens,
                     temperature=temperature
                 )
-                return response.choices[0].message.content.strip()
+                return (response.choices[0].message.content or "").strip()
                 
             elif model in self._get_responses_compatible_models():
                 logger.debug("Using Responses API for model: %s", model)
@@ -201,7 +201,7 @@ class OpenAILLMProvider(LLMProvider):
                     max_tokens=max_tokens,
                     temperature=temperature
                 )
-                return response.choices[0].message.content.strip()
+                return (response.choices[0].message.content or "").strip()
             
         except Exception as e:
             logger.error("OpenAI chat completion failed for model '%s' at %s: %s", model, self.base_url, e)

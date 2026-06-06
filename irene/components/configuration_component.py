@@ -96,7 +96,19 @@ class ConfigurationComponent(Component, WebAPIPlugin):
             
         self.initialized = True
         logger.info(f"ConfigurationComponent initialized with config path: {self.active_config_path}")
-    
+
+    def _require_config_manager(self) -> ConfigManager:
+        """Return the initialized ConfigManager or fail loudly for API callers."""
+        if self.config_manager is None:
+            raise HTTPException(status_code=503, detail="Configuration manager not initialized")
+        return self.config_manager
+
+    def _require_config_path(self) -> Path:
+        """Return the active configuration path or fail loudly for API callers."""
+        if self.active_config_path is None:
+            raise HTTPException(status_code=503, detail="Active configuration path not available")
+        return self.active_config_path
+
     async def shutdown(self) -> None:
         """Shutdown the configuration component"""
         self.initialized = False
@@ -130,7 +142,7 @@ class ConfigurationComponent(Component, WebAPIPlugin):
             and component-specific configurations (TTS, Audio, ASR, LLM, etc.).
             """
             try:
-                config = await self.config_manager.load_config(self.active_config_path)
+                config = await self._require_config_manager().load_config(self.active_config_path)
                 return config
             except Exception as e:
                 logger.error(f"Failed to load configuration: {e}")
@@ -215,7 +227,7 @@ class ConfigurationComponent(Component, WebAPIPlugin):
             """
             try:
                 # 1. Load current configuration
-                current_config = await self.config_manager.load_config(self.active_config_path)
+                current_config = await self._require_config_manager().load_config(self.active_config_path)
                 
                 # 2. Validate new section data against Pydantic model
                 section_model = self._get_section_model(section_name)
@@ -232,7 +244,7 @@ class ConfigurationComponent(Component, WebAPIPlugin):
                 
                 # 5. Save updated configuration to file
                 # This triggers existing hot-reload via file modification
-                success = await self.config_manager.save_config(current_config, self.active_config_path)
+                success = await self._require_config_manager().save_config(current_config, self.active_config_path)
                 
                 if not success:
                     raise HTTPException(status_code=500, detail="Failed to save configuration")
@@ -446,12 +458,12 @@ class ConfigurationComponent(Component, WebAPIPlugin):
                     "success": True,
                     "config_path": str(self.active_config_path) if self.active_config_path else None,
                     "config_exists": config_exists,
-                    "hot_reload_active": len(self.config_manager._file_watchers) > 0,
+                    "hot_reload_active": len(self._require_config_manager()._file_watchers) > 0,
                     "component_initialized": self.initialized
                 }
                 
                 if config_exists:
-                    stat = self.active_config_path.stat()
+                    stat = self._require_config_path().stat()
                     status_data.update({
                         "last_modified": stat.st_mtime,
                         "file_size": stat.st_size
@@ -478,7 +490,7 @@ class ConfigurationComponent(Component, WebAPIPlugin):
             """
             try:
                 # Load raw TOML with comments
-                doc = await self.config_manager.load_raw_toml(self.active_config_path)
+                doc = await self._require_config_manager().load_raw_toml(self.active_config_path)
                 
                 # Convert to string with formatting preserved
                 import tomlkit
@@ -488,8 +500,8 @@ class ConfigurationComponent(Component, WebAPIPlugin):
                 config_exists = self.active_config_path and self.active_config_path.exists()
                 if not config_exists:
                     raise HTTPException(status_code=404, detail="Configuration file not found")
-                    
-                stat = self.active_config_path.stat()
+
+                stat = self._require_config_path().stat()
                 
                 return RawTomlResponse(
                     success=True,
@@ -515,7 +527,7 @@ class ConfigurationComponent(Component, WebAPIPlugin):
             try:
                 # Optionally validate before saving
                 if request.validate_before_save:
-                    validation_result = await self.config_manager.validate_raw_toml(request.toml_content)
+                    validation_result = await self._require_config_manager().validate_raw_toml(request.toml_content)
                     if not validation_result["valid"]:
                         raise HTTPException(
                             status_code=400, 
@@ -523,8 +535,8 @@ class ConfigurationComponent(Component, WebAPIPlugin):
                         )
                 
                 # Save raw TOML with backup
-                success = await self.config_manager.save_raw_toml(
-                    request.toml_content, 
+                success = await self._require_config_manager().save_raw_toml(
+                    request.toml_content,
                     self.active_config_path
                 )
                 
@@ -532,7 +544,8 @@ class ConfigurationComponent(Component, WebAPIPlugin):
                     raise HTTPException(status_code=500, detail="Failed to save TOML content")
                 
                 # Get backup path from logs or assume created
-                backup_path = f"{self.active_config_path.parent}/backups/{self.active_config_path.stem}_backup_*.toml"
+                config_path = self._require_config_path()
+                backup_path = f"{config_path.parent}/backups/{config_path.stem}_backup_*.toml"
                 
                 return RawTomlSaveResponse(
                     success=True,
@@ -556,8 +569,8 @@ class ConfigurationComponent(Component, WebAPIPlugin):
             - Configuration completeness and consistency
             """
             try:
-                validation_result = await self.config_manager.validate_raw_toml(request.toml_content)
-                
+                validation_result = await self._require_config_manager().validate_raw_toml(request.toml_content)
+
                 return RawTomlValidationResponse(
                     success=True,
                     valid=validation_result["valid"],
@@ -585,7 +598,7 @@ class ConfigurationComponent(Component, WebAPIPlugin):
             """
             try:
                 # Apply section to TOML with comments preserved
-                updated_toml = await self.config_manager.apply_section_to_raw_toml(
+                updated_toml = await self._require_config_manager().apply_section_to_raw_toml(
                     section_name,
                     request.section_data,
                     self.active_config_path

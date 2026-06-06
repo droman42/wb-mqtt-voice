@@ -12,6 +12,21 @@ newest entries near the top of each dated section.
 ## Action journal
 
 ### 2026-06-06
+- **QUAL-4b DONE — 238 `reportOptionalMemberAccess` (None-deref) errors cleared; rule enabled (ratchet up).** Biggest
+  lever was the `intent_component.py` hotspot (91, 38% of 4b): a single typed `_require_asset_loader()` helper folding the
+  two-Optional guard (`handler_manager` + its `_asset_loader`) into one accessor took it 91→2 (the `.config` accesses
+  resolved for free once `asset_loader` was non-Optional); two stragglers guarded individually. The remaining 147 across
+  35 files were fixed by 5 parallel sub-agents (grouped by layer), each driving its files to 0 under a strict spec
+  (explicit None-guards matching each file's idiom — handlers degrade gracefully, required deps fail-loud via the file's
+  own exception type, lazy optional-dep handles restored to their declared `Any`; no `type: ignore`/`assert`/
+  `TYPE_CHECKING`), verified centrally. **Hexagon respected (user flagged mid-work):** ran the import-linter contract test
+  → 9/9 kept; diff scan → domain (`intents/handlers,manager,orchestrator`) and `utils/vad_silero` gained ZERO outward
+  imports (guards are None-checks + builtins + `Any`); the only new intra-irene import is
+  `intent_component→core.intent_asset_loader` (allowed components→core direction). Verified end-to-end: 0
+  `reportOptionalMemberAccess` repo-wide, `uv run pyright` green with the rule now enforced, full suite **84 failed**
+  (≤ 85 baseline, no behavior regression). Reviewed the agent-flagged behavior changes (openai/deepseek `content or ""`,
+  best-effort notification early-return, nlu-analysis config-default) — all defensible/graceful. Remaining: 4c (phantom
+  attrs 164) · 4d (override-incompat 76) · 4e (tail + mypy disposition).
 - **QUAL-4 reconciled + subdivided; 4a (the standard-mode type gate) DONE.** Reconciled the §E baseline against current
   reality (Invariant #8(b)): measured standard-mode pyright at **762 errors / 172 files** (pyright 1.1.410, venv-resolved,
   tests excluded) — down from §E's 1,107, the ARCH/QUAL refactors having fixed ~31% incidentally. (First measured 540 with

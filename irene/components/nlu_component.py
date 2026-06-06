@@ -507,6 +507,8 @@ class NLUComponent(Component, NLUPlugin, WebAPIPlugin):
                     keyword_donations = self._convert_json_to_keyword_donations(donations)
             else:
                 # Independent loading path
+                if self.asset_loader is None:
+                    raise RuntimeError("NLU asset loader not initialized")
                 keyword_donations = self.asset_loader.convert_to_keyword_donations()
             
             # Initialize each provider with donations
@@ -1084,6 +1086,8 @@ class NLUComponent(Component, NLUPlugin, WebAPIPlugin):
             @router.post("/recognize", response_model=IntentResponse)
             async def recognize_intent(request: NLURequest):
                 """Recognize intent from text input"""
+                if self.context_manager is None:
+                    raise HTTPException(status_code=503, detail="NLU context manager not initialized")
                 try:
                     # The endpoint needs a context to recognize against (QUAL-28: get_context is now
                     # non-creating, so use the explicit creator).

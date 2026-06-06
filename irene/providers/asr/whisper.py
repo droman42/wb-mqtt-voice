@@ -109,7 +109,9 @@ class WhisperASRProvider(ASRProvider):
             # Load model if not already loaded
             if self._model is None:
                 await self._load_model()
-            
+            if self._model is None:
+                raise RuntimeError("Whisper model failed to load")
+
             # Save audio data to temporary file
             with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as temp_file:
                 temp_file.write(audio_data)

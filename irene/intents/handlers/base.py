@@ -232,8 +232,11 @@ class IntentHandler(EntryPointMetadata, ABC):
             return None
         
         expected_suffix = intent.name.split('.', 1)[1] if '.' in intent.name else intent.name
-        
-        for method_donation in self.donation.method_donations:
+
+        donation = self.donation
+        if donation is None:
+            return None
+        for method_donation in donation.method_donations:
             if method_donation.intent_suffix == expected_suffix:
                 return method_donation.method_name
         
@@ -305,8 +308,9 @@ class IntentHandler(EntryPointMetadata, ABC):
         param_name = getattr(exc, 'param_name', None)
 
         text = None
-        if self.has_asset_loader():
-            tmpl = self.asset_loader.get_template("clarification", "missing_parameter", context.language)
+        loader = self.asset_loader
+        if self.has_asset_loader() and loader is not None:
+            tmpl = loader.get_template("clarification", "missing_parameter", context.language)
             if tmpl:
                 try:
                     text = tmpl.format(detail=description)
@@ -673,14 +677,17 @@ class IntentHandler(EntryPointMetadata, ABC):
 
     async def _notify_action_result(self, record: 'ActionRecord', success: bool, error: Optional[str]) -> None:
         """Send the completion/failure notification, routed by the action's owner."""
+        service = self._notification_service
+        if service is None:
+            return
         try:
             duration = time.time() - record.started_at
             if success:
-                await self._notification_service.send_action_completion_notification(
+                await service.send_action_completion_notification(
                     session_id=record.session_id, domain=record.domain,
                     action_name=record.action_name, duration=duration, success=True)
             else:
-                await self._notification_service.send_action_failure_notification(
+                await service.send_action_failure_notification(
                     session_id=record.session_id, domain=record.domain,
                     action_name=record.action_name, error=error or "Unknown error", is_critical=False)
         except Exception as e:
@@ -917,7 +924,13 @@ class IntentHandler(EntryPointMetadata, ABC):
             )
         
         # Get patterns from asset loader
-        commands_data = self.asset_loader.get_localization("commands", language)
+        loader = self.asset_loader
+        if loader is None:
+            raise RuntimeError(
+                f"BaseIntentHandler: Asset loader not initialized. "
+                f"Cannot access stop patterns for language '{language}'."
+            )
+        commands_data = loader.get_localization("commands", language)
         if commands_data is None:
             raise RuntimeError(
                 f"BaseIntentHandler: Required command patterns for language '{language}' "
@@ -944,7 +957,13 @@ class IntentHandler(EntryPointMetadata, ABC):
             )
         
         # Get domain hints from asset loader
-        domains_data = self.asset_loader.get_localization("domains", language)
+        loader = self.asset_loader
+        if loader is None:
+            raise RuntimeError(
+                f"BaseIntentHandler: Asset loader not initialized. "
+                f"Cannot access domain hints for language '{language}'."
+            )
+        domains_data = loader.get_localization("domains", language)
         if domains_data is None:
             raise RuntimeError(
                 f"BaseIntentHandler: Required domain hints for language '{language}' "
