@@ -1458,7 +1458,17 @@ Governed by Invariant #4 (config-ui must stay functional).
       config-ui pages, so it's its own task — but **foreseen now**: UI-2/3/5 author their new strings as i18n keys from
       day one (the §3.2 donation-editor card vocabulary is the first bundle) so nothing needs retrofitting. Design:
       `config-ui/docs/donation_editor_ux.md` §7. Refs: UI-1/2/3/5.
-- [ ] **UI-8** (P3) — **Dead-code sweep for config-ui orphans (surfaced during UI-5's v1.0 cleanup, 2026-06-06).**
+- [x] **UI-8** (P3) — **DONE 2026-06-06.** Swept the config-ui orphans + added a guard so they can't reaccumulate.
+      A reachability sweep from `src/main.tsx`/`App.tsx` (now following dynamic `import()` too) confirmed **5** modules
+      unreachable with **zero** references anywhere (no dynamic/string/registry use): deleted
+      `src/components/editors/{AudioOutputConfigSection,KeyValueOfStringArray,ObjectArrayEditor}.tsx`,
+      `src/utils/testWorkflow.ts`, and — **decision on the borderline `src/utils/spacyAttributes.ts`** — removed it too:
+      it's a 392-line spaCy attribute catalog that nothing imports; the live advanced editor uses a *different* helper
+      (`spacyAttributeHelpers.ts`, kept) and UI-3's card vocabulary is survey-grounded, so UI-3 doesn't need it (git
+      history preserves it if a richer attribute picker is ever wanted). **Guard added:** `scripts/find-orphans.mjs`
+      (reachability check) + `check:orphans` script, **wired into `npm run check`** — the root cause was that
+      `--max-warnings 0` can't see unused *exports*. DoD met: `npm run check` (type-check + lint + orphan guard) +
+      `npm run build` pass; no unreachable non-`*.gen.*` modules remain. Refs: UI-5.
       A reachability analysis from the app entry (`src/main.tsx`/`App.tsx`) flagged modules unreachable yet present —
       the strict ESLint gate can't catch unused *exports* (`--max-warnings 0` only sees unused locals/imports). UI-5
       removed the v1.0 *donation* orphans; these remaining ones are **pre-existing and non-donation**, so they were left

@@ -12,6 +12,11 @@ newest entries near the top of each dated section.
 ## Action journal
 
 ### 2026-06-06
+- **UI-8 DONE — config-ui orphan sweep + a reachability guard.** Deleted 5 unreachable modules (3 editor components,
+  `testWorkflow.ts`, and the borderline `spacyAttributes.ts` — a 392-line catalog nothing imports; the live advanced
+  editor uses `spacyAttributeHelpers.ts` instead, and UI-3's vocabulary is survey-grounded). Added
+  `scripts/find-orphans.mjs` + wired `check:orphans` into `npm run check` so dead modules can't reaccumulate (the root
+  cause: `--max-warnings 0` can't see unused exports). `npm run check` + `build` green.
 - **QUAL-43 DONE — removed donation v1.0 dead validation code + repointed the build analyzer at v1.1 (user-directed).**
   Verified each target was genuinely dead before deleting (0 callers): the `IntentAssetLoader` v1.0 schema-validation
   chain (`load_donation_on_demand`/`_load_and_validate_donation`/`_validate_json_schema`/`validate_donation_data`),

@@ -9,7 +9,8 @@
     "type-check": "tsc --noEmit",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "lint:fix": "eslint . --ext ts,tsx --fix",
-    "check": "npm run type-check && npm run lint",
+    "check:orphans": "node scripts/find-orphans.mjs",
+    "check": "npm run type-check && npm run lint && npm run check:orphans",
     "gen:api-types": "openapi-typescript ./openapi.json -o ./src/types/openapi.gen.ts && json2ts -i ../assets/donation_contract_v1.1.json -o ./src/types/donation-contract.gen.ts --additionalProperties false && json2ts -i ../assets/donation_language_v1.1.json -o ./src/types/donation-language.gen.ts --additionalProperties false"
   },
   "dependencies": {
