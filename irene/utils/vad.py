@@ -319,6 +319,15 @@ class VADEngine(ABC):
         """Reset per-utterance state (default no-op)."""
         return None
 
+    def calibrate_threshold(self, audio_samples: List["AudioData"]) -> bool:
+        """Calibrate the detection threshold from sample audio.
+
+        Default no-op for engines (e.g. SileroVAD) that use a fixed,
+        model-internal threshold and do not support energy calibration.
+        Energy-based engines override this.
+        """
+        return False
+
     def get_name(self) -> str:
         return self.__class__.__name__
 

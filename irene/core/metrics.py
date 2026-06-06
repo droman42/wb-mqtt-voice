@@ -60,7 +60,22 @@ class DomainMetrics:
     timeout_count: int = 0
     retry_count: int = 0
     last_updated: float = field(default_factory=time.time)
-    
+
+    # Lazily-seeded per-category sub-metrics — declared so they are typed fields, not
+    # dynamic attributes (QUAL-4c). Default empty; seeded on first use by the recorders
+    # (which now gate on emptiness rather than hasattr).
+    component_metrics: Dict[str, Any] = field(default_factory=dict)
+    intent_metrics: Dict[str, Any] = field(default_factory=dict)
+    execution_metrics: Dict[str, Any] = field(default_factory=dict)
+    session_metrics: Dict[str, Any] = field(default_factory=dict)
+    resampling_metrics: Dict[str, Any] = field(default_factory=dict)
+    detection_metrics: Dict[str, Any] = field(default_factory=dict)
+
+    @property
+    def success_rate(self) -> float:
+        """Fraction of actions that succeeded (0.0 when no actions recorded)."""
+        return self.successful_actions / self.total_actions if self.total_actions > 0 else 0.0
+
     def update_from_action(self, action: ActionMetric) -> None:
         """Update domain metrics from a completed action"""
         self.total_actions += 1
@@ -655,7 +670,7 @@ class MetricsCollector:
         if domain not in self._domain_metrics:
             self._domain_metrics[domain] = DomainMetrics(domain=domain)
         
-        if not hasattr(self._domain_metrics[domain], 'intent_metrics'):
+        if not self._domain_metrics[domain].intent_metrics:
             self._domain_metrics[domain].intent_metrics = {
                 'recognition_count': 0,
                 'total_confidence': 0.0,
@@ -686,7 +701,7 @@ class MetricsCollector:
         if domain not in self._domain_metrics:
             self._domain_metrics[domain] = DomainMetrics(domain=domain)
         
-        if not hasattr(self._domain_metrics[domain], 'execution_metrics'):
+        if not self._domain_metrics[domain].execution_metrics:
             self._domain_metrics[domain].execution_metrics = {
                 'execution_count': 0,
                 'success_count': 0,
@@ -721,7 +736,7 @@ class MetricsCollector:
         if domain not in self._domain_metrics:
             self._domain_metrics[domain] = DomainMetrics(domain=domain)
         
-        if not hasattr(self._domain_metrics[domain], 'session_metrics'):
+        if not self._domain_metrics[domain].session_metrics:
             self._domain_metrics[domain].session_metrics = {
                 'session_id': session_id,
                 'start_time': time.time(),
@@ -740,7 +755,7 @@ class MetricsCollector:
         """Record conversation session end"""
         domain = f"session_{session_id}"
         
-        if domain in self._domain_metrics and hasattr(self._domain_metrics[domain], 'session_metrics'):
+        if domain in self._domain_metrics and self._domain_metrics[domain].session_metrics:
             session_metrics = self._domain_metrics[domain].session_metrics
             session_metrics['last_activity'] = time.time()
             
@@ -752,12 +767,16 @@ class MetricsCollector:
                 self.record_action_completion(domain, "session", success=True)
             
             self.logger.debug(f"Session ended: {session_id}")
-    
+
+    def record_session_cleanup(self, expired_count: int) -> None:
+        """Record cleanup of expired conversation sessions"""
+        self.logger.debug(f"Cleaned up {expired_count} expired session(s)")
+
     def update_session_activity(self, session_id: str, intent_name: str, success: bool) -> None:
         """Update session activity with intent usage"""
         domain = f"session_{session_id}"
         
-        if domain in self._domain_metrics and hasattr(self._domain_metrics[domain], 'session_metrics'):
+        if domain in self._domain_metrics and self._domain_metrics[domain].session_metrics:
             session_metrics = self._domain_metrics[domain].session_metrics
             session_metrics['last_activity'] = time.time()
             session_metrics['intent_count'] += 1
@@ -988,7 +1007,7 @@ class MetricsCollector:
             self.record_action_completion(domain, "resampling", success=False, error="resampling_failed")
         
         # Store resampling-specific metrics
-        if not hasattr(self._domain_metrics[domain], 'resampling_metrics'):
+        if not self._domain_metrics[domain].resampling_metrics:
             self._domain_metrics[domain].resampling_metrics = {
                 'total_operations': 0,
                 'total_time_ms': 0.0,
@@ -1015,7 +1034,7 @@ class MetricsCollector:
         self.record_action_completion(domain, "detection", success=success)
         
         # Store detection-specific metrics
-        if not hasattr(self._domain_metrics[domain], 'detection_metrics'):
+        if not self._domain_metrics[domain].detection_metrics:
             self._domain_metrics[domain].detection_metrics = {
                 'total_operations': 0,
                 'successes': 0,

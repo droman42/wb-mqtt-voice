@@ -50,6 +50,19 @@ class VoiceTriggerComponent(Component, VoiceTriggerPlugin, WebAPIPlugin):
         # Phase 1: Unified metrics integration
         self._metrics_push_task: Optional[asyncio.Task] = None
         self._metrics_push_interval = 60.0  # seconds
+
+        # Resolved voice-trigger config dict (QUAL-4c: the hexagon refactor removed `self.core`,
+        # so the authoritative config is captured here at init instead of reaching back into core).
+        self._voice_trigger_config: Dict[str, Any] = {}
+
+        # Local resampling counters (QUAL-4c: a Phase-1 migration dropped this init but kept
+        # the `+= 1` usages, so the first resample raised AttributeError-masquerading-as-failure).
+        self._resampling_metrics: Dict[str, Any] = {
+            'total_resampling_operations': 0,
+            'total_resampling_time_ms': 0.0,
+            'resampling_failures': 0,
+            'provider_fallbacks': 0,
+        }
         
     @property
     def name(self) -> str:
@@ -109,7 +122,10 @@ class VoiceTriggerComponent(Component, VoiceTriggerPlugin, WebAPIPlugin):
                 "Expected a valid VoiceTriggerConfig instance, but got an invalid config. "
                 "Please check your configuration file for proper v14 voice_trigger section formatting."
             )
-        
+
+        # Capture the authoritative resolved config for later use (e.g. detect_wake_word)
+        self._voice_trigger_config = config
+
         # Update settings from config
         if isinstance(config, dict):
             self.default_provider = config.get("default_provider", self.default_provider)
@@ -286,17 +302,11 @@ class VoiceTriggerComponent(Component, VoiceTriggerPlugin, WebAPIPlugin):
             logger.warning("No voice trigger provider available")
             return WakeWordResult(detected=False, confidence=0.0)
         
-        # Phase 4 Step 1: Get voice trigger configuration (AUTHORITATIVE per fix_vosk.md)
-        voice_trigger_config = {}
-        if hasattr(self, 'core') and self.core:
-            config_obj = getattr(self.core.config, 'voice_trigger', {})
-            if hasattr(config_obj, 'model_dump'):
-                voice_trigger_config = config_obj.model_dump()
-            elif hasattr(config_obj, 'dict'):
-                voice_trigger_config = config_obj.dict()
-            elif isinstance(config_obj, dict):
-                voice_trigger_config = config_obj
-        
+        # Phase 4 Step 1: Get voice trigger configuration (AUTHORITATIVE per fix_vosk.md).
+        # Captured at initialize() time from CoreConfig.voice_trigger (the hexagon refactor
+        # removed direct `self.core` access).
+        voice_trigger_config = self._voice_trigger_config
+
         # Phase 4 Step 2: Check configuration authority (per fix_vosk.md Section 5.3)
         config_sample_rate = voice_trigger_config.get('sample_rate')
         allow_resampling = voice_trigger_config.get('allow_resampling', True)

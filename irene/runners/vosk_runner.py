@@ -34,7 +34,7 @@ def check_vosk_dependencies() -> bool:
         import vosk  # type: ignore
         import sounddevice as sd  # type: ignore
         print("✅ VOSK dependencies available")
-        print(f"   VOSK version: {vosk.__version__ if hasattr(vosk, '__version__') else 'unknown'}")
+        print(f"   VOSK version: {getattr(vosk, '__version__', 'unknown')}")
         print(f"   Sounddevice available: yes")
         return True
     except ImportError as e:

@@ -90,11 +90,18 @@ class AudioComponent(Component, AudioPlugin, WebAPIPlugin, AudioPort):
         
         # Runtime state
         self._current_provider = None
-        
+
+        # Resolved temp-audio directory (QUAL-4c: captured at init from CoreConfig.assets,
+        # since the hexagon refactor removed direct `self.core` access).
+        self._temp_audio_dir: Optional[Path] = None
+
     async def initialize(self, core) -> None:
         """Initialize the universal audio plugin"""
         await super().initialize(core)
         
+        # Capture the temp-audio directory from the assets config for later endpoint use
+        self._temp_audio_dir = core.config.assets.temp_audio_dir
+
         # Get configuration first to determine enabled providers (V14 Architecture)
         config = getattr(core.config, 'audio', None)
         if not config:
@@ -384,9 +391,8 @@ class AudioComponent(Component, AudioPlugin, WebAPIPlugin, AudioPort):
             import uuid
             from ..config.models import CoreConfig
             
-            # Get temp audio directory from configuration
-            config = self.core.config if hasattr(self, 'core') and self.core else CoreConfig()
-            temp_dir = config.assets.temp_audio_dir
+            # Get temp audio directory from configuration (captured at initialize())
+            temp_dir = self._temp_audio_dir if self._temp_audio_dir is not None else CoreConfig().assets.temp_audio_dir
             temp_dir.mkdir(parents=True, exist_ok=True)
             
             # Generate unique filename

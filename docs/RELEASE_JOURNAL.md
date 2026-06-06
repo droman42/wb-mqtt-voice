@@ -12,6 +12,27 @@ newest entries near the top of each dated section.
 ## Action journal
 
 ### 2026-06-06
+- **QUAL-4c DONE — 163 `reportAttributeAccessIssue` (phantom-attribute) errors cleared; rule enabled. ~15 were genuine
+  latent bugs.** This slice paid for itself in real fixes, not just annotations: `voice_trigger_component._resampling_metrics`
+  was never initialized (Phase-1 migration dropped the init, kept the `+=` usages → first resample raised
+  AttributeError swallowed as a "resampling failure"); `monitoring_component` read non-existent `DomainMetrics.success_rate`
+  / `.avg_duration` (added a `success_rate` property, fixed to `average_duration`); `nlu_component`'s language-confidence
+  loop accessed `.text` on history dicts with the wrong key (dead code → `entry.get("user_text")`); `config/models.py` had a
+  function-local `logger` shadowing the module logger (UnboundLocalError on the orphaned-config warning path); `audio_processor`
+  wrote to a read-only `VADConfig.threshold` property (→ `energy_threshold`) and called `calibrate_threshold` missing on the
+  silero VAD engine (added a no-op to the `VADEngine` ABC); `config/validator.py` checked removed `SystemConfig.metrics_*`
+  fields + a non-existent `_calculate_counts()`; the openai/anthropic providers crashed on non-text SDK content blocks
+  (now narrow via `output_text`/`isinstance(TextBlock)` → "" for thinking/tool blocks). Type-only fixes: `datetime`
+  return annotation (29); `DomainMetrics` 6 lazily-seeded sub-metric fields declared with the `hasattr`→truthiness
+  seed-guard flip (13 — caught & prevented a KeyError regression on the read-side session guards); `InteractiveRunnerMixin`
+  mixin-attr annotations (10, which exposed 4 `self.core` None-accesses I then guarded to keep 4b at 0);
+  `TextProcessingRequest.context` field (9). **Hexagon (user flagged again mid-work):** verified 9/9 import-linter
+  contracts kept; the `.core`/`self.core` phantoms were fixed WITHOUT re-introducing `self.core` or importing core (config
+  captured at `initialize()`); a port was widened only where it's a genuine shared contract (`WebAPIPlugin.name`, mirroring
+  ComponentPort/WorkflowPort); every new import is inward (components→config/providers, core→intents-domain, runners→core).
+  Work split: in-file fixes for the architectural/bug clusters (datetime, metrics, mixin, resampling, schema) + 5 verified
+  sub-agents for the tail, with central verification (both rules 0 repo-wide, contracts 9/9, suite 84=baseline). Remaining:
+  4d (override-incompat 76) · 4e (tail + mypy disposition).
 - **QUAL-4b DONE — 238 `reportOptionalMemberAccess` (None-deref) errors cleared; rule enabled (ratchet up).** Biggest
   lever was the `intent_component.py` hotspot (91, 38% of 4b): a single typed `_require_asset_loader()` helper folding the
   two-Optional guard (`handler_manager` + its `_asset_loader`) into one accessor took it 91→2 (the `.config` accesses

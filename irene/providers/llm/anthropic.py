@@ -95,8 +95,9 @@ class AnthropicLLMProvider(LLMProvider):
 
         try:
             from anthropic import AsyncAnthropic  # type: ignore
+            from anthropic.types import TextBlock
             client = AsyncAnthropic(api_key=self.api_key, timeout=self.timeout)
-            
+
             response = await client.messages.create(
                 model=model,
                 max_tokens=max_tokens,
@@ -106,8 +107,11 @@ class AnthropicLLMProvider(LLMProvider):
                     {"role": "user", "content": text}
                 ]
             )
-            
-            return response.content[0].text.strip()
+
+            # `content` is a discriminated union of blocks; take the first text block
+            # (skipping any thinking/tool-use blocks), "" if none present.
+            text_out = next((b.text for b in response.content if isinstance(b, TextBlock)), "")
+            return text_out.strip()
             
         except Exception as e:
             logger.error(f"Anthropic enhancement failed: {e}")
@@ -121,8 +125,9 @@ class AnthropicLLMProvider(LLMProvider):
         
         try:
             from anthropic import AsyncAnthropic  # type: ignore
+            from anthropic.types import TextBlock
             client = AsyncAnthropic(api_key=self.api_key, timeout=self.timeout)
-            
+
             # Convert messages format for Anthropic (extract system message if present)
             system_message = ""
             user_messages = []
@@ -141,8 +146,11 @@ class AnthropicLLMProvider(LLMProvider):
                 messages=user_messages
             )
             
-            return response.content[0].text.strip()
-            
+            # `content` is a discriminated union of blocks; take the first text block
+            # (skipping any thinking/tool-use blocks), "" if none present.
+            text_out = next((b.text for b in response.content if isinstance(b, TextBlock)), "")
+            return text_out.strip()
+
         except Exception as e:
             logger.error(f"Anthropic chat completion failed: {e}")
             raise  # QUAL-15: signal failure so the component falls through to the next provider / console

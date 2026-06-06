@@ -10,7 +10,7 @@ import asyncio
 import json
 import logging
 from pathlib import Path
-from typing import Dict, Any, List, Optional, Type
+from typing import Dict, Any, List, Optional, Type, Union
 
 from pydantic import BaseModel
 from .base import Component
@@ -19,6 +19,7 @@ from ..intents.manager import IntentHandlerManager
 from ..intents.registry import IntentRegistry
 from ..intents.orchestrator import IntentOrchestrator
 from ..core.intent_asset_loader import IntentAssetLoader
+from ..config.models import IntentSystemConfig
 
 logger = logging.getLogger(__name__)
 
@@ -40,7 +41,7 @@ class IntentComponent(Component, WebAPIPlugin):
         self.handler_manager: Optional[IntentHandlerManager] = None
         self.intent_orchestrator: Optional[IntentOrchestrator] = None
         self.intent_registry: Optional[IntentRegistry] = None
-        self._config: Optional[Dict[str, Any]] = None
+        self._config: Optional[Union[Dict[str, Any], IntentSystemConfig]] = None
         
     async def initialize(self, core) -> None:
         """Initialize the intent system with configuration-driven handler discovery"""
@@ -170,7 +171,10 @@ class IntentComponent(Component, WebAPIPlugin):
             
             if not self.intent_orchestrator:
                 raise RuntimeError("Intent orchestrator was not initialized")
-            
+
+            if self._config is None:
+                raise RuntimeError("Intent configuration was not initialized")
+
             # Get enabled handlers from configuration
             if isinstance(self._config, dict):
                 enabled_config = self._config.get("handlers", {}).get("enabled", [])

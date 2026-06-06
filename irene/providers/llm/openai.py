@@ -134,9 +134,9 @@ class OpenAILLMProvider(LLMProvider):
                     max_output_tokens=max_tokens,
                     temperature=temperature,
                 )
-                # Use convenience property or fallback to response structure
-                return getattr(response, "output_text", response.output[0].content[0].text).strip()
-                
+                # SDK convenience property: aggregates all output_text blocks ("" if none).
+                return response.output_text.strip()
+
             else:
                 # Unknown model - try Chat Completions first, then log
                 logger.warning("Unknown model '%s', attempting Chat Completions API", model)
@@ -189,9 +189,9 @@ class OpenAILLMProvider(LLMProvider):
                     max_output_tokens=max_tokens,
                     temperature=temperature,
                 )
-                # Use convenience property or fallback to response structure
-                return getattr(response, "output_text", response.output[0].content[0].text).strip()
-                
+                # SDK convenience property: aggregates all output_text blocks ("" if none).
+                return response.output_text.strip()
+
             else:
                 # Unknown model - try Chat Completions first, then log
                 logger.warning("Unknown model '%s', attempting Chat Completions API", model)

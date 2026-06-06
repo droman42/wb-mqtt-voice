@@ -21,7 +21,12 @@ class WebAPIPlugin(EntryPointMetadata):
     WebAPI plugins extend functionality by exposing REST endpoints
     that can be integrated into the main FastAPI application.
     """
-    
+
+    # Instance attribute established by the implementation (always mixed in
+    # alongside Component, which sets it): the plugin's identifier, used here to
+    # derive the default API prefix/tags.
+    name: str
+
     @abstractmethod
     def get_router(self) -> Optional[Any]:
         """

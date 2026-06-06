@@ -810,8 +810,6 @@ class IntentSystemConfig(BaseModel):
         
         # Log warning about orphaned configs (not an error)
         if orphaned_configs:
-            import logging
-            logger = logging.getLogger(__name__)
             logger.warning(f"Configuration exists for disabled handlers: {orphaned_configs}. "
                          f"These configurations will be ignored.")
         

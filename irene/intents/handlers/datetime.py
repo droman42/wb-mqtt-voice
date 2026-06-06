@@ -7,7 +7,7 @@ Adapted from datetime_plugin.py for the new intent architecture.
 
 import logging
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Any
 
 from .base import IntentHandler
 from ..models import Intent, IntentResult
@@ -85,7 +85,7 @@ class DateTimeIntentHandler(IntentHandler):
         """DateTime functionality is always available"""
         return True
     
-    def _get_localization_data(self, language: str) -> Dict[str, List[str]]:
+    def _get_localization_data(self, language: str) -> Dict[str, Any]:
         """Get localization data from asset loader - raises fatal error if not available"""
         if self.asset_loader is None:
             raise RuntimeError(

@@ -103,6 +103,8 @@ class UnifiedConversationContext:
     last_updated: float = field(default_factory=time.time)
     # QUAL-28 stage 4: conversation_history is the SINGLE history list; max_history_turns is its window.
     max_history_turns: int = 10
+    # Disambiguation context for follow-up resolution (set on demand by ContextManager).
+    disambiguation_context: Optional[Dict[str, Any]] = None
 
     def __post_init__(self):
         # Sync metadata with client_metadata

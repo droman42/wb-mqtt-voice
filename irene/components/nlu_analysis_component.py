@@ -124,7 +124,7 @@ class NLUAnalysisComponent(Component, WebAPIPlugin):
         
         # Get configuration
         if core:
-            config = self.get_config(core.config) or NLUAnalysisConfig()
+            config = getattr(core.config, 'nlu_analysis', None) or NLUAnalysisConfig()
         else:
             config = NLUAnalysisConfig()
         

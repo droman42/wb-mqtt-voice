@@ -377,7 +377,7 @@ class MonitoringComponent(Component, WebAPIPlugin):
                     intent_data[intent_name] = {
                         "success_rate": metrics.success_rate,
                         "total_actions": metrics.total_actions,
-                        "average_duration": metrics.avg_duration,
+                        "average_duration": metrics.average_duration,
                         "last_updated": metrics.last_updated
                     }
                 

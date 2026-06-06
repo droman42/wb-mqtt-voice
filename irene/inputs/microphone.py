@@ -14,7 +14,7 @@ import asyncio
 import logging
 import queue
 import time
-from typing import AsyncIterator, Dict, Any, Optional, List
+from typing import AsyncIterator, Dict, Any, Optional, List, cast
 from pathlib import Path
 
 from .base import ComponentNotAvailable
@@ -169,8 +169,8 @@ class MicrophoneInput(InputPort):
             # Validate device before attempting to use it
             if self.device_id is not None:
                 try:
-                    device_info = sd.query_devices(self.device_id, 'input')
-                    
+                    device_info = cast(Dict[str, Any], sd.query_devices(self.device_id, 'input'))
+
                     # Check if device has input channels
                     if device_info.get('max_input_channels', 0) == 0:
                         raise ComponentNotAvailable(

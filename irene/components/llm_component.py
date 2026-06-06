@@ -19,7 +19,7 @@ from ..intents.ports import LLMPort  # QUAL-24: domain capability port (applicat
 
 
 # Import LLM provider base class and dynamic loader
-from ..providers.llm import LLMProvider
+from ..providers.llm import LLMProvider, ConsoleLLMProvider
 from ..utils.loader import dynamic_loader
 
 logger = logging.getLogger(__name__)
@@ -238,7 +238,7 @@ class LLMComponent(Component, LLMPlugin, WebAPIPlugin, LLMPort):
             if messages:
                 self._unavailable_messages = messages
                 console = self.providers.get("console")
-                if console is not None and hasattr(console, "_responses"):
+                if isinstance(console, ConsoleLLMProvider):
                     console._responses.update(messages)  # inject into the floor provider
         except Exception as e:
             logger.debug(f"Could not load LLM localization (using last-resort): {e}")

@@ -526,8 +526,12 @@ class WorkflowManager:
             # Reflect the derived session id (RequestContext forbids "default"/empty → mints a real one)
             session_id = context.session_id
 
-            # Process audio through unified workflow with trace support
-            result = await unified_workflow.process_audio_input(audio_data, context, trace_context)
+            # Process audio through unified workflow with trace support.
+            # `process_audio_input` is a concrete-only entry point (not part of
+            # the WorkflowPort contract — see the port docstring), so resolve it
+            # dynamically off the active workflow.
+            process_audio_input = getattr(unified_workflow, "process_audio_input")
+            result = await process_audio_input(audio_data, context, trace_context)
             # (QUAL-28) F&F actions are registered in the store by the launch — no write-back needed.
             return result
             
@@ -673,7 +677,7 @@ class WorkflowManager:
             elif hasattr(data, 'data') and hasattr(data, 'timestamp'):
                 # InputData that contains audio data - convert to AudioData
                 yield AudioData(
-                    data=data.data,
+                    data=getattr(data, 'data'),
                     timestamp=getattr(data, 'timestamp', time.time()),
                     sample_rate=getattr(data, 'sample_rate', 16000),
                     channels=getattr(data, 'channels', 1),
@@ -770,9 +774,11 @@ class WorkflowManager:
             if was_active and self._workflow_task:
                 await self.stop_current_workflow()
             
-            # Clean up old workflow
-            if hasattr(old_workflow, 'cleanup'):
-                await old_workflow.cleanup()
+            # Clean up old workflow (`cleanup` is an optional concrete-only hook,
+            # not part of the WorkflowPort contract)
+            old_workflow_cleanup = getattr(old_workflow, 'cleanup', None)
+            if old_workflow_cleanup is not None:
+                await old_workflow_cleanup()
             
             # Create new instance
             await self._create_and_initialize_workflow(workflow_name)
@@ -988,11 +994,13 @@ class WorkflowManager:
         # Stop progress monitoring
         await self.stop_progress_monitoring()
         
-        # Clean up workflows
+        # Clean up workflows (`cleanup` is an optional concrete-only hook,
+        # not part of the WorkflowPort contract)
         for workflow in self.workflows.values():
-            if hasattr(workflow, 'cleanup'):
+            workflow_cleanup = getattr(workflow, 'cleanup', None)
+            if workflow_cleanup is not None:
                 try:
-                    await workflow.cleanup()
+                    await workflow_cleanup()
                 except Exception as e:
                     logger.error(f"Workflow cleanup error: {e}")
         

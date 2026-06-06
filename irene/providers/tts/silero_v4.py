@@ -39,8 +39,8 @@ class SileroV4TTSProvider(TTSProvider):
         self._available = False
         self._model = None
         self._device = None
-        self._torch = None
-        
+        self._torch: Any = None  # dynamically-imported optional torch module handle
+
         # Asset management integration - single source of truth
         from ...core.assets import get_asset_manager
         self.asset_manager = get_asset_manager()

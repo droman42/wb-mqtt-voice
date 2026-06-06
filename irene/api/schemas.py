@@ -2281,6 +2281,10 @@ class TextProcessingRequest(BaseAPIRequest):
         description="Specific normalizer to use (optional)",
         example="numbers"
     )
+    context: Optional[Dict[str, Any]] = Field(
+        default=None,
+        description="Optional client context (session_id, client_id, room_name, device_context)"
+    )
 
 
 class TextProcessingResponse(BaseAPIResponse):

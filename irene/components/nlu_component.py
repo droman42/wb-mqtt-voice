@@ -229,8 +229,9 @@ class ContextAwareNLUProcessor:
         consistent_detections = 0
         
         for entry in recent_history:
-            if hasattr(entry, 'text') and entry.text:
-                detected_lang = self._analyze_text_language(entry.text)
+            entry_text = entry.get("user_text")
+            if entry_text:
+                detected_lang = self._analyze_text_language(entry_text)
                 if detected_lang == context.language:
                     consistent_detections += 1
         

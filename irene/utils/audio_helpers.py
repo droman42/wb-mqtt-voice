@@ -12,7 +12,7 @@ These utilities provide shared functionality for audio plugins:
 import asyncio
 import logging
 from pathlib import Path
-from typing import Optional, Union, Dict, Any, List, Tuple
+from typing import Optional, Union, Dict, Any, List, Tuple, cast
 from enum import Enum
 from dataclasses import dataclass
 
@@ -374,8 +374,8 @@ async def get_audio_input_devices() -> List[Dict[str, Any]]:
     try:
         # Try sounddevice for comprehensive device info
         import sounddevice as sd  # type: ignore
-        device_list = await asyncio.to_thread(sd.query_devices)
-        
+        device_list = cast(List[Dict[str, Any]], await asyncio.to_thread(sd.query_devices))
+
         for i, device in enumerate(device_list):
             input_channels = device.get('max_input_channels', 0)
             if input_channels > 0:  # Only include devices with input capability
@@ -441,7 +441,7 @@ async def validate_audio_input_device(device_id: int) -> Optional[Dict[str, Any]
         # Try to query the specific device directly first
         # This handles device aliases like "default" (12) that may not be in the enumerated list
         try:
-            device = await asyncio.to_thread(sd.query_devices, device_id, 'input')
+            device = cast(Dict[str, Any], await asyncio.to_thread(sd.query_devices, device_id, 'input'))
             input_channels = device.get('max_input_channels', 0)
             
             if input_channels > 0:

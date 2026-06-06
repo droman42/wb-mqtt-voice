@@ -122,6 +122,7 @@ def create_webapi_router(
     # Import centralized API schemas
     from ..api.schemas import CommandRequest, CommandResponse, TraceCommandResponse
     from ..core.trace_context import TraceContext
+    from ..core.session_manager import SessionManager
     from ..utils.loader import get_component_status
     from ..__version__ import __version__
     

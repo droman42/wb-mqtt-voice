@@ -72,9 +72,20 @@ class LLMProvider(ProviderBase):
         """
         pass
     
+    def get_capabilities(self) -> Dict[str, Any]:
+        """Return provider capabilities.
+
+        Base implementation derives the minimal capability set from the abstract
+        interface; concrete providers may override to advertise richer detail.
+        """
+        return {
+            "models": self.get_available_models(),
+            "tasks": self.get_supported_tasks(),
+        }
+
     def get_parameter_schema(self) -> Dict[str, Any]:
         """Auto-generate parameter schema from Pydantic model
-        
+
         Returns:
             Dictionary describing available parameters, types, and defaults
         """

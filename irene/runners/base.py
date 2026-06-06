@@ -283,7 +283,13 @@ class InteractiveRunnerMixin:
     
     Provides common interactive loop patterns.
     """
-    
+
+    # Attributes provided by the concrete runner (BaseRunner) this mixin is combined with;
+    # declared for type-checking only (set in BaseRunner.__init__/run). QUAL-4c.
+    core: Optional[AsyncVACore]
+    _logger: logging.Logger
+    runner_config: RunnerConfig
+
     async def _run_interactive_loop(self, args: argparse.Namespace, prompt_text: str = "irene> ") -> int:
         """Run interactive command loop with unified pattern"""
         if not self.core:
@@ -349,6 +355,8 @@ class InteractiveRunnerMixin:
     
     async def _process_interactive_command(self, command: str, args: argparse.Namespace) -> None:
         """Process a single interactive command"""
+        if self.core is None:
+            return
         result = await self.core.workflow_manager.process_text_input(
             text=command,
             session_id=f"{self.runner_config.name}_interactive",
@@ -377,6 +385,9 @@ class InteractiveRunnerMixin:
         print("-" * 20)
         
         # Core status
+        if self.core is None:
+            print("🔧 Core: Stopped")
+            return
         print(f"🔧 Core: {'Running' if self.core._running else 'Stopped'}")
         
         # Component status

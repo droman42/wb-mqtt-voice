@@ -16,6 +16,7 @@ from pathlib import Path
 from ..config.models import CoreConfig, ComponentConfig
 from ..utils.loader import DependencyChecker, get_component_status
 from .interfaces.component import ComponentPort
+from ..intents.context import ContextManager
 from ..intents.ports import ComponentControlRegistryPort  # QUAL-24: registry port (application implements it)
 from ..__version__ import __version__
 
@@ -121,6 +122,9 @@ class ComponentManager(ComponentControlRegistryPort):
         self._dependency_resolver: Optional[DependencyResolver] = None
         self._initialized = False
         self.dependency_checker = DependencyChecker()  # From loader.py
+        # Set by AsyncVACore after construction so post-init coordination can
+        # hand the context manager to intent handlers (fire-and-forget tracking).
+        self.context_manager: Optional[ContextManager] = None
     
     def get_available_components(self) -> Dict[str, Type]:
         """Get available components through existing entry-point discovery"""
@@ -218,32 +222,38 @@ class ComponentManager(ComponentControlRegistryPort):
         """
         logger.info("Starting post-initialization coordination...")
         
-        # Coordinate NLU and Intent components for donation loading (Phase 2)
+        # Coordinate NLU and Intent components for donation loading (Phase 2).
+        # `post_initialize_coordination` is NLU-specific (not part of the
+        # ComponentPort contract), so resolve it dynamically via getattr.
         nlu_component = self._components.get('nlu')
-        if nlu_component and hasattr(nlu_component, 'post_initialize_coordination'):
+        nlu_post_init = getattr(nlu_component, 'post_initialize_coordination', None)
+        if nlu_post_init is not None:
             try:
-                await nlu_component.post_initialize_coordination()
+                await nlu_post_init()
                 logger.info("✅ NLU post-initialization coordination completed")
             except Exception as e:
                 logger.error(f"❌ NLU post-initialization coordination failed: {e}")
                 # Don't fail the entire system for coordination issues
                 logger.warning("Continuing with NLU fallback patterns")
-        
-        # Inject component dependencies into intent handlers (Phase 3)
+
+        # Inject component dependencies into intent handlers (Phase 3).
+        # These intent-system-specific hooks are likewise resolved via getattr.
         intent_component = self._components.get('intent_system')
-        if intent_component and hasattr(intent_component, 'post_initialize_handler_dependencies'):
+        intent_post_init = getattr(intent_component, 'post_initialize_handler_dependencies', None)
+        if intent_post_init is not None:
             try:
-                await intent_component.post_initialize_handler_dependencies(self)
+                await intent_post_init(self)
                 logger.info("✅ Intent handler dependency injection completed")
             except Exception as e:
                 logger.error(f"❌ Intent handler dependency injection failed: {e}")
                 # Don't fail the entire system for injection issues
                 logger.warning("Continuing with intent handlers in limited dependency mode")
-        
+
         # Inject context manager into intent handlers for fire-and-forget action tracking
-        if intent_component and hasattr(intent_component, 'set_context_manager') and hasattr(self, 'context_manager'):
+        set_context_manager = getattr(intent_component, 'set_context_manager', None)
+        if set_context_manager is not None and self.context_manager is not None:
             try:
-                intent_component.set_context_manager(self.context_manager)
+                set_context_manager(self.context_manager)
                 logger.info("✅ Context manager injected into intent handlers for fire-and-forget tracking")
             except Exception as e:
                 logger.error(f"❌ Context manager injection failed: {e}")

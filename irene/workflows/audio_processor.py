@@ -657,7 +657,8 @@ class UniversalAudioProcessor:
             raise ValueError(f"Threshold must be between 0.0 and 1.0, got {new_threshold}")
         
         old_threshold = self.config.threshold
-        self.config.threshold = new_threshold
+        # `threshold` is a read-only alias property; write the backing field.
+        self.config.energy_threshold = new_threshold
         
         # Update VAD engine threshold
         self.vad_engine.threshold = new_threshold

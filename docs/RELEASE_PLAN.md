@@ -462,8 +462,22 @@ See `docs/review/phase1_architecture_map.md` §5.
         (guards use None-checks/builtins/`Any` only); the one new import is `intent_component→core.intent_asset_loader`
         (allowed components→core). Verified: 0 `reportOptionalMemberAccess` repo-wide, gate green with the rule enforced,
         suite 84=baseline (no behavior regression).
-      - **4c** — `reportAttributeAccessIssue` (164) — phantom attributes (latent bugs, the §E `.core`/`.get_capabilities`
-        class); enable rule.
+      - **4c ✓ DONE 2026-06-06** — `reportAttributeAccessIssue` (163) cleared and the rule **enabled**. The high-value
+        slice: ~15 were **genuine latent bugs**, not type noise — e.g. `voice_trigger_component._resampling_metrics` never
+        initialized (a Phase-1 migration dropped the init, kept the `+=`, so the first resample raised
+        AttributeError-as-failure); `monitoring_component` read non-existent `DomainMetrics.success_rate`/`.avg_duration`;
+        `nlu_component` language loop used a wrong dict key (dead code); `config/models.py` shadowed the module `logger`
+        (UnboundLocalError on the orphaned-config path); `audio_processor` wrote a read-only `config.threshold` property +
+        called `calibrate_threshold` missing on the silero VAD engine; `validator.py` checked removed `SystemConfig`
+        fields. Type-only fixes: `datetime._get_localization_data` return `Dict[str,List[str]]`→`Dict[str,Any]` (29);
+        `DomainMetrics` 6 lazily-seeded sub-metric fields declared (13, with the `hasattr`→truthiness seed-guard flip to
+        avoid a KeyError regression); `InteractiveRunnerMixin` mixin-attr annotations (10, which exposed 4 `self.core`
+        None-accesses I then guarded); `TextProcessingRequest.context` field added (9). **Hexagon preserved (user-flagged):
+        9/9 contracts kept; the `.core`/`self.core` phantoms fixed WITHOUT re-introducing `self.core` or a core import
+        (config captured at init); ports widened only where it's a genuine shared contract (`WebAPIPlugin.name`); new
+        imports all inward (components→config/providers, core→intents-domain).** Done across one in-file helper + targeted
+        fixes + 5 verified sub-agents. Verified: 0 `reportAttributeAccessIssue` + 0 `reportOptionalMemberAccess` repo-wide,
+        gate green with both rules enforced, suite 84=baseline (no regression despite the real bug fixes).
       - **4d** — `reportIncompatible{Method,Variable}Override` (34+42) — impls diverging from their ABC/base contract
         (architecturally meaningful post-ARCH); enable rules.
       - **4e** — the tail (`reportArgumentType` 113, `reportCallIssue` 91, `reportPossiblyUnboundVariable` 27,

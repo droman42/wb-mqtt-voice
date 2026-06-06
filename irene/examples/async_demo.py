@@ -15,7 +15,7 @@ from pathlib import Path
 from ..core.engine import AsyncVACore
 from ..runners.composition import build_core
 from ..core.session_manager import SessionManager
-from ..config.models import CoreConfig, API_PROFILE
+from ..config.models import CoreConfig, ComponentConfig
 from ..inputs.cli import CLIInput
 # TextOutput functionality now handled by unified workflow
 from ..utils.logging import setup_logging
@@ -45,7 +45,7 @@ async def async_demo():
     config = CoreConfig(
         name="Irene Demo",
         debug=True,
-        components=API_PROFILE  # Text-only mode for demo
+        components=ComponentConfig()  # Text-only mode for demo (hardware components off by default)
     )
     
     # Initialize core engine

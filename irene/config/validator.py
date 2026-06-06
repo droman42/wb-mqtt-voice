@@ -151,17 +151,7 @@ class ConfigValidator:
                 "Web input source is enabled but web API service is disabled",
                 suggestion="Enable system.web_api_enabled for web interface"
             )
-        
-        # Port conflict checks
-        if system.web_api_enabled and system.metrics_enabled:
-            if system.web_port == system.metrics_port:
-                self._add_result(
-                    ValidationLevel.ERROR,
-                    "system_capabilities", 
-                    f"Web API and metrics services cannot use the same port: {system.web_port}",
-                    suggestion="Configure different ports for web_port and metrics_port"
-                )
-    
+
     def _validate_component_consistency(self, config: CoreConfig) -> None:
         """Validate component configuration consistency"""
         components = config.components
@@ -702,10 +692,9 @@ class AudioConfigurationValidator:
         if providers:
             results.extend(self._validate_provider_requirements(asr_config, voice_trigger_config, providers))
         
-        # Create summary
+        # Create summary (counts are computed in ValidationSummary.__post_init__)
         summary = ValidationSummary(results)
-        summary._calculate_counts()
-        
+
         # Check for fatal errors
         fatal_errors = [r for r in results if r.level == ValidationLevel.ERROR]
         if fatal_errors:
