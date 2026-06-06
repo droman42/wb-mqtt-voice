@@ -1111,6 +1111,17 @@ _Apply to every remediation task below (from the 4 review docs + QUAL-25/26). So
       `/transcribe`, monitoring `/contextual-commands`(+`/performance`), nlu_analysis `/capabilities`/`/statistics`,
       `/system/status` (config-ui doesn't consume it — Overview uses `/intents/status`). Verified: models accept the real
       GET/PUT shapes incl. passthrough extras, suite 85=85 (0 net regression). (Found 2026-06-04.)
+- [ ] **QUAL-43** [DVALIDATE] (P2) — **Remove donation v1.0 dead validation code (split from UI-5 scope decision, 2026-06-06).**
+      The v1.1 split (QUAL-29) + the new wiring validator (QUAL-42) left v1.0-era validation as dead weight: **(1)**
+      `IntentAssetLoader._validate_json_schema()` validating against `assets/v1.0.json` (reachable only via the legacy
+      `_load_and_validate_donation` / unused `validate_donation_data` paths); **(2)** `irene/tools/intent_validator.py`
+      (standalone CLI validating v1.0.json, not wired into the loader/API); **(3)** `assets/v1.0.json` itself; **(4)** the
+      orphaned `CrossLanguageValidator.sync_parameters_across_languages()` no-op + its now-unused
+      `POST /donations/{h}/sync-parameters`-era plumbing; **(5)** the rule-based `suggest_translations()` + its
+      `POST /donations/{h}/suggest-translations` endpoint, **once UI-5 stops calling it** (superseded by QUAL-42's LLM
+      `translate`). **Sequencing:** do AFTER UI-5 lands (so removing the suggest-translations endpoint doesn't break the
+      old UI mid-flight). Verify no remaining importers; gates: pyright 0, import-contracts 9/9, dep-validator 55/55,
+      suite ≤baseline. Found during the donation-validation investigation + UI-5 scoping.
 - [ ] **QUAL-40** `[release]` (P2) — **Generated-TOML section headers dropped (real bug surfaced by QUAL-4e, 2026-06-06).**
       `ConfigManager._generate_provider_sections` / `_generate_normalizer_sections` (`config/manager.py` ~L459-495) build a
       per-iteration `section` header string but **never append it to `sections`**; the closing `["\n".join([section] +
