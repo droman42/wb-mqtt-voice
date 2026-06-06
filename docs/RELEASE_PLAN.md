@@ -1442,6 +1442,17 @@ Governed by Invariant #4 (config-ui must stay functional).
       config-ui pages, so it's its own task — but **foreseen now**: UI-2/3/5 author their new strings as i18n keys from
       day one (the §3.2 donation-editor card vocabulary is the first bundle) so nothing needs retrofitting. Design:
       `config-ui/docs/donation_editor_ux.md` §7. Refs: UI-1/2/3/5.
+- [ ] **UI-8** (P3) — **Dead-code sweep for config-ui orphans (surfaced during UI-5's v1.0 cleanup, 2026-06-06).**
+      A reachability analysis from the app entry (`src/main.tsx`/`App.tsx`) flagged modules unreachable yet present —
+      the strict ESLint gate can't catch unused *exports* (`--max-warnings 0` only sees unused locals/imports). UI-5
+      removed the v1.0 *donation* orphans; these remaining ones are **pre-existing and non-donation**, so they were left
+      out of UI-5 scope: `src/components/editors/{AudioOutputConfigSection,KeyValueOfStringArray,ObjectArrayEditor}.tsx`
+      + `src/utils/testWorkflow.ts`. **Verify each is genuinely dead** (no dynamic/lazy import, not referenced by a
+      route/registry the static sweep can't see) before deleting. **Borderline — decide, don't auto-delete:**
+      `src/utils/spacyAttributes.ts` (a spaCy attribute catalog) is currently unreferenced but may be reused by **UI-3**'s
+      human-card pattern model — keep if UI-3 will consume it, else remove. Consider adding the reachability check as a
+      lint/CI guard so orphans don't reaccumulate. DoD: `cd config-ui && npm run check && npm run build` pass; no
+      unreachable non-`*.gen.*` modules remain (or each remaining one has a documented reason). Refs: UI-5.
 
 ### Release Readiness (REL)
 - [ ] **REL-1** (P0) — Sign off the Definition-of-release checklist above (fill target + criteria).
