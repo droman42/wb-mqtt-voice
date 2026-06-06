@@ -55,7 +55,26 @@ class BaseRunner(ABC):
         self.runner_config = runner_config
         self.core: Optional[AsyncVACore] = None
         self._logger = logging.getLogger(f"{__name__}.{self.runner_config.name}")
-        
+
+    # Entry-point build-metadata contract (QUAL-3) — runners are `irene.runners`
+    # entry-points and must answer the same metadata methods as other entry-points.
+    # A runner coordinates components; the enabled components declare the real deps,
+    # so a runner has none of its own by default. Specific runners may override.
+    @classmethod
+    def get_python_dependencies(cls) -> List[str]:
+        """Python modules the runner itself requires (default: none)."""
+        return []
+
+    @classmethod
+    def get_platform_dependencies(cls) -> Dict[str, List[str]]:
+        """System packages the runner itself requires (default: none)."""
+        return {"linux.ubuntu": [], "linux.alpine": [], "macos": [], "windows": []}
+
+    @classmethod
+    def get_platform_support(cls) -> List[str]:
+        """Platforms the runner supports (default: all)."""
+        return ["linux.ubuntu", "linux.alpine", "macos", "windows"]
+
     async def run(self, args: Optional[List[str]] = None) -> int:
         """Main runner entry point with unified pattern"""
         try:

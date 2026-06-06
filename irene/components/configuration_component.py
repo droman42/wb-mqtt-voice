@@ -69,7 +69,8 @@ class ConfigurationComponent(Component, WebAPIPlugin):
     def platforms(self) -> List[str]:
         return []  # All platforms
     
-    def get_python_dependencies(self) -> list[str]:
+    @classmethod
+    def get_python_dependencies(cls) -> list[str]:
         """Return list of required Python modules for ConfigurationComponent"""
         return ["fastapi", "pydantic", "tomlkit"]  # Required for WebAPI, configuration validation, and comment preservation
     

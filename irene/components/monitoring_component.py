@@ -581,7 +581,8 @@ class MonitoringComponent(Component, WebAPIPlugin):
             return False
     
     # Component interface methods
-    def get_python_dependencies(self) -> List[str]:
+    @classmethod
+    def get_python_dependencies(cls) -> List[str]:
         """Python dependencies for monitoring component"""
         return [
             "fastapi>=0.100.0",

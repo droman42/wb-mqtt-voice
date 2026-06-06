@@ -12,6 +12,18 @@ newest entries near the top of each dated section.
 ## Action journal
 
 ### 2026-06-06
+- **QUAL-3 DONE — Category D entry-point metadata wiring; validator 55/55.** Reconciled first (Invariant #8): the
+  entry-point total is **55, not §D's 58** (the `settings` runner was removed in QUAL-21), and the live validator was
+  50/55 with 11 errors — same two defect classes as §D. **(a)** `MonitoringComponent`/`ConfigurationComponent`
+  `get_python_dependencies` were unbound **instance** methods (failed when the validator calls them unbound) → converted
+  to `@classmethod` to match the `EntryPointMetadata` `@classmethod @abstractmethod` contract; this also cleared 4 of the
+  QUAL-4d Cluster-A override-incompat errors (a deliberate synergy — these were the same defect viewed two ways). **(b)**
+  the `cli`/`vosk`/`webapi` runners lacked the entry-point metadata methods → added `@classmethod`
+  `get_python_dependencies`/`get_platform_dependencies`/`get_platform_support` to their shared `BaseRunner` (runners
+  coordinate components, so they declare no Python deps of their own by default; one edit cascades to all three).
+  Done-criterion met: `irene-dependency-validate --validate-all` = **55/55, 0 errors**. Verified 9/9 import contracts kept,
+  suite 84=baseline. The non-QUAL-3 remainder of 4d Cluster A (39: `name`/`is_available`/`initialize`/
+  `set_default_provider` port-signature alignments) is next.
 - **QUAL-4d PARTIAL (Cluster B+C done); Cluster A paused to do QUAL-3 first (user decision).** Triaged the 87
   override-incompat errors into three clusters. **C (40, `api/schemas.py`):** Pydantic field/Config narrowing
   (`success: Literal[False]`, discriminator `type`, inner `class Config`) is by-design and pyright's invariant-class-var
