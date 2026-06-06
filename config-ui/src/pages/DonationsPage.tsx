@@ -15,6 +15,8 @@ import CrossLanguageValidation from '@/components/donations/CrossLanguageValidat
 import ContractEditor from '@/components/donations/ContractEditor';
 import DonationValidationPanel from '@/components/donations/DonationValidationPanel';
 import ChoiceSurfacesEditor from '@/components/donations/ChoiceSurfacesEditor';
+import ExtractionFillersEditor from '@/components/donations/ExtractionFillersEditor';
+import type { ExtractionPattern } from '@/utils/patternModel';
 import ApplyChangesBar from '@/components/common/ApplyChangesBar';
 
 // Import analysis components
@@ -77,6 +79,7 @@ interface MethodDonationEditorProps {
 interface PhrasingParam {
   name: string;
   choice_surfaces?: Record<string, string[]>;
+  extraction_patterns?: ExtractionPattern[];
   [k: string]: unknown;
 }
 
@@ -311,9 +314,10 @@ function MethodDonationEditor({
                         />
                       </div>
 
-                      {/* UI-3: card-based value slots (replaces the raw SlotPatternsEditor) */}
+                      {/* UI-3: card-based shared value slots (replaces the raw SlotPatternsEditor).
+                          Per-parameter extraction reference these by label (see "How to find each value" below). */}
                       <div>
-                        <div className="text-sm font-medium mb-1">How to find each value</div>
+                        <div className="text-sm font-medium mb-1">Shared value slots</div>
                         <SlotCardPatternsEditor
                           value={method.slot_patterns || {}}
                           onChange={(val) => {
@@ -342,40 +346,57 @@ function MethodDonationEditor({
                         disabled={disabled}
                       />
 
-                      {/* UI-5: per-choice-parameter spoken surface forms (canonicals come from the contract) */}
+                      {/* UI-3 §3.4: per-parameter value extraction + (for choice/entity) spoken surface forms.
+                          Parameters come from the contract; phrasing fields are upserted by name. */}
                       {(() => {
                         const cMethod = contract?.method_donations.find(
                           m => m.method_name === method.method_name && m.intent_suffix === method.intent_suffix
                         );
-                        const choiceParams = (cMethod?.parameters ?? []).filter(
-                          p => (p.type === 'choice' || p.type === 'entity') && (p.choices?.length ?? 0) > 0
-                        );
-                        if (choiceParams.length === 0) return null;
+                        const cParams = cMethod?.parameters ?? [];
+                        if (cParams.length === 0) return null;
                         const phrasingParams = (method.parameters ?? []) as PhrasingParam[];
+
+                        const upsertParam = (name: string, patch: Partial<PhrasingParam>): void => {
+                          const params: PhrasingParam[] = [...phrasingParams];
+                          const pi = params.findIndex(p => p.name === name);
+                          if (pi >= 0) params[pi] = { ...params[pi], ...patch };
+                          else params.push({ name, ...patch });
+                          const newMethods = [...(v.method_donations || [])];
+                          newMethods[idx] = { ...method, parameters: params };
+                          set('method_donations', newMethods);
+                        };
+
                         return (
-                          <div className="space-y-3">
-                            {choiceParams.map((cp) => {
-                              const pParam = phrasingParams.find(p => p.name === cp.name);
-                              return (
-                                <div key={cp.name}>
-                                  <div className="text-sm font-medium mb-1">Parameter “{cp.name}”</div>
-                                  <ChoiceSurfacesEditor
-                                    canonicalChoices={cp.choices ?? []}
-                                    value={pParam?.choice_surfaces ?? {}}
-                                    disabled={disabled}
-                                    onChange={(surfaces) => {
-                                      const params: PhrasingParam[] = [...phrasingParams];
-                                      const pi = params.findIndex(p => p.name === cp.name);
-                                      if (pi >= 0) params[pi] = { ...params[pi], choice_surfaces: surfaces };
-                                      else params.push({ name: cp.name, choice_surfaces: surfaces });
-                                      const newMethods = [...(v.method_donations || [])];
-                                      newMethods[idx] = { ...method, parameters: params };
-                                      set('method_donations', newMethods);
-                                    }}
-                                  />
-                                </div>
-                              );
-                            })}
+                          <div>
+                            <div className="text-sm font-medium mb-1">How to find each value</div>
+                            <div className="space-y-3">
+                              {cParams.map((cp) => {
+                                const pParam = phrasingParams.find(p => p.name === cp.name);
+                                const isChoice = (cp.type === 'choice' || cp.type === 'entity') && (cp.choices?.length ?? 0) > 0;
+                                return (
+                                  <div key={cp.name} className="border rounded-xl p-3">
+                                    <div className="text-sm font-medium mb-2">
+                                      Parameter “{cp.name}” <span className="text-xs text-gray-500">({cp.type})</span>
+                                    </div>
+                                    <ExtractionFillersEditor
+                                      value={pParam?.extraction_patterns ?? []}
+                                      disabled={disabled}
+                                      onChange={(eps) => upsertParam(cp.name, { extraction_patterns: eps })}
+                                    />
+                                    {isChoice && (
+                                      <div className="mt-3">
+                                        <ChoiceSurfacesEditor
+                                          canonicalChoices={cp.choices ?? []}
+                                          value={pParam?.choice_surfaces ?? {}}
+                                          disabled={disabled}
+                                          onChange={(surfaces) => upsertParam(cp.name, { choice_surfaces: surfaces })}
+                                        />
+                                      </div>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
                           </div>
                         );
                       })()}

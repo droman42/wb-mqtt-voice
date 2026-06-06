@@ -1389,11 +1389,12 @@ Governed by Invariant #4 (config-ui must stay functional).
       (`apiClient.recognizeText`) showing the recognized intent + filled values + a match/no-match badge vs the
       method's intent. Rewired the phrasing method editor to the card editors ("What might the user say?" / "How to
       find each value" / "Does this work?"); **deleted** the raw `TokenPatternsEditor`/`SlotPatternsEditor` and the
-      v1.0 lemma↔token-pattern auto-sync (the per-card "forms" toggle replaces it). DoD met: `npm test` 40/40,
-      `npm run check` (type-check + lint + orphan guard) + `npm run build` pass. **Note (remaining §3.4 polish, not in
-      the literal DoD):** the per-parameter `extraction_patterns` surface isn't yet grouped under each contract param
-      (it has been un-editable since UI-5 removed `ParameterSpecEditor`); the UI-2 `FillerPattern` helpers exist for it
-      — fold it in as a small follow-up if wanted. **Sits on UI-2.**
+      v1.0 lemma↔token-pattern auto-sync (the per-card "forms" toggle replaces it). **§3.4 polish folded in:**
+      **`ExtractionFillersEditor`** (on the UI-2 `FillerPattern` helpers) edits each contract parameter's
+      `extraction_patterns` as labelled card rows, **grouped under the parameter** (with `choice_surfaces` for
+      choice/entity params) — closing the per-param extraction surface that had been un-editable since UI-5 removed
+      `ParameterSpecEditor`; method-level `slot_patterns` stay as "Shared value slots" referenced by label. DoD met:
+      `npm test` 40/40, `npm run check` (type-check + lint + orphan guard) + `npm run build` pass. **Sits on UI-2.**
 - [ ] **UI-4** [WORKFLOWVIZ] (P-deferred) — A config-ui **"Workflow Control" / pipeline-visualization page** (live
       React-Flow DAG of the component/provider pipeline, per-stage input/output inspection, provider switching, SSE
       updates). **Source design archived** at `docs/archive/workflow_control.md` (Sep-2025, never built). **Strongly
