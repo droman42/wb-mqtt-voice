@@ -7,15 +7,13 @@
 
 import { useState } from 'react';
 import { 
-  AlertTriangle, 
-  CheckCircle, 
-  RefreshCw, 
-  RotateCw, 
-  ChevronDown, 
+  AlertTriangle,
+  CheckCircle,
+  RefreshCw,
+  ChevronDown,
   ChevronRight,
   AlertCircle,
   Info,
-  ArrowRight,
   Settings
 } from 'lucide-react';
 import Badge from '@/components/ui/Badge';
@@ -32,7 +30,6 @@ export interface CrossLanguageValidationProps {
   validationReport: ValidationReport | null;
   completenessReport: CompletenessReport | null;
   onRefreshValidation: () => void;
-  onSyncParameters: (sourceLanguage: string, targetLanguages: string[]) => void;
   isLoading?: boolean;
   disabled?: boolean;
 }
@@ -40,11 +37,9 @@ export interface CrossLanguageValidationProps {
 const CrossLanguageValidation: React.FC<CrossLanguageValidationProps> = ({
   // handlerName not used in component logic
   handlerInfo,
-  activeLanguage,
   validationReport,
   completenessReport,
   onRefreshValidation,
-  onSyncParameters,
   isLoading = false,
   disabled = false
 }) => {
@@ -64,14 +59,6 @@ const CrossLanguageValidation: React.FC<CrossLanguageValidationProps> = ({
   const totalIssues = parameterIssues + methodIssues;
   const hasIssues = totalIssues > 0;
 
-  const handleSyncFromActive = () => {
-    if (disabled || isLoading) return;
-    
-    const targetLanguages = handlerInfo.languages.filter(lang => lang !== activeLanguage);
-    if (targetLanguages.length > 0) {
-      onSyncParameters(activeLanguage, targetLanguages);
-    }
-  };
 
   if (!hasMultipleLanguages) {
     return (
@@ -142,23 +129,6 @@ const CrossLanguageValidation: React.FC<CrossLanguageValidationProps> = ({
               <span>Refresh</span>
             </button>
 
-            {hasIssues && (
-              <button
-                onClick={handleSyncFromActive}
-                disabled={disabled || isLoading}
-                className={`
-                  flex items-center space-x-1 px-3 py-1.5 text-sm rounded-md transition-colors
-                  ${disabled || isLoading 
-                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
-                    : 'bg-green-50 text-green-700 hover:bg-green-100'
-                  }
-                `}
-                title={`Sync parameters from ${activeLanguage} to other languages`}
-              >
-                <RotateCw className="w-4 h-4" />
-                <span>Sync from {activeLanguage.toUpperCase()}</span>
-              </button>
-            )}
           </div>
         </div>
 
@@ -333,40 +303,6 @@ const CrossLanguageValidation: React.FC<CrossLanguageValidationProps> = ({
                 </div>
               )}
 
-              {/* Synchronization Actions */}
-              {hasIssues && (
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                  <div className="flex items-start space-x-3">
-                    <RotateCw className="w-5 h-5 text-blue-600 mt-0.5" />
-                    <div className="flex-1">
-                      <h4 className="text-sm font-medium text-blue-900 mb-2">Recommended Actions</h4>
-                      <p className="text-sm text-blue-800 mb-3">
-                        Use the active language ({activeLanguage.toUpperCase()}) as the source to synchronize 
-                        parameter structures across all languages. This will:
-                      </p>
-                      <ul className="text-sm text-blue-800 space-y-1 list-disc list-inside mb-3">
-                        <li>Copy parameter definitions to missing languages</li>
-                        <li>Ensure consistent parameter types across languages</li>
-                        <li>Preserve existing phrases and translations</li>
-                      </ul>
-                      <button
-                        onClick={handleSyncFromActive}
-                        disabled={disabled || isLoading}
-                        className={`
-                          flex items-center space-x-2 px-4 py-2 text-sm font-medium rounded-md transition-colors
-                          ${disabled || isLoading 
-                            ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
-                            : 'bg-blue-600 text-white hover:bg-blue-700'
-                          }
-                        `}
-                      >
-                        <ArrowRight className="w-4 h-4" />
-                        <span>Sync from {activeLanguage.toUpperCase()} to all languages</span>
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
             </>
           )}
         </div>

@@ -12,6 +12,8 @@ import { AlertCircle, Trash2, FileText, ChevronDown, ChevronRight, AlertTriangle
 import HandlerList from '@/components/donations/HandlerList';
 import LanguageTabs, { LanguageInfo } from '@/components/donations/LanguageTabs';
 import CrossLanguageValidation from '@/components/donations/CrossLanguageValidation';
+import ContractEditor from '@/components/donations/ContractEditor';
+import DonationValidationPanel from '@/components/donations/DonationValidationPanel';
 import ApplyChangesBar from '@/components/common/ApplyChangesBar';
 
 // Import analysis components
@@ -45,7 +47,9 @@ import type {
   // Phase 4: Cross-language validation types
   ValidationReport,
   CompletenessReport,
-  CrossLanguageValidationResponse
+  CrossLanguageValidationResponse,
+  // v1.1 contract (UI-5)
+  DonationContract
 } from '@/types';
 
 // Note: Utility functions available for future use
@@ -511,6 +515,38 @@ const DonationsPage: React.FC = () => {
   const [validationReport, setValidationReport] = useState<ValidationReport | null>(null);
   const [completenessReport, setCompletenessReport] = useState<CompletenessReport | null>(null);
 
+  // UI-5: language-neutral contract editing (per handler), separate from per-language phrasing.
+  const [contract, setContract] = useState<DonationContract | null>(null);
+  const [contractOriginal, setContractOriginal] = useState<string>('');
+  const [contractStatus, setContractStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const contractChanged = contract != null && JSON.stringify(contract) !== contractOriginal;
+
+  const loadContract = useCallback(async (handlerName: string) => {
+    try {
+      const res = await apiClient.getDonationContract(handlerName);
+      setContract(res.contract as DonationContract);
+      setContractOriginal(JSON.stringify(res.contract));
+      setContractStatus('idle');
+    } catch {
+      setContract(null);
+      setContractOriginal('');
+    }
+  }, []);
+
+  const handleSaveContract = useCallback(async () => {
+    if (!selectedHandler || !contract) return;
+    try {
+      setContractStatus('saving');
+      await apiClient.updateDonationContract(selectedHandler, contract);
+      setContractOriginal(JSON.stringify(contract));
+      setContractStatus('saved');
+      setTimeout(() => setContractStatus('idle'), 2000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to save contract');
+      setContractStatus('error');
+    }
+  }, [selectedHandler, contract]);
+
   // Helper functions for language management
   const getAvailableLanguagesForHandler = (handlerName: string): LanguageInfo[] => {
     const handler = handlersList.find(h => h.handler_name === handlerName);
@@ -645,35 +681,6 @@ const DonationsPage: React.FC = () => {
     }
   }, [selectedHandler]);
 
-  const handleSyncParameters = useCallback(async (sourceLanguage: string, targetLanguages: string[]) => {
-    if (!selectedHandler) return;
-    
-    try {
-      await apiClient.syncParameters(selectedHandler, sourceLanguage, targetLanguages);
-      
-      // Refresh validation after sync
-      await loadCrossLanguageValidation(selectedHandler);
-      
-      // Reload donations for affected languages
-      for (const targetLang of targetLanguages) {
-        await loadDonation(selectedHandler, targetLang);
-      }
-      
-      console.log(`Successfully synced parameters from ${sourceLanguage} to ${targetLanguages.join(', ')}`);
-    } catch (err) {
-      // Handle 404 gracefully - the sync API might not be implemented yet
-      if (err instanceof Error && err.message.includes('404')) {
-        console.warn('Parameter sync API not implemented yet');
-        setError('Parameter synchronization feature is not available yet. Please sync parameters manually.');
-        return;
-      }
-      
-      console.error('Failed to sync parameters:', err);
-      setError(err instanceof Error ? err.message : 'Failed to sync parameters');
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional scoped/mount load (load fns are not memoized)
-  }, [selectedHandler]);
-
   // Load initial data
   useEffect(() => {
     void Promise.all([
@@ -693,6 +700,16 @@ const DonationsPage: React.FC = () => {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional scoped/mount load (load fns are not memoized)
   }, [selectedHandler, selectedLanguage, donations]);
+
+  // Load the language-neutral contract when the handler changes (UI-5).
+  useEffect(() => {
+    if (selectedHandler) {
+      void loadContract(selectedHandler);
+    } else {
+      setContract(null);
+      setContractOriginal('');
+    }
+  }, [selectedHandler, loadContract]);
 
   // Load cross-language validation when handler changes and has multiple languages
   useEffect(() => {
@@ -1009,7 +1026,6 @@ const DonationsPage: React.FC = () => {
               validationReport={validationReport}
               completenessReport={completenessReport}
               onRefreshValidation={handleRefreshValidation}
-              onSyncParameters={(sourceLanguage, targetLanguages) => void handleSyncParameters(sourceLanguage, targetLanguages)}
             />
 
             {/* Cross-Language Validation Panel */}
@@ -1022,12 +1038,21 @@ const DonationsPage: React.FC = () => {
                   validationReport={validationReport}
                   completenessReport={completenessReport}
                   onRefreshValidation={handleRefreshValidation}
-                  onSyncParameters={(sourceLanguage, targetLanguages) => void handleSyncParameters(sourceLanguage, targetLanguages)}
                   isLoading={saveStatus === 'saving'}
                   disabled={saveStatus === 'saving'}
                 />
               </div>
             )}
+
+            {/* QUAL-42: wiring report + LLM translation validation/drafting */}
+            <div className="border-b border-gray-200 p-4 bg-gray-50">
+              <DonationValidationPanel
+                handlerName={selectedHandler}
+                sourceLanguage={selectedLanguage}
+                availableLanguages={getAvailableLanguagesForHandler(selectedHandler).map(l => l.code)}
+                disabled={saveStatus === 'saving' || contractStatus === 'saving'}
+              />
+            </div>
 
             {/* Header */}
             <div className="border-b border-gray-200 p-6 bg-white">
@@ -1048,6 +1073,38 @@ const DonationsPage: React.FC = () => {
 
             {/* Editor Content */}
             <div className="flex-1 overflow-auto p-6">
+              {/* UI-5: language-neutral contract (structural) — edited once per handler */}
+              {contract && (
+                <div className="mb-6">
+                  <ContractEditor
+                    contract={contract}
+                    onChange={setContract}
+                    disabled={contractStatus === 'saving'}
+                  />
+                  <div className="flex items-center gap-2 mt-3">
+                    <button
+                      onClick={() => void handleSaveContract()}
+                      disabled={!contractChanged || contractStatus === 'saving'}
+                      className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                    >
+                      {contractStatus === 'saving' ? 'Saving…' : 'Save contract'}
+                    </button>
+                    <button
+                      onClick={() => setContract(JSON.parse(contractOriginal) as DonationContract)}
+                      disabled={!contractChanged || contractStatus === 'saving'}
+                      className="px-4 py-2 text-sm border rounded-lg hover:bg-gray-50 disabled:opacity-50"
+                    >
+                      Revert
+                    </button>
+                    {contractStatus === 'saved' && <span className="text-sm text-green-700">Contract saved</span>}
+                    {contractChanged && <Badge variant="warning">Unsaved contract changes</Badge>}
+                  </div>
+                </div>
+              )}
+
+              <div className="text-lg font-semibold text-gray-900 mb-3">
+                Phrasing — {selectedLanguage?.toUpperCase()}
+              </div>
               {selectedLanguage && donations[`${selectedHandler}:${selectedLanguage}`] ? (
                 <div>
                   {/* Show notice for empty donations */}

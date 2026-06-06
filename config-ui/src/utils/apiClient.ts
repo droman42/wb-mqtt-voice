@@ -25,10 +25,6 @@ import type {
   ReloadDonationResponse,
   // Phase 4: Cross-language validation types
   CrossLanguageValidationResponse,
-  SyncParametersRequest,
-  SyncParametersResponse,
-  SuggestTranslationsRequest,
-  SuggestTranslationsResponse,
   // v1.1 donation contract + QUAL-42 validation/translation types (UI-5)
   DonationContract,
   DonationContractResponse,
@@ -426,43 +422,9 @@ class IreneApiClient {
     );
   }
 
-  /**
-   * Sync parameter structures across languages
-   */
-  async syncParameters(
-    handlerName: string,
-    sourceLanguage: string,
-    targetLanguages: string[]
-  ): Promise<SyncParametersResponse> {
-    const requestData: SyncParametersRequest = {
-      source_language: sourceLanguage,
-      target_languages: targetLanguages,
-    };
-
-    return this.post<SyncParametersResponse>(
-      `/intents/donations/${encodeURIComponent(handlerName)}/sync-parameters`,
-      requestData
-    );
-  }
-
-  /**
-   * Get translation suggestions for missing phrases
-   */
-  async suggestTranslations(
-    handlerName: string,
-    sourceLanguage: string,
-    targetLanguage: string
-  ): Promise<SuggestTranslationsResponse> {
-    const requestData: SuggestTranslationsRequest = {
-      source_language: sourceLanguage,
-      target_language: targetLanguage,
-    };
-
-    return this.post<SuggestTranslationsResponse>(
-      `/intents/donations/${encodeURIComponent(handlerName)}/suggest-translations`,
-      requestData
-    );
-  }
+  // UI-5: syncParameters + suggestTranslations removed — sync-parameters is gone from the backend
+  // (params are single-source in the contract under v1.1), and rule-based suggest-translations is superseded
+  // by the LLM `translateDonation` service (QUAL-42). Backend endpoint cleanup tracked in QUAL-43.
 
   // ============================================================
   // SYSTEM STATUS METHODS
