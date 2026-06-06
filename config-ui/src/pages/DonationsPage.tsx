@@ -6,7 +6,7 @@
  */
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { AlertCircle, Trash2, FileText, ChevronDown, ChevronRight, AlertTriangle, RefreshCw } from 'lucide-react';
+import { AlertCircle, Trash2, FileText, ChevronDown, ChevronRight } from 'lucide-react';
 
 // Import components
 import HandlerList from '@/components/donations/HandlerList';
@@ -31,8 +31,9 @@ import Section from '@/components/ui/Section';
 import Input from '@/components/ui/Input';
 import Badge from '@/components/ui/Badge';
 import ArrayOfStringsEditor from '@/components/editors/ArrayOfStringsEditor';
-import TokenPatternsEditor from '@/components/editors/TokenPatternsEditor';
-import SlotPatternsEditor from '@/components/editors/SlotPatternsEditor';
+import CardPatternsEditor from '@/components/donations/CardPatternsEditor';
+import SlotCardPatternsEditor from '@/components/donations/SlotCardPatternsEditor';
+import PatternTester from '@/components/donations/PatternTester';
 import ExamplesEditor from '@/components/editors/ExamplesEditor';
 import LemmasEditor from '@/components/editors/LemmasEditor';
 
@@ -69,7 +70,6 @@ interface MethodDonationEditorProps {
   selectedHandler?: string;
   expandedMethods?: Record<string, Set<number>>;
   onToggleMethodExpansion?: (handlerName: string, methodIndex: number) => void;
-  extractLemmasFromTokenPatterns?: (tokenPatterns: Array<Array<Record<string, any>>>) => string[];
   contract?: DonationContract | null;
 }
 
@@ -89,7 +89,6 @@ function MethodDonationEditor({
   expandedMethods,
   onToggleMethodExpansion,
   currentLanguage,
-  extractLemmasFromTokenPatterns,
   contract
 }: MethodDonationEditorProps & { currentLanguage?: string }) {
   
@@ -106,14 +105,6 @@ function MethodDonationEditor({
   const v = value ?? { description: '', handler_domain: '', method_donations: [] };
   const set = (k: keyof DonationData, val: any): void => {
     onChange({ ...(value ?? {}), [k]: val });
-  };
-
-  // Helper function for checking sync issues
-  const hasLemmaSyncIssues = (method: any): boolean => {
-    if (!extractLemmasFromTokenPatterns) return false;
-    const extractedLemmas = extractLemmasFromTokenPatterns(method.token_patterns || []);
-    const currentLemmas = method.lemmas || [];
-    return extractedLemmas.some(lemma => !currentLemmas.includes(lemma));
   };
 
   // Helper functions for method expansion state
@@ -197,61 +188,7 @@ function MethodDonationEditor({
       </Section>
 
       <Section title="Methods" badge={<Badge variant="info">{v.method_donations?.length || 0} methods</Badge>}>
-        {/* Validation summary */}
-        {(() => {
-          const methodsWithSyncIssues = (v.method_donations || []).filter(hasLemmaSyncIssues);
-          if (methodsWithSyncIssues.length > 0) {
-            const handleSyncAll = () => {
-              const newMethods = [...(v.method_donations || [])];
-              let hasChanges = false;
-              
-              methodsWithSyncIssues.forEach((method, _) => {
-                const methodIndex = newMethods.findIndex(m => m === method);
-                if (methodIndex !== -1 && extractLemmasFromTokenPatterns) {
-                  const extractedLemmas = extractLemmasFromTokenPatterns(method.token_patterns || []);
-                  const currentLemmas = method.lemmas || [];
-                  const mergedLemmas = [...new Set([...currentLemmas, ...extractedLemmas])];
-                  
-                  // Only update if there are actually new lemmas to add
-                  if (mergedLemmas.length > currentLemmas.length) {
-                    newMethods[methodIndex] = { ...method, lemmas: mergedLemmas };
-                    hasChanges = true;
-                  }
-                }
-              });
-              
-              if (hasChanges) {
-                set('method_donations', newMethods);
-              }
-            };
-            
-            return (
-              <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-                <div className="flex items-center justify-between mb-1">
-                  <div className="flex items-center text-amber-800 text-sm font-medium">
-                    <AlertTriangle className="w-4 h-4 mr-2" />
-                    Sync Issues Detected
-                  </div>
-                  <button
-                    onClick={handleSyncAll}
-                    disabled={disabled}
-                    className="flex items-center text-xs px-3 py-1 bg-amber-600 text-white rounded hover:bg-amber-700 disabled:opacity-50 transition-colors"
-                    title="Automatically sync lemmas for all methods with issues"
-                  >
-                    <RefreshCw className="w-3 h-3 mr-1" />
-                    Sync All ({methodsWithSyncIssues.length})
-                  </button>
-                </div>
-                <div className="text-amber-700 text-xs">
-                  {methodsWithSyncIssues.length} method{methodsWithSyncIssues.length !== 1 ? 's' : ''} ha{methodsWithSyncIssues.length === 1 ? 's' : 've'} lemmas that need to be synced with token patterns. 
-                  Use the sync buttons or click "Sync All" to automatically add missing lemmas.
-                </div>
-              </div>
-            );
-          }
-          return null;
-        })()}
-        
+
         <div className="space-y-4">
           {(v.method_donations?.map((method, idx) => {
             const isExpanded = isMethodExpanded(idx);
@@ -357,54 +294,42 @@ function MethodDonationEditor({
                           set('method_donations', newMethods);
                         }}
                         disabled={disabled}
-                        tokenPatterns={method.token_patterns || []}
-                        slotPatterns={method.slot_patterns || {}}
-                        onAutoSync={() => {
-                          if (!extractLemmasFromTokenPatterns) return;
-                          const extractedLemmas = extractLemmasFromTokenPatterns(method.token_patterns || []);
-                          const currentLemmas = method.lemmas || [];
-                          const mergedLemmas = [...new Set([...currentLemmas, ...extractedLemmas])];
-                          
-                          const newMethods = [...(v.method_donations || [])];
-                          newMethods[idx] = { ...method, lemmas: mergedLemmas };
-                          set('method_donations', newMethods);
-                        }}
-                        showSyncWarning={hasLemmaSyncIssues(method)}
-                        conflicts={conflicts}
                       />
 
-                      <TokenPatternsEditor
-                        value={method.token_patterns || []}
-                        onChange={(val) => {
-                          const newMethods = [...(v.method_donations || [])];
-                          newMethods[idx] = { ...method, token_patterns: val };
-                          set('method_donations', newMethods);
-                        }}
-                        globalParams={globalParamNames}
-                        disabled={disabled}
-                        currentLemmas={method.lemmas || []}
-                        onLemmasSync={(extractedLemmas) => {
-                          const currentLemmas = method.lemmas || [];
-                          const allExtractedLemmas = extractLemmasFromTokenPatterns?.(method.token_patterns || []) || [];
-                          const mergedLemmas = [...new Set([...currentLemmas, ...allExtractedLemmas, ...extractedLemmas])];
-                          
-                          const newMethods = [...(v.method_donations || [])];
-                          newMethods[idx] = { ...method, lemmas: mergedLemmas };
-                          set('method_donations', newMethods);
-                        }}
-                        showSyncIndicator={true}
-                      />
+                      {/* UI-3: card-based "ways of saying it" (replaces the raw TokenPatternsEditor) */}
+                      <div>
+                        <div className="text-sm font-medium mb-1">What might the user say?</div>
+                        <CardPatternsEditor
+                          value={method.token_patterns || []}
+                          onChange={(val) => {
+                            const newMethods = [...(v.method_donations || [])];
+                            newMethods[idx] = { ...method, token_patterns: val };
+                            set('method_donations', newMethods);
+                          }}
+                          disabled={disabled}
+                          itemLabel="way of saying it"
+                        />
+                      </div>
 
-                      <SlotPatternsEditor
-                        value={method.slot_patterns || {}}
-                        onChange={(val) => {
-                          const newMethods = [...(v.method_donations || [])];
-                          newMethods[idx] = { ...method, slot_patterns: val };
-                          set('method_donations', newMethods);
-                        }}
-                        globalParams={globalParamNames}
-                        disabled={disabled}
-                      />
+                      {/* UI-3: card-based value slots (replaces the raw SlotPatternsEditor) */}
+                      <div>
+                        <div className="text-sm font-medium mb-1">How to find each value</div>
+                        <SlotCardPatternsEditor
+                          value={method.slot_patterns || {}}
+                          onChange={(val) => {
+                            const newMethods = [...(v.method_donations || [])];
+                            newMethods[idx] = { ...method, slot_patterns: val };
+                            set('method_donations', newMethods);
+                          }}
+                          disabled={disabled}
+                        />
+                      </div>
+
+                      {/* UI-3 §6: validate a phrasing by example against the real recognizer */}
+                      <div>
+                        <div className="text-sm font-medium mb-1">Does this work?</div>
+                        <PatternTester expectedIntent={`${v.handler_domain}.${method.intent_suffix}`} />
+                      </div>
 
                       <ExamplesEditor
                         value={method.examples || []}
@@ -494,42 +419,6 @@ function MethodDonationEditor({
 
 const DonationsPage: React.FC = () => {
   // Helper function to extract lemmas from token patterns and slot patterns
-  const extractLemmasFromTokenPatterns = (tokenPatterns: Array<Array<Record<string, any>>>, slotPatterns?: Record<string, Array<Array<Record<string, any>>>>): string[] => {
-    const extractedLemmas: Set<string> = new Set();
-    
-    // Extract from token patterns
-    tokenPatterns.forEach(pattern => {
-      pattern.forEach(token => {
-        if (token.LEMMA) {
-          if (typeof token.LEMMA === 'string') {
-            extractedLemmas.add(token.LEMMA);
-          } else if (token.LEMMA.IN && Array.isArray(token.LEMMA.IN)) {
-            token.LEMMA.IN.forEach((lemma: string) => extractedLemmas.add(lemma));
-          }
-        }
-      });
-    });
-    
-    // Extract from slot patterns
-    if (slotPatterns) {
-      Object.values(slotPatterns).forEach(slotPatternArray => {
-        slotPatternArray.forEach(pattern => {
-          pattern.forEach(token => {
-            if (token.LEMMA) {
-              if (typeof token.LEMMA === 'string') {
-                extractedLemmas.add(token.LEMMA);
-              } else if (token.LEMMA.IN && Array.isArray(token.LEMMA.IN)) {
-                token.LEMMA.IN.forEach((lemma: string) => extractedLemmas.add(lemma));
-              }
-            }
-          });
-        });
-      });
-    }
-    
-    return Array.from(extractedLemmas);
-  };
-
   // Core state - Updated for language-aware architecture
   const [handlersList, setHandlersList] = useState<HandlerLanguageInfo[]>([]);
   const [donations, setDonations] = useState<Record<string, DonationData>>({});
@@ -1182,7 +1071,6 @@ const DonationsPage: React.FC = () => {
                     expandedMethods={expandedMethods}
                     onToggleMethodExpansion={toggleMethodExpansion}
                     currentLanguage={selectedLanguage}
-                    extractLemmasFromTokenPatterns={extractLemmasFromTokenPatterns}
                     contract={contract}
                   />
                 </div>

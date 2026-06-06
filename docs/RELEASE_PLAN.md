@@ -1379,8 +1379,21 @@ Governed by Invariant #4 (config-ui must stay functional).
       provided at the label level (extraction/slot helpers preserve labels verbatim); the param↔label association is
       applied by **UI-3** using the contract. DoD met: `npm test` (40/40), `npm run check` (type-check + lint + orphan
       guard) + `npm run build` pass. This is the engine **UI-3** sits on.
-- [ ] **UI-3** [DEDITOR] (P2) — Reimplement `TokenPatternsEditor`/`SlotPatternsEditor` on the new model (retain
-      raw-spaCy advanced mode); add "test pattern against sample text" via the NLU recognize endpoint.
+- [x] **UI-3** [DEDITOR] (P2) — **DONE 2026-06-06.** Reimplemented the pattern editors on the UI-2 card model and
+      added test-against-text. **`CardEditor`** (one word card: the 5 friendly kinds + per-card **"Advanced"** escape
+      hatch → `SpacyAttributeEditor`, with "Back to cards" via `decompileToken`; "include its forms" toggle +
+      optional/can-repeat). **`CardPatternsEditor`** (replaces `TokenPatternsEditor` — a list of "ways of saying it";
+      controlled over `SpacyPattern[]` but keeps decompiled cards in local state and only compiles on edits, so the
+      raw editor stays stable and Cancel/revert re-syncs). **`SlotCardPatternsEditor`** (replaces `SlotPatternsEditor`).
+      **`PatternTester`** (UI-1 §6): a sample-sentence box → the **real recognizer** `POST /nlu/recognize`
+      (`apiClient.recognizeText`) showing the recognized intent + filled values + a match/no-match badge vs the
+      method's intent. Rewired the phrasing method editor to the card editors ("What might the user say?" / "How to
+      find each value" / "Does this work?"); **deleted** the raw `TokenPatternsEditor`/`SlotPatternsEditor` and the
+      v1.0 lemma↔token-pattern auto-sync (the per-card "forms" toggle replaces it). DoD met: `npm test` 40/40,
+      `npm run check` (type-check + lint + orphan guard) + `npm run build` pass. **Note (remaining §3.4 polish, not in
+      the literal DoD):** the per-parameter `extraction_patterns` surface isn't yet grouped under each contract param
+      (it has been un-editable since UI-5 removed `ParameterSpecEditor`); the UI-2 `FillerPattern` helpers exist for it
+      — fold it in as a small follow-up if wanted. **Sits on UI-2.**
 - [ ] **UI-4** [WORKFLOWVIZ] (P-deferred) — A config-ui **"Workflow Control" / pipeline-visualization page** (live
       React-Flow DAG of the component/provider pipeline, per-stage input/output inspection, provider switching, SSE
       updates). **Source design archived** at `docs/archive/workflow_control.md` (Sep-2025, never built). **Strongly

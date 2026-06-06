@@ -12,6 +12,16 @@ newest entries near the top of each dated section.
 ## Action journal
 
 ### 2026-06-06
+- **UI-3 DONE — card-based pattern editors (on UI-2) + test-against-text.** Built `CardEditor` (5 friendly card kinds
+  + per-card raw-spaCy "Advanced" escape hatch via SpacyAttributeEditor + "include its forms"/optional/repeat),
+  `CardPatternsEditor` (replaces the raw TokenPatternsEditor; controlled over SpacyPattern[] but holds decompiled
+  cards in local state, compiling only on edits so the advanced raw stays stable and revert re-syncs),
+  `SlotCardPatternsEditor` (replaces SlotPatternsEditor), and `PatternTester` (UI-1 §6 — sample text → the real
+  `POST /nlu/recognize`, showing the recognized intent + filled values + match badge). Rewired the phrasing method
+  editor to the cards ("What might the user say?" / "How to find each value" / "Does this work?"); deleted the raw
+  Token/Slot editors and the v1.0 lemma↔token-pattern auto-sync (the per-card forms toggle replaces it). npm test
+  40/40, check + build green. Remaining §3.4 polish (not in the DoD): per-parameter extraction_patterns grouping —
+  the UI-2 FillerPattern helpers exist for it.
 - **UI-2 DONE — the frontend-only pattern translation engine `patternModel.ts`.** decompile/compile between raw spaCy
   token dicts and the human card model (word/one-of/number/any-word/the-rest/advanced), with the §3.3 regex reductions
   and optional/repeat↔OP. Lossless by construction: each card preserves its source encoding (TEXT/LOWER/LEMMA, IN vs

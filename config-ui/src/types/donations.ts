@@ -57,3 +57,7 @@ export type TranslationValidationResponse = Schemas['TranslationValidationRespon
 export type TranslatedMethod = Schemas['TranslatedMethodSchema'];
 export type TranslateRequest = Schemas['TranslateRequest'];
 export type TranslateResponse = Schemas['TranslateResponse'];
+
+// ----- UI-3: "test against sample text" via the real recognizer -----
+
+export type RecognizeResponse = Schemas['IntentResponse'];

@@ -33,6 +33,8 @@ import type {
   TranslationValidationResponse,
   TranslateRequest,
   TranslateResponse,
+  // UI-3: real-recognizer test
+  RecognizeResponse,
   // Phase 6: Template management types
   TemplateHandlerListResponse,
   TemplateContentResponse,
@@ -407,6 +409,13 @@ class IreneApiClient {
       `/intents/donations/${encodeURIComponent(handlerName)}/translate`,
       body
     );
+  }
+
+  /**
+   * UI-3: run text through the REAL recognizer (the same path production uses), to test a phrasing by example.
+   */
+  async recognizeText(text: string, sessionId = 'donation_editor_test'): Promise<RecognizeResponse> {
+    return this.post<RecognizeResponse>('/nlu/recognize', { text, context: { session_id: sessionId } });
   }
 
   // ============================================================
