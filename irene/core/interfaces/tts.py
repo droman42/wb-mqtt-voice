@@ -82,7 +82,7 @@ class TTSPlugin(EntryPointMetadata):
         """
         pass
         
-    def is_available(self) -> bool:
+    async def is_available(self) -> bool:
         """
         Check if the TTS engine is available and functional.
         

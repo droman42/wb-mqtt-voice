@@ -91,7 +91,7 @@ class ASRComponent(Component, ASRPlugin, WebAPIPlugin, ASRPort):
         self._metrics_push_task: Optional[asyncio.Task] = None
         self._metrics_push_interval = 60.0  # seconds
         
-    async def initialize(self, core=None) -> None:
+    async def initialize(self, core) -> None:
         """Initialize ASR providers from configuration"""
         await super().initialize(core)
         try:

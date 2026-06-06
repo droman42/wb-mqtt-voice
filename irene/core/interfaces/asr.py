@@ -79,7 +79,7 @@ class ASRPlugin(EntryPointMetadata):
         """
         pass
         
-    def is_available(self) -> bool:
+    async def is_available(self) -> bool:
         """
         Check if ASR system is available.
         

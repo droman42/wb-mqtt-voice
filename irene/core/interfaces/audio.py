@@ -109,7 +109,7 @@ class AudioPlugin(EntryPointMetadata):
         """
         return False
         
-    def is_available(self) -> bool:
+    async def is_available(self) -> bool:
         """
         Check if audio playback is available.
         

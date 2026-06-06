@@ -81,7 +81,7 @@ class TTSComponent(Component, TTSPlugin, WebAPIPlugin, TTSPort):
         super().__init__()
         self.providers: Dict[str, TTSProvider] = {}
         self._loaded_providers: Dict[str, TTSProvider] = {}  # Cache for lazy-loaded providers
-        self.default_provider: str = "console"
+        self.default_provider: Optional[str] = "console"
         self.fallback_providers: List[str] = ["console"]
         self.core = None
         self._provider_configs: Dict[str, Dict[str, Any]] = {}  # Cache provider configs
@@ -90,7 +90,7 @@ class TTSComponent(Component, TTSPlugin, WebAPIPlugin, TTSPort):
         # Dynamic provider discovery from entry-points (replaces hardcoded classes)
         self._provider_classes: Dict[str, type] = {}
         
-    async def initialize(self, core=None) -> None:
+    async def initialize(self, core) -> None:
         """Initialize providers with concurrent loading and lazy loading support"""
         await super().initialize(core)
         self.core = core
@@ -435,7 +435,7 @@ class TTSComponent(Component, TTSPlugin, WebAPIPlugin, TTSPort):
             languages.update(provider_languages)
         return list(languages)
     
-    def is_available(self) -> bool:
+    async def is_available(self) -> bool:
         """Check if at least one provider is available"""
         return len(self.providers) > 0
     

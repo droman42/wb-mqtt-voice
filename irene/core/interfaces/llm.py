@@ -91,7 +91,7 @@ class LLMPlugin(EntryPointMetadata):
             "capabilities": self.get_supported_tasks()
         }
         
-    def is_available(self) -> bool:
+    async def is_available(self) -> bool:
         """
         Check if LLM system is available.
         

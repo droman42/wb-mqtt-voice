@@ -66,7 +66,7 @@ class InputManager:
             if self.input_config is None or self.input_config.microphone:
                 try:
                     mic_input = MicrophoneInput()
-                    if mic_input.is_available():
+                    if await mic_input.is_available():
                         # Apply microphone configuration
                         if self.input_config and self.input_config.microphone_config:
                             mic_config = self.input_config.microphone_config
@@ -91,7 +91,7 @@ class InputManager:
             if self.input_config is None or self.input_config.web:
                 try:
                     web_input = WebInput()
-                    if web_input.is_available():
+                    if await web_input.is_available():
                         if self.input_config and self.input_config.web_config:
                             await web_input.configure_input(**self.input_config.web_config.model_dump())
                         await self.add_source("web", web_input)
@@ -141,7 +141,7 @@ class InputManager:
     
     async def add_source(self, name: str, source: InputPort) -> None:
         """Add an input source"""
-        if not source.is_available():
+        if not await source.is_available():
             logger.warning(f"Input source '{name}' is not available")
             return
             
@@ -231,24 +231,24 @@ class InputManager:
         """
         return await self._input_queue.get()
         
-    def get_available_sources(self) -> List[str]:
+    async def get_available_sources(self) -> List[str]:
         """Get list of available input source names"""
-        return [name for name, source in self._sources.items() if source.is_available()]
+        return [name for name, source in self._sources.items() if await source.is_available()]
         
     def get_active_sources(self) -> List[str]:
         """Get list of active input source names"""
         return self._active_sources.copy()
         
-    def get_source_info(self, name: str) -> Optional[Dict[str, Any]]:
+    async def get_source_info(self, name: str) -> Optional[Dict[str, Any]]:
         """Get information about a specific input source"""
         if name not in self._sources:
             return None
-            
+
         source = self._sources[name]
         return {
             "name": name,
             "type": source.get_input_type(),
-            "available": source.is_available(),
+            "available": await source.is_available(),
             "listening": source.is_listening(),
             "settings": source.get_settings()
         }

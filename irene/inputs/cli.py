@@ -101,7 +101,7 @@ class CLIInput(InputPort):
         """Check if currently listening for input"""
         return self._listening
         
-    def is_available(self) -> bool:
+    async def is_available(self) -> bool:
         """CLI is always available"""
         return True
         

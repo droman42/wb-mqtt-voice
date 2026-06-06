@@ -486,25 +486,26 @@ See `docs/review/phase1_architecture_map.md` §5.
         imports all inward (components→config/providers, core→intents-domain).** Done across one in-file helper + targeted
         fixes + 5 verified sub-agents. Verified: 0 `reportAttributeAccessIssue` + 0 `reportOptionalMemberAccess` repo-wide,
         gate green with both rules enforced, suite 84=baseline (no regression despite the real bug fixes).
-      - **4d** [~ PARTIAL] — `reportIncompatible{Method,Variable}Override` (87: 53 var + 34 method). **Cluster B+C DONE
-        2026-06-06; Cluster A paused to do QUAL-3 first (user, 2026-06-06).** **C — schemas (40):** Pydantic field/Config
+      - **4d ✓ DONE 2026-06-06** — `reportIncompatible{Method,Variable}Override` (87) cleared, both rules **enabled**.
+        **A — port-hierarchy harmonization (done):** `name` → read-only `@property` on `WebAPIPlugin`/`ComponentPort`
+        (all 11 components already implement it; removed the now-dead `Component.__init__` dynamic `self.name` branch);
+        **`is_available` → async everywhere** (user decision — capability ports + inputs + `tts_component` made `async`,
+        with the `await` cascade propagated through `inputs/manager.py`'s sources, matching the already-async
+        `Component.base`); `set_default_provider` base/port param `name`→`provider_name`; `default_provider`→`Optional[str]`;
+        `initialize` made **required** on `Component.base`+`ComponentPort` (the 9 impls revert to `(self, core)`) — **note:
+        my earlier `(self, core=None)` attempt regressed the 4b gate (untyped `=None` → `core` inferred `None` → 20
+        `reportOptionalMemberAccess`, committed in 37f245a without running the full `uv run pyright`; fixed by requiring
+        core); singletons (`get_status`→async, `extract_*` port params, `get_component` via `ComponentPort` extends
+        `ComponentControlPort` [core→intents, contract-permitted], `process_audio_stream` async-gen stub, `get_config_schema`
+        aligned to the inherited classmethod). **Hexagon: 9/9 import contracts kept; one new inward import
+        (core/interfaces→intents.ports).** **C — schemas (40):** Pydantic field/Config
         narrowing (`success: Literal[False]`, discriminator `type`, inner `class Config`) is by-design, not a bug; pyright's
         invariant-class-var rule doesn't fit it → scoped-off via a documented file-level `# pyright:
         reportIncompatibleVariableOverride=false` in `irene/api/schemas.py` only (rule stays enforced everywhere else;
         wire shape unchanged → config-ui unaffected). **B — ASR `transcribe_stream` (4):** abstract base was `async def`
         (coroutine) while impls are async generators → made the base a plain `def …-> AsyncIterator[str]` (async-gen
-        overrides are covariant-compatible). **A — IN PROGRESS (30 remaining).** Cleared so far: the 4 `get_python_dependencies`
-        ones (via QUAL-3, done 2026-06-06) + the 9 `initialize(self, core)` overrides (added `=None` to match
-        `Component.initialize(self, core=None)`; LSP-correct, suite/contracts green). **Remaining 30 need a deliberate
-        port-contract decision, NOT a rushed end-of-session pass:** `name` (11 — @property on all 11 components vs
-        `name: str` on `WebAPIPlugin`/`ComponentPort`; clean fix is port→read-only-property but it interacts with
-        `Component.__init__`'s dynamic `self.name` assignment); **`is_available` (3 + the async/sync inconsistency behind
-        it) — ARCHITECTURAL DECISION NEEDED: declared `async` on `Component.base` but `sync` on every capability port AND
-        implemented `sync` in the inputs (web/cli/microphone) + `tts_component`; harmonizing async-vs-sync spans
-        inputs+components+ports**; `set_default_provider` (7 — base/port param `name` vs impls' `provider_name`);
-        `default_provider` var (2); singletons (`get_config_schema`/`get_status`/`extract_text_from_command`/
-        `extract_translation_request`/`get_component`/`process_audio_stream`). Rules NOT yet enabled. **Next: settle the
-        `is_available` async-vs-sync contract with the user, then harmonize the port hierarchy.**
+        overrides are covariant-compatible). Verified end-to-end: gate green with 4b+4c+4d all enforced, 9/9 contracts,
+        validator 55/55, suite 84=baseline.
       - **4e** — the tail (`reportArgumentType` 113, `reportCallIssue` 91, `reportPossiblyUnboundVariable` 27,
         `reportReturnType` 17, `reportGeneralTypeIssues` 14, + ~20 long-tail) → empty suppression list = full standard mode
         on. Decide `mypy.ini` disposition here (retire vs align — pyright is the gate; running both is redundant).

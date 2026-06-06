@@ -98,7 +98,7 @@ class MicrophoneInput(InputPort):
         logger.info(f"Initialized microphone input - Device ID: {self.device_id}, "
                    f"Device: {self.device['name'] if self.device else 'default'}")
         
-    def is_available(self) -> bool:
+    async def is_available(self) -> bool:
         """Check if audio capture is available"""
         return self._sd_available
         
@@ -130,7 +130,7 @@ class MicrophoneInput(InputPort):
             
     async def test_input(self) -> bool:
         """Test microphone functionality"""
-        if not self.is_available():
+        if not await self.is_available():
             return False
             
         try:
@@ -142,11 +142,11 @@ class MicrophoneInput(InputPort):
             logger.error(f"Microphone test failed: {e}")
             return False
         
-    def list_audio_devices(self) -> list[Dict[str, Any]]:
+    async def list_audio_devices(self) -> list[Dict[str, Any]]:
         """List available audio input devices"""
         from ..utils.audio_devices import list_audio_input_devices
-        
-        if not self.is_available():
+
+        if not await self.is_available():
             return []
             
         devices = list_audio_input_devices()
@@ -160,7 +160,7 @@ class MicrophoneInput(InputPort):
         
     async def start_listening(self) -> None:
         """Initialize and start audio capture with proper device validation"""
-        if not self.is_available():
+        if not await self.is_available():
             raise ComponentNotAvailable("Audio dependencies (sounddevice) not available")
             
         try:
@@ -291,7 +291,7 @@ class MicrophoneInput(InputPort):
             "listening": self._listening,
             "audio_stream_active": self._audio_stream is not None and self._audio_stream.active,
             "queue_size": self._audio_queue.qsize() if self._audio_queue else 0,
-            "audio_devices": self.list_audio_devices(),
+            "audio_devices": await self.list_audio_devices(),
             "sample_rate": self.samplerate,
             "device_id": self.device_id,
             "device": self.device

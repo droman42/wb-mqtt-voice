@@ -16,14 +16,9 @@ class Component(ComponentPort):
     
     def __init__(self):
         """Initialize the component."""
-        # Avoid name setting conflicts with property-defined names
-        if not hasattr(self, '_name_initialized'):
-            # Only set name if not defined as property
-            if not hasattr(self.__class__, 'name') or not isinstance(getattr(self.__class__, 'name'), property):
-                self.name = self.__class__.__name__.lower().replace('component', '')
-            self._name_initialized = True
-        
-        # Use property-compatible name access for logging
+        # `name` is a read-only @property on every concrete component (and on the
+        # ComponentPort it implements), so there is nothing to assign here.
+        # Use property-compatible name access for logging.
         component_name = getattr(self, 'name', self.__class__.__name__)
         self.logger = logging.getLogger(f"{__name__}.{component_name}")
         self.providers: Dict[str, Any] = {}
@@ -153,8 +148,13 @@ class Component(ComponentPort):
         """Check if a specific provider is available."""
         return provider_name in self.providers
     
-    async def initialize(self, core=None):
-        """Initialize the component and its providers."""
+    async def initialize(self, core):
+        """Initialize the component and its providers.
+
+        `core` is required — the composition root always passes it; the prior
+        `core=None` default made overrides' `core.config` accesses infer `None`
+        (QUAL-4d/4b). Overrides may still widen it back to `core=None` if they guard.
+        """
         self.logger.info(f"Initializing component: {self.name}")
         self.initialized = True
     
@@ -184,22 +184,22 @@ class Component(ComponentPort):
             self.default_provider = name
         self.logger.info(f"Added provider '{name}' to component {self.name}")
     
-    def set_default_provider(self, name: str) -> bool:
+    def set_default_provider(self, provider_name: str) -> bool:
         """
         Set the default provider for this component.
-        
+
         Args:
-            name: Provider name to set as default
-            
+            provider_name: Provider name to set as default
+
         Returns:
             True if provider was set successfully, False otherwise
         """
-        if name in self.providers:
-            self.default_provider = name
-            self.logger.info(f"Set default provider for {self.name}: {name}")
+        if provider_name in self.providers:
+            self.default_provider = provider_name
+            self.logger.info(f"Set default provider for {self.name}: {provider_name}")
             return True
         else:
-            self.logger.warning(f"Provider '{name}' not found in component {self.name}")
+            self.logger.warning(f"Provider '{provider_name}' not found in component {self.name}")
             return False
     
     def get_current_provider(self) -> Optional[Any]:
@@ -328,10 +328,10 @@ class Component(ComponentPort):
         else:
             self.logger.warning(f"Provider {provider_name} does not support configuration")
     
-    def get_status(self) -> Dict[str, Any]:
+    async def get_status(self) -> Dict[str, Any]:
         """
         Get current component status.
-        
+
         Returns:
             Dictionary with component status information
         """

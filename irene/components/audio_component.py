@@ -82,7 +82,7 @@ class AudioComponent(Component, AudioPlugin, WebAPIPlugin, AudioPort):
     def __init__(self):
         super().__init__()
         self.providers: Dict[str, AudioProvider] = {}
-        self.default_provider: str = "console"
+        self.default_provider: Optional[str] = "console"
         self.fallback_providers: List[str] = ["console"]
         
         # Dynamic provider discovery from entry-points (replaces hardcoded classes)
@@ -95,7 +95,7 @@ class AudioComponent(Component, AudioPlugin, WebAPIPlugin, AudioPort):
         # since the hexagon refactor removed direct `self.core` access).
         self._temp_audio_dir: Optional[Path] = None
 
-    async def initialize(self, core=None) -> None:
+    async def initialize(self, core) -> None:
         """Initialize the universal audio plugin"""
         await super().initialize(core)
         

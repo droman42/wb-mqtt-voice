@@ -12,6 +12,24 @@ newest entries near the top of each dated section.
 ## Action journal
 
 ### 2026-06-06
+- **QUAL-4d DONE — Cluster A port-hierarchy harmonization; all 87 override-incompat errors cleared, rules enabled.**
+  Per the user's decisions: **`is_available` → async everywhere** (capability ports + inputs web/cli/microphone +
+  `tts_component` made `async` to match the already-async `Component.base`; the `await` cascade propagated through
+  `inputs/manager.py`'s `get_available_sources`/`get_source_info` — both zero-caller, so no further ripple); **`name` →
+  read-only `@property`** on `WebAPIPlugin`/`ComponentPort` (all 11 components already implement it; removed the now-dead
+  dynamic `self.name` assignment in `Component.__init__`); `set_default_provider` base/port param `name`→`provider_name`;
+  `default_provider`→`Optional[str]`; `get_status`→async; `extract_*` port params aligned; `get_component` fixed by making
+  `ComponentPort` extend `ComponentControlPort` (an inward core→intents edge, **import-linter-permitted — contracts stay
+  9/9**); `process_audio_stream` async-gen stub; `get_config_schema` aligned to the inherited classmethod (had no callers).
+  **Self-caught regression:** my first `initialize` fix added an untyped `(self, core=None)` to the 9 components, which
+  made pyright infer `core: None` → **20 new `reportOptionalMemberAccess`** on `core.config` — and I committed it (37f245a)
+  **without running the full `uv run pyright` gate** (only the 4d measurement + suite). Caught it during the central
+  verification of this slice; fixed by making `initialize` **required** on `Component.base` + `ComponentPort` and reverting
+  the impls to `(self, core)` (untyped → Any → no None-inference; voice_trigger/nlu_analysis keep their *guarded* `=None`).
+  Lesson: run the full enforced-gate after every slice, not just the slice's own rule. Execution: I did the architectural
+  analysis + the regression fix; one focused sub-agent did the mechanical harmonization under that plan, verified centrally
+  (gate 0 with 4b+4c+4d enforced, 4d 0, 9/9 contracts, validator 55/55, suite 84=baseline). **QUAL-4: 4a/4b/4c/4d all
+  done (488 errors fixed across the four rules); only 4e (the type-tail) remains.**
 - **QUAL-3 DONE — Category D entry-point metadata wiring; validator 55/55.** Reconciled first (Invariant #8): the
   entry-point total is **55, not §D's 58** (the `settings` runner was removed in QUAL-21), and the live validator was
   50/55 with 11 errors — same two defect classes as §D. **(a)** `MonitoringComponent`/`ConfigurationComponent`

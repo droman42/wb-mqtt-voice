@@ -42,7 +42,7 @@ class WebInput(InputPort):
             logger.warning(f"Web input dependencies not available: {e}")
             self._fastapi_available = False
         
-    def is_available(self) -> bool:
+    async def is_available(self) -> bool:
         """Check if web input is available"""
         return self._fastapi_available
         
@@ -69,7 +69,7 @@ class WebInput(InputPort):
             
     async def test_input(self) -> bool:
         """Test web functionality"""
-        if not self.is_available():
+        if not await self.is_available():
             return False
             
         try:
@@ -84,7 +84,7 @@ class WebInput(InputPort):
 
     async def start_listening(self) -> None:
         """Start web input listening"""
-        if not self.is_available():
+        if not await self.is_available():
             raise ComponentNotAvailable("Web input dependencies not available")
             
         if self._listening:

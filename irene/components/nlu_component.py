@@ -272,7 +272,7 @@ class NLUComponent(Component, NLUPlugin, WebAPIPlugin):
         # Context-aware processor
         self.context_processor = ContextAwareNLUProcessor(self)
     
-    async def initialize(self, core=None) -> None:
+    async def initialize(self, core) -> None:
         """Initialize NLU providers with configuration-driven filtering"""
         await super().initialize(core)
         self.core = core  # Store core reference for configuration access

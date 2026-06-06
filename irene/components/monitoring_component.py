@@ -47,7 +47,7 @@ class MonitoringComponent(Component, WebAPIPlugin):
         self.context_manager = None
         self.intent_component = None
         
-    async def initialize(self, core=None) -> None:
+    async def initialize(self, core) -> None:
         """Initialize monitoring component with all Phase 3 services"""
         try:
             self.logger.info("Initializing Phase 3 Monitoring Component...")

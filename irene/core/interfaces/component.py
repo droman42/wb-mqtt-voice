@@ -14,9 +14,10 @@ from typing import Any, Dict, List, Optional
 from abc import ABC, abstractmethod
 
 from ..metadata import EntryPointMetadata
+from ...intents.ports import ComponentControlPort
 
 
-class ComponentPort(EntryPointMetadata, ABC):
+class ComponentPort(EntryPointMetadata, ComponentControlPort, ABC):
     """
     Port for fundamental components.
 
@@ -25,16 +26,27 @@ class ComponentPort(EntryPointMetadata, ABC):
     `play_file`) are not part of this contract and remain accessed via the
     concrete component types. See `irene/components/base.Component` for the
     shared implementation.
+
+    Extends `ComponentControlPort` (the domain-owned provider-control surface):
+    every fundamental component is also controllable, so the component registry
+    (`ComponentControlRegistryPort`) can hand out `ComponentPort`s where the
+    control surface is expected. `core -> intents` is the established inward
+    direction (cf. `core/interfaces/input.py`, `…/workflow.py`).
     """
 
     # Instance attributes established by the implementation's __init__:
-    name: str
     providers: Dict[str, Any]
     initialized: bool
 
+    # Read-only property supplied by the implementation (concrete components
+    # expose `name` as a @property).
+    @property
+    def name(self) -> str: ...
+
     @abstractmethod
-    async def initialize(self, core: Any = None) -> None:
-        """Initialize the component (and its providers)."""
+    async def initialize(self, core: Any) -> None:
+        """Initialize the component (and its providers). `core` is required —
+        the composition root always passes it (QUAL-4d)."""
         ...
 
     @abstractmethod

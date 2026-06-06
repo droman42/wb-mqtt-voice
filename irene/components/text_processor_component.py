@@ -33,7 +33,7 @@ class TextProcessorComponent(Component, TextProcessorPlugin, WebAPIPlugin):
         self._provider_classes: Dict[str, type] = {}
         self.context_manager = None  # Will be injected
         
-    async def initialize(self, core=None) -> None:
+    async def initialize(self, core) -> None:
         """Initialize text processing providers with configuration-driven filtering"""
         await super().initialize(core)
         

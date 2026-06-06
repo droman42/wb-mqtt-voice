@@ -43,7 +43,7 @@ class IntentComponent(Component, WebAPIPlugin):
         self.intent_registry: Optional[IntentRegistry] = None
         self._config: Optional[Union[Dict[str, Any], IntentSystemConfig]] = None
         
-    async def initialize(self, core=None) -> None:
+    async def initialize(self, core) -> None:
         """Initialize the intent system with configuration-driven handler discovery"""
         await super().initialize(core)
         
@@ -2019,31 +2019,11 @@ class IntentComponent(Component, WebAPIPlugin):
         """Get OpenAPI tags for intent system endpoints"""
         return ["Intent System"]
     
-    def get_config_schema(self) -> Dict[str, Any]:
-        """Get configuration schema for Web API"""
-        return {
-            "type": "object",
-            "properties": {
-                "enabled": {"type": "boolean", "default": True},
-                "handlers": {
-                    "type": "object",
-                    "properties": {
-                        "enabled": {
-                            "type": "array",
-                            "items": {"type": "string"},
-                            "default": []
-                        },
-                        "disabled": {
-                            "type": "array", 
-                            "items": {"type": "string"},
-                            "default": []
-                        },
-                        "auto_discover": {"type": "boolean", "default": True}
-                    }
-                }
-            }
-        }
-    
+    @classmethod
+    def get_config_schema(cls) -> Optional[Type[BaseModel]]:
+        """Return the Pydantic configuration schema (EntryPointMetadata contract)."""
+        return cls.get_config_class()
+
     async def get_status(self) -> Dict[str, Any]:
         """Get intent system status for Web API"""
         if not self.handler_manager:

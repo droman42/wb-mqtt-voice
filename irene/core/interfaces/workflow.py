@@ -50,7 +50,11 @@ class WorkflowPort(EntryPointMetadata, ABC):
         self, audio_stream: AsyncIterator[AudioData], context: RequestContext
     ) -> AsyncIterator[IntentResult]:
         """Process a continuous audio stream, yielding intent results."""
-        ...
+        # Async-generator stub: the unreachable `yield` types this as an async
+        # generator so concrete implementations (which yield results) override it
+        # compatibly. Same pattern as `InputPort.listen`.
+        return
+        yield
 
     @abstractmethod
     async def process_text_input(self, text: str, context: RequestContext) -> IntentResult:

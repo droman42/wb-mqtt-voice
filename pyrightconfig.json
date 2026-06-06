@@ -21,8 +21,6 @@
   // Baseline 2026-06-06 (pyright 1.1.410): 762 errors across these 20 rules.
   "typeCheckingMode": "standard",
 
-  "reportIncompatibleVariableOverride": "none",  // QUAL-4d  (42)
-  "reportIncompatibleMethodOverride": "none",    // QUAL-4d  (34)
   "reportArgumentType": "none",                  // QUAL-4e  (113)
   "reportCallIssue": "none",                     // QUAL-4e  (91)
   "reportPossiblyUnboundVariable": "none",       // QUAL-4e  (27)

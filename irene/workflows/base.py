@@ -61,15 +61,19 @@ class Workflow(WorkflowPort):
     async def process_audio_stream(self, audio_stream: AsyncIterator[AudioData], context: RequestContext) -> AsyncIterator[IntentResult]:
         """
         Process an audio stream through the workflow.
-        
+
         Args:
             audio_stream: Async iterator of audio data
             context: Request context
-            
+
         Yields:
             IntentResult objects as they are generated
         """
-        pass
+        # Async-generator stub (overridden by concrete workflows): the unreachable
+        # `yield` types this as an async generator, matching the port and the
+        # concrete overrides.
+        return
+        yield
     
     async def process_text_input(self, text: str, context: RequestContext) -> IntentResult:
         """

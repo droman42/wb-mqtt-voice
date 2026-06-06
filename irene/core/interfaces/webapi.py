@@ -22,10 +22,11 @@ class WebAPIPlugin(EntryPointMetadata):
     that can be integrated into the main FastAPI application.
     """
 
-    # Instance attribute established by the implementation (always mixed in
-    # alongside Component, which sets it): the plugin's identifier, used here to
-    # derive the default API prefix/tags.
-    name: str
+    # The plugin's identifier, used here to derive the default API prefix/tags.
+    # Read-only property supplied by the implementation (always mixed in
+    # alongside Component, whose concrete subclasses expose it as a property).
+    @property
+    def name(self) -> str: ...
 
     @abstractmethod
     def get_router(self) -> Optional[Any]:

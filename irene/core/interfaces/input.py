@@ -67,7 +67,7 @@ class InputPort(EntryPointMetadata, ABC):
         """
         return False
 
-    def is_available(self) -> bool:
+    async def is_available(self) -> bool:
         """
         Check if input source is available.
 
