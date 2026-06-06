@@ -95,7 +95,7 @@ class AudioComponent(Component, AudioPlugin, WebAPIPlugin, AudioPort):
         # since the hexagon refactor removed direct `self.core` access).
         self._temp_audio_dir: Optional[Path] = None
 
-    async def initialize(self, core) -> None:
+    async def initialize(self, core=None) -> None:
         """Initialize the universal audio plugin"""
         await super().initialize(core)
         

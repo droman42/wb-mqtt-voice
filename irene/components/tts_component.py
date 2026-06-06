@@ -90,7 +90,7 @@ class TTSComponent(Component, TTSPlugin, WebAPIPlugin, TTSPort):
         # Dynamic provider discovery from entry-points (replaces hardcoded classes)
         self._provider_classes: Dict[str, type] = {}
         
-    async def initialize(self, core) -> None:
+    async def initialize(self, core=None) -> None:
         """Initialize providers with concurrent loading and lazy loading support"""
         await super().initialize(core)
         self.core = core

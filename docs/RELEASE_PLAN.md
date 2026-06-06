@@ -493,12 +493,18 @@ See `docs/review/phase1_architecture_map.md` §5.
         reportIncompatibleVariableOverride=false` in `irene/api/schemas.py` only (rule stays enforced everywhere else;
         wire shape unchanged → config-ui unaffected). **B — ASR `transcribe_stream` (4):** abstract base was `async def`
         (coroutine) while impls are async generators → made the base a plain `def …-> AsyncIterator[str]` (async-gen
-        overrides are covariant-compatible). **A — REMAINING (43, all Cluster A):** component↔port signature divergences
-        — `name` (@property on components vs `name: str` on `WebAPIPlugin`/`ComponentPort`), `is_available` (async on
-        `Component` vs sync on capability ports), `initialize(self, core=None)` default dropped in overrides,
-        `set_default_provider`, `get_python_dependencies`. **This overlaps QUAL-3** (the `get_python_dependencies`
-        unbound-instance-method defects on Monitoring/Configuration ARE these errors) → doing QUAL-3 first, then aligning
-        the rest of the port hierarchy on top. Rules NOT yet enabled (enable after Cluster A clears).
+        overrides are covariant-compatible). **A — IN PROGRESS (30 remaining).** Cleared so far: the 4 `get_python_dependencies`
+        ones (via QUAL-3, done 2026-06-06) + the 9 `initialize(self, core)` overrides (added `=None` to match
+        `Component.initialize(self, core=None)`; LSP-correct, suite/contracts green). **Remaining 30 need a deliberate
+        port-contract decision, NOT a rushed end-of-session pass:** `name` (11 — @property on all 11 components vs
+        `name: str` on `WebAPIPlugin`/`ComponentPort`; clean fix is port→read-only-property but it interacts with
+        `Component.__init__`'s dynamic `self.name` assignment); **`is_available` (3 + the async/sync inconsistency behind
+        it) — ARCHITECTURAL DECISION NEEDED: declared `async` on `Component.base` but `sync` on every capability port AND
+        implemented `sync` in the inputs (web/cli/microphone) + `tts_component`; harmonizing async-vs-sync spans
+        inputs+components+ports**; `set_default_provider` (7 — base/port param `name` vs impls' `provider_name`);
+        `default_provider` var (2); singletons (`get_config_schema`/`get_status`/`extract_text_from_command`/
+        `extract_translation_request`/`get_component`/`process_audio_stream`). Rules NOT yet enabled. **Next: settle the
+        `is_available` async-vs-sync contract with the user, then harmonize the port hierarchy.**
       - **4e** — the tail (`reportArgumentType` 113, `reportCallIssue` 91, `reportPossiblyUnboundVariable` 27,
         `reportReturnType` 17, `reportGeneralTypeIssues` 14, + ~20 long-tail) → empty suppression list = full standard mode
         on. Decide `mypy.ini` disposition here (retire vs align — pyright is the gate; running both is redundant).

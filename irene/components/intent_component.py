@@ -43,7 +43,7 @@ class IntentComponent(Component, WebAPIPlugin):
         self.intent_registry: Optional[IntentRegistry] = None
         self._config: Optional[Union[Dict[str, Any], IntentSystemConfig]] = None
         
-    async def initialize(self, core) -> None:
+    async def initialize(self, core=None) -> None:
         """Initialize the intent system with configuration-driven handler discovery"""
         await super().initialize(core)
         

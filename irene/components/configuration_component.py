@@ -83,7 +83,7 @@ class ConfigurationComponent(Component, WebAPIPlugin):
         """Optional Python dependencies for enhanced functionality"""
         return []  # No optional dependencies
         
-    async def initialize(self, core):
+    async def initialize(self, core=None):
         """Initialize with reference to ConfigManager and active config path"""
         # Create ConfigManager instance (or reuse from core if available)
         self.config_manager = ConfigManager()
