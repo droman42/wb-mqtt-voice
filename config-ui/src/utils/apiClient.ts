@@ -29,6 +29,14 @@ import type {
   SyncParametersResponse,
   SuggestTranslationsRequest,
   SuggestTranslationsResponse,
+  // v1.1 donation contract + QUAL-42 validation/translation types (UI-5)
+  DonationContract,
+  DonationContractResponse,
+  DonationContractUpdateResponse,
+  ContractValidationResponse,
+  TranslationValidationResponse,
+  TranslateRequest,
+  TranslateResponse,
   // Phase 6: Template management types
   TemplateHandlerListResponse,
   TemplateContentResponse,
@@ -329,6 +337,79 @@ class IreneApiClient {
     return this.post<ReloadDonationResponse>(
       `/intents/donations/${encodeURIComponent(handlerName)}/reload`,
       {}
+    );
+  }
+
+  // ============================================================
+  // v1.1 CONTRACT METHODS (UI-5)
+  // ============================================================
+
+  /**
+   * Get the language-neutral contract for a handler (methods + ParameterSpec core + room_context).
+   */
+  async getDonationContract(handlerName: string): Promise<DonationContractResponse> {
+    return this.get<DonationContractResponse>(
+      `/intents/donations/${encodeURIComponent(handlerName)}/contract`
+    );
+  }
+
+  /**
+   * Validate + save the language-neutral contract, then reload the unified donation.
+   */
+  async updateDonationContract(
+    handlerName: string,
+    contract: DonationContract,
+    options: { validateBeforeSave?: boolean; triggerReload?: boolean } = {}
+  ): Promise<DonationContractUpdateResponse> {
+    return this.put<DonationContractUpdateResponse>(
+      `/intents/donations/${encodeURIComponent(handlerName)}/contract`,
+      {
+        contract,
+        validate_before_save: options.validateBeforeSave ?? true,
+        trigger_reload: options.triggerReload ?? true,
+      }
+    );
+  }
+
+  // ============================================================
+  // QUAL-42: CONTRACT↔CODE WIRING + LLM TRANSLATION (UI-5)
+  // ============================================================
+
+  /**
+   * Get the system-wide contract↔code wiring report (computed at startup).
+   */
+  async getContractValidation(): Promise<ContractValidationResponse> {
+    return this.get<ContractValidationResponse>('/intents/donations/validation');
+  }
+
+  /**
+   * LLM-validate a handler's translations for meaning/consistency. Returns llm_available=false (with a
+   * manual-validation message) when no API-keyed LLM is configured.
+   */
+  async validateTranslation(handlerName: string, provider?: string): Promise<TranslationValidationResponse> {
+    return this.post<TranslationValidationResponse>(
+      `/intents/donations/${encodeURIComponent(handlerName)}/validate-translation`,
+      { provider }
+    );
+  }
+
+  /**
+   * LLM translation service: suggest target-language phrases for a handler's methods. Returns
+   * llm_available=false (with a manual message) when no API-keyed LLM is configured.
+   */
+  async translateDonation(
+    handlerName: string,
+    request: { sourceLanguage: string; targetLanguage: string; methodKeys?: string[]; provider?: string }
+  ): Promise<TranslateResponse> {
+    const body: TranslateRequest = {
+      source_language: request.sourceLanguage,
+      target_language: request.targetLanguage,
+      method_keys: request.methodKeys ?? null,
+      provider: request.provider ?? null,
+    };
+    return this.post<TranslateResponse>(
+      `/intents/donations/${encodeURIComponent(handlerName)}/translate`,
+      body
     );
   }
 
@@ -745,7 +826,9 @@ class IreneApiClient {
    * Configure Intent System settings for live testing (no TOML persistence)
    */
   async configureIntentSystem(config: IntentSystemConfig): Promise<IntentSystemConfigureResponse> {
-    return this.post<IntentSystemConfigureResponse>('/intent_system/configure', config);
+    // The intent component mounts under the '/intents' prefix, so its live-config route is '/intents/configure'
+    // (not '/intent_system/configure', which 404s). Surfaced by the UI-5 openapi codegen coverage check.
+    return this.post<IntentSystemConfigureResponse>('/intents/configure', config);
   }
 
   // ============================================================
