@@ -324,11 +324,15 @@ landable and gated (`pyright` 0 · import-linter · dep-validator · `check_scop
   see §2 reconciliation note — `InputData` is a Union alias, not a class). `configure_pipeline_stages` selects
   the entry stage from it; `process_text_input` passes `input_format=TEXT` (no more hand-set booleans); audio
   entries infer it back-compat. Behaviour-preserving (equivalence-tested vs the prior skip-flag logic).
-- **PR-2 — OutputPort + OutputManager + event bus (core, fake adapters).** `core/interfaces/output.py`,
-  `irene/outputs/` package, `OutputManager`, the pipeline event bus + the canonical event vocabulary (§5),
-  modality/capability matrix + negotiation (§3.1), and the **`DeliveryResult` request/response contract
-  (§3.2) — spec'd to carry the ARCH-8 bridge echo/error, co-designed with ARCH-8**. Adapter-free, exercised
-  by fakes. Workflow publishes events; OutputManager subscribes for delivery. **Can start in parallel with PR-1.**
+- **PR-2 — OutputPort + OutputManager + event bus (core, fake adapters). ✓ DONE 2026-06-07.**
+  `core/interfaces/output.py` (`OutputPort` ABC mirroring `InputPort`, `OutputModality{TEXT,SPEECH,
+  DEVICE_COMMAND,EVENT}`, `DeliveryResult` with rich echo/error_code for the bridge §3.2, and the pure
+  `negotiate()` §3.1 matrix); `core/event_bus.py` (`EventType` vocabulary §5, `PipelineEvent`, `EventBus`
+  pub/sub with `identity_filter` + subscriber-failure isolation); `irene/outputs/` package + `OutputManager`
+  (registry/lifecycle + D-2 routing: conversational→origin-paired, actuation/event→designated-single,
+  +broadcast; negotiation; optional `output.delivered` emission). `irene.outputs` added to the hexagon
+  import-linter contracts (ARCH-1/2/3/11/12). Adapter-free — exercised by fakes (`test_output_port`,
+  `test_event_bus`, `test_output_manager`, 18 tests). Workflow wiring = PR-3.
 - **PR-3 — Real text outputs + origin routing.** console output + ws/web text output; wire origin-addressed
   delivery via `resolve_physical_id` (§6). Sync results now flow input→workflow→output through the bus for
   text channels.

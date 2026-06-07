@@ -12,6 +12,22 @@ newest entries near the top of each dated section.
 ## Action journal
 
 ### 2026-06-07
+- **ARCH-15 PR-2 DONE — output hexagon core: `OutputPort` + `OutputManager` + pipeline event bus (adapter-free).**
+  The missing symmetric half of the input port. New `core/interfaces/output.py`: `OutputPort` ABC (mirrors `InputPort`,
+  off `EntryPointMetadata`, import-thin via TYPE_CHECKING), `OutputModality{TEXT,SPEECH,DEVICE_COMMAND,EVENT}`,
+  `DeliveryResult` (trivial ack/nack for terminal channels; **rich `echoed_value`/`error_code` for the bridge actuation
+  channel**, D-6/§3.2), and the pure `negotiate()` §3.1 matrix (carry / degrade speech→text / drop). New
+  `core/event_bus.py`: the canonical `EventType` vocabulary (`input.received`/`asr.transcript`/`intent.recognized`/
+  `result.produced`/`output.delivered`/`error`, §5), `PipelineEvent` (carries origin identity), and `EventBus` async
+  pub/sub with `identity_filter` (room/client/session/source/type) + **subscriber-failure isolation** (one bad observer
+  never breaks delivery/pipeline). New `irene/outputs/` delivery layer + `OutputManager`: registry/lifecycle + **D-2
+  modality routing** (conversational TEXT/SPEECH → origin-paired single; DEVICE_COMMAND/EVENT → capability-routed
+  designated single, no fan-out → no double-actuation; +explicit broadcast escape hatch) + §3.1 negotiation +
+  optional `output.delivered` emission. `irene.outputs` registered in the hexagon import-linter contracts
+  (ARCH-1/2/3/11/12) symmetrically to `irene.inputs`. Adapter-free (PR-2 scope) — exercised by fakes:
+  `test_output_port.py`/`test_event_bus.py`/`test_output_manager.py` (18). Workflow wiring + real text adapters = PR-3.
+  Gates: `pyright` 0, import-linter 9/9, dep-validator 55/55, `check_scope` clean, backend suite 84-failed=baseline
+  (0 net regression, +18 new passing). Backend-only; config-ui surface (`[outputs]` editor) lands in PR-7.
 - **ARCH-15 PR-1 DONE — input `format` is first-class (`InputFormat` enum), driving the pipeline-entry stage.**
   Added `InputFormat{VOICE,AUDIO,TEXT}` (`intents/context_models.py`, D-1) — each value names its workflow entry
   stage (VOICE→voice-trigger, AUDIO→ASR, TEXT→NLU). It is now the single source of truth on

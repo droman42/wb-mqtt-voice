@@ -477,9 +477,12 @@ See `docs/review/phase1_architecture_map.md` §5.
       `{VOICE,AUDIO,TEXT}` first-class on `RequestContext.input_format` (single source of truth; legacy `skip_*`
       flags = derived bijection) → `configure_pipeline_stages` selects entry stage from it; `process_text_input`
       passes `input_format=TEXT`. Reconciled vs design (`InputData` is a Union alias, so format lives on
-      RequestContext; envelope-stamping deferred to PR-5). Behaviour-preserving, equivalence-tested. **PR-2** `OutputPort`
-      (`core/interfaces/output.py`) + `irene/outputs/` + `OutputManager` + pipeline event bus + event vocabulary + modality
-      matrix/negotiation (fakes; parallel with PR-1). **PR-3** real text outputs (console + ws/web) + origin routing via
+      RequestContext; envelope-stamping deferred to PR-5). Behaviour-preserving, equivalence-tested. **PR-2 ✓ DONE 2026-06-07** `OutputPort`
+      (`core/interfaces/output.py`: ABC + `OutputModality` + `DeliveryResult` rich echo/error §3.2 + `negotiate()` §3.1) +
+      `core/event_bus.py` (`EventType` vocabulary + `PipelineEvent` + `EventBus` pub/sub + `identity_filter`, failure-isolated)
+      + `irene/outputs/` + `OutputManager` (D-2 routing: origin-paired / designated-single / broadcast; negotiation;
+      `output.delivered` emission). `irene.outputs` added to hexagon contracts (ARCH-1/2/3/11/12). Adapter-free (fakes, 18
+      tests). Workflow wiring = PR-3. **PR-3** real text outputs (console + ws/web) + origin routing via
       `resolve_physical_id`. **PR-4** F&F/notifications re-routed through OutputManager (producer-demote `NotificationService`;
       deferred→persistent identity; origin-unreachable fallback D-3). **PR-5** daemon multiplexer + runners-as-presets +
       runtime attach/detach (removes PR-0 stopgap; double-reader structurally impossible). **PR-6** observation tap (continuous

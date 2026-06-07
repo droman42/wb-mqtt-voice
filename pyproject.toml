@@ -353,6 +353,7 @@ forbidden_modules = [
     "irene.web_api",
     "irene.runners",
     "irene.inputs",
+    "irene.outputs",
 ]
 # QUAL-24 (DONE): the `intents.handlers.* -> core.engine` get_core() escape hatch was removed.
 # Handlers now depend on domain-owned capability ports (irene/intents/ports.py); the application
@@ -370,6 +371,7 @@ forbidden_modules = [
     "irene.web_api",
     "irene.runners",
     "irene.inputs",
+    "irene.outputs",
     "irene.intents",
 ]
 
@@ -381,6 +383,7 @@ forbidden_modules = [
     "irene.web_api",
     "irene.runners",
     "irene.inputs",
+    "irene.outputs",
 ]
 
 [[tool.importlinter.contracts]]
@@ -440,6 +443,7 @@ type = "forbidden"
 source_modules = ["irene.core"]
 forbidden_modules = [
     "irene.inputs",
+    "irene.outputs",
     "irene.workflows",
     "irene.components",
 ]
@@ -460,6 +464,7 @@ forbidden_modules = [
     "irene.intents",
     "irene.workflows",
     "irene.inputs",
+    "irene.outputs",
     "irene.providers",
     "irene.runners",
     "irene.web_api",
