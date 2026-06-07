@@ -518,15 +518,19 @@ See `docs/review/phase1_architecture_map.md` §5.
       a config-ui section (AutoSchemaRegistry; order/title added); adapter registration config-gated (CLIRunner console
       gate+prefix, `/ws/output` web_push gate). Frontend renders for free (schema-driven; UI-9 generic widgets; labels
       from Pydantic descriptions) — `npm run check`+`build` green, no UI code change. multi-input already representable;
-      per-input `format` is derived (no editor surface); capability-matrix display deferred (optional). **PR-8** **local audio/voice SPEECH output
-      ONLY — NO MQTT** (wrap TTS+audio as a SPEECH `OutputPort`, register in voice/vosk profile → restores pure D-3,
-      retires the PR-5a legacy-TTS fallback; no broker code — *all* MQTT is ARCH-8's). **PR-9** (runs last) cross-task
+      per-input `format` is derived (no editor surface); capability-matrix display deferred (optional). **PR-8 ✓ DONE 2026-06-07** local audio/voice SPEECH
+      output ONLY — NO MQTT: `AudioSpeechOutput` (`outputs/audio.py`, TTS+audio synth→play, carries SPEECH+TEXT); vosk
+      registers it + designates it the OutputManager **conversational fallback** (new: unmatched conversational result →
+      designated local speaker), which solves voice addressing (source `voice`/`audio_stream`, no room) and lets the
+      PR-5a legacy-TTS fallback be **retired → pure D-3 restored**. No broker code — all MQTT is ARCH-8's. **PR-9** (runs last) cross-task
       reconciliation: (1) revisit **ARCH-7** → **redefine/feed ARCH-8** with the I/O contract so **ARCH-8** implements
       MQTT/bridge as `OutputPort`(s) (bridge=request/response `OutputPort`+rich `DeliveryResult`, Flow-1 event=terminal
       `OutputPort`, `device_command` modality, `DeviceCatalogPort` read port, bus/observability, bounded-await); the
       entire MQTT build lives in ARCH-8, PR-9.1 only produces the spec + updates ARCH-7 doc/ledger; (2) sweep every other
       unfinished ARCH/QUAL item (ARCH-8, ARCH-10, QUAL-35, any input/output/session/identity/notification task) to
-      verify+adjust per Invariants #5/#8, with a journal reconciliation note. **PR-10** daemon multiplexer + runners→thin
+      verify+adjust per Invariants #5/#8, with a journal reconciliation note; **also extend
+      `get_master_config_completeness` to cover top-level config sections + scalar fields** (today only `*.providers.*`)
+      so config-master drift (like the `[outputs]`/`observe_*` synced manually 2026-06-07) is caught automatically. **PR-10** daemon multiplexer + runners→thin
       presets (concurrent input+output registries + runtime attach/detach §4; layered-override presets §8) — the web/vosk
       *consume/preset* unification rides here (their *outputs* arrive in PR-6/PR-8); CLI's PR-5b consume loop is the first
       instance to generalize; closes the runners-as-presets endgame. Gates per slice: `pyright` 0 · import-linter ·

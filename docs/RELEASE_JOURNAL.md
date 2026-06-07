@@ -12,6 +12,31 @@ newest entries near the top of each dated section.
 ## Action journal
 
 ### 2026-06-07
+- **ARCH-15 config-master sync — added `[outputs]` + `[system].observe_*` to the reference config.** The hand-maintained
+  `configs/config-master.toml` had drifted: the PR-7 `[outputs]` section (`console`/`console_prefix`/`web_push`) and the
+  PR-6b `observe_token`/`observe_allow_remote` were in the Pydantic schema but not the reference. Added both (`[outputs]`
+  after `[inputs]` to match section order; `observe_token` shown **commented** so the default `None` keeps the tap
+  *disabled* — an empty-string token would insecurely accept an empty password). No functional change (all fields have
+  defaults). Verified: config-master loads + validates against `CoreConfig`, and the completeness test still passes.
+  **Root gap:** `get_master_config_completeness` only checks `*.providers.*` sections, not top-level sections/scalar
+  fields — which is why the drift wasn't caught; **extending it is folded into PR-9.2**.
+- **ARCH-15 PR-8 DONE — local audio/voice SPEECH output (no MQTT); pure D-3 restored.** New `AudioSpeechOutput`
+  (`outputs/audio.py`) wraps the TTS + audio components (synthesize `result.text` → temp WAV → play); it carries
+  **both SPEECH and TEXT** (a voice device speaks everything, so the §3.1 negotiation never drops a conversational
+  result there). The vosk runner registers it on the shared OutputManager and **designates it the OutputManager's
+  conversational fallback** — a new concept added in PR-8: when no *origin* output matches a conversational
+  (TEXT/SPEECH) result, deliver to the designated local speaker. This is what solves the local-voice **addressing**
+  problem — vosk's `RequestContext.source` is `"voice"`/`"audio_stream"` (overridden in `process_audio_stream`) with
+  no room, so it can't serve as a stable per-device origin key; the fallback catches it. With a real SPEECH output now
+  present for voice profiles, the **PR-5a legacy-TTS migration fallback in `NotificationService` is retired** — an
+  unmatched deferred F&F now drops+log (D-3), staying queryable via the action-store history (the completion isn't
+  lost), instead of force-speaking on a global sink. (`origin` match still wins over the fallback, so a CLI timer goes
+  to the console, not the speaker.) NO broker/MQTT code — all MQTT (Flow-1 event + Flow-2 bridge actuation) remains
+  ARCH-8's, fed by PR-9.1. New `test_audio_output.py` (7): synth+play, unavailable/empty-text handling, conversational
+  fallback (used when no origin match / origin preferred over fallback / cleared on remove), and voice F&F speaking via
+  the fallback end-to-end. Gates: `pyright` 0, import-linter 9/9, dep-validator 55/55, `check_scope` clean, full suite
+  83-failed=baseline (**0 regressions**, stash-diff; CLI + timer e2e green). Backend-only (output adapter renders via
+  the `[outputs]` editor; no new config-ui surface).
 - **ARCH-15 PR-7 DONE — config-driven outputs (`[outputs]`) + config-ui editor (renders for free).** The blocker
   surfaced before starting: there was no `[outputs]` config schema (outputs were registered programmatically), so the
   config-ui editor had nothing to render. **Backend prerequisite built:** new `OutputConfig` model

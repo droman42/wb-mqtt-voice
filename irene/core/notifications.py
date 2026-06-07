@@ -339,21 +339,19 @@ class NotificationService:
         
         successful_deliveries = 0
 
-        # ARCH-15 PR-4/PR-5: producer→OutputManager. When an OutputManager is wired it OWNS delivery
-        # (addressed by the action's physical identity); the legacy global-TTS handler is bypassed
-        # and only LOG is kept.
-        if self.output_manager is not None and await self._deliver_via_output_manager(notification):
-            successful_deliveries += 1
+        # ARCH-15 PR-4/PR-8: producer→OutputManager. When an OutputManager is wired it OWNS delivery
+        # (addressed by physical identity); the legacy global-TTS handler is bypassed, only LOG kept.
+        # If the identity has no attached output → drop + log (D-3): the completion stays queryable
+        # via the action-store history, so nothing is lost. (The PR-5a legacy-TTS migration fallback
+        # is retired now a real SPEECH output exists for voice profiles — pure D-3 restored.)
+        if self.output_manager is not None:
+            if await self._deliver_via_output_manager(notification):
+                successful_deliveries += 1
+            else:
+                self.logger.info(
+                    f"Notification not delivered (no output for source={notification.source} "
+                    f"room={notification.room_name} id={notification.physical_id}); dropped — in history")
             methods = [DeliveryMethod.LOG]
-        elif self.output_manager is not None:
-            # ARCH-15 PR-5 migration fallback (removed at PR-8 when a SPEECH/audio output exists,
-            # restoring pure D-3 drop+log): the OutputManager has no attached output for this identity
-            # yet (e.g. voice mode with no audio output registered) — fall back to the legacy methods
-            # (TTS/LOG) rather than dropping, so the voice timer-announce does not regress.
-            self.logger.info(
-                f"OutputManager has no output for source={notification.source} "
-                f"room={notification.room_name} id={notification.physical_id}; legacy-delivery fallback")
-            methods = notification.delivery_methods
         else:
             methods = notification.delivery_methods
 

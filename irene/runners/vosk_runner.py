@@ -234,7 +234,22 @@ preload_models = true
         if not self.core or not self.core.workflow_manager:
             logger.error("❌ Core or workflow manager not available for VOSK audio processing")
             return
-            
+
+        # ARCH-15 PR-8: register the local SPEECH output on the shared OutputManager and designate it
+        # the conversational fallback, so deferred fire-and-forget results (a voice-set timer firing)
+        # speak on this device — the source label ("voice"/"audio_stream") can't be a stable origin key.
+        output_manager = getattr(self.core, "output_manager", None)
+        if output_manager is not None and self.core.component_manager is not None:
+            from ..outputs.audio import AudioSpeechOutput
+            speech = AudioSpeechOutput(self.core.component_manager.get_component('tts'),
+                                       self.core.component_manager.get_component('audio'), name="audio")
+            if await speech.is_available():
+                await output_manager.add_output("audio", speech)
+                output_manager.designate_conversational_fallback("audio")
+                logger.info("✅ Registered local audio/voice SPEECH output (conversational fallback)")
+            else:
+                logger.info("⏭️ Local audio/voice SPEECH output unavailable (no TTS/audio component)")
+
         # Check if voice_trigger component is available and enabled
         voice_trigger_available = False
         if self.core.component_manager:

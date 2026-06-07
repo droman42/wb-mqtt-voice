@@ -401,11 +401,15 @@ landable and gated (`pyright` 0 · import-linter · dep-validator · `check_scop
   `build` green (Invariant #4), no config-ui code change. _Notes:_ multi-input is already representable
   (`InputConfig.{cli,microphone,web}`); per-input `format` is *derived* (PR-1), not a config field, so it has no
   editor surface; the read-only **capability-matrix display** is deferred as an optional enhancement.
-- **PR-8 — Local audio/voice output ONLY (NO MQTT).** Build the local-audio SPEECH `OutputPort` (the "voice"
-  modality, wrapping the TTS+audio components) and register it in the voice/vosk profile — which **restores
-  pure D-3 drop+log** (retires the PR-5a legacy-TTS fallback). **No broker code here.** *All MQTT — Flow-2
-  bridge actuation AND Flow-1 `irene/{room}/event` — is ARCH-8's implementation, not PR-8's;* the I/O work
-  never touches a broker. (vosk's output unification rides this; its preset-ification rides PR-10.)
+- **PR-8 — Local audio/voice output ONLY (NO MQTT). ✓ DONE 2026-06-07.** New `AudioSpeechOutput` (`outputs/audio.py`)
+  wraps the TTS+audio components (synthesize → play); carries **SPEECH and TEXT** (a voice device speaks
+  everything). The vosk runner registers it and **designates it the OutputManager's conversational fallback** —
+  a new concept: when no origin output matches a conversational result, deliver to the designated local speaker.
+  This solves the voice-addressing problem (vosk's `source` is `"voice"`/`"audio_stream"` with no room, so it
+  can't be a stable origin key) and **lets the PR-5a legacy-TTS fallback in NotificationService be retired →
+  pure D-3 drop+log restored** (unmatched F&F with no speaker → drop+log+history). **No broker code.** *All MQTT —
+  Flow-2 bridge actuation AND Flow-1 `irene/{room}/event` — is ARCH-8's implementation;* the I/O work never
+  touches a broker. (vosk's preset-ification still rides PR-10.)
 - **PR-9 — Cross-task reconciliation (runs last).** Once the I/O contracts are real:
   1. **Revisit ARCH-7 → redefine/feed ARCH-8** (`mqtt_integration.md`): hand ARCH-8 the I/O contract so **it**
      implements MQTT/bridge as `OutputPort`(s) under this design — bridge actuation = a request/response
@@ -417,6 +421,9 @@ landable and gated (`pyright` 0 · import-linter · dep-validator · `check_scop
   2. **Sweep every other unfinished ARCH/QUAL item** (esp. ARCH-8, ARCH-10, QUAL-35, and any open task
      touching input/output/session/identity/notifications) to verify whether this design affects it; amend
      the affected ledger entries (+ docs) per Invariants #5/#8. Emit a short reconciliation note in the journal.
+     **Also: extend `AutoSchemaRegistry.get_master_config_completeness`** to cover **top-level config sections +
+     scalar fields** (today it only checks `*.providers.*`), so config-master drift like the missing `[outputs]` /
+     `observe_*` (synced manually 2026-06-07) is caught automatically going forward.
 - **PR-10 — Daemon multiplexer + runners → thin presets.** One process hosting concurrent input+output
   registries with runtime attach/detach (§4); runners demoted to config-preset launchers with layered overrides
   (§8). The per-channel *consume/preset* unification of **web** and **vosk** rides here (their *outputs* arrive

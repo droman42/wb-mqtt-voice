@@ -35,6 +35,10 @@ class OutputManager:
         self._active: List[str] = []
         # capability-routed designations for non-conversational modalities (D-2)
         self._designated: Dict[OutputModality, str] = {}
+        # ARCH-15 PR-8: a default conversational sink (the local speaker) used when no origin output
+        # matches — so a voice-device's deferred F&F speaks even though its source label ("voice"/
+        # "audio_stream", no room) can't be a stable origin key.
+        self._conversational_fallback: Optional[str] = None
         self._event_bus = event_bus
 
     # --- registry / lifecycle ------------------------------------------------------------------
@@ -64,12 +68,20 @@ class OutputManager:
         for modality, designated in list(self._designated.items()):
             if designated == name:
                 del self._designated[modality]
+        if self._conversational_fallback == name:
+            self._conversational_fallback = None
 
     def designate(self, modality: OutputModality, output_name: str) -> None:
         """Designate the single output that carries a capability-routed modality (D-2)."""
         if output_name not in self._outputs:
             raise KeyError(f"unknown output '{output_name}'")
         self._designated[modality] = output_name
+
+    def designate_conversational_fallback(self, output_name: str) -> None:
+        """Designate the default conversational sink (the local speaker) for unmatched results (PR-8)."""
+        if output_name not in self._outputs:
+            raise KeyError(f"unknown output '{output_name}'")
+        self._conversational_fallback = output_name
 
     # --- selection (D-2) -----------------------------------------------------------------------
 
@@ -99,7 +111,11 @@ class OutputManager:
             return [o for o in self._outputs.values() if negotiate(modality, o.supported_modalities())]
         if modality in _CONVERSATIONAL:
             origin = self._origin_output(context)
-            return [origin] if origin is not None else []
+            if origin is not None:
+                return [origin]
+            # no origin match → the default conversational sink (local speaker), if one is designated
+            fallback = self._conversational_fallback
+            return [self._outputs[fallback]] if fallback is not None and fallback in self._outputs else []
         name = self._designated.get(modality)
         return [self._outputs[name]] if name is not None else []
 
