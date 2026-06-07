@@ -1138,13 +1138,18 @@ _Apply to every remediation task below (from the 4 review docs + QUAL-25/26). So
       `translate`). **Sequencing:** do AFTER UI-5 lands (so removing the suggest-translations endpoint doesn't break the
       old UI mid-flight). Verify no remaining importers; gates: pyright 0, import-contracts 9/9, dep-validator 55/55,
       suite ≤baseline. Found during the donation-validation investigation + UI-5 scoping.
-- [ ] **QUAL-40** `[release]` (P2) — **Generated-TOML section headers dropped (real bug surfaced by QUAL-4e, 2026-06-06).**
-      `ConfigManager._generate_provider_sections` / `_generate_normalizer_sections` (`config/manager.py` ~L459-495) build a
-      per-iteration `section` header string but **never append it to `sections`**; the closing `["\n".join([section] +
-      sections)]` keeps only the **last** header, so every provider/normalizer section header except the last is dropped
-      from the generated TOML. QUAL-4e fixed only the type error (init `section=""`, behavior-preserving); the logic bug
-      remains. **Fix:** accumulate each header into `sections` (or restructure the join); verify generated TOML round-trips
-      all sections. Pairs with the config-ui TOML-editor surface.
+- [x] **QUAL-40** `[release]` (P2) — **DONE 2026-06-07.** Generated-TOML section headers no longer dropped. **Was:**
+      `ConfigManager._generate_provider_sections` / `_generate_normalizer_sections` (`config/manager.py`) built a
+      per-iteration `section = "[base_path.<name>]"` header but **never appended it to `sections`**; the closing
+      `"\n".join([section] + sections)` kept only the **last** header (and mis-placed it at the very top), so every
+      provider/normalizer header except the last was dropped → the generated TOML collapsed all entries' keys under one
+      section. **Fix:** `sections.append(...)` the header at the start of each iteration and join plainly (dropped the
+      `[section] +` prepend + the dead `section = ""` init). **Verified round-trip:** new
+      `test_config_section_generation.py` (3) asserts every header survives and the output re-parses via `tomllib` back to
+      the original `{provider/normalizer: {...}}` nesting (the round-trip assertion fails on the old code — keys would
+      collapse under the single surviving header). Backend-only (generated-TOML *content* fix; no contract/shape change),
+      so config-ui's TOML-editor surface just receives correct TOML — no config-ui code change. Gates: pyright 0,
+      import-contracts 9/9, dep-validator 55/55, check_scope clean, suite 84=baseline (+3).
 - [x] **QUAL-41** `[release]` (P2) — **DONE 2026-06-07.** `IntentAssetLoader` validator output now matches
       `api.schemas.ValidationError`. **Was:** `validate_template_data` / `validate_prompt_data` /
       `validate_localization_data` (`core/intent_asset_loader.py`) emitted error/warning dicts keyed `{field, message,

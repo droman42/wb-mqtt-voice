@@ -454,10 +454,11 @@ stages = {str(tp_config.stages)}
 
     def _generate_provider_sections(self, base_path: str, providers: dict) -> str:
         """Generate provider configuration sections"""
-        sections = []
-        section = ""
+        sections: list[str] = []
         for provider_name, provider_config in providers.items():
-            section = f"[{base_path}.{provider_name}]"
+            # QUAL-40: emit the header for EACH provider (it was previously
+            # assigned but never appended, so only the last one survived).
+            sections.append(f"[{base_path}.{provider_name}]")
             for key, value in provider_config.items():
                 if isinstance(value, bool):
                     sections.append(f"{key} = {str(value).lower()}")
@@ -470,14 +471,14 @@ stages = {str(tp_config.stages)}
                 else:
                     sections.append(f"{key} = {str(value)}")
             sections.append("")
-        return "\n".join([section] + sections) if sections else ""
+        return "\n".join(sections) if sections else ""
 
     def _generate_normalizer_sections(self, base_path: str, normalizers: dict) -> str:
         """Generate normalizer configuration sections"""
-        sections = []
-        section = ""
+        sections: list[str] = []
         for normalizer_name, normalizer_config in normalizers.items():
-            section = f"[{base_path}.{normalizer_name}]"
+            # QUAL-40: emit the header for EACH normalizer (see above).
+            sections.append(f"[{base_path}.{normalizer_name}]")
             for key, value in normalizer_config.items():
                 if isinstance(value, bool):
                     sections.append(f"{key} = {str(value).lower()}")
@@ -490,7 +491,7 @@ stages = {str(tp_config.stages)}
                 else:
                     sections.append(f"{key} = {str(value)}")
             sections.append("")
-        return "\n".join([section] + sections) if sections else ""
+        return "\n".join(sections) if sections else ""
         
     async def _watch_config_file(self, config_path: Path) -> None:
         """Watch configuration file for changes and reload"""

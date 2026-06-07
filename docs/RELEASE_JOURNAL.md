@@ -12,6 +12,17 @@ newest entries near the top of each dated section.
 ## Action journal
 
 ### 2026-06-07
+- **QUAL-40 DONE — generated-TOML section headers no longer dropped.** `ConfigManager._generate_provider_sections` /
+  `_generate_normalizer_sections` (`config/manager.py`) assigned a `[base_path.<name>]` header per provider/normalizer
+  but never appended it; the closing `"\n".join([section] + sections)` kept only the **last** header (placed at the top),
+  so the generated TOML collapsed every entry's keys under a single section — silently corrupt config output. Fixed by
+  appending the header at the start of each iteration and joining plainly (removed the `[section] +` prepend and the dead
+  `section = ""` init that QUAL-4e had added only to clear the type error). Backend-only generated-*content* fix — no
+  endpoint/schema/type change — so the config-ui TOML-editor surface simply gets correct TOML (no config-ui change). New
+  `irene/tests/test_config_section_generation.py` (3) guards it: asserts every header survives and the output re-parses
+  via `tomllib` back to the original `{name: {...}}` nesting (this round-trip assertion fails on the pre-fix code, where
+  all keys collapse under the one surviving header). Gates: `uv run pyright` 0, import-contracts 9/9, dependency-validator
+  55/55 (0 errors), `check_scope` clean, backend suite 84-failed=baseline (0 net regression, +3 new passing).
 - **QUAL-41 DONE — asset validators now match `api.schemas.ValidationError` (no more 500 on a real validation error).**
   `validate_template_data`/`validate_prompt_data`/`validate_localization_data` (`core/intent_asset_loader.py`) emitted
   `{field, message, severity}`, but the schema requires `{type, message}` (+ optional `path`/`line`), so
