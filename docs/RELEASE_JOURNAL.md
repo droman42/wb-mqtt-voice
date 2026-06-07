@@ -12,6 +12,18 @@ newest entries near the top of each dated section.
 ## Action journal
 
 ### 2026-06-07
+- **ARCH-15 PR-6a DONE — process-wide EventBus wired; the canonical pipeline-event stream is live end-to-end.**
+  The composition root now builds one `EventBus` and shares it: the `OutputManager` (so `output.delivered` flows
+  to the *same* bus) and the `WorkflowManager` (new `event_bus` ctor arg), with the bus also injected into the
+  engine (`AsyncVACore.event_bus`, typed `Any`). `WorkflowManager.process_text_input`/`process_audio_input` now
+  publish `input.received` + `result.produced` via a `_publish_pipeline_event` helper that stamps the origin
+  identity (session/client/room/source) onto the `PipelineEvent` — so the observation tap (PR-6b) and metrics can
+  subscribe and filter by identity. Deeper events (`asr.transcript`, `intent.recognized`) need workflow internals
+  and are a later increment. No-op when no bus is wired (back-compat). `core` keeps no edge outward — the bus
+  lives in `core.event_bus`. New `test_pipeline_events.py` (3): input.received+result.produced emitted in order,
+  identity+payload carried, no-bus no-op. Verified on a real CLI boot (bus wired through composition). Gates:
+  `pyright` 0, import-linter 9/9, dep-validator 55/55, `check_scope` clean, full suite 83-failed=baseline
+  (**0 regressions**, stash-diff confirmed). **Remaining = PR-6b** (WS observation tap + gating + web-app push output).
 - **ARCH-15 scope refinement (user-directed) — MQTT out of PR-8, web-app addressed, PR-10 added.** Three corrections
   to the remaining-PR map: (1) **PR-8 no longer touches MQTT** — it builds the **local audio/voice SPEECH `OutputPort`
   only** (restoring pure D-3, retiring the PR-5a legacy-TTS fallback); the *entire* MQTT build (Flow-2 bridge actuation

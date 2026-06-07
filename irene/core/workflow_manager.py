@@ -14,6 +14,7 @@ from enum import Enum
 from .trace_context import TraceContext
 from .interfaces.workflow import WorkflowPort
 from ..intents.context_models import RequestContext, InputFormat
+from .event_bus import EventType, PipelineEvent
 from ..utils.audio_data import AudioData
 from ..intents.models import IntentResult
 from .interfaces.input import InputPort
@@ -43,9 +44,10 @@ class WorkflowManager:
     through the unified workflow with conditional pipeline stages.
     """
     
-    def __init__(self, component_manager, config):
+    def __init__(self, component_manager, config, event_bus=None):
         self.component_manager = component_manager
         self.config = config
+        self.event_bus = event_bus  # ARCH-15 PR-6: process-wide pipeline event bus (optional)
         self.workflows: Dict[str, WorkflowPort] = {}
         self.workflow_states: Dict[str, WorkflowState] = {}
         self.active_workflow: Optional[WorkflowPort] = None
@@ -462,9 +464,34 @@ class WorkflowManager:
         # Reflect the derived session id (RequestContext forbids "default"/empty → mints a real one)
         session_id = context.session_id
 
+        await self._publish_pipeline_event(EventType.INPUT_RECEIVED, context,
+                                           {"text": text, "format": "text"})
         result = await unified_workflow.process_text_input(text, context, trace_context)
+        await self._publish_pipeline_event(EventType.RESULT_PRODUCED, context, {
+            "text": result.text, "success": result.success,
+            "intent": result.metadata.get("intent_name") if result.metadata else None})
         # (QUAL-28) F&F actions are registered in the store by the launch — no write-back needed.
         return result
+
+    async def _publish_pipeline_event(self, event_type: EventType, context, payload: Dict[str, Any]) -> None:
+        """Publish a canonical pipeline event onto the bus (ARCH-15 PR-6), if one is wired.
+
+        Carries the origin identity (session/client/room/source) so the observation tap and the
+        delivery subscriber can filter/route. No-op when no bus is configured.
+        """
+        if self.event_bus is None:
+            return
+        try:
+            await self.event_bus.publish(PipelineEvent(
+                type=event_type,
+                session_id=getattr(context, "session_id", None),
+                client_id=getattr(context, "client_id", None),
+                room_name=getattr(context, "room_name", None),
+                source=getattr(context, "source", None),
+                payload=payload,
+            ))
+        except Exception as e:
+            logger.error(f"Failed to publish pipeline event {event_type.value}: {e}")
     
     async def process_audio_input(
         self,
@@ -532,7 +559,12 @@ class WorkflowManager:
             # the WorkflowPort contract — see the port docstring), so resolve it
             # dynamically off the active workflow.
             process_audio_input = getattr(unified_workflow, "process_audio_input")
+            await self._publish_pipeline_event(EventType.INPUT_RECEIVED, context,
+                                               {"format": "audio"})
             result = await process_audio_input(audio_data, context, trace_context)
+            await self._publish_pipeline_event(EventType.RESULT_PRODUCED, context, {
+                "text": result.text, "success": result.success,
+                "intent": result.metadata.get("intent_name") if result.metadata else None})
             # (QUAL-28) F&F actions are registered in the store by the launch — no write-back needed.
             return result
             

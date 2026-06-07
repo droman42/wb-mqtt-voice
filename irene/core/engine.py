@@ -48,6 +48,7 @@ class AsyncVACore:
         component_manager: ComponentManager,
         input_manager: Any,
         output_manager: Any = None,
+        event_bus: Any = None,
         context_manager: ContextManager,
         timer_manager: AsyncTimerManager,
         metrics_collector: MetricsCollector,
@@ -64,6 +65,7 @@ class AsyncVACore:
         self.component_manager = component_manager
         self.input_manager = input_manager
         self.output_manager = output_manager  # ARCH-15 PR-5: delivery layer (typed Any; core keeps no edge to irene.outputs)
+        self.event_bus = event_bus            # ARCH-15 PR-6: process-wide pipeline event bus
         self.context_manager = context_manager
         self.timer_manager = timer_manager
         self.metrics_collector = metrics_collector

@@ -501,11 +501,14 @@ See `docs/review/phase1_architecture_map.md` §5.
       instead of owning a `prompt_toolkit` reader); PR-0 stopgap removed (cli auto-start re-enabled) → one
       reader + one consumer ⇒ double-reader structurally impossible; `help`/`status` → `system.*` intents (D-4),
       only `quit` transport-local. Full multi-channel daemon multiplexer (web/ws/mqtt concurrent + runtime
-      attach/detach + runners→pure presets) is a follow-on; PR-5b lands the CLI consume loop as the first instance. **PR-6** observation tap (continuous
-      trace subscription + identity filters + gating D-5; remote debug-CLI text attach reusing ARCH-6 ws shape) **+ web
-      built-in-app push output** (the browser app is an interactive text channel like CLI; add a WS/SSE
-      `CallbackTextOutput` so the OutputManager delivers *deferred* F&F results back to the browser — its sync path is
-      already the HTTP reply). **PR-7** config-ui: `[outputs]` editor + inputs `format`/multi-input + capability-matrix
+      attach/detach + runners→pure presets) is a follow-on; PR-5b lands the CLI consume loop as the first instance. **PR-6a ✓ DONE 2026-06-07** process-wide
+      `EventBus` wired (composition builds it, shared by OutputManager + WorkflowManager, injected into engine);
+      `process_text_input`/`process_audio_input` publish `input.received`+`result.produced` (origin identity carried),
+      OutputManager publishes `output.delivered` → observation stream live end-to-end (`asr.transcript`/`intent.recognized`
+      deferred). **PR-6b** (remaining) observation tap (continuous trace subscription + identity filters + gating D-5;
+      remote debug-CLI text attach reusing ARCH-6 ws shape) **+ web built-in-app push output** (the browser app is an
+      interactive text channel like CLI; add a WS/SSE `CallbackTextOutput` so the OutputManager delivers *deferred* F&F
+      results back to the browser — its sync path is already the HTTP reply). **PR-7** config-ui: `[outputs]` editor + inputs `format`/multi-input + capability-matrix
       display + tap-gating (§9, Invariant #4; reuse UI-9 `KeyValueEditor`). **PR-8** **local audio/voice SPEECH output
       ONLY — NO MQTT** (wrap TTS+audio as a SPEECH `OutputPort`, register in voice/vosk profile → restores pure D-3,
       retires the PR-5a legacy-TTS fallback; no broker code — *all* MQTT is ARCH-8's). **PR-9** (runs last) cross-task

@@ -19,6 +19,7 @@ from ..core.workflow_manager import WorkflowManager
 from ..core.timers import AsyncTimerManager
 from ..core.metrics import get_metrics_collector
 from ..intents.context import ContextManager
+from ..core.event_bus import EventBus
 from ..inputs.manager import InputManager
 from ..outputs.manager import OutputManager
 
@@ -31,16 +32,20 @@ def build_core(config: CoreConfig, config_path: Optional[Path] = None) -> AsyncV
     """
     component_manager = ComponentManager(config)
     input_manager = InputManager(component_manager, config.inputs)
+    # ARCH-15 PR-6: one process-wide pipeline event bus. The WorkflowManager publishes lifecycle
+    # events; the OutputManager publishes `output.delivered`; the observation tap (PR-6b) and metrics
+    # subscribe. Built here and shared across both managers + the engine.
+    event_bus = EventBus()
     # ARCH-15 PR-5: the process-wide output delivery layer (symmetric to InputManager). Built here
     # and injected; runners/profiles register the concrete output adapters onto it.
-    output_manager = OutputManager()
+    output_manager = OutputManager(event_bus=event_bus)
     context_manager = ContextManager(  # QUAL-36: seed sessions from the one canonical language source
         default_language=config.default_language,
         supported_languages=config.supported_languages,
     )
     timer_manager = AsyncTimerManager()
     metrics_collector = get_metrics_collector()  # Phase 2: unified metrics
-    workflow_manager = WorkflowManager(component_manager, config)
+    workflow_manager = WorkflowManager(component_manager, config, event_bus=event_bus)
 
     return AsyncVACore(
         config,
@@ -48,6 +53,7 @@ def build_core(config: CoreConfig, config_path: Optional[Path] = None) -> AsyncV
         component_manager=component_manager,
         input_manager=input_manager,
         output_manager=output_manager,
+        event_bus=event_bus,
         context_manager=context_manager,
         timer_manager=timer_manager,
         metrics_collector=metrics_collector,

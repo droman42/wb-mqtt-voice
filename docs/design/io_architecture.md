@@ -369,8 +369,15 @@ landable and gated (`pyright` 0 · import-linter · dep-validator · `check_scop
     full multi-channel daemon multiplexer (concurrent web+ws+mqtt consume, runtime attach/detach, runners→pure
     presets) remains a follow-on — PR-5b lands the CLI consume loop as its first instance; web/vosk keep their
     existing paths for now. (`_print_interactive_help`/`_print_interactive_status` are now unused — cleanup later.)
-- **PR-6 — Observation tap + web built-in-app push output.** (a) Continuous trace-event subscription +
-  identity filters + gating (§5, D-5); remote debug-CLI attach (text format) reusing the ARCH-6 ws shape.
+- **PR-6 — Observation tap + web built-in-app push output.** _Split into 6a (done) + 6b (remaining)._
+  - **PR-6a — process-wide EventBus wired + canonical events published. ✓ DONE 2026-06-07.** The composition
+    root builds one `EventBus` (shared by the `OutputManager` and `WorkflowManager`, injected into the engine);
+    `WorkflowManager.process_text_input`/`process_audio_input` publish `input.received` + `result.produced`
+    (carrying origin identity), and the OutputManager already publishes `output.delivered` — so the observation
+    stream is now **live** end-to-end. (Deeper events `asr.transcript`/`intent.recognized` need workflow
+    internals — a later increment.) No-op without a bus; backend-only; 0 regressions.
+  - **PR-6b — observation tap + web-app push (remaining).** (a) Continuous trace-event subscription + identity
+    filters + gating (§5, D-5); remote debug-CLI attach (text format) reusing the ARCH-6 ws shape.
   (b) **The web runner's built-in browser app is an interactive text channel like CLI** (browser textbox →
   `POST /execute/command` → rendered reply). Its *sync* path is already request/response (delivery = the HTTP
   reply), but it has **no push channel for deferred F&F results** (a browser-set timer would drop). Add a
