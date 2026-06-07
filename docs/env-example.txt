@@ -45,7 +45,7 @@ GOOGLE_CLOUD_PROJECT_ID=your_google_project_id
 IRENE_DEBUG=false
 IRENE_LOG_LEVEL=INFO
 IRENE_NAME=Irene
-IRENE_VERSION=13.0.0
+# IRENE_VERSION is informational; leave it to the package (currently 15.0.0) rather than pinning it here.
 IRENE_LANGUAGE=en-US
 IRENE_TIMEZONE=UTC
 
@@ -63,25 +63,23 @@ IRENE_CONTEXT_TIMEOUT_MINUTES=30
 # COMPONENT CONFIGURATION
 # ============================================================
 
-# Enable/disable core components
-IRENE_COMPONENTS__TTS=true
-IRENE_COMPONENTS__ASR=true
-IRENE_COMPONENTS__LLM=true
-IRENE_COMPONENTS__AUDIO_OUTPUT=true
-IRENE_COMPONENTS__WEB_API=true
+# Enable/disable core components.
+# NOTE: components are normally set in your config.toml (e.g. configs/minimal.toml), NOT here.
+# Env vars OVERRIDE the config file, so these are left COMMENTED — `cp docs/env-example.txt .env`
+# must not force a partial component set. (Older copies crashed at startup: they enabled TTS but
+# used the WRONG field `AUDIO_OUTPUT`, leaving Audio off → "TTS component requires Audio component".)
+# Field names must match the schema (AUDIO, not AUDIO_OUTPUT); if you enable TTS, also enable AUDIO.
+# IRENE_COMPONENTS__TTS=true
+# IRENE_COMPONENTS__AUDIO=true          # required whenever TTS is enabled
+# IRENE_COMPONENTS__ASR=true
+# IRENE_COMPONENTS__LLM=true
+# IRENE_COMPONENTS__NLU=true
+# IRENE_COMPONENTS__TEXT_PROCESSOR=true
+# IRENE_COMPONENTS__INTENT_SYSTEM=true
+# Web API is a SYSTEM capability, not a component:
+# IRENE_SYSTEM__WEB_API_ENABLED=true
 
-# ============================================================
-# PLUGIN CONFIGURATION
-# ============================================================
-
-# Plugin directories (comma-separated)
-IRENE_PLUGINS__PLUGIN_DIRECTORIES=./irene/plugins/builtin,./plugins
-
-# Enable/disable builtin plugins
-IRENE_PLUGINS__BUILTIN_PLUGINS__UNIVERSAL_TTS_PLUGIN=true
-IRENE_PLUGINS__BUILTIN_PLUGINS__UNIVERSAL_ASR_PLUGIN=true
-IRENE_PLUGINS__BUILTIN_PLUGINS__UNIVERSAL_LLM_PLUGIN=true
-IRENE_PLUGINS__BUILTIN_PLUGINS__UNIVERSAL_AUDIO_PLUGIN=true
+# (The legacy IRENE_PLUGINS__* block was removed here — the plugin system was retired in ARCH-13.)
 
 # ============================================================
 # SECURITY CONFIGURATION
