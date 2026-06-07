@@ -310,64 +310,42 @@ class InteractiveRunnerMixin:
     runner_config: RunnerConfig
 
     async def _run_interactive_loop(self, args: argparse.Namespace, prompt_text: str = "irene> ") -> int:
-        """Run interactive command loop with unified pattern"""
-        if not self.core:
+        """Consume the single CLI input source and route each line through the workflow.
+
+        ARCH-15 PR-5b: the runner no longer owns a `prompt_toolkit` reader. The InputManager-owned
+        `CLIInput` adapter is the **single** reader (its `_input_loop`); this loop CONSUMES its
+        `listen()` stream and renders results through the shared OutputManager (`_render_result`).
+        One reader + one consumer ⇒ the PR-0 double-reader is structurally impossible. Meta-commands
+        (`help`/`status`) are ordinary `system.*` intents now (D-4); only `quit`/`exit`/`q` is
+        transport-local (CLIInput already normalises them and stops its reader).
+        """
+        if not self.core or not self.core.input_manager:
             return 1
-        
-        try:
-            from prompt_toolkit import prompt
-        except ImportError:
-            print("❌ Interactive mode requires prompt_toolkit")
-            print("💡 Install with: uv add prompt_toolkit")
+        source = self.core.input_manager._sources.get("cli")
+        if source is None:
+            self._logger.error("CLI input source not available for interactive loop")
             return 1
-        
+
         if not args.quiet:
-            print("\n💬 Type 'help' for available commands, or 'quit' to exit")
+            print("\n💬 Type a command, or 'quit' to exit")
             print("-" * 50)
-        
+
         try:
-            while self.core.is_running:
+            async for data in source.listen():
+                if not isinstance(data, str):
+                    continue
+                command = data.strip()
+                if not command:
+                    continue
+                if command.lower() in ("quit", "exit", "q"):
+                    break
                 try:
-                    display_prompt = prompt_text if not args.quiet else "> "
-                    command = await asyncio.to_thread(
-                        prompt,
-                        display_prompt,
-                        mouse_support=True,
-                        enable_history_search=True
-                    )
-                    
-                    if command:
-                        command = command.strip()
-                    
-                    if command.lower() in ["quit", "exit", "q"]:
-                        break
-                    elif command.lower() == "help":
-                        self._print_interactive_help()
-                        continue
-                    elif command.lower() == "status":
-                        self._print_interactive_status()
-                        continue
-                    elif not command:
-                        continue
-                    
-                    # Process command through unified workflow
                     await self._process_interactive_command(command, args)
-                    
-                except KeyboardInterrupt:
-                    if not args.quiet:
-                        print("\n\n🛑 Interrupt received, shutting down...")
-                    break
-                except EOFError:
-                    if not args.quiet:
-                        print("\n\n👋 EOF received, goodbye!")
-                    break
                 except Exception as e:
                     self._logger.error(f"Error processing command: {e}")
                     if not args.quiet:
                         print(f"❌ Error: {e}")
-            
             return 0
-            
         except Exception as e:
             self._logger.error(f"Interactive loop error: {e}")
             return 1

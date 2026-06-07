@@ -360,10 +360,15 @@ landable and gated (`pyright` 0 · import-linter · dep-validator · `check_scop
     the OM has no attached output for an identity (e.g. voice mode, no audio output until PR-8), the
     notification falls back to the legacy TTS/LOG path rather than dropping — so the voice timer-announce does
     not regress; the pure D-3 drop+log is restored at PR-8. Verified: real CLI + timer e2e green, 0 regressions.
-  - **PR-5b — daemon consume loop + runners-as-presets (remaining).** One process, concurrent input+output
-    registries, runtime attach/detach; runners become config-preset launchers with layered overrides (§8);
-    **PR-0's stopgap removed** (console input is a single daemon-consumed adapter — double-reader structurally
-    impossible). Meta-commands per D-4.
+  - **PR-5b — interactive runner consumes the single CLI source. ✓ DONE 2026-06-07.** `_run_interactive_loop`
+    no longer runs its own `prompt_toolkit` reader — it **consumes** `CLIInput.listen()` (the single
+    InputManager-owned reader) and routes each line through the workflow, rendering via the shared OutputManager.
+    **PR-0 stopgap removed** (cli auto-start re-enabled): one reader (`CLIInput._input_loop`) + one consumer ⇒
+    the double-reader is **structurally impossible**. Meta-commands `help`/`status` are now ordinary `system.*`
+    intents (D-4 — REPL interception deleted); only `quit`/`exit`/`q` stays transport-local. _Scope note:_ the
+    full multi-channel daemon multiplexer (concurrent web+ws+mqtt consume, runtime attach/detach, runners→pure
+    presets) remains a follow-on — PR-5b lands the CLI consume loop as its first instance; web/vosk keep their
+    existing paths for now. (`_print_interactive_help`/`_print_interactive_status` are now unused — cleanup later.)
 - **PR-6 — Observation tap.** Continuous trace-event subscription + identity filters + gating (§5, D-5);
   remote debug-CLI attach (text format) reusing the ARCH-6 ws shape.
 - **PR-7 — config-ui.** `[outputs]` editor + inputs `format`/multi-input + capability-matrix display +

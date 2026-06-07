@@ -12,6 +12,24 @@ newest entries near the top of each dated section.
 ## Action journal
 
 ### 2026-06-07
+- **ARCH-15 PR-5b DONE — interactive runner CONSUMES the single CLI source; the double-reader is structurally gone.**
+  `InteractiveRunnerMixin._run_interactive_loop` no longer runs its own `prompt_toolkit` reader — it consumes
+  `CLIInput.listen()` (the single InputManager-owned reader, `_input_loop`) and routes each line through
+  `process_text_input` → `_render_result` (shared OutputManager). The **PR-0 stopgap is removed** — cli auto-start
+  is re-enabled in `InputManager._auto_start_configured_sources`, because there is now exactly one reader
+  (`CLIInput._input_loop`) and one consumer (the runner loop), so the race PR-0 guarded against **cannot occur by
+  construction** (not merely avoided). Meta-commands: the REPL `help`/`status` interception is **deleted** — they
+  are ordinary `system.*` intents now (D-4, `SystemIntentHandler` already implements them); only `quit`/`exit`/`q`
+  stays transport-local (CLIInput normalises them and stops its own reader). Updated `test_input_manager_autostart.py`
+  to assert the source is now auto-started (inverting the PR-0 guard, with the rationale that the double-reader is
+  prevented at the consumer level). New `test_cli_consume_loop.py` (3): in-order processing + origin-paired console
+  delivery, blank-line skipping, quit stops before later lines, missing-source error. **Scope note:** the full
+  multi-channel daemon multiplexer (concurrent web/ws/mqtt consume, runtime attach/detach, runners→pure config
+  presets) remains a follow-on — PR-5b lands the CLI consume loop as the first instance; web/vosk keep their
+  existing paths. `_print_interactive_help`/`_print_interactive_status` are now unused (cleanup later). Verified:
+  CLI `--command` e2e green (cli auto-start re-enabled, non-interactive subprocess unaffected). Gates: `pyright` 0,
+  import-linter 9/9, dep-validator 55/55, `check_scope` clean, full suite 83-failed=baseline (**0 regressions**,
+  stash-diff confirmed). **ARCH-15 PR-5 COMPLETE (5a+5b).**
 - **ARCH-15 PR-5a DONE — process-wide OutputManager wired into composition + NotificationService (F&F delivery live).**
   The composition root (`runners/composition.build_core`) now builds one `OutputManager` (symmetric to
   `InputManager`) and injects it into the engine (`AsyncVACore.output_manager`, typed `Any` — `core` keeps no

@@ -118,14 +118,15 @@ class InputManager:
                 "microphone" in self._sources):
                 sources_to_start.append("microphone")
             
-            # Note: CLI input is NOT auto-started (ARCH-15 PR-0). The interactive runner
-            # (InteractiveRunnerMixin._run_interactive_loop) owns stdin via its own
-            # prompt_toolkit reader and calls process_text_input directly; auto-starting the
-            # CLIInput source here spawns a SECOND prompt_toolkit reader on the same TTY whose
-            # _command_queue nothing drains (get_next_input has no live consumer) — the two race
-            # and typed lines won by CLIInput are silently dropped. The source stays registered
-            # in _sources (harmless); it is simply not started. (Superseded by ARCH-15 PR-5,
-            # where one daemon-consumed console adapter makes the double-reader impossible.)
+            # Start CLI if it's the default input or enabled (ARCH-15 PR-5b — the PR-0 stopgap is
+            # removed). The interactive runner no longer runs its own prompt_toolkit reader; it
+            # CONSUMES this single source's listen() stream. So there is exactly one reader
+            # (CLIInput._input_loop) and one consumer — the PR-0 double-reader can no longer occur.
+            if (self.input_config and
+                (self.input_config.default_input == "cli" or
+                 self.input_config.cli) and
+                "cli" in self._sources):
+                sources_to_start.append("cli")
 
             # Note: Web input is typically started explicitly by WebAPIRunner
             # so we don't auto-start it here to avoid conflicts

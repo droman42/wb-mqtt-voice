@@ -1,43 +1,40 @@
-"""ARCH-15 PR-0 — the InputManager must not auto-start the `cli` source.
+"""ARCH-15 PR-5b — the InputManager auto-starts the `cli` source (PR-0 stopgap removed).
 
-The interactive runner (`InteractiveRunnerMixin._run_interactive_loop`) owns stdin via its own
-prompt_toolkit reader and calls `process_text_input` directly. If the InputManager *also*
-auto-starts the `CLIInput` source, a second prompt_toolkit reader races for the same TTY and the
-lines it wins land in a `_command_queue` that nothing drains (`get_next_input` has no live
-consumer) — so typed commands are silently dropped. PR-0 stops auto-starting `cli` (the source
-stays registered, just not started), mirroring the existing `web` guard.
+PR-0 temporarily stopped auto-starting `cli` to avoid a double-reader (the runner ran its own
+prompt_toolkit reader AND the InputManager auto-started a second one whose queue nothing drained).
+PR-5b removes that stopgap: the interactive runner no longer reads stdin itself — it CONSUMES the
+single CLIInput source's `listen()` stream. So there is exactly one reader (CLIInput._input_loop,
+spawned by auto-start) and one consumer; the double-reader is structurally impossible. These tests
+assert the source is auto-started again.
 """
 
 from irene.config.models import InputConfig
 from irene.inputs.manager import InputManager
 
 
-async def test_cli_source_registered_but_not_auto_started():
-    """With cli enabled + default, `cli` is discovered into `_sources` but NOT auto-started."""
+async def test_cli_source_auto_started():
+    """With cli enabled + default, `cli` is discovered AND auto-started (the single reader)."""
     cfg = InputConfig(microphone=False, web=False, cli=True, default_input="cli")
     mgr = InputManager(component_manager=None, input_config=cfg)
 
     await mgr.initialize()
 
-    # Registered and available — the runner can still reach the handle if it wants it.
-    assert "cli" in mgr._sources, "CLI source should still be registered"
-    # But NOT started — no competing prompt_toolkit reader on the TTY.
-    assert "cli" not in mgr._active_sources, "CLI source must not be auto-started (PR-0)"
+    assert "cli" in mgr._sources, "CLI source should be registered"
+    assert "cli" in mgr._active_sources, "CLI source should be auto-started (PR-0 stopgap removed)"
+    assert mgr._sources["cli"].is_listening() is True
 
     await mgr.close()
 
 
-async def test_cli_input_loop_not_spawned():
-    """The CLIInput background read loop is never created when only cli is configured."""
+async def test_cli_listen_stream_available_for_consumer():
+    """The auto-started CLIInput exposes a listen() stream for the runner's consume loop."""
     cfg = InputConfig(microphone=False, web=False, cli=True, default_input="cli")
     mgr = InputManager(component_manager=None, input_config=cfg)
 
     await mgr.initialize()
-
-    cli_source = mgr._sources["cli"]
-    # CLIInput spawns its prompt_toolkit reader in start_listening(); not auto-started => no task,
-    # so it is not listening and there is no second reader competing for stdin.
-    assert cli_source.is_listening() is False
-    assert "cli" not in mgr._listen_tasks
+    source = mgr._sources["cli"]
+    # The adapter is listening and its async listen() generator is usable by the consumer.
+    assert source.is_listening() is True
+    assert hasattr(source, "listen")
 
     await mgr.close()

@@ -496,8 +496,12 @@ See `docs/review/phase1_architecture_map.md` §5.
       OutputManager wired (composition→engine [Any-typed] + injected into NotificationService via
       MonitoringComponent [object-only]; closes PR-4 opt-in → F&F delivery live; CLIRunner registers
       ConsoleOutput on the *shared* OM; migration fallback to legacy TTS when no output for an identity, so
-      voice-announce doesn't regress — pure D-3 restored at PR-8). **PR-5b** (remaining) daemon consume loop +
-      runners-as-presets + runtime attach/detach (removes PR-0 stopgap; double-reader structurally impossible). **PR-6** observation tap (continuous
+      voice-announce doesn't regress — pure D-3 restored at PR-8). **PR-5b ✓ DONE 2026-06-07** interactive runner
+      consumes the single CLIInput source (`_run_interactive_loop` drains `listen()` → workflow → shared OM
+      instead of owning a `prompt_toolkit` reader); PR-0 stopgap removed (cli auto-start re-enabled) → one
+      reader + one consumer ⇒ double-reader structurally impossible; `help`/`status` → `system.*` intents (D-4),
+      only `quit` transport-local. Full multi-channel daemon multiplexer (web/ws/mqtt concurrent + runtime
+      attach/detach + runners→pure presets) is a follow-on; PR-5b lands the CLI consume loop as the first instance. **PR-6** observation tap (continuous
       trace subscription + identity filters + gating D-5; remote debug-CLI text attach reusing ARCH-6 ws shape). **PR-7**
       config-ui: `[outputs]` editor + inputs `format`/multi-input + capability-matrix display + tap-gating (§9, Invariant #4;
       reuse UI-9 `KeyValueEditor`). **PR-8** audio/MQTT outputs + ARCH-8 bridge actuation as a request/response
