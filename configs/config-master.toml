@@ -48,6 +48,11 @@ web_api_enabled = true             # Enable REST API and WebSocket server
 web_port = 8000                    # Web API server port (1-65535)
 # NOTE: Metrics configuration moved to [monitoring] section (Phase 5 unification)
 
+# Observation tap (ARCH-15) - gated /ws/observe debug stream of the pipeline event bus.
+# Disabled unless observe_token is set; localhost-only unless observe_allow_remote=true.
+# observe_token = "change-me-secret"  # Shared token for /ws/observe (unset = tap DISABLED)
+observe_allow_remote = false       # Allow non-localhost tap connections (still token-gated)
+
 # ============================================================
 # INPUT SOURCES - Data Entry Points
 # ============================================================
@@ -80,6 +85,17 @@ rest_api_enabled = true            # Enable REST API endpoints
 enabled = true                      # Enable command line input processing
 prompt_prefix = "irene> "           # CLI prompt prefix
 history_enabled = true              # Enable command history
+
+# ============================================================
+# OUTPUT CHANNELS - Result Delivery (ARCH-15)
+# ============================================================
+# The symmetric twin of [inputs]: which output adapters the runners register on
+# the OutputManager and their settings. Sync responses and deferred fire-and-forget
+# results are delivered through these (origin/identity-addressed).
+[outputs]
+console = true                      # Console (terminal) text output (CLI channel)
+console_prefix = "📝 "              # Prefix for console output lines
+web_push = true                    # Browser push channel (/ws/output) for deferred results
 
 # ============================================================
 # COMPONENTS - Processing Pipeline Components
