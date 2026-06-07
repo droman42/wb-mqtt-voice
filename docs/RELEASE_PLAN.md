@@ -473,8 +473,11 @@ See `docs/review/phase1_architecture_map.md` §5.
       `InputManager._auto_start_configured_sources` (`inputs/manager.py`; the source stays registered in `_sources`, just not
       started), mirroring the existing `web` guard; the runner's own `_run_interactive_loop` is now the sole stdin reader, so
       typed lines stop being swallowed by the competing `CLIInput._input_loop` (whose `_command_queue` had no consumer).
-      `irene/tests/test_input_manager_autostart.py` (2) guards it. Design-compatible; superseded by PR-5. **PR-1** `InputData.format`
-      first-class → workflow derives entry stage (retire per-runner skip-flag hand-setting). **PR-2** `OutputPort`
+      `irene/tests/test_input_manager_autostart.py` (2) guards it. Design-compatible; superseded by PR-5. **PR-1 ✓ DONE 2026-06-07** `InputFormat` enum
+      `{VOICE,AUDIO,TEXT}` first-class on `RequestContext.input_format` (single source of truth; legacy `skip_*`
+      flags = derived bijection) → `configure_pipeline_stages` selects entry stage from it; `process_text_input`
+      passes `input_format=TEXT`. Reconciled vs design (`InputData` is a Union alias, so format lives on
+      RequestContext; envelope-stamping deferred to PR-5). Behaviour-preserving, equivalence-tested. **PR-2** `OutputPort`
       (`core/interfaces/output.py`) + `irene/outputs/` + `OutputManager` + pipeline event bus + event vocabulary + modality
       matrix/negotiation (fakes; parallel with PR-1). **PR-3** real text outputs (console + ws/web) + origin routing via
       `resolve_physical_id`. **PR-4** F&F/notifications re-routed through OutputManager (producer-demote `NotificationService`;

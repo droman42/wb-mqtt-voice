@@ -12,6 +12,20 @@ newest entries near the top of each dated section.
 ## Action journal
 
 ### 2026-06-07
+- **ARCH-15 PR-1 DONE — input `format` is first-class (`InputFormat` enum), driving the pipeline-entry stage.**
+  Added `InputFormat{VOICE,AUDIO,TEXT}` (`intents/context_models.py`, D-1) — each value names its workflow entry
+  stage (VOICE→voice-trigger, AUDIO→ASR, TEXT→NLU). It is now the single source of truth on
+  `RequestContext.input_format`; the legacy `(skip_wake_word, skip_asr)` flags are its derived projection (clean
+  bijection VOICE=(F,F)/AUDIO=(T,F)/TEXT=(T,T), with back-compat inference so callers still passing the flags keep
+  working). `Workflow.configure_pipeline_stages` now selects stages from `input_format` (equivalent to — and
+  replacing — the prior `skip_wake_word`/`source=="text"`/`skip_asr` checks); `process_text_input` passes
+  `input_format=TEXT` instead of two hand-set booleans. **Reconciliation (Invariant #8):** the brief said
+  `InputData.format`, but `InputData` is a *type alias* `Union[str, AudioData]` (`core/interfaces/input.py:23`),
+  not a class — so format landed on `RequestContext`; stamping it on the input *envelope* is deferred to PR-5
+  (daemon path). New `irene/tests/test_input_format.py` (17): the bijection, RequestContext source-of-truth +
+  back-compat inference, and a `configure_pipeline_stages` equivalence test vs the exact pre-refactor logic.
+  Behaviour-preserving. Gates: `pyright` 0, import-linter 9/9, dep-validator 55/55, `check_scope` clean, backend
+  suite 84-failed=baseline (0 net regression, +17 new passing). Backend-only; no config-ui surface.
 - **ARCH-15 PR-0 DONE — CLI double-reader stopgap; interactive CLI no longer swallows typed lines.** `InputManager`
   auto-started the `cli` source (`_auto_start_configured_sources`), spawning `CLIInput._input_loop` — a second
   `prompt_toolkit.prompt()` reader on the same TTY whose `_command_queue` nothing drains (`get_next_input` has no live

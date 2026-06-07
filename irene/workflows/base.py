@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 
 
-from ..intents.context_models import RequestContext  # ARCH-5
+from ..intents.context_models import RequestContext, InputFormat  # ARCH-5 / ARCH-15
 
 
 class Workflow(WorkflowPort):
@@ -127,19 +127,24 @@ class Workflow(WorkflowPort):
             Dictionary mapping stage names to enabled/disabled status
         """
         stages = self._pipeline_stages.copy()
-        
-        # Voice trigger stage - conditional based on context
-        if context.skip_wake_word or context.source == "text":
+
+        # ARCH-15 PR-1 (D-1): the input format selects the entry stage (single source of truth;
+        # `skip_wake_word`/`skip_asr` are its derived projection). Equivalent to the prior
+        # skip-flag/source checks — VOICE enters at voice-trigger, AUDIO at ASR, TEXT at NLU.
+        fmt = context.input_format
+
+        # Voice trigger stage - only for full VOICE input (wake-word needed)
+        if fmt is not InputFormat.VOICE:
             stages["voice_trigger"] = False
-        
-        # ASR stage - disabled for text input or when skip_asr is True
-        if context.source == "text" or getattr(context, 'skip_asr', False):
+
+        # ASR stage - disabled for TEXT (audio formats still need ASR)
+        if fmt is InputFormat.TEXT:
             stages["asr"] = False
-        
+
         # TTS stage - conditional based on wants_audio preference
         if not context.wants_audio:
             stages["tts"] = False
-        
+
         return stages
     
     def is_stage_enabled(self, stage_name: str, context: RequestContext) -> bool:

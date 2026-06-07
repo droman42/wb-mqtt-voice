@@ -50,8 +50,17 @@ These are orthogonal and must be modelled separately (today they are conflated i
 
 **Today:** format is *implicitly* encoded by `RequestContext` flags hand-set per runner — `skip_asr`
 (text path, `workflow_manager.py:453`), `skip_wake_word` (`webapi_router.py:814`), `wants_audio`.
-**Target:** format becomes a **first-class value the input adapter declares** (`InputData.format` →
-`{text, audio, …}`), and the workflow derives the entry stage from it. No runner hand-sets skip-flags.
+**Target:** format becomes a **first-class value** (`InputFormat` enum `{VOICE, AUDIO, TEXT}`), and the
+workflow derives the entry stage from it.
+
+> **Reconciliation (PR-1, done):** the brief said `InputData.format`, but `InputData` is a *type alias*
+> `Union[str, AudioData]` (`core/interfaces/input.py:23`) — it can't carry a field. The live entry path is
+> `RequestContext`-based, and `(skip_wake_word, skip_asr)` already *was* the de-facto format encoding. So
+> `InputFormat` landed on **`RequestContext.input_format`** as the single source of truth (the legacy flags
+> are now its derived projection — a clean bijection: VOICE=(F,F), AUDIO=(T,F), TEXT=(T,T)).
+> `configure_pipeline_stages` selects the entry stage from `input_format`. The daemon path (**PR-5**) will
+> stamp `format` on the input *envelope* the adapter yields; until then it's set at the workflow entry
+> methods (`process_text_input` → TEXT; audio entries infer from the wake-word distinction).
 
 ---
 
@@ -310,8 +319,11 @@ landable and gated (`pyright` 0 · import-linter · dep-validator · `check_scop
   interactive runner (mirror the `web` guard, `manager.py:129`); runner keeps owning its REPL *for now*.
   Pure bugfix, no architecture change, unblocks interactive CLI immediately. Explicitly a stopgap that PR-5
   supersedes.
-- **PR-1 — Format as first-class.** Add `InputData.format` enum (D-1); workflow derives entry stage from it;
-  replace per-runner skip-flag hand-setting. No behaviour change, pure refactor + tests.
+- **PR-1 — Format as first-class. ✓ DONE 2026-06-07.** `InputFormat` enum `{VOICE, AUDIO, TEXT}` (D-1) on
+  `RequestContext.input_format` as the single source of truth (legacy `skip_*` flags = derived projection;
+  see §2 reconciliation note — `InputData` is a Union alias, not a class). `configure_pipeline_stages` selects
+  the entry stage from it; `process_text_input` passes `input_format=TEXT` (no more hand-set booleans); audio
+  entries infer it back-compat. Behaviour-preserving (equivalence-tested vs the prior skip-flag logic).
 - **PR-2 — OutputPort + OutputManager + event bus (core, fake adapters).** `core/interfaces/output.py`,
   `irene/outputs/` package, `OutputManager`, the pipeline event bus + the canonical event vocabulary (§5),
   modality/capability matrix + negotiation (§3.1), and the **`DeliveryResult` request/response contract

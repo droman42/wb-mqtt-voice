@@ -13,7 +13,7 @@ from enum import Enum
 
 from .trace_context import TraceContext
 from .interfaces.workflow import WorkflowPort
-from ..intents.context_models import RequestContext
+from ..intents.context_models import RequestContext, InputFormat
 from ..utils.audio_data import AudioData
 from ..intents.models import IntentResult
 from .interfaces.input import InputPort
@@ -449,8 +449,7 @@ class WorkflowManager:
             source="text",
             session_id=session_id,
             wants_audio=wants_audio,
-            skip_wake_word=True,  # Always skip for text input
-            skip_asr=True,  # Always skip for text input
+            input_format=InputFormat.TEXT,  # enters at NLU (derives skip_wake_word + skip_asr)
             metadata=client_context or {"mode": "text_input"},
             client_id=client_context.get("client_id") if client_context else None,
             room_name=client_context.get("room_name") if client_context else None,

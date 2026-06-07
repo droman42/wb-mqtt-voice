@@ -717,6 +717,47 @@ class UnifiedConversationContext:
             "threads": summaries
         }
 
+class InputFormat(Enum):
+    """ARCH-15 PR-0..1 (D-1): the *format* axis — what the input is, which prescribes the
+    workflow ENTRY stage (orthogonal to the *input* axis = the capture mechanism, §io_architecture §2).
+
+    Three values, each naming its entry point into the pipeline
+    (voice_trigger → ASR → text_processing → NLU → …):
+      - VOICE: enter at voice-trigger (always-listening audio that must be woken: local mic)
+      - AUDIO: enter at ASR (already-triggered audio: WS push-to-talk, ESP32 satellite)
+      - TEXT:  enter at NLU, after ASR (console, web textbox, WS text frame)
+
+    `file`/`binary_audio` are *transport* (an input-adapter concern), not formats.
+
+    This is the single source of truth for the pipeline-entry decision; the legacy
+    ``(skip_wake_word, skip_asr)`` flags on RequestContext are a derived projection of it
+    (bijection over the meaningful combinations — the 4th combo "wake-word on + ASR off" is
+    nonsensical and never occurs).
+    """
+    VOICE = "voice"
+    AUDIO = "audio"
+    TEXT = "text"
+
+    def to_flags(self) -> "tuple[bool, bool]":
+        """Project to the legacy ``(skip_wake_word, skip_asr)`` pair."""
+        return {
+            InputFormat.VOICE: (False, False),
+            InputFormat.AUDIO: (True, False),
+            InputFormat.TEXT: (True, True),
+        }[self]
+
+    @classmethod
+    def from_flags(cls, skip_wake_word: bool, skip_asr: bool) -> "InputFormat":
+        """Recover the format from the legacy flags (back-compat for callers still passing them).
+
+        ``skip_asr`` implies TEXT (text always skips both stages); otherwise ``skip_wake_word``
+        distinguishes already-triggered AUDIO from full VOICE.
+        """
+        if skip_asr:
+            return cls.TEXT
+        return cls.AUDIO if skip_wake_word else cls.VOICE
+
+
 # ARCH-5: RequestContext moved here from workflows/base.py so the domain (intents) no
 # longer imports up into workflows (it's request-context data — a domain type).
 class RequestContext:
@@ -728,6 +769,7 @@ class RequestContext:
                  wants_audio: bool = False,
                  skip_wake_word: bool = False,
                  skip_asr: bool = False,
+                 input_format: Optional["InputFormat"] = None,
                  metadata: Optional[Dict[str, Any]] = None,
                  client_id: Optional[str] = None,
                  room_name: Optional[str] = None,
@@ -740,8 +782,10 @@ class RequestContext:
             source: Source of the request (e.g., "microphone", "web", "cli", "esp32")
             session_id: Session identifier for context management (auto-generated if None)
             wants_audio: Whether the response should include audio output
-            skip_wake_word: Whether to skip wake word detection
-            skip_asr: Whether to skip ASR (Automatic Speech Recognition) processing
+            skip_wake_word: DERIVED from input_format (legacy flag; pass input_format instead)
+            skip_asr: DERIVED from input_format (legacy flag; pass input_format instead)
+            input_format: The format/entry-stage selector (VOICE/AUDIO/TEXT). When None, inferred
+                from the legacy skip_* flags for back-compat. This is the single source of truth.
             metadata: Additional request metadata
             client_id: Client/node identifier (e.g., "kitchen_node", "living_room_esp32")
             room_name: Human-readable room name (e.g., "Кухня", "Kitchen")
@@ -758,8 +802,13 @@ class RequestContext:
             session_id = SessionManager.generate_session_id(source)
         self.session_id = session_id
         self.wants_audio = wants_audio
-        self.skip_wake_word = skip_wake_word
-        self.skip_asr = skip_asr
+        # ARCH-15 PR-1 (D-1): `input_format` is the first-class pipeline-entry selector and the
+        # single source of truth; the legacy `(skip_wake_word, skip_asr)` flags are derived from
+        # it. Back-compat: callers that still pass the flags get the format inferred from them.
+        if input_format is None:
+            input_format = InputFormat.from_flags(skip_wake_word, skip_asr)
+        self.input_format = input_format
+        self.skip_wake_word, self.skip_asr = input_format.to_flags()
         self.metadata = metadata or {}
         
         # Client identification and context
