@@ -1460,7 +1460,9 @@ _Apply to every remediation task below (from the 4 review docs + QUAL-25/26). So
 
 ### Documentation (DOC)
 - [x] **DOC-1** — Sync README/architecture to v15; archive ~28 historical docs to `docs/archive/`. → 4a55519
-- [ ] **DOC-2** (P2) — Archive completed `docs/TODO/TODO0x`; mark `docs/TODO.md` superseded by this file; keep open TODO11 + partials.
+- [x] **DOC-2** (P2) — DONE 2026-06-08: archived the entire `docs/TODO/` subfolder + `docs/TODO.md` to
+      `docs/archive/` (superseded by this plan). The open TODO11/microWakeWord work is tracked under
+      QUAL-19/20 (`esp32_wakeword_review.md`), not the TODO folder, so nothing was lost.
 - [ ] **DOC-3** (P2) — Fix cosmetic stale-version strings: "v13" in `irene/core/engine.py` docstrings/logs and the
       "v14" CLI banner in `irene/runners/cli.py` (`--help` description). Should read v15.
 - [x] **DOC-4** (P1) — DONE 2026-06-08: fulfilled by the new canonical documentation set. `architecture.md`
@@ -1477,9 +1479,11 @@ _Apply to every remediation task below (from the 4 review docs + QUAL-25/26). So
       two-part model (language-neutral `contract.json` + per-language `<lang>.json`), with full field reference
       from `donation_contract_v1.1.json` (method/param schema, type + entity_type enums) and the cross-language
       validation rule. Old single-file/v1.0 body + drift banner replaced.
-- [ ] **DOC-7** [PEX] (P1) — Canonical parameter-extraction reference (the design doc was archived; nothing
-      current): authoring `ParameterSpec`, ParameterType semantics, token/slot pattern format, entity resolution,
-      handler consumption of `intent.entities`. → `docs/guides/PARAMETER_EXTRACTION_GUIDE.md`. Derived from QUAL-10.
+- [x] **DOC-7** [PEX] (P1) — DONE 2026-06-08: the parameter-extraction reference is covered across the new
+      canonical set rather than one file — `guides/DONATION_FILE_SPECIFICATION.md` (the `ParameterSpec` schema +
+      the ParameterType and entity_type enums), `architecture/intents.md` (extraction patterns, `get_param`,
+      handler consumption of `intent.entities`), and `architecture/nlu.md` (token/slot pattern format). Closed as
+      covered; the standalone `PARAMETER_EXTRACTION_GUIDE.md` was not needed.
 - [x] **DOC-6** (P2) — Archived stale historical-plan docs (`config_schemas`, `language_support`,
       `configuration_guide`, `PIPELINE_IMPLEMENTATION`, `irene_current`) → `docs/archive/`.
 - [ ] **DOC-8** (P1) — **Data & context-models map** → `docs/guides/DATA_MODELS.md`. **Downstream of QUAL-25
