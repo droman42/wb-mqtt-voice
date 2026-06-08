@@ -1,0 +1,38 @@
+// Irene — the workflow pipeline + where each input format enters. Render:
+//   dot -Tpng docs/images/pipeline.dot -o docs/images/pipeline.png
+digraph pipeline {
+  rankdir=LR; bgcolor="white"; splines=spline; nodesep=0.3; ranksep=0.7;
+  fontname="Helvetica"; labelloc=t; fontsize=15;
+  label="One pipeline; the input format decides where it enters";
+  node [fontname="Helvetica", fontsize=11, shape=box, style="filled,rounded", penwidth=1.4];
+  edge [fontname="Helvetica", fontsize=9, color="#9e9e9e", arrowsize=0.7];
+
+  // pipeline stages (left to right)
+  node [fillcolor="#e8f5e8", color="#388e3c"];
+  vt  [label="voice\ntrigger"];
+  asr [label="ASR"];
+  tp  [label="text\nprocessing"];
+  nlu [label="NLU"];
+  it  [label="intent\norchestrator"];
+  tts [label="TTS"];
+  out [label="audio\nout", fillcolor="#f3e5f5", color="#7b1fa2"];
+
+  vt -> asr -> tp -> nlu -> it -> tts -> out;
+  it -> tts [style=dashed]; tts -> out [style=dashed];
+
+  // input-format entry points
+  node [shape=note, fillcolor="#fff3e0", color="#ef6c00", fontcolor="#b35900", fontsize=10];
+  fv [label="format = voice\nmic + wake word"];
+  fa [label="format = audio\npush-to-talk · ESP32"];
+  ft [label="format = text\nCLI · web · ws"];
+  { rank=same; fv; vt; }
+  { rank=same; fa; asr; }
+  { rank=same; ft; tp; }
+  edge [color="#ef6c00", penwidth=1.6, arrowsize=0.8];
+  fv -> vt; fa -> asr; ft -> tp;
+
+  // caption for the conditional tail
+  node [shape=plaintext, fillcolor="white", fontcolor="#616161", fontsize=10];
+  cap [label="TTS + audio run only if those components are configured\nand the request wants spoken output"];
+  { rank=same; cap; tts; }
+}

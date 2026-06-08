@@ -1,0 +1,31 @@
+// Irene — input/output model + the pipeline event bus. Render:
+//   dot -Tpng docs/images/io-eventbus.dot -o docs/images/io-eventbus.png
+digraph io {
+  rankdir=LR; bgcolor="white"; splines=spline; nodesep=0.45; ranksep=0.9;
+  fontname="Helvetica"; labelloc=t; fontsize=15;
+  label="From input to output, with the event bus tapping every stage";
+  node [fontname="Helvetica", fontsize=11, shape=box, style="filled,rounded", penwidth=1.4];
+  edge [fontname="Helvetica", fontsize=9, color="#616161", arrowsize=0.7];
+
+  // --- the main flow (top) ---
+  in  [label="input adapter\nstamps format +\norigin identity", fillcolor="#f3e5f5", color="#7b1fa2"];
+  wf  [label="workflow\nprocess_text / process_audio\n→ pipeline → IntentResult", fillcolor="#e8f5e8", color="#388e3c"];
+  om  [label="OutputManager\nroute by modality,\norigin-paired", fillcolor="#e3f2fd", color="#1976d2"];
+  out [label="output adapter\nconsole · ws · audio · bridge", fillcolor="#f3e5f5", color="#7b1fa2"];
+  in -> wf [label="format → entry stage"];
+  wf -> om [label="IntentResult"];
+  om -> out [label="deliver"];
+
+  // --- the event bus (bottom) ---
+  bus [label="event bus", shape=box, style="filled", fillcolor="#1976d2", fontcolor="white", penwidth=0, width=5.5, height=0.5];
+  tap [label="observation tap\n/ws/observe\n(identity-filtered)", fillcolor="#f5f5f5", color="#757575"];
+  { rank=same; bus; }
+
+  edge [style=dashed, color="#90a4ae", fontcolor="#607d8b"];
+  wf  -> bus [label="input.received · asr.transcript\nintent.recognized · result.produced"];
+  om  -> bus [label="output.delivered"];
+  bus -> tap [label="subscribe", color="#607d8b"];
+  bus -> om  [label="delivery subscriber", style=invis];
+
+  { rank=sink; bus; tap; }
+}
