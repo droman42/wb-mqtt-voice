@@ -1,0 +1,37 @@
+// Irene — a capability port as a seam (TTS worked example). Render:
+//   dot -Tpng docs/images/port-seam.dot -o docs/images/port-seam.png
+// Palette matches hexagon.dot.
+digraph port_seam {
+  rankdir=LR;
+  bgcolor="white"; splines=spline; nodesep=0.4; ranksep=1.0;
+  fontname="Helvetica"; labelloc=t; fontsize=15;
+  label="A capability port is a seam: the application uses it, providers implement it (TTS shown)";
+
+  node [fontname="Helvetica", fontsize=11, shape=box, style="filled,rounded", penwidth=1.4];
+  edge [fontname="Helvetica", fontsize=9, color="#9e9e9e", arrowsize=0.7];
+
+  workflow  [label="workflow / pipeline\nneeds “speak this”", fillcolor="#e8f5e8", color="#388e3c"];
+  port      [label="TTS port\ncore/interfaces/tts.py\n(abstract: speak, to_file …)", fillcolor="#e3f2fd", color="#1976d2"];
+  component [label="TTSComponent\ncoordinates + switches providers\n(config-driven)", fillcolor="#e8f5e8", color="#388e3c"];
+
+  subgraph cluster_providers {
+    label="providers (adapters) — discovered via entry-points  irene.providers.tts";
+    fontsize=11; color="#ce93d8"; style=rounded; margin=12;
+    p1 [label="silero_v4", fillcolor="#f3e5f5", color="#7b1fa2"];
+    p2 [label="elevenlabs", fillcolor="#f3e5f5", color="#7b1fa2"];
+    p3 [label="console", fillcolor="#f3e5f5", color="#7b1fa2"];
+    p4 [label="vosk", fillcolor="#f3e5f5", color="#7b1fa2"];
+  }
+
+  workflow  -> port [label="depends on\n(the abstraction)", fontcolor="#616161"];
+  component -> port [label="implements", style=dashed, color="#1976d2", fontcolor="#1976d2"];
+  component -> p1 [label="selects one\nby config", fontcolor="#7b1fa2"];
+  component -> p2;
+  component -> p3;
+  component -> p4;
+
+  // the rule, as a caption node
+  rule [shape=note, fillcolor="#fffde7", color="#fbc02d",
+        label="The workflow never imports a provider.\nSwap engines in config — the seam holds.\n(enforced: providers don't import the application)"];
+  { rank=sink; rule; }
+}
