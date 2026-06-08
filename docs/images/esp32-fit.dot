@@ -1,0 +1,30 @@
+// Irene — how voice satellites fit the picture. Render:
+//   dot -Tpng docs/images/esp32-fit.dot -o docs/images/esp32-fit.png
+digraph esp32_fit {
+  rankdir=LR; bgcolor="white"; splines=spline; nodesep=0.5; ranksep=1.0;
+  fontname="Helvetica"; labelloc=t; fontsize=14;
+  label="Many ears, one brain: each satellite's own wake word names a room and scopes its commands there";
+  node [fontname="Helvetica", fontsize=10, shape=box, style="filled,rounded", penwidth=1.4];
+  edge [fontname="Helvetica", fontsize=9, color="#616161", arrowsize=0.7];
+
+  subgraph cluster_sats {
+    label="voice satellites (one per room)"; fontsize=12; color="#ce93d8"; style=rounded; margin=12;
+    k [label="kitchen ESP32\nwake word: “Irene”", fillcolor="#f3e5f5", color="#7b1fa2"];
+    b [label="living-room ESP32\nwake word: “Boris”", fillcolor="#f3e5f5", color="#7b1fa2"];
+  }
+
+  irene  [label="Irene\none brain\n(ASR · NLU · intents)", fillcolor="#e8f5e8", color="#388e3c"];
+  bridge [label="wb-mqtt-bridge\n(planned)", fillcolor="#eeeeee", color="#9e9e9e"];
+
+  subgraph cluster_dev {
+    label="devices, by room"; fontsize=12; color="#90caf9"; style=rounded; margin=12;
+    kd [label="kitchen lights …", fillcolor="#e3f2fd", color="#1976d2"];
+    bd [label="living-room blinds …", fillcolor="#e3f2fd", color="#1976d2"];
+  }
+
+  k -> irene [label="“Irene” → kitchen"];
+  b -> irene [label="“Boris” → living room"];
+  irene -> bridge [label="canonical command,\nscoped to the room", style=dashed, color="#9e9e9e"];
+  bridge -> kd [style=dashed, color="#9e9e9e"];
+  bridge -> bd [style=dashed, color="#9e9e9e"];
+}

@@ -1,0 +1,19 @@
+// Irene — one turn from an ESP32 voice satellite. Render:
+//   dot -Tpng docs/images/esp32-turn.dot -o docs/images/esp32-turn.png
+digraph esp32_turn {
+  rankdir=LR; bgcolor="white"; splines=spline; nodesep=0.35; ranksep=0.7;
+  fontname="Helvetica"; labelloc=t; fontsize=14;
+  label="A satellite turn: a thin device, one brain — WS transport + identity are built; firmware + spoken reply are planned";
+  node [fontname="Helvetica", fontsize=10, shape=box, style="filled,rounded", penwidth=1.4];
+  edge [fontname="Helvetica", fontsize=9, color="#9e9e9e", arrowsize=0.7];
+
+  reg    [label="connect + register (once)\nroom + devices → identity", fillcolor="#e3f2fd", color="#1976d2"];
+  wake   [label="ESP32\non-device wake word fires", fillcolor="#f3e5f5", color="#7b1fa2"];
+  stream [label="stream mic audio (PCM)\nover WebSocket", fillcolor="#f3e5f5", color="#7b1fa2"];
+  brain  [label="Irene /ws/audio\nASR → NLU → intent", fillcolor="#e8f5e8", color="#388e3c"];
+  resp   [label="response: text", fillcolor="#e3f2fd", color="#1976d2"];
+  speak  [label="ESP32 speaks it\nTTS audio returned — planned", fillcolor="#f5f5f5", color="#9e9e9e"];
+
+  reg -> wake -> stream -> brain -> resp;
+  resp -> speak [style=dashed, label="planned"];
+}
