@@ -1,0 +1,39 @@
+// Irene — pipeline stages = capability components; providers are the swappable engines. Render:
+//   dot -Tpng docs/images/components-map.dot -o docs/images/components-map.png
+digraph components {
+  rankdir=TB; bgcolor="white"; splines=line; nodesep=0.25; ranksep=0.55;
+  fontname="Helvetica"; labelloc=t; fontsize=15;
+  label="Each pipeline stage is a capability component; its providers are interchangeable engines";
+  node [fontname="Helvetica", fontsize=10, shape=box, style="filled,rounded", penwidth=1.4];
+  edge [color="#bdbdbd", arrowsize=0.6];
+
+  // row 1 — components (the pipeline)
+  node [fillcolor="#e8f5e8", color="#388e3c"];
+  c_vt  [label="voice trigger\nVoiceTriggerComponent"];
+  c_asr [label="ASR\nASRComponent"];
+  c_tp  [label="text processing\nTextProcessorComponent"];
+  c_nlu [label="NLU\nNLUComponent"];
+  c_it  [label="intent\nIntentComponent"];
+  c_tts [label="TTS\nTTSComponent"];
+  c_aud [label="audio out\nAudioComponent"];
+  { rank=same; c_vt; c_asr; c_tp; c_nlu; c_it; c_tts; c_aud; }
+  c_vt -> c_asr -> c_tp -> c_nlu -> c_it -> c_tts -> c_aud [style=bold, color="#9e9e9e", arrowsize=0.8];
+
+  // row 2 — providers (the engines)
+  node [fillcolor="#f3e5f5", color="#7b1fa2", fontsize=9];
+  p_vt  [label="openwakeword\nmicrowakeword"];
+  p_asr [label="vosk · whisper\ngoogle_cloud · sherpa_onnx"];
+  p_tp  [label="unified_text_processor\n(normalizer chains)"];
+  p_nlu [label="hybrid_keyword_matcher\nspaCy"];
+  p_it  [label="handlers:\ngreetings · timer · datetime\nconversation · system · …"];
+  p_tts [label="console · pyttsx\nsilero_v3/v4 · vosk_tts\nelevenlabs"];
+  p_aud [label="console · sounddevice\naudioplayer · aplay\nsimpleaudio"];
+  { rank=same; p_vt; p_asr; p_tp; p_nlu; p_it; p_tts; p_aud; }
+  c_vt->p_vt; c_asr->p_asr; c_tp->p_tp; c_nlu->p_nlu; c_it->p_it; c_tts->p_tts; c_aud->p_aud;
+
+  // supporting components (off the linear pipeline)
+  support [shape=note, fillcolor="#fffde7", color="#fbc02d", fontsize=9,
+           label="Supporting components (not pipeline stages):\nLLM (used by handlers) · monitoring · configuration · nlu_analysis"];
+  { rank=sink; support; }
+  p_it -> support [style=invis];
+}
