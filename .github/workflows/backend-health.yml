@@ -39,8 +39,17 @@ jobs:
           curl -LsSf https://astral.sh/uv/install.sh | sh
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
-      - name: Install dependencies (with dev toolchain)
-        run: uv sync --frozen --extra dev
+      - name: Cache uv downloads
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/uv
+          key: uv-${{ runner.os }}-${{ hashFiles('uv.lock') }}
+          restore-keys: uv-${{ runner.os }}-
+
+      # Full feature set: pyright type-checks every provider, so all optional imports
+      # (fastapi, spacy, sherpa-onnx, anthropic/openai, sounddevice, openwakeword, …) must be present.
+      - name: Install dependencies (all extras + dev toolchain)
+        run: uv sync --frozen --all-extras
 
       # --- Gates (all hard-fail) ---
       - name: Hexagon import contracts
