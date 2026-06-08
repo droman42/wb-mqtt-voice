@@ -38,6 +38,8 @@ Russian-first, English supported. Version 15.0.0 · Python 3.11+ · MIT.
   handled at runtime.
 - **[Build system](docs/guides/build-system.md)** — how minimal, configuration-driven builds are
   put together.
+- **[Docker builds](docs/guides/build-docker.md)** — multi-platform images that ship only what a
+  config profile needs.
 - **[Configuration](docs/guides/configuration.md)** — the TOML configuration model, end to end.
 - **[Contributing](CONTRIBUTING.md)** — developer setup and how-tos: adding an intent, a model, or
   a language.
