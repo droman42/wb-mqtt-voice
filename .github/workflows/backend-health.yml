@@ -1,0 +1,73 @@
+name: Backend Health
+
+# Backend gates for every push / PR that touches Python code or configs. Any gate below failing fails the
+# workflow (no continue-on-error). Deferred gates (pytest, black/isort) are placeholdered at the bottom —
+# flip them on when their blockers land.
+on:
+  push:
+    paths:
+      - 'irene/**'
+      - 'configs/**'
+      - 'scripts/**'
+      - 'pyproject.toml'
+      - 'uv.lock'
+      - '.github/workflows/backend-health.yml'
+  pull_request:
+    paths:
+      - 'irene/**'
+      - 'configs/**'
+      - 'scripts/**'
+      - 'pyproject.toml'
+      - 'uv.lock'
+      - '.github/workflows/backend-health.yml'
+  workflow_dispatch:
+
+jobs:
+  backend-health:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install uv
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: Install dependencies (with dev toolchain)
+        run: uv sync --frozen --extra dev
+
+      # --- Gates (all hard-fail) ---
+      - name: Hexagon import contracts
+        run: uv run lint-imports
+
+      - name: No TYPE_CHECKING import guards
+        run: uv run python scripts/check_no_type_checking.py
+
+      - name: Type checking (pyright)
+        run: uv run pyright
+
+      - name: All config profiles valid
+        run: uv run python -m irene.tools.build_analyzer --validate-all-profiles
+
+      - name: All config files valid (schema + master-config completeness)
+        run: uv run python -m irene.tools.config_validator_cli --config-dir configs/ --ci-mode
+
+      - name: Provider dependency resolution
+        run: uv run python -m irene.tools.dependency_validator --validate-all --platforms linux.ubuntu,linux.alpine
+
+      # --- Deferred gates (flip on when the blocker lands) ---
+      # pytest: the full suite becomes a hard gate once the TEST- items resolve (stale-test cleanup, TEST-7).
+      # - name: Tests
+      #   run: uv run python -m pytest irene/tests/
+      #
+      # black + isort: format check becomes a hard gate once the tree is formatted to them.
+      # - name: Format check
+      #   run: |
+      #     uv run black --check irene/
+      #     uv run isort --check-only irene/

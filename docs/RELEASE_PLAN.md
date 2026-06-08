@@ -1410,17 +1410,32 @@ _Apply to every remediation task below (from the 4 review docs + QUAL-25/26). So
       `--command "привет"` works. Found+fixed a real bug: `--headless` disabled `nlu`/`text_processor` while the
       unified workflow requires `nlu` → headless could never execute a command. Observed (already-logged) cosmetics:
       QUAL-6 schema warning on boot; CLI banner still says "v14" (DOC-3 sibling).
-- [ ] **BUILD-2** (P1) — Re-enable CI (`config-validation.yml` is manual-only; update deprecated
-      `upload-artifact@v3` / `setup-python@v4`).
+- [x] **BUILD-2** (P1) — DONE 2026-06-08: rebuilt CI as two health workflows with **enabled** push/PR triggers.
+      **`backend-health.yml`** (renamed from `config-validation.yml`) — hard gates (no continue-on-error):
+      `lint-imports` (hexagon), `scripts/check_no_type_checking.py`, `pyright` (QUAL-4 0-error gate),
+      `build_analyzer --validate-all-profiles`, `config_validator_cli --config-dir configs/` (config schema +
+      master-config completeness), and `dependency_validator --validate-all`. Installs the toolchain via
+      `uv sync --frozen --extra dev`; deprecated `setup-python@v4`/`upload-artifact@v3` replaced (python v5; the
+      report-artifact machinery dropped); the phantom `intent_validator` step removed. Deferred gates placeholdered:
+      pytest (until the TEST- items resolve), black/isort (until the tree is formatted). **Known honest-red
+      (accepted):** `config_validator_cli` fails on 3 stale fixtures — tracked as **BUILD-6**. Done together with
+      **BUILD-4** (frontend).
 - [ ] **BUILD-3** (P2) — **DEFERRED to the release phase (decided 2026-06-01): Docker builds are an end-stage
       task**, after the architecture/code work settles (image contents, extras, and armv7 viability all depend on
       the post-refactor shape — incl. QUAL-19/20 [ESP32] and ARCH-9/10 [INFER] for the sherpa-onnx/runtime
       footprint). Then verify the minimal x86_64 Docker build (builder feeds analyzer package names to
       `uv sync --extra`, which expects extra *names* — confirm/fix, now owned by **BUILD-5**) + container boots
       CLI/WebAPI. Gates Definition-of-release item #1. Refs: `docs/guides/build-docker.md`, build audit.
-- [ ] **BUILD-4** (P1) — config-ui builds, type-checks **and lints** clean (`npm ci && npm run check && npm run build`;
-      `check` = type-check + strict ESLint, harmonized with the bridge in UI-6; `dist` is git-ignored). Per Invariant #4
-      this is an **ongoing gate** — add it to CI (BUILD-2) so backend contract changes that break config-ui are caught.
+- [x] **BUILD-4** (P1) — DONE 2026-06-08: new **`frontend-health.yml`** workflow (push/PR on `config-ui/**`) runs the
+      config-ui gates as hard checks — `npm ci`, `npm run check` (type-check + strict ESLint + orphans), `npm run build`,
+      `npm run test` (vitest: 40 tests). All green today; satisfies the Invariant-#4 ongoing config-ui gate.
+- [ ] **BUILD-6** `[release]` [QUAL] (P2) — **Fix the 3 config fixtures that fail `config_validator_cli`** (the
+      backend-health Gate 5 honest-red, surfaced 2026-06-08): `vad-production.toml` (invalid `elevenlabs` tts + `openai`
+      llm provider configs — the `elevenlabs` block was a minimal BUILD-5 placeholder that needs the real schema fields),
+      `vad-testing.toml` (a `CoreConfig`-level validation error), `vosk-test.toml` (invalid `google_cloud` asr config).
+      `build_analyzer --validate-all-profiles` already passes (the providers exist); this is the deeper provider-config
+      *schema* validation. Done when `config_validator_cli --config-dir configs/ --ci-mode` is green (backend CI goes
+      green).
 - [x] **BUILD-5** (P2) — **DONE 2026-06-08** (outcome summary at the end of this item). **Verify conditional/profile-driven
       build analysis (`build_analyzer`) still works vs the
       pre-pause (~Sep 2025) baseline.** The revival churned everything the analyzer reads — entry-points, providers,

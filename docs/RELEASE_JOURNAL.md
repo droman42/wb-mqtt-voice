@@ -12,6 +12,17 @@ newest entries near the top of each dated section.
 ## Action journal
 
 ### 2026-06-08
+- **BUILD-2 + BUILD-4 — split CI into `backend-health` + `frontend-health` workflows, all gates hard-fail.** Replaced
+  the disabled `config-validation.yml` with two **enabled** (push/PR) workflows. **`backend-health.yml`**: hard gates —
+  `lint-imports` (hexagon), the no-`TYPE_CHECKING` script, `pyright` (QUAL-4 0-error gate),
+  `build_analyzer --validate-all-profiles`, `config_validator_cli` (all configs + schema/master-config completeness),
+  `dependency_validator --validate-all`; toolchain via `uv sync --frozen --extra dev`; deprecated actions bumped
+  (`setup-python@v5`), the phantom `intent_validator` step + the report-artifact machinery removed; pytest and
+  black/isort placeholdered (deferred until the TEST- items resolve / the tree is formatted). It runs **honest-red**
+  (owner-accepted) on 3 stale config fixtures — filed **BUILD-6**. **`frontend-health.yml`** (new): `npm ci` +
+  `npm run check` (type-check + strict ESLint + orphans) + `npm run build` + `npm run test` (vitest, 40 tests) — all
+  green today (the Invariant-#4 config-ui gate). Verified locally: lint-imports 9/9, pyright 0, validate-all 12/12,
+  dependency 110/110; config-ui check/build/test all pass.
 - **QUAL-32 — purged the residual `TYPE_CHECKING` guards + added a build-time gate.** Reconciliation (Invariant #8):
   only **4** real `if TYPE_CHECKING:` blocks remained (not the ~13 estimated — prior refactors cleared the rest, and
   two apparent hits were *comments*). Removed all 4: two empty `pass` blocks (`core/interfaces/webapi.py`,

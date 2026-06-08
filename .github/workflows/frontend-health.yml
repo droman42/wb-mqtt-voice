@@ -1,0 +1,44 @@
+name: Frontend Health (config-ui)
+
+# config-ui gates for every push / PR that touches the frontend. All hard-fail (Invariant #4: config-ui is
+# a first-class consumer of backend contracts and must stay building/type-checking/linting clean).
+on:
+  push:
+    paths:
+      - 'config-ui/**'
+      - '.github/workflows/frontend-health.yml'
+  pull_request:
+    paths:
+      - 'config-ui/**'
+      - '.github/workflows/frontend-health.yml'
+  workflow_dispatch:
+
+defaults:
+  run:
+    working-directory: config-ui
+
+jobs:
+  frontend-health:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: config-ui/package-lock.json
+
+      - name: Install
+        run: npm ci
+
+      - name: Check (type-check + lint + orphans)
+        run: npm run check
+
+      - name: Build
+        run: npm run build
+
+      - name: Test (vitest)
+        run: npm run test
