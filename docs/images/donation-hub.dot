@@ -1,0 +1,22 @@
+// Irene — a donation is the single declarative source for an intent. Render:
+//   dot -Tpng docs/images/donation-hub.dot -o docs/images/donation-hub.png
+digraph donation_hub {
+  rankdir=LR; bgcolor="white"; splines=spline; nodesep=0.45; ranksep=1.0;
+  fontname="Helvetica"; labelloc=t; fontsize=15;
+  label="One donation file declares an intent once — recognition, parameters and wiring all read from it";
+  node [fontname="Helvetica", fontsize=11, shape=box, style="filled,rounded", penwidth=1.4];
+  edge [fontname="Helvetica", fontsize=9, color="#616161", arrowsize=0.7];
+
+  handler  [label="handler\ntimer · greetings · …", fillcolor="#e8f5e8", color="#388e3c"];
+  donation [label="donation\nassets/donations/<handler>/<lang>.json\n(schema-validated)", fillcolor="#fff8e1", color="#f9a825"];
+  handler -> donation [label="owns / “donates”", style=dashed, color="#388e3c", fontcolor="#388e3c"];
+
+  node [fontsize=10];
+  nlu    [label="NLU recognition\nphrases · lemmas\ntoken / slot patterns", fillcolor="#f3e5f5", color="#7b1fa2"];
+  params [label="parameter extraction\nextraction_patterns\n+ CHOICE surfaces", fillcolor="#f3e5f5", color="#7b1fa2"];
+  wiring [label="handler wiring\nmethod_name → method\nintent_suffix → intent name", fillcolor="#e3f2fd", color="#1976d2"];
+
+  donation -> nlu    [label="match the utterance"];
+  donation -> params [label="pull the values"];
+  donation -> wiring [label="run the right method"];
+}
