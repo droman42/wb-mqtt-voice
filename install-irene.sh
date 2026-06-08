@@ -870,7 +870,7 @@ show_completion_summary() {
     echo ""
     echo -e "${CYAN}For help and documentation:${NC}"
     echo "  🌐 GitHub: https://github.com/irene-voice-assistant"
-    echo "  📚 Docs: README-DOCKER.md, docs/"
+    echo "  📚 Docs: docs/guides/build-docker.md, docs/"
     echo "  🐛 Issues: Report any problems on GitHub"
     
     echo ""

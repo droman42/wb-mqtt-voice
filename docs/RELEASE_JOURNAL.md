@@ -12,6 +12,18 @@ newest entries near the top of each dated section.
 ## Action journal
 
 ### 2026-06-08
+- **Build/Docker docs — consolidated the two root READMEs into the guides set + filed the Docker-build defects.**
+  Reviewed `README-BUILD.md` (Russian, ~644 L) and `README-DOCKER.md` against the real Dockerfiles + tooling.
+  `README-DOCKER` → rewritten as **`docs/guides/build-docker.md`** (fixed: ports 8000/9090 → **6000**; x86_64 base
+  Ubuntu → **Debian slim**; dropped 4 phantom `docs/*` links + 2 phantom `test-*.sh` scripts; kept the real
+  buildx / profile / 3-stage / Compose procedure). `README-BUILD`'s concept half was superseded by
+  `build-system.md`; folded its salvageable ops bits (the **systemd unit**, the `dependency_validator` /
+  `irene-dependency-validate` usage, and external-provider-package authoring) into `build-system.md`, then
+  archived. Both root READMEs → `docs/archive/` (root now holds only README + CONTRIBUTING); `install-irene.sh`
+  doc pointer updated. Two **build-blocking Dockerfile bugs** (the non-existent `irene.tools.intent_validator`;
+  an armv7 `ubuntu_packages` NameError) filed in a new **`docs/review/docker_build_review.md`** and folded into
+  **BUILD-5 §7** (refs updated README-DOCKER → the new guide). Orphan check clean; `build-docker.md` reachable
+  from the README via `build-system.md`.
 - **DOC-3 — version-display strings refreshed to v15.** `core/engine.py` (module docstring + startup log), the
   runner `--help` banner (`runners/base.py`, inherited by the CLI), and the `tts_demo`/`async_demo` print
   banners now read v15. Left untouched on purpose: the `config_migrator`/`config/migration` v13→v14 strings

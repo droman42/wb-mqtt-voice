@@ -32,3 +32,45 @@ The same mechanism that keeps the build small keeps the running process small. P
 **entry-points**, and only the ones the config enables are ever imported. A provider you didn't configure is
 never touched — so its heavy libraries aren't imported, aren't in memory, and (thanks to the analyzer) need
 not be installed at all. Configuration is the single lever for both.
+
+## Tooling
+
+Two console scripts back the build system:
+
+- `irene-build-analyze` (= `python -m irene.tools.build_analyzer`) — turn a config into its minimal
+  requirements (used above, and by the Docker builds).
+- `irene-dependency-validate` (= `python -m irene.tools.dependency_validator`) — check that a provider's
+  declared dependencies resolve on a target platform: `--validate-all` sweeps every entry-point, `--platforms`
+  cross-checks several at once, `--json` for CI.
+
+## Deployment
+
+- **Docker** — multi-platform images that bake in only a profile's dependencies. See
+  [Docker builds](build-docker.md).
+- **As a systemd service** — point a unit at the venv's `webapi_runner`:
+
+  ```ini
+  [Unit]
+  Description=Irene Voice Assistant
+  After=network.target sound.target
+
+  [Service]
+  Type=simple
+  User=irene
+  Group=audio
+  WorkingDirectory=/opt/irene-voice-assistant
+  ExecStart=/opt/irene-voice-assistant/.venv/bin/python -m irene.runners.webapi_runner
+  Restart=always
+
+  [Install]
+  WantedBy=multi-user.target
+  ```
+
+  Then `sudo systemctl daemon-reload && sudo systemctl enable --now irene-voice`.
+
+## External provider packages
+
+A provider doesn't have to live in this repo. Ship a provider class in your own package, declare it under the
+matching `irene.providers.<family>` entry-point in *your* `pyproject.toml`, and Irene discovers it like any
+built-in — validate it with `irene-dependency-validate`, then enable it in config. The class shape is the
+[provider recipe](howto-new-model.md).

@@ -1408,7 +1408,7 @@ _Apply to every remediation task below (from the 4 review docs + QUAL-25/26). So
       the post-refactor shape — incl. QUAL-19/20 [ESP32] and ARCH-9/10 [INFER] for the sherpa-onnx/runtime
       footprint). Then verify the minimal x86_64 Docker build (builder feeds analyzer package names to
       `uv sync --extra`, which expects extra *names* — confirm/fix, now owned by **BUILD-5**) + container boots
-      CLI/WebAPI. Gates Definition-of-release item #1. Refs: README-DOCKER, build audit.
+      CLI/WebAPI. Gates Definition-of-release item #1. Refs: `docs/guides/build-docker.md`, build audit.
 - [ ] **BUILD-4** (P1) — config-ui builds, type-checks **and lints** clean (`npm ci && npm run check && npm run build`;
       `check` = type-check + strict ESLint, harmonized with the bridge in UI-6; `dist` is git-ignored). Per Invariant #4
       this is an **ongoing gate** — add it to CI (BUILD-2) so backend contract changes that break config-ui are caught.
@@ -1431,8 +1431,11 @@ _Apply to every remediation task below (from the 4 review docs + QUAL-25/26). So
       Alpine→Debian (ARCH-9):** `onnx_inference_layer.md §4.7/§9` proved sherpa-onnx has no musl build, so `Dockerfile.armv7`
       must switch `python:3.11-alpine`→`arm32v7/python:3.11-slim-bullseye` and the analyzer's armv7 path must emit the
       `linux.ubuntu` (apt) set, not `linux.alpine` (apk) — verify the marker-driven `asr-onnx` extra + `libasound2` resolve
-      on the Debian armv7 path. (Image build/boot itself stays BUILD-3, release phase.) Refs: build audit,
-      README-DOCKER, BUILD-3, `docs/design/onnx_inference_layer.md` §4.7/§9 (ARCH-9).
+      on the Debian armv7 path. (Image build/boot itself stays BUILD-3, release phase.) **(7) two build-blocking
+      Dockerfile bugs** surfaced 2026-06-08 — both Dockerfiles invoke the non-existent `irene.tools.intent_validator`,
+      and `Dockerfile.armv7` has an `ubuntu_packages` NameError; findings + line refs in
+      `docs/review/docker_build_review.md`. Refs: build audit, `docs/guides/build-docker.md`,
+      `docs/review/docker_build_review.md`, BUILD-3, `docs/design/onnx_inference_layer.md` §4.7/§9 (ARCH-9).
 
 ### Models & Assets (ASSET)
 - [x] **ASSET-1** — Refresh stale model IDs (Anthropic→Claude 4.x, Whisper large-v3, ElevenLabs multilingual_v2, spaCy 3.8, gpt-4→gpt-4o-mini). → fc85306
