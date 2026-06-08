@@ -1,0 +1,29 @@
+// Irene — the client registry: registrations + action store, bound by physical identity. Render:
+//   dot -Tpng docs/images/client-registry.dot -o docs/images/client-registry.png
+digraph cr {
+  rankdir=LR; bgcolor="white"; splines=spline; nodesep=0.4; ranksep=0.95;
+  fontname="Helvetica"; labelloc=t; fontsize=14;
+  label="The client registry: who is where (registrations) + what is running (the action store), bound by physical identity";
+  node [fontname="Helvetica", fontsize=10, shape=box, style="filled,rounded", penwidth=1.4];
+  edge [fontname="Helvetica", fontsize=9, color="#616161", arrowsize=0.7];
+
+  esp [label="ESP32 node", fillcolor="#f3e5f5", color="#7b1fa2"];
+  web [label="web client", fillcolor="#f3e5f5", color="#7b1fa2"];
+  fnf [label="fire-and-forget\nhandler", fillcolor="#e8f5e8", color="#388e3c"];
+
+  subgraph cluster_reg {
+    label="ClientRegistry (singleton)"; fontsize=12; color="#90caf9"; style=rounded; margin=12;
+    regs  [label="registrations — persisted\nClientRegistration:\nclient_id · room · devices", fillcolor="#e3f2fd", color="#1976d2"];
+    store [label="action store — runtime only\nActionRecord:\naction_name · physical_id · source · task", fillcolor="#e3f2fd", color="#1976d2"];
+  }
+
+  resolve [label="resolve_physical_id()\nclient_id / room / session\n→ the stable scope", fillcolor="#fff8e1", color="#f9a825"];
+  uses    [label="physical_id addresses:\ndeferred results · contextual “стоп”\n· that room's devices", fillcolor="#f3e5f5", color="#7b1fa2"];
+
+  esp -> regs [label="register room + devices"];
+  web -> regs;
+  fnf -> store [label="record a running action"];
+  regs -> resolve;
+  resolve -> store [label="the key"];
+  store -> uses;
+}

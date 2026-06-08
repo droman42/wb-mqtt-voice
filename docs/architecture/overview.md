@@ -67,3 +67,4 @@ The nine `import-linter` contracts are the architecture made executable:
 - **[Intents](intents.md)** and **[NLU](nlu.md)** — the domain: recognition, donations, orchestration.
 - **[MQTT integration](mqtt.md)** and **[ESP32 voice satellite](esp32.md)** — the smart-home and
   voice-node picture (planned).
+- **[Client registry](client-registry.md)** — the identity and action store underneath addressing.

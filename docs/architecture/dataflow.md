@@ -29,9 +29,9 @@ Some commands can't finish in one turn — a five-minute timer, a long-running a
 
 ![Fire-and-forget and a deferred result](../images/dataflow-fnf.png)
 
-- **Now** — the handler launches the work as a detached task, registers it in the **action store**
-  (`ClientRegistry`) keyed by the request's **physical identity** (the room or device, not the
-  conversation), and returns an instant acknowledgement.
+- **Now** — the handler launches the work as a detached task, registers it in the
+  **[action store](client-registry.md)** (`ClientRegistry`) keyed by the request's **physical identity**
+  (the room or device, not the conversation), and returns an instant acknowledgement.
 - **Later** — when the task finishes, a completion is produced and handed to the OutputManager, addressed
   by that same physical identity. The result speaks in **the room that set the timer**, even though the
   conversation that started it is long gone.

@@ -32,5 +32,18 @@ and, if it is missing, downloads it — from a GitHub release or a HuggingFace r
 is fetched for a provider you don't use, which is half of why a deployment stays small (the other half is
 the [build system](build-system.md)).
 
-To avoid a slow first request, configured providers **warm up** at startup: they preload their models so the
-model is already in memory before anyone asks.
+## Warm-up
+
+By default a model loads lazily — on the first request that needs it — so startup is fast but that first
+request pays the load cost. For heavy models the cost is real: the sherpa-onnx ASR graph, for instance,
+takes about 38 s to initialise on an armv7 box.
+
+Set `preload_models = true` on a provider to move that cost to startup: the provider runs its `warm_up()`
+during initialisation, so the model is in memory before anyone asks. It's a per-provider flag (default off);
+turn it on where a slow first response matters and you can afford the boot time — the `embedded-armv7`
+profile does exactly this for sherpa-onnx.
+
+```toml
+[asr.providers.sherpa_onnx]
+preload_models = true        # pay the graph-init at boot, off the first-utterance path
+```
