@@ -1,0 +1,31 @@
+// Irene — what adding a language touches. Render:
+//   dot -Tpng docs/images/howto-language.dot -o docs/images/howto-language.png
+digraph lang {
+  rankdir=LR; bgcolor="white"; splines=spline; nodesep=0.25; ranksep=1.1;
+  fontname="Helvetica"; labelloc=t; fontsize=14;
+  label="Adding a language touches three things: config, the words you author, and the models you install";
+  node [fontname="Helvetica", fontsize=10, shape=box, style="filled,rounded", penwidth=1.4];
+  edge [fontname="Helvetica", fontsize=9, color="#9e9e9e", arrowsize=0.7];
+
+  add [label="add a language\ne.g. “de”", fillcolor="#fff8e1", color="#f9a825", fontsize=12];
+
+  subgraph cluster_cfg {
+    label="1 · config"; fontsize=12; color="#a5d6a7"; style=rounded; margin=10;
+    cfg [label="default_language\nsupported_languages", fillcolor="#e8f5e8", color="#388e3c"];
+  }
+  subgraph cluster_words {
+    label="2 · words you author"; fontsize=12; color="#ce93d8"; style=rounded; margin=10;
+    don [label="donations:\na <lang>.json per handler", fillcolor="#f3e5f5", color="#7b1fa2"];
+    tpl [label="templates:\n<lang>.yaml per handler", fillcolor="#f3e5f5", color="#7b1fa2"];
+    loc [label="localization strings\nassets/localization/*", fillcolor="#f3e5f5", color="#7b1fa2"];
+  }
+  subgraph cluster_models {
+    label="3 · models you install / swap"; fontsize=12; color="#90caf9"; style=rounded; margin=10;
+    spacy [label="spaCy model\n(advanced NLU)", fillcolor="#e3f2fd", color="#1976d2"];
+    asr   [label="ASR model\nfor the language", fillcolor="#e3f2fd", color="#1976d2"];
+    tts   [label="TTS voice\nfor the language", fillcolor="#e3f2fd", color="#1976d2"];
+    num   [label="number normalizer\n(ovos-number-parser)", fillcolor="#e3f2fd", color="#1976d2"];
+  }
+
+  add -> cfg; add -> don; add -> tpl; add -> loc; add -> spacy; add -> asr; add -> tts; add -> num;
+}
