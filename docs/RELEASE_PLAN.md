@@ -1472,8 +1472,10 @@ _Apply to every remediation task below (from the 4 review docs + QUAL-25/26). So
       `ASSET_MANAGEMENT.md` (12 TOML-nesting fixes `[providers.X]`→`[X.providers]`), `train_schedule_handler.md`
       (env → `IRENE_INTENT_SYSTEM__TRAIN_SCHEDULE__*`), `voice_trigger.md` (YAML→TOML), and authoritative
       correction banners on `guides/DONATION_FILE_SPECIFICATION.md` + `plugins/universal_tts.md`.
-- [ ] **DOC-5b** (P2) — Full regeneration of `guides/DONATION_FILE_SPECIFICATION.md` from the Pydantic
-      `HandlerDonation`/`MethodDonation` models (currently fixed via banner only; body still uses old field names).
+- [x] **DOC-5b** (P2) — DONE 2026-06-08: regenerated `guides/DONATION_FILE_SPECIFICATION.md` for the v1.1
+      two-part model (language-neutral `contract.json` + per-language `<lang>.json`), with full field reference
+      from `donation_contract_v1.1.json` (method/param schema, type + entity_type enums) and the cross-language
+      validation rule. Old single-file/v1.0 body + drift banner replaced.
 - [ ] **DOC-7** [PEX] (P1) — Canonical parameter-extraction reference (the design doc was archived; nothing
       current): authoring `ParameterSpec`, ParameterType semantics, token/slot pattern format, entity resolution,
       handler consumption of `intent.entities`. → `docs/guides/PARAMETER_EXTRACTION_GUIDE.md`. Derived from QUAL-10.

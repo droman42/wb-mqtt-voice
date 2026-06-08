@@ -1,0 +1,17 @@
+// Irene — new intent vs new handler. Render:
+//   dot -Tpng docs/images/howto-intent-decision.dot -o docs/images/howto-intent-decision.png
+digraph decide {
+  rankdir=LR; bgcolor="white"; splines=spline; nodesep=0.4; ranksep=0.9;
+  fontname="Helvetica"; labelloc=t; fontsize=14;
+  label="Which am I adding?";
+  node [fontname="Helvetica", fontsize=10, shape=box, style="filled,rounded", penwidth=1.4];
+  edge [fontname="Helvetica", fontsize=9, color="#616161", arrowsize=0.7];
+
+  q [label="Does the domain\nalready exist?\n(e.g. another timer command)", shape=diamond, fillcolor="#fff8e1", color="#f9a825"];
+
+  a [label="Case A — a new intent\n• add a _handle_* method\n• add a method_donation\n(entry-point already registered)", fillcolor="#e8f5e8", color="#388e3c"];
+  b [label="Case B — a new handler\n• new IntentHandler class\n• new donation file(s)\n• register the entry-point", fillcolor="#e3f2fd", color="#1976d2"];
+
+  q -> a [label="yes"];
+  q -> b [label="no — new area of behaviour"];
+}

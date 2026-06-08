@@ -1,0 +1,23 @@
+// Irene — a donation is two parts: one contract, many language files. Render:
+//   dot -Tpng docs/images/donation-files.dot -o docs/images/donation-files.png
+digraph donation_files {
+  rankdir=LR; bgcolor="white"; splines=spline; nodesep=0.35; ranksep=1.0;
+  fontname="Helvetica"; labelloc=t; fontsize=14;
+  label="A donation is two parts: one language-neutral contract, one file per language";
+  node [fontname="Helvetica", fontsize=10, shape=box, style="filled,rounded", penwidth=1.4];
+  edge [fontname="Helvetica", fontsize=9, color="#616161", arrowsize=0.7];
+
+  subgraph cluster_dir {
+    label="assets/donations/<handler>_handler/"; fontsize=12; color="#bdbdbd"; style=rounded; margin=12;
+    contract [label="contract.json\nstructure (language-neutral):\nmethods · parameters (type,\nconstraints) · domains · priorities", fillcolor="#e3f2fd", color="#1976d2"];
+    ru [label="ru.json\nsurfaces: phrases · patterns\nextraction · choice_surfaces", fillcolor="#f3e5f5", color="#7b1fa2"];
+    en [label="en.json\nsurfaces (English)", fillcolor="#f3e5f5", color="#7b1fa2"];
+  }
+
+  val  [label="cross-language validator\nlanguage files must match\nthe contract (same methods +\nparameters)", fillcolor="#fff8e1", color="#f9a825"];
+  done [label="loaded donation\n→ recognition + wiring", fillcolor="#e8f5e8", color="#388e3c"];
+
+  contract -> val [label="single source"];
+  ru -> val; en -> val;
+  val -> done;
+}
