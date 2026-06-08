@@ -1,45 +1,59 @@
-# Поддержка проекта
+# Contributing
 
-Основной принцип:
-* Пожалуйста, делайте только то, что вам интересно и чем вы планируете пользоваться сами.
-* Пожалуйста, проверяйте рабочесть вашего кода на реальных системах.
-* По возможности, пожалуйста, пользуйтесь сами своим кодом - это приведёт к его качеству
+Two principles first, inherited from the project's roots and still true:
 
-### Плагины
+- Build what you'll actually use, and run it on a real system before sending it.
+- Prefer additive changes. The architecture is built so most contributions — a new command, a new engine, a
+  new language — need no core changes at all.
 
-Если вы создаете плагин - пожалуйста
-* Сделайте под него отдельный проект на Github или где вам удобно
-* Проект можно делать чисто с файлом plugin_. Не нужно и даже нежелательно копировать весь репозиторий ядра - зачем плодить лишние сущности?
-* Как сделали - киньте ссылку в https://github.com/janvarev/Irene-Voice-Assistant/issues/1
-* По возможности, поддерживайте ваш плагин самостоятельно
+## Setup
 
-### Код ядра
+```
+uv sync
+```
 
-Иногда то, что вы планируете, невозможно без изменения ядра,
-и вы хотите сделать Pull Request с изменениями.
+Then run it (CLI, web API, or the config UI) per the [quickstart](docs/QUICKSTART.md). Start from a
+[lightweight profile](docs/guides/configuration.md#profiles) so you don't pull heavy models you don't need.
 
-Тогда от вас потребуется следующее:
+## Most changes are additive
 
-**Если ваше изменение НЕОДНОЗНАЧНО** - т.е. улучшает функциональность
-в одних случаях, и ухудшает в других, то:
-1. Залезьте в плагин core.py
-2. Сделайте там опцию-переключатель, позволяющий включать/выключать вашу фунциональность.
-3. Сделайте ей по умолчанию ВЫКЛЮЧЕННОЙ - т.е. Ирина должна по дефолту работать как обычно
-4. Внесите дополнительные опции вашей функциональности туда же - в core.py (например, порог распознавания в нейросети)
-5. Внесите описание этих допопций в Readme.md
+Before touching the core, check whether what you want is one of these — each is a self-contained guide:
 
-Дополнительно
-1. Очевидно, все что может быть вынесено в отдельный плагин - лучше туда вынести.
-2. Подключайте (import) навороченные библиотеки только в тот момент, когда они будут использоваться - чтобы был шанс запустить Ирину без них
+- **[Add an intent](docs/guides/howto-new-intent.md)** — a new command (a method plus a donation), or a
+  whole new handler.
+- **[Add a model](docs/guides/howto-new-model.md)** — a new engine for wake word, VAD, ASR, TTS or LLM.
+- **[Add a language](docs/guides/howto-new-language.md)** — donations, config, and the models to swap.
 
+If you aren't sure where a change belongs, the [architecture overview](docs/architecture/overview.md) maps
+the pieces.
 
-### Код-стайл
+## The boundaries that matter
 
-В проекте нет четкого код-стайла потому, что автор не совсем готов сейчас следовать стандартам.
+Two rules keep the system maintainable, and both are enforced rather than merely requested:
 
-Однако, автору нравится то, как код сейчас сделан.
+- **Respect the hexagon.** Dependencies point inward, across a port — the domain reaches no outer layer,
+  adapters don't import the application, and so on. The boundaries are checked by `lint-imports` (nine
+  contracts); a backwards import fails the build. See the [overview](docs/architecture/overview.md).
+- **Keep heavy things optional.** A new engine's libraries go behind an extra and are declared on the
+  provider — never imported at module top level for a provider nobody configured. This is what lets Irene
+  run small (see the [build system](docs/guides/build-system.md)).
 
-Поэтому, временно **масштабные пулл-реквесты в духе "обновить импорты" или "привести в соответствие с PEP8" приниматься не будут**.
+And one source-of-truth rule: an intent's phrasing, parameters and wiring live in its **donation**, not
+scattered through code. Change the donation, not three files.
 
-Пожалуйста, не делайте реквестов с изменением код-стайла.
+## Before you open a PR
 
+Run the gates locally — the same ones CI runs:
+
+```
+uv run pytest                 # tests
+lint-imports                  # the hexagonal contracts
+irene-config-validate         # config schema
+irene-dependency-validate     # provider dependencies resolve
+```
+
+## Code style
+
+Match the code around you. There is no house formatter to appease, and **mass "reformat / reorder imports /
+PEP-8 everything" pull requests won't be merged** — they bury real changes in noise. Keep a diff to the
+change you are actually making.
