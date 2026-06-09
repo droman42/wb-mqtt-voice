@@ -150,6 +150,9 @@ dev = [
     "mypy==1.15.0",  # Pinned to match wb-mqtt-bridge version
     "pyright==1.1.410",  # QUAL-4: pinned — the standard-mode gate; diagnostics vary by version
     "import-linter>=2.0",  # ARCH-5: enforce the hexagon import contracts
+    # QUAL-32 / Invariant #9: the no-TYPE_CHECKING AST gate, now upstream (extracted from this repo).
+    # Pinned — diagnostics/behaviour are an explicit-bump choice. Provides `check-no-type-checking` on PATH.
+    "py-dev-gates @ git+https://github.com/droman42/py-dev-gates@v0.1.1",
     # type stubs (were in [dependency-groups].dev)
     "types-beautifulsoup4>=4.12.0.20250516",
     "types-pillow>=10.2.0.20240822",

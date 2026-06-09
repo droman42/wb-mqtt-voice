@@ -56,7 +56,7 @@ CI runs two workflows on every push / PR, and **every gate hard-fails**. Run the
 | Gate | Command |
 |---|---|
 | Hexagon import contracts | `lint-imports` |
-| No `TYPE_CHECKING` guards | `python scripts/check_no_type_checking.py` |
+| No `TYPE_CHECKING` guards | `check-no-type-checking irene` |
 | Type checking (0 errors) | `pyright` |
 | All config profiles valid | `python -m irene.tools.build_analyzer --validate-all-profiles` |
 | All config files valid (schema + completeness) | `python -m irene.tools.config_validator_cli --config-dir configs/` |

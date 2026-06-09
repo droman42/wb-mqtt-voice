@@ -11,6 +11,18 @@ newest entries near the top of each dated section.
 
 ## Action journal
 
+### 2026-06-09
+- **Adopted `droman42/py-dev-gates@v0.1.1` — retired the in-tree no-`TYPE_CHECKING` gate.** The AST gate
+  (Invariant #9 / QUAL-32) was extracted upstream (this repo was its source) and generalised into a pip-installable
+  CLI. Added `py-dev-gates @ git+…@v0.1.1` to the `[dev]` extra (puts `check-no-type-checking` on PATH; re-locked
+  `uv.lock`), deleted `scripts/check_no_type_checking.py` + its pytest wrapper (a pure shell-out; upstream ships its
+  own tests), and pointed the backend-health CI step + CONTRIBUTING at `check-no-type-checking irene/`. **Kept voice's
+  per-step CI — did NOT switch to the shared `python-health` composite action.** Voice-specific reason: the composite
+  action installs `pip install -e ".[dev]"`, but voice's pyright needs the *provider-extra* imports
+  (`fastapi`/`spacy`/`sherpa-onnx`/…) present and relies on `uv sync --frozen --all-extras` + the uv cache (the
+  spaCy-model GitHub-504 mitigation from `63f9e93`); bridge could adopt the composite action because its `fastapi` is a
+  core dep and it has no heavy ML extras. Verified: gate → 0, lint-imports 9/9, pyright 0, `uv.lock` consistent.
+
 ### 2026-06-08
 - **BUILD-2 + BUILD-4 — split CI into `backend-health` + `frontend-health` workflows, all gates hard-fail.** Replaced
   the disabled `config-validation.yml` with two **enabled** (push/PR) workflows. **`backend-health.yml`**: hard gates —
