@@ -12,6 +12,18 @@ newest entries near the top of each dated section.
 ## Action journal
 
 ### 2026-06-09
+- **BUILD-6 done — backend-health Gate 5 (config validation) goes green.** The 3 fixtures that failed
+  `config_validator_cli` each lacked a *required* provider-schema field (no default): `vad-production.toml` was missing
+  `api_key` on its active `elevenlabs` TTS + `openai` LLM defaults (added `${ELEVENLABS_API_KEY}`/`${OPENAI_API_KEY}`
+  placeholders, canonical `config-master.toml` style); `vosk-test.toml`'s *disabled* `google_cloud` ASR block was
+  missing `credentials_path`/`project_id` (the validator schema-checks declared providers even when `enabled = false`);
+  `vad-testing.toml` carried a top-level `[testing]` section (ad-hoc VAD scenario sub-tables) that **no code reads** —
+  a `CoreConfig` `extra_forbidden` violation, removed as dead config. No schema/contract changed, so config-ui is
+  untouched. Verified 12/12 configs valid, `build_analyzer --validate-all-profiles` ✓, `dependency_validator` 55/55 ✓
+  (ubuntu+alpine), suite 83=83 FAILED (0 net regression — the failing VAD tests are pre-existing TEST-7 staleness; their
+  `scenario_a/b` are generated-audio fixtures, unrelated to the removed `[testing]` block). Also indexed the
+  BUILD-5 deliverable `docs/review/docker_build_review.md` in the ledger's review-doc index (clears the lone
+  `check_scope` orphan).
 - **Adopted `droman42/py-dev-gates@v0.1.1` — retired the in-tree no-`TYPE_CHECKING` gate.** The AST gate
   (Invariant #9 / QUAL-32) was extracted upstream (this repo was its source) and generalised into a pip-installable
   CLI. Added `py-dev-gates @ git+…@v0.1.1` to the `[dev]` extra (puts `check-no-type-checking` on PATH; re-locked

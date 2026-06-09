@@ -95,6 +95,7 @@ Living findings behind the tasks (Invariant #5). `[x]` = exists; others are prod
 | `declared_param_audit.md` | audit: 19 declared-but-unconsumed donation params across 11 handlers (Bucket A dead / B bypassed) | QUAL-34, QUAL-11 |
 | `streaming_api_review.md` `[x]` | AsyncAPI streaming-API tooling — Hybrid: replace renderer / keep+improve generator | QUAL-17 ✓, QUAL-18 |
 | `esp32_wakeword_review.md` | ESP32 + wakeword keep/fix/cut | QUAL-19/20 |
+| `docker_build_review.md` `[x]` | Docker/build verification (entry-point renames, armv7 base, build-analyzer drift) | BUILD-5, BUILD-3 |
 | `docs/design/mqtt_integration.md` `[x]` (DONE 2026-06-06; bridge contract AGREED) | smart-home integration — bridge is the single device authority, Irene speaks canonical commands | ARCH-7/8 |
 | `docs/design/ws_esp32_transport.md` `[x]` | WS streaming-input driving adapter + ESP32 satellite transport | ARCH-6 |
 | `docs/design/onnx_inference_layer.md` `[x]` (complete 2026-06-04; ASR/platform/build + VAD/wake-word all resolved) | shared sherpa-onnx inference layer — ASR-centric; WB7 armv7 feasibility proven on hardware | ARCH-9/10 |
@@ -1429,7 +1430,21 @@ _Apply to every remediation task below (from the 4 review docs + QUAL-25/26). So
 - [x] **BUILD-4** (P1) — DONE 2026-06-08: new **`frontend-health.yml`** workflow (push/PR on `config-ui/**`) runs the
       config-ui gates as hard checks — `npm ci`, `npm run check` (type-check + strict ESLint + orphans), `npm run build`,
       `npm run test` (vitest: 40 tests). All green today; satisfies the Invariant-#4 ongoing config-ui gate.
-- [ ] **BUILD-6** `[release]` [QUAL] (P2) — **Fix the 3 config fixtures that fail `config_validator_cli`** (the
+- [x] **BUILD-6** `[release]` [QUAL] (P2) — **DONE 2026-06-09.** All 12 configs now validate; `config_validator_cli
+      --config-dir configs/ --ci-mode` is green → backend-health Gate 5 goes green. Each failure was a *required*
+      provider-schema field (no default) missing from the fixture: **(1)** `vad-production.toml` — added the required
+      `api_key = "${ELEVENLABS_API_KEY}"` to its active `tts.elevenlabs` default and `api_key = "${OPENAI_API_KEY}"` to
+      its active `llm.openai` default (mirroring the canonical `config-master.toml` placeholder style); **(2)**
+      `vosk-test.toml` — added the schema-required `credentials_path`/`project_id` to the *disabled* `asr.google_cloud`
+      block (the validator schema-checks declared providers even when `enabled = false`, exactly as it does for the
+      kept-but-disabled `whisper` block, which passed only because all its fields default); **(3)** `vad-testing.toml` —
+      the `CoreConfig` `extra_forbidden` error was a top-level `[testing]` section (4 ad-hoc VAD scenario sub-tables)
+      that **nothing in the codebase reads** (no `CoreConfig.testing` field, no consumer in `irene/`) — removed as dead
+      config. No schema/contract touched → no config-ui impact (Invariant #4 N/A). Verified: 12/12 valid,
+      `build_analyzer --validate-all-profiles` ✓, `dependency_validator` 55/55 ✓ both platforms, suite 83=83 FAILED (0
+      net regression — the failing VAD tests are pre-existing TEST-7 staleness, unrelated to the removed section: their
+      `scenario_a/b` are *generated audio* fixtures, not the `[testing]` block). _Original task below._ **Fix the 3
+      config fixtures that fail `config_validator_cli`** (the
       backend-health Gate 5 honest-red, surfaced 2026-06-08): `vad-production.toml` (invalid `elevenlabs` tts + `openai`
       llm provider configs — the `elevenlabs` block was a minimal BUILD-5 placeholder that needs the real schema fields),
       `vad-testing.toml` (a `CoreConfig`-level validation error), `vosk-test.toml` (invalid `google_cloud` asr config).

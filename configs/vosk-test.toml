@@ -83,6 +83,8 @@ enabled = false
 
 [asr.providers.google_cloud]
 enabled = false
+credentials_path = "${GOOGLE_APPLICATION_CREDENTIALS}"  # Required by schema (provider disabled here)
+project_id = "your-project-id"                          # Required by schema (provider disabled here)
 
 # ============================================================
 # TTS (TEXT-TO-SPEECH) COMPONENT CONFIGURATION

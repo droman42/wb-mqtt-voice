@@ -158,36 +158,3 @@ llm_enabled = false           # Disabled for focused testing
 tts_enabled = true
 audio_enabled = true
 enable_vad_processing = true  # Core feature under test
-
-# ============================================================
-# TESTING SCENARIOS CONFIGURATION
-# ============================================================
-[testing]
-# This section can be used by test scripts to configure different scenarios
-
-# Scenario A: Voice trigger enabled
-[testing.scenario_a]
-voice_trigger_enabled = true
-vad_energy_threshold = 0.015  # Higher for wake word accuracy
-vad_voice_duration_ms = 150   # Longer for wake words
-vad_silence_duration_ms = 300 # Longer for command boundaries
-
-# Scenario B: VOSK runner (no voice trigger)
-[testing.scenario_b]
-voice_trigger_enabled = false
-vad_energy_threshold = 0.01   # Lower for sensitivity
-vad_voice_duration_ms = 100   # Shorter for responsiveness
-vad_silence_duration_ms = 200 # Shorter for quick processing
-
-# Performance testing
-[testing.performance]
-vad_energy_threshold = 0.008  # Sensitive detection
-vad_processing_timeout_ms = 20 # Aggressive timeout
-vad_buffer_size_frames = 30    # Small buffer
-
-# Edge case testing
-[testing.edge_cases]
-vad_energy_threshold = 0.005  # Very sensitive
-vad_voice_duration_ms = 50    # Very short
-vad_silence_duration_ms = 100 # Very short
-vad_adaptive_threshold = true # Enable adaptation
