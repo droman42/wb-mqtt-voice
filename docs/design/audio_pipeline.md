@@ -87,11 +87,14 @@ primitive, not a request/response service):
 
 ## 6. Pre-roll as a contract (Q1)
 
-`VoiceSegmenter` sizes the pre-buffer from the **active VAD provider's `detection_latency_ms`**:
-`preroll_frames = ceil(detection_latency_ms / frame_ms) + margin`. Energy ≈ `voice_frames_required·frame`;
-silero/microvad ≈ their `min_speech_duration` / sliding window. This replaces the magic `4` and guarantees
-the wake-word onset survives across engines and tunings (the segment feeds the wake word, so this is a
-detection-correctness fix, not just nicety).
+`VoiceSegmenter` sizes the pre-buffer from the **active VAD provider's `detection_latency_ms(frame_ms)`**:
+`preroll_frames = ceil(detection_latency_ms / frame_ms) + margin`, where `frame_ms` is the **real canonical
+frame duration** observed on the first frame (no magic ms/frame constant). The latency declaration is
+harmonized across providers: **energy** is frame-count-based (`round(voice_frames_required · frame_ms)`, so
+it scales with the real frame and its pre-roll collapses to `voice_frames_required + margin`); **silero** =
+`voice_duration_ms` and **microvad** = a `detection_latency_ms` TOML field — both duration-based (ms,
+frame-independent). This replaces the magic `4` and guarantees the wake-word onset survives across engines and
+tunings (the segment feeds the wake word, so this is a detection-correctness fix, not just nicety).
 
 ## 7. Transparency — first-class trace events
 
@@ -194,9 +197,12 @@ The flat `silero_*` / `microvad_*` fields move under their provider; `vad_implem
    - **4c (TODO, design-first)** — **symmetric output**: route TTS→playback through an *output* negotiator. Needs
      a playback-device `AudioContract` that doesn't exist yet (the audio/playback component declares no device
      rate), so this is genuinely new machinery, not a refactor — design before implementing.
-5. **PR-5 — pre-roll contract** (done 2026-06-10): `VoiceSegmenter` sizes its pre-buffer as
-   `ceil(detection_latency_ms / 23ms) + 2` from the **active VAD provider's** `detection_latency_ms` — killing the
-   magic `4` (≈92 ms) that clipped silero's 100 ms onset. energy(50)→5, silero(100)→7, microvad(30)→4.
+5. **PR-5 — pre-roll contract** (done 2026-06-10): `VoiceSegmenter` sizes its pre-buffer lazily on the first
+   frame as `ceil(detection_latency_ms(frame_ms) / frame_ms) + 2` from the **active VAD provider** at the REAL
+   canonical frame duration — killing the magic `4` AND the 23-vs-25 ms/frame constants. Latency declaration
+   harmonized: energy frame-count-based (scales with `frame_ms` → pre-roll = `voice_frames_required + 2`), silero
+   `voice_duration_ms`, microvad a new `detection_latency_ms` TOML field. Also fixes energy being undersized for
+   big capture chunks (4096 samples ≈ 93 ms, not the old assumed 25).
 6. **PR-6 — user-facing docs + diagrams (END of ARCH-17/18)**: update `docs/guides/{vad,voice-trigger,audio}.md`
    and the architecture docs for the new component + negotiation seam; **re-author the affected dataflow/audio
    diagrams** in `docs/images/` (the mic→VAD→wake→ASR flow + the transform/negotiation seam — PNG/JPEG per the

@@ -619,9 +619,10 @@ See `docs/review/phase1_architecture_map.md` §5.
       the per-consumer resampling was untested zero-value code, rewritten clean test-first) + §7 startup summary logs
       every party's contract. pyright 0, 9/9, suite 81=81 (+~31 tests). **PR-4c TODO (design-first)** = symmetric
       **output** negotiation (TTS→playback through an output negotiator) — needs a playback-device `AudioContract` that
-      doesn't exist yet. **PR-5 DONE 2026-06-10**: pre-roll sized `ceil(detection_latency_ms/23ms)+2` from the active
-      VAD provider — kills the magic `4` that clipped silero's 100ms onset (energy(50)→5, silero(100)→7, microvad→4);
-      2 tests, suite 81=81. **Order: PR-5 → PR-4c (symmetric output, design-first) → PR-6.** **PR-6
+      doesn't exist yet. **PR-5 DONE 2026-06-10**: pre-roll sized lazily from the active VAD provider's
+      `detection_latency_ms(frame_ms)` at the REAL canonical frame duration — kills the magic `4` AND the 23/25 ms/frame
+      constants. Latency declaration harmonized (energy frame-count→`frames+2`; silero `voice_duration_ms`; microvad new
+      `detection_latency_ms` TOML field+schema, config-ui green); also fixes energy undersized for big chunks. Suite 81=81. **Order: PR-5 → PR-4c (symmetric output, design-first) → PR-6.** **PR-6
       (FINAL) — user-facing docs + diagrams:** update `docs/guides/{vad,voice-trigger,audio}.md` + architecture docs for
       the new component + negotiation seam, and **re-author the affected dataflow/audio diagrams** in `docs/images/`
       (mic→VAD→wake→ASR flow + the transform/negotiation seam; PNG/JPEG per the docs rules, no mermaid). Invariant #4:

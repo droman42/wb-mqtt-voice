@@ -12,10 +12,15 @@ newest entries near the top of each dated section.
 ## Action journal
 
 ### 2026-06-10
-- **ARCH-18 PR-5 — pre-roll sized from `detection_latency_ms`.** The `VoiceSegmenter` pre-buffer was a hardcoded 4
-  frames (~92 ms) that clipped the wake-word onset for engines whose detection latency exceeds it (silero's 100 ms).
-  It now sizes as `ceil(detection_latency_ms / 23ms) + 2` from the **active** VAD provider — energy(50)→5,
-  silero(100)→7, microvad(30)→4. The detection-correctness fix from §6. 2 tests; pyright 0, 9/9, suite 81=81.
+- **ARCH-18 PR-5 — pre-roll sized from `detection_latency_ms`, harmonized + derived from canonical.** The
+  `VoiceSegmenter` pre-buffer was a hardcoded 4 frames (~92 ms) that clipped the wake-word onset for slower engines.
+  First cut sized it `ceil(detection_latency_ms / 23ms) + 2` at init — but that exposed that the three providers
+  declared latency three different ways and the `25`(energy)/`23`(pre-roll) ms/frame constants disagreed (and
+  underestimated latency for big capture chunks). Harmonized: `detection_latency_ms(frame_ms)` is now a method taking
+  the **real canonical frame duration** (observed on the first frame, sized lazily) — energy is frame-count-based
+  (`round(voice_frames_required·frame_ms)`, pre-roll collapses to `frames+2`), silero/microvad are duration-based
+  (silero `voice_duration_ms`; microvad gained a `detection_latency_ms` TOML field + schema). No magic ms/frame
+  anywhere. Test-first; pyright 0, 9/9, config/config-ui green, suite 81=81.
 - **ARCH-18 PR-4a+4b — TTS dedup + input conformance (consumers trust canonical).** 4a collapsed the three
   duplicated TTS resample blocks into one `TTSComponent._conform_output_audio` through the shared `AudioTranscoder`
   (and hoisted that import module-top, no TYPE_CHECKING — Inv #9). 4b: a #8 reconciliation found the per-consumer
