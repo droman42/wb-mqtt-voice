@@ -624,9 +624,13 @@ See `docs/review/phase1_architecture_map.md` §5.
       `_conform_output_audio`; 4b made `asr.process_audio` + `voice_trigger.detect` **trust canonical** (conform once at
       each entry boundary — mic via `to_canonical`, `/asr/transcribe` via `_conform_to_rate`, `/stream`=canonical-wire;
       the per-consumer resampling was untested zero-value code, rewritten clean test-first) + §7 startup summary logs
-      every party's contract. pyright 0, 9/9, suite 81=81 (+~31 tests). **PR-4c TODO (design-first)** = symmetric
-      **output** negotiation (TTS→playback through an output negotiator) — needs a playback-device `AudioContract` that
-      doesn't exist yet. **PR-5 DONE 2026-06-10**: pre-roll sized lazily from the active VAD provider's
+      every party's contract. pyright 0, 9/9, suite 81=81 (+~31 tests). _(Input-path **endpoint unification** landed
+      2026-06-10 as a 4b follow-up: hoisted `AudioNegotiator`→`core` as a SHARED service, `/asr/transcribe`→`to_canonical`,
+      deleted `/asr/stream`+`/asr/binary`, confirmed `/ws/audio` already VAD-free; QUAL-45 filed for the ESP32 firmware
+      end-of-utterance contract.)_ **PR-4c DESIGN LOCKED 2026-06-10 (§8, decisions D-8..D-13; impl pending)** = symmetric
+      **output**: sink-driven contract (audio provider `audio_contract()` + `[audio]` override, **CD default**),
+      `AudioNegotiator.to_sink` conform-**down-only**, TTS retires `_conform_output_audio`→`to_sink` (traced), PCM-only,
+      local-playback sink now + a generic `AudioSink` so streaming sinks are future-addable. **PR-5 DONE 2026-06-10**: pre-roll sized lazily from the active VAD provider's
       `detection_latency_ms(frame_ms)` at the REAL canonical frame duration — kills the magic `4` AND the 23/25 ms/frame
       constants. Latency declaration harmonized (energy frame-count→`frames+2`; silero `voice_duration_ms`; microvad new
       `detection_latency_ms` TOML field+schema, config-ui green); also fixes energy undersized for big chunks. Suite 81=81. **Order: PR-5 → PR-4c (symmetric output, design-first) → PR-6.** **PR-6

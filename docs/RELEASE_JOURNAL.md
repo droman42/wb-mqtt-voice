@@ -12,6 +12,14 @@ newest entries near the top of each dated section.
 ## Action journal
 
 ### 2026-06-10
+- **ARCH-18 PR-4c — symmetric-output DESIGN session (locked; impl pending).** Captured the user's spine: the output
+  contract is the **sink's audio capability**, default **CD (44.1k/pcm16/stereo)** when nothing's in TOML (the
+  producer's hint), **conform-down-only** (any device plays lower → pass-through `≤` sink, downsample/downmix only
+  when the producer exceeds it, never upsample), **PCM only** (MP3/FLAC → distant future). Locked D-8..D-13: sink
+  contract = active audio provider's `audio_contract()` + optional `[audio]` `output_rate`/`output_channels` override;
+  `AudioNegotiator.to_sink` (the output mirror of `to_canonical`, same `AudioTranscoder`, traced); TTS retires
+  `_conform_output_audio`→`to_sink`; scope = **local playback now** but a generic `AudioSink` so remote/streaming
+  sinks (ESP32/web declaring their own contract) are future-addable. Written into `audio_pipeline.md` §8 + §13.4c.
 - **ARCH-18 — input-path unification COMPLETE (shared negotiator + endpoints reconciled).** Hoisted
   `AudioNegotiator` `workflows`→`core` (layering: core can't import workflows); the engine builds ONE negotiator at
   startup (config + active wake/asr providers; VAD fixed 16 kHz) and injects it into the workflow, so the mic/web

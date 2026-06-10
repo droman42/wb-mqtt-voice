@@ -103,12 +103,42 @@ the existing `trace_context`/observe vocabulary (ARCH-15), so a `/trace` shows t
 Plus a **one-time startup summary**: the negotiated canonical + every party's contract (and the fatal-error
 detail when negotiation fails).
 
-## 8. Symmetric output
+## 8. Symmetric output (PR-4c design — locked 2026-06-10)
 
-The negotiator is built **both directions**: input derives canonical from consumers; **output** negotiates
-TTS-rate → playback-device-rate through the *same* `AudioTranscoder`, also traced. This collapses the TTS
-duplication and ties the audio-encoding layer of ARCH-15's output seam to the same machinery. (ARCH-15's
-*modality* negotiation — degrade-then-drop — stays; this is the finer audio-encoding layer beneath it.)
+The negotiator runs **both directions** through the *same* `core.AudioNegotiator` + `AudioTranscoder`, traced.
+Output is the **mirror of input, inverted** — but driven by the **sink's** capability, not the producer's:
+
+| | Input (done) | **Output (PR-4c)** |
+|---|---|---|
+| Contract owner | the consumers (VAD/wake/ASR) | the **sink** = audio-output capability (playback device; later a remote client) |
+| Bound by | the capture (never upsample) | the **sink's max** (the device); never upsample past it |
+| Default (nothing in TOML) | derived | **CD — 44100 Hz / pcm16 / stereo** (the producer's *hint*) |
+| Direction | conform capture **down** to canonical | conform producer **down** to the sink |
+| Producer → consumer | capture → consumers | **TTS (+ others)** → sink |
+| Format | pcm16 | **PCM only** (MP3/FLAC deferred to a distant future) |
+
+**The model.** An **`AudioSink`** carries an `AudioContract` (its capability). The local-playback sink's contract
+is the **active `audio` provider's `audio_contract()`** (e.g. `sounddevice` already declares `sample_rate=44100`,
+`channels=2`), with an optional **`[audio]` override** (`output_rate`/`output_channels`) for operator determinism;
+**CD** when neither specifies. `AudioNegotiator.to_sink(audio, sink_contract)` conforms **down-only** — pass the
+producer through untouched when its rate/channels are `≤` the sink, downsample/downmix only when it *exceeds* the
+sink ("any device plays lower"), **never upsample**. Same `AudioTranscoder` as `to_canonical`, recorded as an
+`audio_output_conform` trace stage. **TTS** (and other producers) replace the ad-hoc `_conform_output_audio`
+(which targets a per-request `audio_config`) with `core.audio_negotiator.to_sink(audio, sink)`.
+
+**Locked decisions** — **D-8** output contract = the sink's audio capability; **D-9** default sink = CD
+(44.1k/pcm16/stereo), the producer's hint; **D-10** sink contract = active audio provider's `audio_contract()`
++ optional `[audio]` override (CD default); **D-11** conform-**down-only** (pass-through `≤` sink); **D-12** PCM
+only; **D-13** scope = **local playback now**, but `AudioSink` is a **generic abstraction** so remote/streaming
+sinks (an ESP32/web client declaring its own contract in registration) are addable later with no rework.
+
+(ARCH-15's *modality* negotiation — degrade-then-drop — is untouched; this is the finer audio-encoding layer
+beneath it. Streaming-response audio keeps today's per-request handling until a streaming sink is added.)
+
+**PR-4c slices:** (1) `audio_contract()` on the audio provider base (default CD) + `sounddevice` (from its
+config); (2) `[audio]` `output_rate`/`output_channels` override fields (+ schema/master/config-ui); (3) a generic
+`AudioSink` + `AudioNegotiator.to_sink` (conform-down + trace) + sink-contract resolution (provider + `[audio]`
+override); (4) TTS uses `to_sink` (retire `_conform_output_audio`), traced; (5) tests; docs land in PR-6.
 
 ## 9. Hexagon seams (new vs reused)
 
@@ -194,9 +224,12 @@ The flat `silero_*` / `microvad_*` fields move under their provider; `vad_implem
      happens once at each entry boundary — the mic pipeline via `to_canonical` (PR-3), the `/asr/transcribe`
      file upload via `_conform_to_rate`, and `/stream` requires canonical 16 kHz on the wire. Plus the §7
      **startup summary** now logs every party's contract (not a count). `AudioFormatConverter` already gone (PR-3).
-   - **4c (TODO, design-first)** — **symmetric output**: route TTS→playback through an *output* negotiator. Needs
-     a playback-device `AudioContract` that doesn't exist yet (the audio/playback component declares no device
-     rate), so this is genuinely new machinery, not a refactor — design before implementing.
+   - **4c — symmetric output** (**design LOCKED 2026-06-10, see §8**; impl pending): sink-driven output contract
+     (audio provider's `audio_contract()` + `[audio]` override, **CD default**), `AudioNegotiator.to_sink`
+     conform-**down-only**, TTS retires `_conform_output_audio` for `to_sink` (traced), PCM-only, local-playback
+     sink now with a generic `AudioSink` so streaming sinks are future-addable. Decisions D-8..D-13. _(Note: the
+     input-path **endpoint unification** — shared `core.audio_negotiator`, `/asr/transcribe`→`to_canonical`,
+     `/asr/stream`+`/asr/binary` deleted, `/ws/audio` already VAD-free — landed 2026-06-10 as a 4b follow-up.)_
 5. **PR-5 — pre-roll contract** (done 2026-06-10): `VoiceSegmenter` sizes its pre-buffer lazily on the first
    frame as `ceil(detection_latency_ms(frame_ms) / frame_ms) + 2` from the **active VAD provider** at the REAL
    canonical frame duration — killing the magic `4` AND the 23-vs-25 ms/frame constants. Latency declaration
