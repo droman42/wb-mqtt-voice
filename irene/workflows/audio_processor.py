@@ -142,6 +142,10 @@ class UniversalAudioProcessor:
             model_path = get_asset_manager().get_model_path("vad", "silero_vad.onnx")
             self.vad_engine = SileroVADEngine(vad_config, model_path)
             logger.info("VAD engine: silero (SileroVAD-ONNX via sherpa-onnx)")
+        elif vad_impl == "microvad":
+            from ..utils.vad_microvad import MicroVADEngine  # self-contained; no asset path
+            self.vad_engine = MicroVADEngine(vad_config)
+            logger.info("VAD engine: microvad (pymicro-vad; unified with the ESP32 micro stack)")
         elif vad_config.use_zero_crossing_rate or vad_config.adaptive_threshold:
             self.vad_engine = AdvancedVAD(
                 threshold=vad_config.energy_threshold,

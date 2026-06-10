@@ -94,6 +94,11 @@ wake-tflite = [
     "pymicro-wakeword>=2.0.0",
     "aiohttp>=3.8.0",
 ]
+# microVAD (pymicro-vad) — the 'microvad' VAD engine; self-contained (bundles model + tflite C lib),
+# shares the micro frontend with wake-tflite. 64-bit; standalone local-mic only (WB7 wakes on-device).
+vad-tflite = [
+    "pymicro-vad>=2.0.0",
+]
 voice-trigger = [
     "irene-voice-assistant[wake-onnx,wake-tflite]",
 ]

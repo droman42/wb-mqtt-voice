@@ -1178,6 +1178,9 @@ tts = [
     { name = "pyttsx3" },
     { name = "vosk-tts" },
 ]
+vad-tflite = [
+    { name = "pymicro-vad" },
+]
 voice = [
     { name = "aiohttp" },
     { name = "audioplayer" },
@@ -1274,6 +1277,7 @@ requires-dist = [
     { name = "py-dev-gates", marker = "extra == 'dev'", git = "https://github.com/droman42/py-dev-gates?rev=v0.1.1" },
     { name = "pydantic", specifier = ">=2.0.0" },
     { name = "pydantic-settings", specifier = ">=2.0.0" },
+    { name = "pymicro-vad", marker = "extra == 'vad-tflite'", specifier = ">=2.0.0" },
     { name = "pymicro-wakeword", marker = "extra == 'wake-tflite'", specifier = ">=2.0.0" },
     { name = "pyright", marker = "extra == 'dev'", specifier = "==1.1.410" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=7.0.0" },
@@ -1309,7 +1313,7 @@ requires-dist = [
     { name = "vosk-tts", marker = "extra == 'tts'", specifier = ">=0.3.0" },
     { name = "websockets", marker = "extra == 'web-api'", specifier = ">=11.0.0" },
 ]
-provides-extras = ["audio-input", "advanced-asr", "asr-onnx", "audio-input-enhanced", "audio-input-complete", "tts", "audio-output", "wake-onnx", "wake-tflite", "voice-trigger", "web-api", "cloud-asr", "llm", "nlu", "config-writing", "text-multilingual", "dev", "voice", "api", "headless", "all"]
+provides-extras = ["audio-input", "advanced-asr", "asr-onnx", "audio-input-enhanced", "audio-input-complete", "tts", "audio-output", "wake-onnx", "wake-tflite", "vad-tflite", "voice-trigger", "web-api", "cloud-asr", "llm", "nlu", "config-writing", "text-multilingual", "dev", "voice", "api", "headless", "all"]
 
 [[package]]
 name = "isort"
@@ -2423,6 +2427,16 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/cf/34/c52065f422c009d99c434fb68918142b815055942fcb57c9533810a22080/pymicro_features-2.0.2-cp39-abi3-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:acead36386b42934e620f57d7481177ba461dde247cccef6a846f5831805e6c7", size = 116415 },
     { url = "https://files.pythonhosted.org/packages/aa/30/a31c5dc56015e55f897d0beb71447f1e10f0062067258856f3735ede133a/pymicro_features-2.0.2-cp39-abi3-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:65a76a7c7851ee0dd6083dda56b835ab9dc6eddeaf11b34461795758de846d0f", size = 119607 },
     { url = "https://files.pythonhosted.org/packages/e4/22/577100459a7d3e7f5b3c5315c6c546a7980bf711371ca36398f440a1aee4/pymicro_features-2.0.2-cp39-abi3-win_amd64.whl", hash = "sha256:e76b656ce6a2eab9571657bbecaf17a5c07830306f9b544fbbea16c567bd78fb", size = 22695 },
+]
+
+[[package]]
+name = "pymicro-vad"
+version = "2.0.1"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/c0/ac/fe480b37a6b3f6af5c0953aee980162a1ed27b8052bc2447aaffafa7f70f/pymicro_vad-2.0.1.tar.gz", hash = "sha256:51d188b3d02e5612a72f1c2a190d0c183daaeaf4bb012b83e1e458b9d104db8c", size = 137330 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/f9/c0/128e859c5fcdf2a1ff18df5ebfc3850d482e9157ec824b50e834d3916b15/pymicro_vad-2.0.1-cp39-abi3-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:b9fc2876936d797c12942cb0ad53dad1fdbf3dd9ffbd747ff5abc52ef4572ee6", size = 324526 },
+    { url = "https://files.pythonhosted.org/packages/67/f6/978aa8034b4d0b70faf0e518228357af897ffb588a894f78f7d82599d08f/pymicro_vad-2.0.1-cp39-abi3-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:5f143eb8ced8606dcab6ac4fad96b2b51c66517a446261e092b59c792d747d67", size = 326501 },
 ]
 
 [[package]]

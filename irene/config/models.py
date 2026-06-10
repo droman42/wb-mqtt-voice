@@ -415,10 +415,11 @@ class VADConfig(BaseModel):
     noise_percentile: int = Field(default=15, description="Percentile for noise floor estimation", ge=1, le=50)
     voice_multiplier: float = Field(default=3.0, description="Multiplier above noise floor for voice threshold", ge=1.0, le=10.0)
 
-    # VAD engine selection (PR-4: mutually-exclusive energy vs silero; 64-bit only)
-    vad_implementation: str = Field(default="energy", description="VAD engine: 'energy' (built-in) or 'silero' (SileroVAD-ONNX via sherpa-onnx, 64-bit)")
+    # VAD engine selection (mutually-exclusive; 64-bit only). QUAL-20 added 'microvad'.
+    vad_implementation: str = Field(default="energy", description="VAD engine: 'energy' (built-in), 'silero' (SileroVAD-ONNX via sherpa-onnx), or 'microvad' (pymicro-vad; unified with the ESP32 micro stack). 64-bit.")
     silero_threshold: float = Field(default=0.5, description="SileroVAD speech probability threshold (only when vad_implementation='silero')", ge=0.0, le=1.0)
     silero_model_url: str = Field(default="https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/silero_vad.onnx", description="SileroVAD ONNX model URL (downloaded once into the asset folder)")
+    microvad_threshold: float = Field(default=0.5, description="microVAD speech probability threshold (only when vad_implementation='microvad')", ge=0.0, le=1.0)
     
     # Performance configuration
     processing_timeout_ms: int = Field(default=50, description="Maximum processing time per frame in milliseconds", ge=1)
