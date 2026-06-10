@@ -303,229 +303,34 @@ class VoiceTriggerComponent(Component, VoiceTriggerPlugin, WebAPIPlugin):
             logger.warning("No voice trigger provider available")
             return WakeWordResult(detected=False, confidence=0.0)
         
-        # Phase 4 Step 1: Get voice trigger configuration (AUTHORITATIVE per fix_vosk.md).
-        # Captured at initialize() time from CoreConfig.voice_trigger (the hexagon refactor
-        # removed direct `self.core` access).
-        voice_trigger_config = self._voice_trigger_config
-
-        # Phase 4 Step 2: Check configuration authority (per fix_vosk.md Section 5.3)
-        config_sample_rate = voice_trigger_config.get('sample_rate')
-        allow_resampling = voice_trigger_config.get('allow_resampling', True)
-        resample_quality = voice_trigger_config.get('resample_quality', 'fast')  # Fast for real-time
-        
-        logger.debug(f"Voice trigger configuration: sample_rate={config_sample_rate}, allow_resampling={allow_resampling}")
-        logger.debug(f"Current audio rate: {audio_data.sample_rate}Hz")
-        
-        # Phase 4 Step 3: Apply configuration authority logic
-        processed_audio = audio_data
-        
-        if config_sample_rate and config_sample_rate != audio_data.sample_rate:
-            # Configuration is AUTHORITATIVE - must resample to config rate regardless of provider capabilities
-            logger.info(f"Configuration requires {config_sample_rate}Hz, resampling from {audio_data.sample_rate}Hz for voice trigger (configuration authority)")
-            
-            if not allow_resampling:
-                logger.error(f"Configuration requires {config_sample_rate}Hz but allow_resampling=false")
-                return await self._detect_with_fallback(audio_data, provider.get_provider_name())
-            
-            try:
-                # Use Phase 2 AudioTranscoder for resampling
-                from ..utils.audio_helpers import AudioTranscoder, ConversionMethod
-                
-                # Phase 6: Get optimal conversion method for voice trigger (latency-optimized)
-                conversion_method = AudioTranscoder.get_optimal_conversion_path(
-                    audio_data.sample_rate, config_sample_rate, use_case="voice_trigger"
-                )
-                
-                # For voice trigger, prefer faster methods to reduce latency
-                if resample_quality == 'fast':
-                    conversion_method = ConversionMethod.LINEAR
-                
-                # Phase 5: Track resampling metrics
-                import time
-                start_time = time.time()
-                
-                try:
-                    # Resample the audio data to configuration-required rate
-                    processed_audio = await AudioTranscoder.resample_audio_data(
-                        audio_data, config_sample_rate, conversion_method
-                    )
-                    
-                    # Update metrics (Phase 1: Unified metrics integration)
-                    resampling_time = (time.time() - start_time) * 1000
-                    get_metrics_collector().record_resampling_operation("voice_trigger", resampling_time, success=True)
-                    
-                    logger.debug(f"Successfully resampled audio to {config_sample_rate}Hz using {conversion_method.value} in {resampling_time:.1f}ms")
-                    
-                except Exception as resampling_error:
-                    # Update failure metrics (Phase 1: Unified metrics integration)
-                    resampling_time = (time.time() - start_time) * 1000
-                    get_metrics_collector().record_resampling_operation("voice_trigger", resampling_time, success=False)
-                    logger.error(f"Configuration-required resampling failed for voice trigger: {resampling_error}")
-                    raise resampling_error
-                
-            except Exception as e:
-                logger.error(f"Configuration authority resampling failed for voice trigger: {e}")
-                # Continue to fallback handling
-                return await self._detect_with_fallback(audio_data, provider.get_provider_name())
-        
-        elif config_sample_rate and config_sample_rate == audio_data.sample_rate:
-            # Configuration matches input rate - use as-is
-            logger.debug(f"Configuration authority: {audio_data.sample_rate}Hz matches required {config_sample_rate}Hz")
-            # processed_audio already set to audio_data above
-            
-        else:
-            # No configuration override - use provider preferences (fallback to old behavior)
-            logger.debug(f"No configuration sample_rate specified, using provider preferences for voice trigger")
-            
-            try:
-                supported_rates = provider.get_supported_sample_rates()
-                default_rate = provider.get_default_sample_rate()
-                supports_resampling = provider.supports_resampling()
-                
-                logger.debug(f"Voice trigger provider {provider.get_provider_name()} supported rates: {supported_rates}")
-                logger.debug(f"Current audio rate: {audio_data.sample_rate}Hz, provider default: {default_rate}Hz")
-                logger.debug(f"Provider supports resampling: {supports_resampling}")
-                
-                if audio_data.sample_rate not in supported_rates:
-                    # Check if provider supports resampling or if we should handle it
-                    if supports_resampling:
-                        logger.debug(f"Provider {provider.get_provider_name()} will handle resampling internally")
-                        # Provider will handle resampling internally - use original audio
-                    else:
-                        # We need to resample the audio externally
-                        logger.info(f"Resampling audio from {audio_data.sample_rate}Hz to {default_rate}Hz for voice trigger")
-                        
-                        if allow_resampling:
-                            # Use Phase 2 AudioTranscoder for resampling
-                            from ..utils.audio_helpers import AudioTranscoder, ConversionMethod
-                            
-                            conversion_method = AudioTranscoder.get_optimal_conversion_path(
-                                audio_data.sample_rate, default_rate, use_case="voice_trigger"
-                            )
-                            
-                            if resample_quality == 'fast':
-                                conversion_method = ConversionMethod.LINEAR
-                            
-                            import time
-                            start_time = time.time()
-                            
-                            try:
-                                processed_audio = await AudioTranscoder.resample_audio_data(
-                                    audio_data, default_rate, conversion_method
-                                )
-                                
-                                resampling_time = (time.time() - start_time) * 1000
-                                self._resampling_metrics['total_resampling_operations'] += 1
-                                self._resampling_metrics['total_resampling_time_ms'] += resampling_time
-                                
-                                logger.debug(f"Successfully resampled audio to {default_rate}Hz using {conversion_method.value} in {resampling_time:.1f}ms")
-                                
-                            except Exception as resampling_error:
-                                self._resampling_metrics['resampling_failures'] += 1
-                                logger.error(f"Resampling failed for voice trigger: {resampling_error}")
-                                raise resampling_error
-                        else:
-                            logger.warning(f"Resampling disabled but required for {provider.get_provider_name()}")
-                            # Continue with original audio - let provider handle the mismatch
-                            
-            except Exception as e:
-                logger.warning(f"Could not get provider requirements for {provider.get_provider_name()}: {e}")
-                # Fallback to simple detection for older providers
-                try:
-                    # Phase 5: Track detection operations (Phase 1: Unified metrics integration)
-                    result = await provider.detect_wake_word(audio_data)
-                    
-                    # Track detection operation in unified collector
-                    wake_word = result.word if result.detected else None
-                    get_metrics_collector().record_detection_operation("voice_trigger", result.detected, wake_word)
-                        
-                    return result
-                except Exception as detection_error:
-                    logger.error(f"Voice trigger detection error: {detection_error}")
-                    get_metrics_collector().record_detection_operation("voice_trigger", False)
-                    return await self._detect_with_fallback(audio_data, provider.get_provider_name())
-        
-        # Phase 4 Step 3: Call provider detect_wake_word with correct format
+        # ARCH-18 PR-4b: trust canonical. The mic pipeline delivers canonical audio (the only caller of
+        # detect()), so the wake provider receives it directly -- no per-frame resampling here.
         try:
-            # Phase 5: Track detection operations (Phase 1: Unified metrics integration)
-            result = await provider.detect_wake_word(processed_audio)
-            
-            # Track detection operation in unified collector
+            result = await provider.detect_wake_word(audio_data)
             wake_word = result.word if result.detected else None
             get_metrics_collector().record_detection_operation("voice_trigger", result.detected, wake_word)
-                
             return result
         except Exception as e:
             logger.error(f"Voice trigger detection error with {provider.get_provider_name()}: {e}")
             get_metrics_collector().record_detection_operation("voice_trigger", False)
-            # Phase 4 Step 4: Handle provider fallbacks on configuration conflicts
             return await self._detect_with_fallback(audio_data, provider.get_provider_name())
-    
+
     async def _detect_with_fallback(self, audio_data: AudioData, failed_provider: str) -> WakeWordResult:
         """
         Attempt detection with fallback providers with sample rate intelligence (Phase 4 enhancement)
         """
+        # ARCH-18 PR-4b: trust canonical — the audio is already at the pipeline canonical rate, so each
+        # fallback provider receives it directly (no per-provider resampling).
         for fallback in self.fallback_providers:
             if fallback != failed_provider and fallback in self.providers:
                 try:
                     fallback_provider = self.providers[fallback]
                     logger.info(f"Trying fallback voice trigger provider: {fallback}")
-                    
-                    # Check if fallback provider supports the current sample rate
-                    try:
-                        supported_rates = fallback_provider.get_supported_sample_rates()
-                        if audio_data.sample_rate in supported_rates:
-                            logger.debug(f"Fallback provider {fallback} supports {audio_data.sample_rate}Hz")
-                            result = await fallback_provider.detect_wake_word(audio_data)
-                            return result
-                        else:
-                            # Try resampling for fallback provider
-                            default_rate = fallback_provider.get_default_sample_rate()
-                            supports_resampling = fallback_provider.supports_resampling()
-                            
-                            if supports_resampling:
-                                logger.debug(f"Fallback provider {fallback} will handle resampling internally")
-                                result = await fallback_provider.detect_wake_word(audio_data)
-                                return result
-                            else:
-                                # External resampling for fallback
-                                logger.info(f"Resampling for fallback provider {fallback}: {audio_data.sample_rate}Hz -> {default_rate}Hz")
-                                
-                                from ..utils.audio_helpers import AudioTranscoder, ConversionMethod
-                                
-                                # Phase 5: Track fallback resampling metrics  
-                                import time
-                                start_time = time.time()
-                                
-                                try:
-                                    # Use fast resampling for fallback scenarios
-                                    resampled_audio = await AudioTranscoder.resample_audio_data(
-                                        audio_data, default_rate, ConversionMethod.LINEAR
-                                    )
-                                    
-                                    # Update metrics
-                                    resampling_time = (time.time() - start_time) * 1000
-                                    self._resampling_metrics['total_resampling_operations'] += 1
-                                    self._resampling_metrics['total_resampling_time_ms'] += resampling_time
-                                    self._resampling_metrics['provider_fallbacks'] += 1
-                                    
-                                except Exception as resampling_error:
-                                    self._resampling_metrics['resampling_failures'] += 1
-                                    raise resampling_error
-                                
-                                result = await fallback_provider.detect_wake_word(resampled_audio)
-                                return result
-                                
-                    except Exception as provider_error:
-                        logger.warning(f"Could not get provider requirements for fallback {fallback}: {provider_error}")
-                        # Try anyway with original audio
-                        result = await fallback_provider.detect_wake_word(audio_data)
-                        return result
-                        
+                    return await fallback_provider.detect_wake_word(audio_data)
                 except Exception as e:
                     logger.warning(f"Fallback provider {fallback} also failed: {e}")
                     continue
-        
+
         logger.error("All voice trigger providers failed")
         return WakeWordResult(detected=False, confidence=0.0)
     

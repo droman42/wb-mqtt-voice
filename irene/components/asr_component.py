@@ -22,6 +22,7 @@ from ..core.trace_context import TraceContext
 from ..intents.models import AudioData
 from ..intents.ports import ASRPort  # QUAL-24: domain capability port (application implements it)
 from ..core.metrics import get_metrics_collector
+from ..utils.audio_helpers import AudioTranscoder
 from ..api.asyncapi import websocket_api, extract_websocket_specs_from_router
 from ..api.schemas import AudioChunkMessage, TranscriptionResultMessage, BinaryAudioSessionMessage, BinaryWebSocketProtocol
 
@@ -174,22 +175,38 @@ class ASRComponent(Component, ASRPlugin, WebAPIPlugin, ASRPort):
             logger.error(f"Failed to initialize Universal ASR Plugin: {e}")
     
     # Workflow-compatible interface for AudioData objects
+    @staticmethod
+    async def _conform_to_rate(audio_data: AudioData, target_rate: Optional[int],
+                               allow_resampling: bool = True,
+                               trace_context: Optional[TraceContext] = None) -> AudioData:
+        """Conform input audio to `target_rate` at a DIRECT-entry boundary (e.g. an uploaded file at any
+        rate). No-op when already at the target or no target is set. The mic pipeline already delivers
+        canonical audio, so `process_audio` itself trusts it and never calls this (ARCH-18 PR-4b)."""
+        if not target_rate or audio_data.sample_rate == target_rate:
+            return audio_data
+        if not allow_resampling:
+            raise ValueError(f"Sample rate mismatch: required {target_rate}Hz, "
+                             f"got {audio_data.sample_rate}Hz, resampling disabled")
+        method = AudioTranscoder.get_optimal_conversion_path(audio_data.sample_rate, target_rate, use_case="asr")
+        out = await AudioTranscoder.resample_audio_data(audio_data, target_rate, method)
+        if trace_context and trace_context.enabled:
+            trace_context.record_stage("asr_input_conform",
+                                       {"sample_rate": audio_data.sample_rate},
+                                       {"sample_rate": out.sample_rate},
+                                       {"target_rate": target_rate}, 0.0)
+        return out
+
     async def process_audio(self, audio_data: AudioData, trace_context: Optional[TraceContext] = None, **kwargs) -> str:
         """
-        Workflow-compatible ASR processing with consistent resampling and optional tracing.
-        
-        This method implements unified audio processing:
-        1. Get provider and configuration settings
-        2. Check if resampling is needed based on configuration
-        3. Perform resampling if required
-        4. Call transcribe_audio with properly formatted data
-        5. Handle tracing if enabled
-        
+        Workflow-compatible ASR processing. Trusts CANONICAL audio (ARCH-18 PR-4b): the mic pipeline
+        transforms once at the input boundary and direct entries (`/transcribe`) conform via
+        `_conform_to_rate`, so this method does NOT resample — it selects the provider and transcribes.
+
         Args:
-            audio_data: AudioData object containing audio bytes and metadata
+            audio_data: AudioData object containing audio bytes and metadata (already at the canonical rate)
             trace_context: Optional trace context for detailed execution tracking
             **kwargs: Additional provider-specific parameters
-            
+
         Returns:
             Transcribed text
         """
@@ -210,70 +227,11 @@ class ASRComponent(Component, ASRPlugin, WebAPIPlugin, ASRPort):
             raise ValueError(f"ASR provider '{provider_name}' not available")
         
         provider = self.providers[provider_name]
-        
-        # Get ASR configuration for resampling
-        if self.core is None:
-            raise RuntimeError("ASR component not initialized (core reference missing)")
-        asr_config = self.core.config.asr.model_dump() if hasattr(self.core.config, 'asr') else {}
-        config_sample_rate = asr_config.get('sample_rate')
-        allow_resampling = asr_config.get('allow_resampling', True)
 
-        logger.debug(f"🔧 ASR configuration: sample_rate={config_sample_rate}, allow_resampling={allow_resampling}")
-        logger.debug(f"🔧 Current audio rate: {audio_data.sample_rate}Hz")
-        
-        # Handle resampling if needed
+        # ARCH-18 PR-4b: trust canonical. The mic pipeline transforms once at the input boundary and direct
+        # entries (/transcribe) conform via _conform_to_rate, so no resampling happens here.
         audio_to_process = audio_data
-        if config_sample_rate and config_sample_rate != audio_data.sample_rate:
-            # Configuration requires resampling
-            logger.info(f"Configuration requires {config_sample_rate}Hz, resampling from {audio_data.sample_rate}Hz")
-            
-            if not allow_resampling:
-                logger.error(f"Configuration requires {config_sample_rate}Hz but allow_resampling=false")
-                raise ValueError(f"Sample rate mismatch: required {config_sample_rate}Hz, got {audio_data.sample_rate}Hz, resampling disabled")
-            
-            try:
-                # Import resampling utilities
-                from ..utils.audio_helpers import AudioTranscoder
-                
-                # Get optimal conversion method for ASR
-                conversion_method = AudioTranscoder.get_optimal_conversion_path(
-                    audio_data.sample_rate, config_sample_rate, use_case="asr"
-                )
-                
-                # Track resampling metrics
-                start_time = time.time()
-                
-                try:
-                    # Resample the audio data to configuration-required rate
-                    audio_to_process = await AudioTranscoder.resample_audio_data(
-                        audio_data, config_sample_rate, conversion_method
-                    )
-                    
-                    # Update metrics
-                    resampling_time = (time.time() - start_time) * 1000
-                    get_metrics_collector().record_resampling_operation("asr", resampling_time, success=True)
-                    
-                    logger.debug(f"Successfully resampled audio to {config_sample_rate}Hz using {conversion_method.value} in {resampling_time:.1f}ms")
-                    
-                except Exception as resampling_error:
-                    # Update failure metrics
-                    resampling_time = (time.time() - start_time) * 1000
-                    get_metrics_collector().record_resampling_operation("asr", resampling_time, success=False)
-                    logger.error(f"Configuration-required resampling failed: {resampling_error}")
-                    raise resampling_error
-                
-            except Exception as e:
-                logger.error(f"Configuration authority resampling failed for {provider_name}: {e}")
-                raise e
-        
-        elif config_sample_rate and config_sample_rate == audio_data.sample_rate:
-            # Configuration matches input rate - use as-is
-            logger.debug(f"Configuration authority: {audio_data.sample_rate}Hz matches required {config_sample_rate}Hz")
-        
-        else:
-            # No configuration override - use audio as-is
-            logger.debug(f"No configuration sample_rate specified, using audio at {audio_data.sample_rate}Hz")
-        
+
         # Execute transcription with optional tracing
         if trace_context and trace_context.enabled:
             # Trace path - detailed provider performance tracking
@@ -587,11 +545,18 @@ class ASRComponent(Component, ASRPlugin, WebAPIPlugin, ASRPort):
                 logger.info(f"🎧 Processing uploaded audio file: {filename} "
                            f"({detected_sample_rate}Hz, {detected_channels}ch, {len(audio_data)} bytes)")
                 
-                # Use process_audio for consistent resampling and configuration handling
+                # ARCH-18 PR-4b: an uploaded file arrives at an arbitrary rate — conform it to the canonical
+                # asr rate HERE, at the entry boundary. process_audio then trusts canonical.
+                asr_cfg = self.core.config.asr if (self.core and hasattr(self.core.config, 'asr')) else None
+                audio_data_obj = await self._conform_to_rate(
+                    audio_data_obj,
+                    getattr(asr_cfg, 'sample_rate', None),
+                    getattr(asr_cfg, 'allow_resampling', True),
+                )
                 text = await self.process_audio(
                     audio_data_obj, provider=provider_name, language=language
                 )
-                
+
                 # Optional LLM enhancement (QUAL-15): the old `plugin_manager.get_plugin("universal_llm")`
                 # was a permanent no-op (no such plugin — the LLM is a *component*). Use the real LLM
                 # component, gated on a REAL model being available (is_available() excludes the console
@@ -725,11 +690,12 @@ class ASRComponent(Component, ASRPlugin, WebAPIPlugin, ASRPort):
                         
                         logger.debug(f"WebSocket audio chunk: {len(audio_bytes)} bytes, "
                                    f"{sample_rate}Hz, {channels}ch, {audio_format}")
-                        
-                        # Use process_audio for consistent resampling and configuration handling
+
+                        # ARCH-18 PR-4b: the /stream contract is CANONICAL 16 kHz on the wire (the satellite
+                        # delivers canonical), so process_audio trusts it — no per-chunk resampling.
                         try:
                             text = await self.process_audio(
-                                audio_data, 
+                                audio_data,
                                 provider=provider_name,
                                 language=language
                             )
