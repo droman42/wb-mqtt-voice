@@ -158,6 +158,8 @@ class AutoSchemaRegistry:
                 OpenAIProviderSchema, AnthropicProviderSchema, DeepSeekProviderSchema, ConsoleLLMProviderSchema,
                 # Voice trigger providers
                 OpenWakeWordProviderSchema, MicroWakeWordProviderSchema,
+                # VAD providers (ARCH-18)
+                EnergyVADProviderSchema, SileroVADProviderSchema, MicroVADProviderSchema,
                 # NLU providers
                 HybridKeywordMatcherProviderSchema, SpaCyNLUProviderSchema,
                 # Text processor provider (QUAL-13: one unified processor)
@@ -196,6 +198,11 @@ class AutoSchemaRegistry:
                 "voice_trigger": {
                     "openwakeword": OpenWakeWordProviderSchema,
                     "microwakeword": MicroWakeWordProviderSchema,
+                },
+                "vad": {
+                    "energy": EnergyVADProviderSchema,
+                    "silero": SileroVADProviderSchema,
+                    "microvad": MicroVADProviderSchema,
                 },
                 "nlu": {
                     "hybrid_keyword_matcher": HybridKeywordMatcherProviderSchema,
@@ -434,6 +441,7 @@ class AutoSchemaRegistry:
                 "ASRConfig": "asr",
                 "LLMConfig": "llm",
                 "VoiceTriggerConfig": "voice_trigger",
+                "VADConfig": "vad",
                 "NLUConfig": "nlu",
                 "TextProcessorConfig": "text_processor"
             }

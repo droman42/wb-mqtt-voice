@@ -21,9 +21,17 @@ class SileroVADProvider(VADProvider):
         super().__init__(config)
         from ...core.assets import get_asset_manager  # adapters may import core (inward)
         from ...utils.vad_silero import SileroVADEngine
+        from ...utils.vad_silero import DEFAULT_SILERO_URL
         model_path = get_asset_manager().get_model_path("vad", "silero_vad.onnx")
-        # SileroVADEngine reads attributes off a config object; the provider config is a dict.
-        self._engine = SileroVADEngine(SimpleNamespace(**self.config), model_path)
+        # SileroVADEngine reads attributes off a config object; map this provider's [vad.providers.silero]
+        # block ({threshold, model_url, voice/silence_duration_ms}) onto the names it expects.
+        ns = SimpleNamespace(
+            silero_threshold=self.config.get("threshold", 0.5),
+            silero_model_url=self.config.get("model_url", DEFAULT_SILERO_URL),
+            voice_duration_ms=self.config.get("voice_duration_ms", 100),
+            silence_duration_ms=self.config.get("silence_duration_ms", 200),
+        )
+        self._engine = SileroVADEngine(ns, model_path)
 
     def get_provider_name(self) -> str:
         return "silero"

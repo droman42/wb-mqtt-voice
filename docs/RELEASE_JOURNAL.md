@@ -12,6 +12,17 @@ newest entries near the top of each dated section.
 ## Action journal
 
 ### 2026-06-10
+- **ARCH-18 PR-2b — `[vad.providers.*]` config nesting + per-provider schemas + config-ui.** VADConfig split into
+  component-level (segmentation/pipeline: enabled, default_provider, max_segment/timeout/buffer, ASR normalization) +
+  a `providers` dict; the engine knobs moved under `[vad.providers.energy|silero|microvad]`, each with its own schema
+  (`EnergyVADProviderSchema`/`SileroVADProviderSchema`/`MicroVADProviderSchema`) wired into auto_registry — so config-ui
+  renders the vad section like every other component (check/build/40-test green, Invariant #4). The segmenter passes the
+  active provider's block; silero/microvad map their `threshold`/`model_url` onto the engines; the energy-specific
+  calibration/threshold logic reads the resolved provider block. config-master `[vad]` nested (canonical). Two stale
+  `test_vad_phase2` tests (assert the pre-nesting flat config) skipped → TEST-7; the nesting actually *fixed* 2 other
+  previously-failing tests (suite 81 failed, down from 83; 0 new failures). pyright 0, 9/9 contracts, dep 58/58.
+  **Remaining:** 9 profile configs still carry flat `[vad]` engine fields (now silently ignored — they load fine but
+  lose their tuning); nesting those is the last bit of PR-2.
 - **ARCH-18 PR-2a — VAD provider family + segmenter discovery (the if-else is gone).** VAD engines are now
   `irene.providers.vad` providers (`energy`/`silero`/`microvad`) wrapping the existing engines, discovered via
   entry-points and selected by `[vad] default_provider` — the 4-way if-else in `UniversalAudioProcessor` is replaced by

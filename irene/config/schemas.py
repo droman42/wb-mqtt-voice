@@ -61,6 +61,11 @@ class NLUProviderSchema(BaseProviderSchema):
     pass
 
 
+class VADProviderSchema(BaseProviderSchema):
+    """Base schema for VAD providers (ARCH-18)"""
+    pass
+
+
 class TextProcessorProviderSchema(BaseProviderSchema):
     """Base schema for Text Processor providers"""
     pass
@@ -262,6 +267,35 @@ class MicroWakeWordProviderSchema(VoiceTriggerProviderSchema):
                     "name or a path to a custom .tflite/manifest (a per-unit Russian model)")
     sliding_window_size: int = Field(default=5, ge=1, description="Probabilities averaged per detection (micro-specific)")
     preload_models: bool = Field(default=False, description="Preload AI models")
+
+
+# ============================================================
+# VAD PROVIDER SCHEMAS (ARCH-18)
+# ============================================================
+
+class EnergyVADProviderSchema(VADProviderSchema):
+    """Energy / zero-crossing VAD provider configuration schema."""
+    energy_threshold: float = Field(default=0.01, ge=0.0, le=1.0, description="RMS energy threshold for voice detection")
+    sensitivity: float = Field(default=0.5, ge=0.1, le=3.0, description="Detection sensitivity multiplier")
+    voice_frames_required: int = Field(default=2, ge=1, description="Consecutive voice frames to confirm onset")
+    silence_frames_required: int = Field(default=5, ge=1, description="Consecutive silence frames to confirm voice end")
+    use_zero_crossing_rate: bool = Field(default=True, description="Enable zero-crossing-rate analysis (adaptive engine)")
+    adaptive_threshold: bool = Field(default=False, description="Enable adaptive threshold (adaptive engine)")
+    noise_percentile: int = Field(default=15, ge=1, le=50, description="Percentile for noise floor estimation")
+    voice_multiplier: float = Field(default=3.0, ge=1.0, le=10.0, description="Multiplier above noise floor for voice threshold")
+
+
+class SileroVADProviderSchema(VADProviderSchema):
+    """SileroVAD-ONNX (via sherpa-onnx) provider configuration schema. 64-bit only."""
+    threshold: float = Field(default=0.5, ge=0.0, le=1.0, description="Speech-probability threshold")
+    model_url: str = Field(default="https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/silero_vad.onnx", description="SileroVAD ONNX model URL (downloaded once into the asset folder)")
+    voice_duration_ms: int = Field(default=100, ge=10, le=1000, description="Minimum speech duration (ms)")
+    silence_duration_ms: int = Field(default=200, ge=50, le=2000, description="Minimum silence duration to end a segment (ms)")
+
+
+class MicroVADProviderSchema(VADProviderSchema):
+    """microVAD (pymicro-vad) provider configuration schema. 64-bit Linux only."""
+    threshold: float = Field(default=0.5, ge=0.0, le=1.0, description="Speech-probability threshold")
 
 
 # ============================================================

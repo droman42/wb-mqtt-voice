@@ -158,10 +158,9 @@ class UniversalAudioProcessor:
         # Callbacks for voice segment processing
         self.voice_segment_callback: Optional[Callable] = None
         
-        logger.info(f"UniversalAudioProcessor initialized with VAD config: "
-                   f"threshold={vad_config.threshold}, "
-                   f"sensitivity={vad_config.sensitivity}, "
-                   f"advanced_features={vad_config.use_zero_crossing_rate}")
+        logger.info(f"UniversalAudioProcessor initialized: provider={vad_config.default_provider}, "
+                   f"max_segment={vad_config.max_segment_duration_s}s, "
+                   f"buffer={vad_config.buffer_size_frames} frames")
 
     def _build_vad_provider(self, vad_config: VADConfig):
         """Discover + instantiate the configured VAD provider (ARCH-18 PR-2).
@@ -172,16 +171,19 @@ class UniversalAudioProcessor:
         own fields.
         """
         default = getattr(vad_config, "default_provider", None) or "energy"
-        cfg = vad_config.model_dump() if hasattr(vad_config, "model_dump") else dict(vad_config)
+        all_cfg = vad_config.model_dump() if hasattr(vad_config, "model_dump") else dict(vad_config)
         classes = dynamic_loader.discover_providers("irene.providers.vad", [default, "energy"])
         provider_cls = classes.get(default) or classes.get("energy")
         if provider_cls is None:
             raise RuntimeError(
                 f"No VAD provider '{default}' registered and no 'energy' fallback available"
             )
+        name = default if default in classes else "energy"
         if default not in classes:
             logger.warning(f"VAD provider '{default}' not found; falling back to 'energy'")
-        provider = provider_cls(cfg)
+        provider_cfg = (all_cfg.get("providers") or {}).get(name, {})
+        self._provider_cfg = provider_cfg  # the active provider's block (energy params for calibration)
+        provider = provider_cls(provider_cfg)
         logger.info(f"VAD provider: {provider.get_provider_name()}")
         return provider
 
@@ -571,8 +573,8 @@ class UniversalAudioProcessor:
             ),
             'metrics': self.metrics_collector.get_vad_metrics(),
             'config': {
-                'threshold': self.config.threshold,
-                'sensitivity': self.config.sensitivity,
+                'threshold': self._provider_cfg.get('energy_threshold', self.vad_engine.threshold),
+                'sensitivity': self._provider_cfg.get('sensitivity', 0.0),
                 'max_duration_s': self.config.max_segment_duration_s,
                 'buffer_limit': self.config.buffer_size_frames
             }
@@ -630,15 +632,15 @@ class UniversalAudioProcessor:
             Suggested optimal threshold
         """
         if noise_percentile is None:
-            noise_percentile = self.config.noise_percentile
-        
+            noise_percentile = int(self._provider_cfg.get('noise_percentile', 15))
+
         optimal_threshold = estimate_optimal_vad_threshold(
-            calibration_audio, 
+            calibration_audio,
             noise_percentile=noise_percentile,
-            voice_multiplier=self.config.voice_multiplier
+            voice_multiplier=float(self._provider_cfg.get('voice_multiplier', 3.0))
         )
-        
-        logger.info(f"VAD threshold calibration: current={self.config.threshold:.4f}, "
+
+        logger.info(f"VAD threshold calibration: current={self.vad_engine.threshold:.4f}, "
                    f"suggested={optimal_threshold:.4f}")
         
         return optimal_threshold
@@ -653,11 +655,8 @@ class UniversalAudioProcessor:
         if not 0.0 <= new_threshold <= 1.0:
             raise ValueError(f"Threshold must be between 0.0 and 1.0, got {new_threshold}")
         
-        old_threshold = self.config.threshold
-        # `threshold` is a read-only alias property; write the backing field.
-        self.config.energy_threshold = new_threshold
-        
-        # Update VAD engine threshold
+        old_threshold = self.vad_engine.threshold
+        # Update the active VAD provider's threshold (the engine owns it now).
         self.vad_engine.threshold = new_threshold
         
         logger.info(f"VAD threshold updated: {old_threshold:.4f} → {new_threshold:.4f}")

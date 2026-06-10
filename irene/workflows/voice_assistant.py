@@ -164,8 +164,8 @@ class UnifiedVoiceAssistantWorkflow(Workflow):
             vad_config = config.vad if hasattr(config, 'vad') else None
             if vad_config and vad_config.enabled:
                 self.audio_processor_interface = AudioProcessorInterface(vad_config)
-                self.logger.info(f"VAD audio processor initialized: threshold={vad_config.energy_threshold}, "
-                               f"sensitivity={vad_config.sensitivity}")
+                self.logger.info(f"VAD audio processor initialized: provider={vad_config.default_provider}, "
+                               f"max_segment={vad_config.max_segment_duration_s}s")
             else:
                 self.logger.error("VAD configuration missing or disabled. VAD processing is required for audio workflows.")
                 raise ConfigValidationError("VAD configuration is required for audio processing")
@@ -311,8 +311,7 @@ class UnifiedVoiceAssistantWorkflow(Workflow):
                 raise RuntimeError("Audio processor interface not available. VAD processing is required.")
             
             self.logger.info("🔄 Using VAD-enabled audio processing pipeline")
-            self.logger.info(f"📊 VAD Configuration: threshold={self.audio_processor_interface.processor.config.energy_threshold}, "
-                           f"sensitivity={self.audio_processor_interface.processor.config.sensitivity}, "
+            self.logger.info(f"📊 VAD Configuration: provider={self.audio_processor_interface.processor.config.default_provider}, "
                            f"max_segment_duration={self.audio_processor_interface.processor.config.max_segment_duration_s}s")
             
             pipeline_start_time = time.time()

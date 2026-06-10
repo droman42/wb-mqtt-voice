@@ -43,9 +43,11 @@ class TestSelectorConfig:
         assert VADConfig(default_provider="bogus").default_provider == "bogus"
 
     def test_silero_threshold_bounds(self):
-        assert VADConfig(silero_threshold=0.5).silero_threshold == 0.5
+        # ARCH-18: silero's threshold moved to its per-provider schema ([vad.providers.silero]).
+        from irene.config.schemas import SileroVADProviderSchema
+        assert SileroVADProviderSchema(threshold=0.5).threshold == 0.5
         with pytest.raises(Exception):
-            VADConfig(silero_threshold=1.5)
+            SileroVADProviderSchema(threshold=1.5)
 
 
 class TestSileroPcmConversion:

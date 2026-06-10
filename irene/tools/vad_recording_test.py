@@ -74,8 +74,8 @@ class VADRecordingTester:
         # Initialize VAD processor with current config
         vad_config = self.config.vad
         self.vad_processor = AudioProcessorInterface(vad_config)
-        logger.info(f"VAD processor initialized with config: threshold={vad_config.energy_threshold}, "
-                   f"sensitivity={vad_config.sensitivity}")
+        logger.info(f"VAD processor initialized with config: provider={vad_config.default_provider}, "
+                   f"max_segment={vad_config.max_segment_duration_s}s")
     
     async def record_and_process(self, duration_seconds: int = 30):
         """Record audio and process through VAD pipeline"""
@@ -220,10 +220,9 @@ class VADRecordingTester:
             "output_directory": str(self.output_dir),
             "config_file": self.config_path,
             "vad_config": {
-                "threshold": self.config.vad.energy_threshold,
-                "sensitivity": self.config.vad.sensitivity,
-                "voice_duration_ms": self.config.vad.voice_duration_ms,
-                "silence_duration_ms": self.config.vad.silence_duration_ms
+                "default_provider": self.config.vad.default_provider,
+                "max_segment_duration_s": self.config.vad.max_segment_duration_s,
+                "providers": self.config.vad.providers,
             } if self.config else None
         }
 

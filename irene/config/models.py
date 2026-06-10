@@ -395,62 +395,27 @@ class TextProcessorConfig(BaseModel):
 # ============================================================
 
 class VADConfig(BaseModel):
-    """Voice Activity Detection configuration"""
-    enabled: bool = Field(default=True, description="Enable VAD processing")
-    
-    # Core VAD parameters (Phase 4 specification)
-    energy_threshold: float = Field(default=0.01, description="RMS energy threshold for voice detection", ge=0.0, le=1.0)
-    sensitivity: float = Field(default=0.5, description="Detection sensitivity multiplier", ge=0.1, le=3.0)
-    voice_duration_ms: int = Field(default=100, description="Minimum voice duration in milliseconds", ge=10, le=1000)
-    silence_duration_ms: int = Field(default=200, description="Minimum silence duration to end voice segment in milliseconds", ge=50, le=2000)
-    max_segment_duration_s: int = Field(default=10, description="Maximum voice segment duration in seconds", ge=1, le=60)
-    
-    # Frame-based configuration (internal implementation)
-    voice_frames_required: int = Field(default=2, description="Consecutive voice frames to confirm voice onset", ge=1)
-    silence_frames_required: int = Field(default=5, description="Consecutive silence frames to confirm voice end", ge=1)
-    
-    # Advanced features
-    use_zero_crossing_rate: bool = Field(default=True, description="Enable Zero Crossing Rate analysis")
-    adaptive_threshold: bool = Field(default=False, description="Enable adaptive threshold adjustment")
-    noise_percentile: int = Field(default=15, description="Percentile for noise floor estimation", ge=1, le=50)
-    voice_multiplier: float = Field(default=3.0, description="Multiplier above noise floor for voice threshold", ge=1.0, le=10.0)
+    """Voice Activity Detection — component config (ARCH-18).
 
-    # VAD provider selection (single-active, discovered via the irene.providers.vad entry-points — ARCH-18).
+    Component-level fields are the *segmenter / pipeline* concerns; the per-engine knobs live under
+    `[vad.providers.<name>]` (energy / silero / microvad), like every other provider family. The set of
+    providers is the `irene.providers.vad` entry-points (no hand-maintained enum)."""
+    enabled: bool = Field(default=True, description="Enable VAD processing")
     default_provider: str = Field(default="energy", description="VAD provider: 'energy' (built-in) | 'silero' (sherpa-onnx) | 'microvad' (pymicro-vad). 64-bit for the latter two.")
-    silero_threshold: float = Field(default=0.5, description="SileroVAD speech probability threshold (only when vad_implementation='silero')", ge=0.0, le=1.0)
-    silero_model_url: str = Field(default="https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/silero_vad.onnx", description="SileroVAD ONNX model URL (downloaded once into the asset folder)")
-    microvad_threshold: float = Field(default=0.5, description="microVAD speech probability threshold (only when vad_implementation='microvad')", ge=0.0, le=1.0)
-    
-    # Performance configuration
+
+    # Segmentation / pipeline (component-level — not engine-specific)
+    max_segment_duration_s: int = Field(default=10, description="Maximum voice segment duration in seconds", ge=1, le=60)
     processing_timeout_ms: int = Field(default=50, description="Maximum processing time per frame in milliseconds", ge=1)
     buffer_size_frames: int = Field(default=100, description="Maximum frames to buffer in voice segments", ge=10)
-    
+
     # Audio normalization for ASR
     normalize_for_asr: bool = Field(default=True, description="Enable audio normalization before sending to ASR to prevent clipping")
     asr_target_rms: float = Field(default=0.15, description="Target RMS level for ASR audio normalization", ge=0.01, le=0.3)
     enable_fallback_to_original: bool = Field(default=True, description="Try original audio if normalized version fails recognition")
-    
-    # Backward compatibility alias for threshold
-    @property
-    def threshold(self) -> float:
-        """Alias for energy_threshold for backward compatibility"""
-        return self.energy_threshold
-    
-    @field_validator('energy_threshold')
-    @classmethod
-    def validate_energy_threshold(cls, v):
-        if not 0.0 <= v <= 1.0:
-            raise ValueError("VAD energy threshold must be between 0.0 and 1.0")
-        return v
-    
-    @field_validator('sensitivity')
-    @classmethod
-    def validate_sensitivity(cls, v):
-        if not 0.1 <= v <= 3.0:
-            raise ValueError("VAD sensitivity must be between 0.1 and 3.0")
-        return v
-    # (ARCH-18: the `vad_implementation` enum validator is gone — the set of VAD providers is the
-    # `irene.providers.vad` entry-points, discovered at runtime, not a hand-maintained list.)
+
+    providers: Dict[str, Dict[str, Any]] = Field(
+        default_factory=dict,
+        description="Per-provider configuration ([vad.providers.energy|silero|microvad])")
 
 
 # ============================================================

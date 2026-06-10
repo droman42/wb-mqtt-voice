@@ -19,7 +19,8 @@ class MicroVADProvider(VADProvider):
     def __init__(self, config: Dict[str, Any]):
         super().__init__(config)
         from ...utils.vad_microvad import MicroVADEngine
-        self._engine = MicroVADEngine(SimpleNamespace(**self.config))
+        # Map this provider's [vad.providers.microvad] block ({threshold}) onto the engine's name.
+        self._engine = MicroVADEngine(SimpleNamespace(microvad_threshold=self.config.get("threshold", 0.5)))
 
     def get_provider_name(self) -> str:
         return "microvad"
