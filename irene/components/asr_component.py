@@ -173,27 +173,6 @@ class ASRComponent(Component, ASRPlugin, WebAPIPlugin, ASRPort):
             logger.error(f"Failed to initialize Universal ASR Plugin: {e}")
     
     # Workflow-compatible interface for AudioData objects
-    @staticmethod
-    async def _conform_to_rate(audio_data: AudioData, target_rate: Optional[int],
-                               allow_resampling: bool = True,
-                               trace_context: Optional[TraceContext] = None) -> AudioData:
-        """Conform input audio to `target_rate` at a DIRECT-entry boundary (e.g. an uploaded file at any
-        rate). No-op when already at the target or no target is set. The mic pipeline already delivers
-        canonical audio, so `process_audio` itself trusts it and never calls this (ARCH-18 PR-4b)."""
-        if not target_rate or audio_data.sample_rate == target_rate:
-            return audio_data
-        if not allow_resampling:
-            raise ValueError(f"Sample rate mismatch: required {target_rate}Hz, "
-                             f"got {audio_data.sample_rate}Hz, resampling disabled")
-        method = AudioTranscoder.get_optimal_conversion_path(audio_data.sample_rate, target_rate, use_case="asr")
-        out = await AudioTranscoder.resample_audio_data(audio_data, target_rate, method)
-        if trace_context and trace_context.enabled:
-            trace_context.record_stage("asr_input_conform",
-                                       {"sample_rate": audio_data.sample_rate},
-                                       {"sample_rate": out.sample_rate},
-                                       {"target_rate": target_rate}, 0.0)
-        return out
-
     async def process_audio(self, audio_data: AudioData, trace_context: Optional[TraceContext] = None, **kwargs) -> str:
         """
         Workflow-compatible ASR processing. Trusts CANONICAL audio (ARCH-18 PR-4b): the mic pipeline
@@ -543,14 +522,12 @@ class ASRComponent(Component, ASRPlugin, WebAPIPlugin, ASRPort):
                 logger.info(f"🎧 Processing uploaded audio file: {filename} "
                            f"({detected_sample_rate}Hz, {detected_channels}ch, {len(audio_data)} bytes)")
                 
-                # ARCH-18 PR-4b: an uploaded file arrives at an arbitrary rate — conform it to the canonical
-                # asr rate HERE, at the entry boundary. process_audio then trusts canonical.
-                asr_cfg = self.core.config.asr if (self.core and hasattr(self.core.config, 'asr')) else None
-                audio_data_obj = await self._conform_to_rate(
-                    audio_data_obj,
-                    getattr(asr_cfg, 'sample_rate', None),
-                    getattr(asr_cfg, 'allow_resampling', True),
-                )
+                # ARCH-18: an uploaded file arrives at an arbitrary rate — conform it to the canonical format
+                # HERE via the SHARED negotiator (the same to_canonical the mic/web boundary uses; it also
+                # downmixes to mono). process_audio then trusts canonical.
+                negotiator = getattr(self.core, "audio_negotiator", None) if self.core else None
+                if negotiator is not None:
+                    audio_data_obj = await negotiator.to_canonical(audio_data_obj)
                 text = await self.process_audio(
                     audio_data_obj, provider=provider_name, language=language
                 )

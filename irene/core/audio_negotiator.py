@@ -15,7 +15,7 @@ import time
 from typing import Optional
 
 from ..config.models import CoreConfig
-from ..core.trace_context import TraceContext
+from .trace_context import TraceContext
 from ..utils.audio_data import AudioData
 from ..utils.audio_helpers import AudioTranscoder
 from ..utils.audio_negotiation import AudioContract, CanonicalFormat, derive_canonical

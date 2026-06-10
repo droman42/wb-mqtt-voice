@@ -394,7 +394,11 @@ class WorkflowManager:
             # Also inject the context manager if available
             if hasattr(self.component_manager, 'context_manager'):
                 workflow.add_component('context_manager', self.component_manager.context_manager)
-            
+
+            # ARCH-18: inject the shared audio negotiator (built on core at startup)
+            if getattr(self.component_manager, 'audio_negotiator', None) is not None:
+                workflow.add_component('audio_negotiator', self.component_manager.audio_negotiator)
+
             # Inject configuration for temp_audio_dir access
             workflow.add_component('config', self.component_manager.config)
                 

@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 
 from irene.config.models import CoreConfig
-from irene.workflows.audio_negotiator import AudioNegotiator
+from irene.core.audio_negotiator import AudioNegotiator
 from irene.intents.models import AudioData
 
 CONFIG_DIR = Path("configs")

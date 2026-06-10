@@ -122,6 +122,7 @@ class ComponentManager(ComponentControlRegistryPort):
         # Set by AsyncVACore after construction so post-init coordination can
         # hand the context manager to intent handlers (fire-and-forget tracking).
         self.context_manager: Optional[ContextManager] = None
+        self.audio_negotiator: Any = None  # ARCH-18: shared audio negotiator, set by the engine for workflow injection
     
     def get_available_components(self) -> Dict[str, Type]:
         """Get available components through existing entry-point discovery"""

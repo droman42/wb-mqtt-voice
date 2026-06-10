@@ -70,8 +70,22 @@ class AsyncVACore:
         self.timer_manager = timer_manager
         self.metrics_collector = metrics_collector
         self.workflow_manager = workflow_manager
+        self.audio_negotiator = None  # ARCH-18: shared audio negotiator (built at startup, see start())
         self._running = False
-        
+
+    def _build_audio_negotiator(self):
+        """Build the shared audio negotiator from config + the active wake/asr providers (ARCH-18). The VAD
+        contract is fixed 16 kHz, so `vad_provider=None` (from_pipeline falls back to it)."""
+        from .audio_negotiator import AudioNegotiator
+
+        def _active(name: str):
+            comp = self.component_manager.get_component(name)
+            providers = getattr(comp, "providers", None) or {}
+            return providers.get(getattr(comp, "default_provider", None)) if comp else None
+
+        return AudioNegotiator.from_pipeline(self.config, wake_provider=_active("voice_trigger"),
+                                             asr_provider=_active("asr"))
+
     async def start(self) -> None:
         """Initialize and start the assistant"""
         logger.info("Starting Irene Voice Assistant v15...")
@@ -79,7 +93,13 @@ class AsyncVACore:
         try:
             # Initialize components first - PASS CORE REFERENCE
             await self.component_manager.initialize_components(self)
-            
+
+            # ARCH-18: build the SHARED audio negotiator once components/providers are ready — used by the
+            # workflow for the mic/web boundary AND by the ASR /transcribe endpoint. Fatal here if no
+            # canonical format satisfies the capture + every audio consumer (loud, at startup).
+            self.audio_negotiator = self._build_audio_negotiator()
+            self.component_manager.audio_negotiator = self.audio_negotiator  # for workflow injection
+
             # Make context_manager available to component_manager for workflow injection
             self.component_manager.context_manager = self.context_manager
             
