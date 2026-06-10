@@ -12,6 +12,16 @@ newest entries near the top of each dated section.
 ## Action journal
 
 ### 2026-06-10
+- **ARCH-18 PR-4 input-path reconciliation + `/asr/stream` deleted; QUAL-45 filed.** Tracing the transcode paths
+  (user review) surfaced two overlapping WS audio endpoints: `/ws/audio` (ARCH-6, the real ESP32 satellite driving
+  input — already accumulates binary PCM until a `{"type":"end"}` frame → one `process_audio_input`) vs the
+  ASR-utility `/asr/stream` + `/asr/binary`. Decision (user): `/ws/audio` is THE ESP32 path and must **skip server VAD
+  too** (wake+VAD are on-device); **`/asr/stream` deleted** (untested per-chunk utility, superseded); `/asr/transcribe`
+  to be unified on `to_canonical`. This commit deletes `/asr/stream` (141 lines) + its now-dead `AudioChunkMessage`
+  import (pyright 0, suite 81=81). Filed **QUAL-45** [deferred] for the ESP32 firmware end-of-utterance signal +
+  on-device VAD/wake contract (server side already done via the `end` frame; default = end-of-session). _Remaining for
+  this unification: hoist `AudioNegotiator`→`core` (shared; layering forbids core→workflows today), build it on core +
+  inject into the workflow, `/asr/transcribe`→`to_canonical`, and `/ws/audio` skip-VAD._
 - **ARCH-18 PR-5 — pre-roll sized from `detection_latency_ms`, harmonized + derived from canonical.** The
   `VoiceSegmenter` pre-buffer was a hardcoded 4 frames (~92 ms) that clipped the wake-word onset for slower engines.
   First cut sized it `ceil(detection_latency_ms / 23ms) + 2` at init — but that exposed that the three providers
