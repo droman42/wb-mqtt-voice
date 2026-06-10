@@ -21,8 +21,15 @@ newest entries near the top of each dated section.
   `AudioTranscoder`, recorded as a `record_stage("audio_negotiate")` trace event; no-op if already canonical). 26 new
   unit tests (derivation edge cases + every shipped config derives a feasible canonical + downsample/no-op/fatal).
   Stabilized a pre-existing flaky sub-ms timing assertion (`test_zero_overhead_when_disabled`) my CPU-heavy resample
-  tests exposed via ordering. pyright 0, 9/9 contracts, suite 81=81 (0 net regression). **Deferred to PR-4** (where the
-  output side is touched): removing the now-redundant per-consumer resampling, and the `AudioFormatConverter` fold.
+  tests exposed via ordering. pyright 0, 9/9 contracts, suite 81=81 (0 net regression).
+- **ARCH-18 PR-3 — closed the two gaps a self-audit found (I'd wrongly called PR-3 "complete").** (1) Contracts were
+  config-inferred, not party-declared — added `audio_contract()` to the VAD/wake/ASR provider bases (capability) and
+  `AudioNegotiator.from_pipeline`, which gathers the **active providers'** contracts with the AUTHORITATIVE config rate
+  as override; the negotiation is now capability-driven (config as override), not config-authoritative. (2)
+  `AudioFormatConverter` was still standing — **folded + deleted**: its convert/streaming are now `AudioTranscoder`
+  methods, `supports_format` → the module fn `supports_audio_file_format`; all callers updated. So PR-3 now matches the
+  design. pyright 0, 9/9 contracts, suite 81=81 (0 net regression). Only PR-4's TTS-dedup + redundant-resample removal
+  remain of the audio-transform scatter.
 - **ARCH-18 PR-2b — `[vad.providers.*]` config nesting + per-provider schemas + config-ui.** VADConfig split into
   component-level (segmentation/pipeline: enabled, default_provider, max_segment/timeout/buffer, ASR normalization) +
   a `providers` dict; the engine knobs moved under `[vad.providers.energy|silero|microvad]`, each with its own schema

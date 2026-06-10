@@ -177,13 +177,15 @@ The flat `silero_*` / `microvad_*` fields move under their provider; `vad_implem
    existing engines + entry-points + `[vad.providers.*]` config/schemas (config-ui via auto_registry, all 12
    configs nested); extract the if-else into the segmenter (discovery + energy fallback); `UniversalAudioProcessor`
    → `VoiceSegmenter` rename; the one real bug fixed (validator deleted). Done in 3 commits + the rename.
-3. **PR-3 — `AudioContract` + `AudioNegotiator`**: declare contracts; derive canonical + startup validation
-   (fatal) + input transform-once at the boundary; trace events. **Fold `AudioFormatConverter`'s
-   convert/streaming into the transcoder/negotiator** (the rate/format/channel transform belongs on the one
-   primitive) and relocate `supports_format` to a plainly-named file-format helper.
-4. **PR-4 — symmetric output**: route TTS→playback through the negotiator/transcoder + collapse the 3
-   duplicated TTS resample blocks; trace. **`AudioFormatConverter` is deleted by the end of ARCH-18** — its
-   methods live on the harmonized transcoder/negotiator, no permanent second tier.
+3. **PR-3 — `AudioContract` + `AudioNegotiator`** (done 2026-06-10): party-declared contracts —
+   `audio_contract()` on the VAD / wake / ASR provider bases (capability), `AudioNegotiator.from_pipeline`
+   gathers the **active providers'** contracts with the AUTHORITATIVE config rate as override; derive canonical
+   + startup validation (fatal) + input transform-once at the `process_audio_input` boundary; `audio_negotiate`
+   trace stage. **`AudioFormatConverter` folded + deleted** — its convert/streaming are now `AudioTranscoder`
+   methods, `supports_format` relocated to the module fn `supports_audio_file_format`.
+4. **PR-4 — symmetric output**: route TTS→playback through the negotiator/transcoder + **collapse the 3
+   duplicated TTS resample blocks** + remove the now-redundant per-consumer resampling (VAD/wake/ASR see
+   canonical already); trace. (`AudioFormatConverter` is already gone — folded in PR-3.)
 5. **PR-5 — pre-roll contract**: `detection_latency_ms` → `VoiceSegmenter` pre-roll sizing.
 6. **PR-6 — user-facing docs + diagrams (END of ARCH-17/18)**: update `docs/guides/{vad,voice-trigger,audio}.md`
    and the architecture docs for the new component + negotiation seam; **re-author the affected dataflow/audio

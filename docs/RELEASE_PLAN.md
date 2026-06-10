@@ -605,10 +605,16 @@ See `docs/review/phase1_architecture_map.md` §5.
       energy fallback; `UniversalAudioProcessor`→`VoiceSegmenter` rename). **Folded the one real bug** (deleted the
       `vad_implementation` validator); re-reconciliation found the `calibrate_threshold` "bug" benign (the ABC already
       no-ops it) → it's just the `VADProvider.calibrate` default-no-op. config-ui green; suite 81 failed (down from 83,
-      nesting fixed 2; 2 stale flat-config tests → TEST-7); pyright 0, 9/9 contracts, dep 58/58. **PR-3**
-      `AudioContract` + `AudioNegotiator` (derive canonical, startup validation/fatal, input transform-once at the
-      boundary) + first-class trace events. **PR-4** symmetric **output** negotiation (TTS→playback through the
-      negotiator/transcoder, traced). **PR-5** pre-roll contract (`detection_latency_ms` → segmenter sizing). **PR-6
+      nesting fixed 2; 2 stale flat-config tests → TEST-7); pyright 0, 9/9 contracts, dep 58/58. **PR-3 DONE 2026-06-10**
+      (5 commits): `AudioContract` + `derive_canonical` (utils, common-denominator + fatal); **party-declared
+      contracts** — `audio_contract()` on the VAD/wake/ASR provider bases, `AudioNegotiator.from_pipeline` gathers the
+      active providers' contracts (config rate as override) → capability-driven, not config-authoritative; canonical
+      derived + validated (fatal) at workflow init; `to_canonical` transforms capture **once** at the
+      `process_audio_input` boundary (traced `audio_negotiate` stage). **`AudioFormatConverter` folded + deleted** — its
+      convert/streaming are now `AudioTranscoder` methods, `supports_format`→`supports_audio_file_format` module fn.
+      _(Initially shipped config-derived + with the AFC fold deferred; both gaps closed on review.)_ pyright 0, 9/9
+      contracts, suite 81=81 (+~26 tests). **PR-4** symmetric **output** negotiation (TTS→playback through the
+      negotiator/transcoder, traced) + collapse the 3 TTS resample dups + remove redundant per-consumer resampling. **PR-5** pre-roll contract (`detection_latency_ms` → segmenter sizing). **PR-6
       (FINAL) — user-facing docs + diagrams:** update `docs/guides/{vad,voice-trigger,audio}.md` + architecture docs for
       the new component + negotiation seam, and **re-author the affected dataflow/audio diagrams** in `docs/images/`
       (mic→VAD→wake→ASR flow + the transform/negotiation seam; PNG/JPEG per the docs rules, no mermaid). Invariant #4:
