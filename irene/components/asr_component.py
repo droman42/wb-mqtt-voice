@@ -233,10 +233,10 @@ class ASRComponent(Component, ASRPlugin, WebAPIPlugin, ASRPort):
             
             try:
                 # Import resampling utilities
-                from ..utils.audio_helpers import AudioProcessor
+                from ..utils.audio_helpers import AudioTranscoder
                 
                 # Get optimal conversion method for ASR
-                conversion_method = AudioProcessor.get_optimal_conversion_path(
+                conversion_method = AudioTranscoder.get_optimal_conversion_path(
                     audio_data.sample_rate, config_sample_rate, use_case="asr"
                 )
                 
@@ -245,7 +245,7 @@ class ASRComponent(Component, ASRPlugin, WebAPIPlugin, ASRPort):
                 
                 try:
                     # Resample the audio data to configuration-required rate
-                    audio_to_process = await AudioProcessor.resample_audio_data(
+                    audio_to_process = await AudioTranscoder.resample_audio_data(
                         audio_data, config_sample_rate, conversion_method
                     )
                     
@@ -388,8 +388,8 @@ class ASRComponent(Component, ASRPlugin, WebAPIPlugin, ASRPort):
         resampling_metrics = metrics_collector.get_component_resampling_metrics("asr")
         
         # Phase 6: Include cache performance metrics
-        from ..utils.audio_helpers import AudioProcessor
-        cache_stats = AudioProcessor.get_cache_stats()
+        from ..utils.audio_helpers import AudioTranscoder
+        cache_stats = AudioTranscoder.get_cache_stats()
         
         # Combine and return unified metrics
         combined_metrics = {

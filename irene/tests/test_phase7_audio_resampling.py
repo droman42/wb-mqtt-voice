@@ -15,7 +15,7 @@ from unittest.mock import Mock, patch, AsyncMock
 
 # Import the modules we're testing
 from irene.utils.audio_helpers import (
-    AudioProcessor, ConversionMethod, ResamplingResult,
+    AudioTranscoder, ConversionMethod, ResamplingResult,
     AudioFormatConverter
 )
 from irene.intents.models import AudioData, WakeWordResult
@@ -65,7 +65,7 @@ class TestSampleRateConversions:
                 
                 try:
                     # Test with POLYPHASE method (default)
-                    result = await AudioProcessor.resample_audio_data(
+                    result = await AudioTranscoder.resample_audio_data(
                         audio_data, target_rate, ConversionMethod.POLYPHASE
                     )
                     
@@ -133,7 +133,7 @@ class TestSampleRateConversions:
             for method in methods:
                 try:
                     start_time = time.time()
-                    result = await AudioProcessor.resample_audio_data(
+                    result = await AudioTranscoder.resample_audio_data(
                         audio_data, target_rate, method
                     )
                     duration = (time.time() - start_time) * 1000
@@ -163,26 +163,26 @@ class TestSampleRateConversions:
     async def test_cache_performance(self):
         """Test resampling cache performance and hit rates."""
         # Clear cache before test
-        AudioProcessor.clear_cache()
+        AudioTranscoder.clear_cache()
         
         source_rate = 44100
         target_rate = 16000
         audio_data = self.create_test_audio_data(source_rate, duration=0.1)
         
         # First conversion (cache miss)
-        result1 = await AudioProcessor.resample_audio_data(
+        result1 = await AudioTranscoder.resample_audio_data(
             audio_data, target_rate, ConversionMethod.POLYPHASE
         )
         assert result1.metadata.get('cache_hit', True) == False  # Should be cache miss
         
         # Second conversion with same parameters (cache hit)
-        result2 = await AudioProcessor.resample_audio_data(
+        result2 = await AudioTranscoder.resample_audio_data(
             audio_data, target_rate, ConversionMethod.POLYPHASE
         )
         assert result2.metadata.get('cache_hit', False) == True  # Should be cache hit
         
         # Verify cache statistics
-        cache_stats = AudioProcessor.get_cache_stats()
+        cache_stats = AudioTranscoder.get_cache_stats()
         assert cache_stats['cache_hits'] >= 1
         assert cache_stats['cache_misses'] >= 1
         assert cache_stats['hit_rate'] > 0
@@ -192,34 +192,34 @@ class TestSampleRateConversions:
     def test_sample_rate_compatibility_validation(self):
         """Test sample rate compatibility validation logic."""
         # Direct compatibility
-        assert AudioProcessor.validate_sample_rate_compatibility(16000, [16000, 44100]) == True
+        assert AudioTranscoder.validate_sample_rate_compatibility(16000, [16000, 44100]) == True
         
         # Efficient ratio compatibility
-        assert AudioProcessor.validate_sample_rate_compatibility(16000, [32000]) == True  # 2:1 ratio
-        assert AudioProcessor.validate_sample_rate_compatibility(44100, [22050]) == True  # 2:1 ratio
+        assert AudioTranscoder.validate_sample_rate_compatibility(16000, [32000]) == True  # 2:1 ratio
+        assert AudioTranscoder.validate_sample_rate_compatibility(44100, [22050]) == True  # 2:1 ratio
         
         # Incompatible ratios
-        assert AudioProcessor.validate_sample_rate_compatibility(8000, [96000]) == False  # 12:1 ratio
+        assert AudioTranscoder.validate_sample_rate_compatibility(8000, [96000]) == False  # 12:1 ratio
         
         # Empty target rates (no restrictions)
-        assert AudioProcessor.validate_sample_rate_compatibility(16000, []) == True
+        assert AudioTranscoder.validate_sample_rate_compatibility(16000, []) == True
     
     def test_optimal_conversion_path_selection(self):
         """Test optimal conversion method selection for different use cases."""
         # Voice trigger use case (latency-optimized)
-        method = AudioProcessor.get_optimal_conversion_path(16000, 44100, "voice_trigger")
+        method = AudioTranscoder.get_optimal_conversion_path(16000, 44100, "voice_trigger")
         assert method in [ConversionMethod.LINEAR, ConversionMethod.POLYPHASE]
         
         # ASR use case (quality-optimized)
-        method = AudioProcessor.get_optimal_conversion_path(16000, 44100, "asr")
+        method = AudioTranscoder.get_optimal_conversion_path(16000, 44100, "asr")
         assert method in [ConversionMethod.SINC_KAISER, ConversionMethod.POLYPHASE, ConversionMethod.ADAPTIVE]
         
         # General use case (balanced)
-        method = AudioProcessor.get_optimal_conversion_path(16000, 44100, "general")
+        method = AudioTranscoder.get_optimal_conversion_path(16000, 44100, "general")
         assert method in [ConversionMethod.POLYPHASE, ConversionMethod.ADAPTIVE]
         
         # Same rate (no conversion needed)
-        method = AudioProcessor.get_optimal_conversion_path(16000, 16000)
+        method = AudioTranscoder.get_optimal_conversion_path(16000, 16000)
         assert method == ConversionMethod.LINEAR
 
 
@@ -300,7 +300,7 @@ class TestErrorHandling:
         )
         
         # Should handle gracefully
-        result = await AudioProcessor.resample_audio_data(
+        result = await AudioTranscoder.resample_audio_data(
             empty_audio, 44100, ConversionMethod.POLYPHASE
         )
         # Should return original or handle gracefully
@@ -320,7 +320,7 @@ class TestErrorHandling:
         
         # Test conversion to very low sample rate
         try:
-            result = await AudioProcessor.resample_audio_data(
+            result = await AudioTranscoder.resample_audio_data(
                 audio_data, 8000, ConversionMethod.POLYPHASE
             )
             assert result is not None
@@ -332,11 +332,11 @@ class TestErrorHandling:
     async def test_cache_overflow(self):
         """Test cache behavior when exceeding maximum size through normal resampling."""
         # Clear cache
-        AudioProcessor.clear_cache()
+        AudioTranscoder.clear_cache()
         
         # Fill cache beyond maximum using actual resampling
-        original_max = AudioProcessor._max_cache_size
-        AudioProcessor._max_cache_size = 3  # Set small cache for testing
+        original_max = AudioTranscoder._max_cache_size
+        AudioTranscoder._max_cache_size = 3  # Set small cache for testing
         
         try:
             # Create different audio data to trigger cache misses
@@ -352,19 +352,19 @@ class TestErrorHandling:
                 )
                 
                 # Process through normal resampling (which handles cache eviction)
-                await AudioProcessor.resample_audio_data(
+                await AudioTranscoder.resample_audio_data(
                     audio_data, 44100, ConversionMethod.POLYPHASE
                 )
             
             # Cache should not exceed maximum size after eviction
-            cache_size = len(AudioProcessor._resampling_cache)
-            assert cache_size <= AudioProcessor._max_cache_size, \
-                f"Cache size {cache_size} exceeds maximum {AudioProcessor._max_cache_size}"
+            cache_size = len(AudioTranscoder._resampling_cache)
+            assert cache_size <= AudioTranscoder._max_cache_size, \
+                f"Cache size {cache_size} exceeds maximum {AudioTranscoder._max_cache_size}"
             
         finally:
             # Restore original cache size
-            AudioProcessor._max_cache_size = original_max
-            AudioProcessor.clear_cache()
+            AudioTranscoder._max_cache_size = original_max
+            AudioTranscoder.clear_cache()
 
 
 if __name__ == "__main__":

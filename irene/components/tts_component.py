@@ -596,7 +596,7 @@ class TTSComponent(Component, TTSPlugin, WebAPIPlugin, TTSPort):
                         
                         # Read and convert audio to requested format
                         from ..intents.models import AudioData
-                        from ..utils.audio_helpers import AudioProcessor
+                        from ..utils.audio_helpers import AudioTranscoder
                         
                         # Check if this is a text-only provider (like console)
                         capabilities = provider.get_capabilities()
@@ -658,7 +658,7 @@ class TTSComponent(Component, TTSPlugin, WebAPIPlugin, TTSPort):
                             if (audio_data.sample_rate != target_rate or 
                                 audio_data.channels != target_channels):
                                 logger.debug(f"Converting audio from {audio_data.sample_rate}Hz/{audio_data.channels}ch to {target_rate}Hz/{target_channels}ch")
-                                audio_data = await AudioProcessor.resample_audio_data(
+                                audio_data = await AudioTranscoder.resample_audio_data(
                                     audio_data, target_rate
                                 )
                             
@@ -894,7 +894,7 @@ class TTSComponent(Component, TTSPlugin, WebAPIPlugin, TTSPort):
                                     
                                     # Read and convert audio to requested format
                                     from ..intents.models import AudioData
-                                    from ..utils.audio_helpers import AudioProcessor
+                                    from ..utils.audio_helpers import AudioTranscoder
                                     
                                     # Read generated audio file
                                     with open(temp_path, 'rb') as f:
@@ -927,7 +927,7 @@ class TTSComponent(Component, TTSPlugin, WebAPIPlugin, TTSPort):
                                     if (audio_data.sample_rate != target_rate or 
                                         audio_data.channels != target_channels):
                                         logger.debug(f"Converting audio from {audio_data.sample_rate}Hz/{audio_data.channels}ch to {target_rate}Hz/{target_channels}ch")
-                                        audio_data = await AudioProcessor.resample_audio_data(
+                                        audio_data = await AudioTranscoder.resample_audio_data(
                                             audio_data, target_rate
                                         )
                                     
@@ -1211,7 +1211,7 @@ class TTSComponent(Component, TTSPlugin, WebAPIPlugin, TTSPort):
                                     
                                     # Read and convert audio
                                     from ..intents.models import AudioData
-                                    from ..utils.audio_helpers import AudioProcessor
+                                    from ..utils.audio_helpers import AudioTranscoder
                                     
                                     # Read generated audio file 
                                     with open(temp_path, 'rb') as f:
@@ -1242,7 +1242,7 @@ class TTSComponent(Component, TTSPlugin, WebAPIPlugin, TTSPort):
                                     
                                     if (audio_data.sample_rate != target_rate or 
                                         audio_data.channels != target_channels):
-                                        audio_data = await AudioProcessor.resample_audio_data(
+                                        audio_data = await AudioTranscoder.resample_audio_data(
                                             audio_data, target_rate
                                         )
                                     

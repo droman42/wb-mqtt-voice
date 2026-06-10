@@ -15,7 +15,7 @@ from unittest.mock import Mock, patch, AsyncMock, MagicMock
 from irene.components.asr_component import ASRComponent
 from irene.components.voice_trigger_component import VoiceTriggerComponent
 from irene.intents.models import AudioData, WakeWordResult
-from irene.utils.audio_helpers import AudioProcessor, ConversionMethod
+from irene.utils.audio_helpers import AudioTranscoder, ConversionMethod
 
 
 class MockCore:
@@ -300,7 +300,7 @@ class TestProviderFallbacks:
     """Test provider fallback chain functionality."""
     
     @pytest.mark.asyncio
-    @pytest.mark.skip(reason="Obsolete API seam: calls removed ASRComponent._handle_sample_rate_mismatch (resampling refactored into AudioProcessor.resample_audio_data). Feature still exists \xe2\x80\x94 rewrite against current path, see TEST-6.")
+    @pytest.mark.skip(reason="Obsolete API seam: calls removed ASRComponent._handle_sample_rate_mismatch (resampling refactored into AudioTranscoder.resample_audio_data). Feature still exists \xe2\x80\x94 rewrite against current path, see TEST-6.")
     async def test_asr_provider_fallback_chain(self):
         """Test ASR provider fallback when primary provider fails."""
         # Create providers with different capabilities
@@ -413,7 +413,7 @@ class TestPerformanceRegression:
                 times = []
                 for _ in range(5):  # Average over 5 runs
                     start_time = time.time()
-                    await AudioProcessor.resample_audio_data(audio_data, scenario['target'], method)
+                    await AudioTranscoder.resample_audio_data(audio_data, scenario['target'], method)
                     duration = (time.time() - start_time) * 1000
                     times.append(duration)
                 
@@ -446,7 +446,7 @@ class TestPerformanceRegression:
     async def test_cache_effectiveness(self):
         """Test caching effectiveness under realistic usage patterns."""
         # Clear cache
-        AudioProcessor.clear_cache()
+        AudioTranscoder.clear_cache()
         
         # Simulate repeated conversions (common in real usage)
         common_conversions = [
@@ -469,7 +469,7 @@ class TestPerformanceRegression:
                     metadata={}
                 )
                 
-                result = await AudioProcessor.resample_audio_data(
+                result = await AudioTranscoder.resample_audio_data(
                     audio_data, target_rate, ConversionMethod.POLYPHASE
                 )
                 

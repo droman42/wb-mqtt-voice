@@ -42,7 +42,7 @@ The **satellite path falls out for free**: the WS adapter declares it delivers 1
 
 | Component | Role | Used by | Layer |
 |---|---|---|---|
-| **`AudioTranscoder`** (rename of `utils/audio_helpers.AudioProcessor`, absorbs `AudioFormatConverter`) | the one transform primitive: rate + channels + sample-format, with `ConversionMethod` quality tiers | **input** negotiator **and** **output** (TTS→playback) | `utils` |
+| **`AudioTranscoder`** (rename of `utils/audio_helpers.AudioProcessor`) | the one transform primitive: rate + channels + sample-format, with `ConversionMethod` quality tiers | **input** negotiator **and** **output** (TTS→playback) | `utils` |
 | **`AudioContract`** (new value object) | what a party can deliver / needs | every input adapter + audio consumer | `utils` |
 | **`AudioNegotiator`** (new) | derive canonical, validate at startup (fatal), drive the transcoder, emit trace events | input boundary + output | startup: config path · runtime: boundary |
 | **`VoiceSegmenter`** (rename of `UniversalAudioProcessor`, minus the if-else) | consume the active VAD provider; own pre-roll; emit `VoiceSegment`s | the audio workflow | `workflows` |
@@ -162,14 +162,21 @@ The flat `silero_*` / `microvad_*` fields move under their provider; `vad_implem
 
 ## 13. Implementation slices (ARCH-18 unless noted)
 
-1. **PR-1 — `AudioTranscoder`**: rename `AudioProcessor`, absorb `AudioFormatConverter`, collapse the 3 TTS
-   resample duplications. Behavior-preserving; pure rename/dedup.
+1. **PR-1 — `AudioTranscoder` rename** (done 2026-06-10): rename `AudioProcessor` → `AudioTranscoder`
+   everywhere (kills the `UniversalAudioProcessor` name collision). Behavior-preserving; pure rename.
+   _Reconciliation:_ `AudioFormatConverter` turned out to be a **used, tested convenience layer** atop the
+   engine (`convert_audio_data`/`_streaming` used internally + tested; `supports_format` used by the mic input),
+   **not** the dead duplicate the original plan assumed — so its dissolution moved out of PR-1 (below).
 2. **PR-2 — VAD provider family + `VoiceSegmenter`**: `VADPort` + `energy`/`silero`/`microvad` providers +
    entry-points + `[vad.providers.*]` config/schemas (config-ui via auto_registry); extract the if-else into
    the segmenter; **fold the 2 bug fixes**.
 3. **PR-3 — `AudioContract` + `AudioNegotiator`**: declare contracts; derive canonical + startup validation
-   (fatal) + input transform-once at the boundary; trace events.
-4. **PR-4 — symmetric output**: route TTS→playback through the negotiator/transcoder; trace.
+   (fatal) + input transform-once at the boundary; trace events. **Fold `AudioFormatConverter`'s
+   convert/streaming into the transcoder/negotiator** (the rate/format/channel transform belongs on the one
+   primitive) and relocate `supports_format` to a plainly-named file-format helper.
+4. **PR-4 — symmetric output**: route TTS→playback through the negotiator/transcoder + collapse the 3
+   duplicated TTS resample blocks; trace. **`AudioFormatConverter` is deleted by the end of ARCH-18** — its
+   methods live on the harmonized transcoder/negotiator, no permanent second tier.
 5. **PR-5 — pre-roll contract**: `detection_latency_ms` → `VoiceSegmenter` pre-roll sizing.
 6. **PR-6 — user-facing docs + diagrams (END of ARCH-17/18)**: update `docs/guides/{vad,voice-trigger,audio}.md`
    and the architecture docs for the new component + negotiation seam; **re-author the affected dataflow/audio

@@ -518,7 +518,7 @@ def calculate_audio_buffer_size(sample_rate: int, duration_ms: float = 100.0) ->
         return power_of_2
 
 
-class AudioProcessor:
+class AudioTranscoder:
     """
     Centralized resampling utilities that preserve AudioData metadata.
     
@@ -615,9 +615,9 @@ class AudioProcessor:
             method.value
         )
         
-        if cache_key in AudioProcessor._resampling_cache:
-            AudioProcessor._cache_hits += 1
-            cached_data = AudioProcessor._resampling_cache[cache_key]
+        if cache_key in AudioTranscoder._resampling_cache:
+            AudioTranscoder._cache_hits += 1
+            cached_data = AudioTranscoder._resampling_cache[cache_key]
             
             duration_ms = (time.time() - start_time) * 1000
             
@@ -637,11 +637,11 @@ class AudioProcessor:
                 }
             )
         else:
-            AudioProcessor._cache_misses += 1
+            AudioTranscoder._cache_misses += 1
         
         try:
             # Perform actual resampling
-            resampled_data = await AudioProcessor._resample_bytes(
+            resampled_data = await AudioTranscoder._resample_bytes(
                 audio_data.data, 
                 audio_data.sample_rate, 
                 target_rate, 
@@ -652,13 +652,13 @@ class AudioProcessor:
             duration_ms = (time.time() - start_time) * 1000
             
             # Phase 6: Cache the resampled result for future use (ASR optimization)
-            if len(AudioProcessor._resampling_cache) < AudioProcessor._max_cache_size:
-                AudioProcessor._resampling_cache[cache_key] = resampled_data
-            elif len(AudioProcessor._resampling_cache) >= AudioProcessor._max_cache_size:
+            if len(AudioTranscoder._resampling_cache) < AudioTranscoder._max_cache_size:
+                AudioTranscoder._resampling_cache[cache_key] = resampled_data
+            elif len(AudioTranscoder._resampling_cache) >= AudioTranscoder._max_cache_size:
                 # Remove oldest entry (simple FIFO eviction)
-                oldest_key = next(iter(AudioProcessor._resampling_cache))
-                del AudioProcessor._resampling_cache[oldest_key]
-                AudioProcessor._resampling_cache[cache_key] = resampled_data
+                oldest_key = next(iter(AudioTranscoder._resampling_cache))
+                del AudioTranscoder._resampling_cache[oldest_key]
+                AudioTranscoder._resampling_cache[cache_key] = resampled_data
             
             # Create new AudioData with resampled data and preserved metadata
             return AudioData(
@@ -839,7 +839,7 @@ class AudioProcessor:
         except ImportError:
             logger.debug("librosa not available, using basic resampling")
             # Fallback to basic resampling
-            return await AudioProcessor._basic_resample_bytes(audio_bytes, source_rate, target_rate, channels)
+            return await AudioTranscoder._basic_resample_bytes(audio_bytes, source_rate, target_rate, channels)
             
     @staticmethod
     async def _basic_resample_bytes(
@@ -952,7 +952,7 @@ class AudioFormatConverter:
                 metadata=audio_data.metadata
             )
             
-            resampled_audio = await AudioProcessor.resample_audio_data(temp_audio, target_rate, method)
+            resampled_audio = await AudioTranscoder.resample_audio_data(temp_audio, target_rate, method)
             result_data = resampled_audio.data
             result_rate = target_rate
             metadata_updates.update(resampled_audio.metadata)
@@ -1514,7 +1514,7 @@ async def load_audio_file_to_audiodata(
         # Resample if needed
         if original_sample_rate != target_sample_rate:
             logger.debug(f"Resampling audio from {original_sample_rate}Hz to {target_sample_rate}Hz")
-            audio_data = await AudioProcessor.resample_audio_data(
+            audio_data = await AudioTranscoder.resample_audio_data(
                 audio_data, 
                 target_sample_rate,
                 method=ConversionMethod.POLYPHASE
@@ -1670,7 +1670,7 @@ __all__ = [
     # Phase 2 New Exports - Audio Infrastructure Enhancement
     'ConversionMethod',
     'ResamplingResult', 
-    'AudioProcessor',
+    'AudioTranscoder',
     'detect_sample_rate_from_audio_data',
     'validate_cross_component_compatibility',
     'validate_startup_audio_configuration',

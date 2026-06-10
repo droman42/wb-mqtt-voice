@@ -20,7 +20,7 @@ from concurrent.futures import ThreadPoolExecutor
 import numpy as np
 
 from irene.utils.audio_helpers import (
-    AudioProcessor, ConversionMethod, AudioFormatConverter
+    AudioTranscoder, ConversionMethod, AudioFormatConverter
 )
 from irene.intents.models import AudioData
 
@@ -138,7 +138,7 @@ class TestResamplingLatency:
                 # Multiple runs for statistical significance
                 for _ in range(20):
                     start_time = time.perf_counter()
-                    await AudioProcessor.resample_audio_data(audio_data, case['target'], method)
+                    await AudioTranscoder.resample_audio_data(audio_data, case['target'], method)
                     end_time = time.perf_counter()
                     times.append((end_time - start_time) * 1000)  # Convert to ms
                 
@@ -196,7 +196,7 @@ class TestResamplingLatency:
                 # Multiple runs for statistical significance
                 for _ in range(10):
                     start_time = time.perf_counter()
-                    result = await AudioProcessor.resample_audio_data(audio_data, case['target'], method)
+                    result = await AudioTranscoder.resample_audio_data(audio_data, case['target'], method)
                     end_time = time.perf_counter()
                     times.append((end_time - start_time) * 1000)
                 
@@ -251,7 +251,7 @@ class TestThroughputBenchmarks(PerformanceBenchmarkBase):
             start_time = time.perf_counter()
             
             tasks = [
-                AudioProcessor.resample_audio_data(audio, target_rate, ConversionMethod.POLYPHASE)
+                AudioTranscoder.resample_audio_data(audio, target_rate, ConversionMethod.POLYPHASE)
                 for audio in audio_streams
             ]
             
@@ -300,7 +300,7 @@ class TestThroughputBenchmarks(PerformanceBenchmarkBase):
             
             # Process chunks sequentially (simulating real-time stream)
             for chunk in chunks:
-                await AudioProcessor.resample_audio_data(chunk, 44100, ConversionMethod.POLYPHASE)
+                await AudioTranscoder.resample_audio_data(chunk, 44100, ConversionMethod.POLYPHASE)
             
             end_time = time.perf_counter()
             total_time = end_time - start_time
@@ -336,7 +336,7 @@ class TestMemoryUsageBenchmarks(PerformanceBenchmarkBase):
         
         for duration in durations:
             # Clear cache to get baseline memory usage
-            AudioProcessor.clear_cache()
+            AudioTranscoder.clear_cache()
             
             # Measure memory before processing
             memory_before = self.measure_memory_usage()
@@ -345,7 +345,7 @@ class TestMemoryUsageBenchmarks(PerformanceBenchmarkBase):
             audio_data = self.create_test_audio(sample_rate, duration)
             audio_size_mb = len(audio_data.data) / 1024 / 1024
             
-            await AudioProcessor.resample_audio_data(audio_data, 16000, ConversionMethod.POLYPHASE)
+            await AudioTranscoder.resample_audio_data(audio_data, 16000, ConversionMethod.POLYPHASE)
             
             # Measure memory after processing
             memory_after = self.measure_memory_usage()
@@ -367,7 +367,7 @@ class TestMemoryUsageBenchmarks(PerformanceBenchmarkBase):
     async def test_cache_memory_efficiency(self):
         """Test memory efficiency of resampling cache."""
         # Clear cache and measure baseline
-        AudioProcessor.clear_cache()
+        AudioTranscoder.clear_cache()
         memory_baseline = self.measure_memory_usage()
         
         # Fill cache with various conversions
@@ -382,11 +382,11 @@ class TestMemoryUsageBenchmarks(PerformanceBenchmarkBase):
             audio_data = self.create_test_audio(source_rate, 0.1)
             
             # Process audio (should add to cache)
-            await AudioProcessor.resample_audio_data(audio_data, target_rate, ConversionMethod.POLYPHASE)
+            await AudioTranscoder.resample_audio_data(audio_data, target_rate, ConversionMethod.POLYPHASE)
             
             # Measure memory usage
             memory_current = self.measure_memory_usage()
-            cache_stats = AudioProcessor.get_cache_stats()
+            cache_stats = AudioTranscoder.get_cache_stats()
             
             memory_delta = memory_current['rss_mb'] - memory_baseline['rss_mb']
             
@@ -414,12 +414,12 @@ class TestCachePerformance(PerformanceBenchmarkBase):
         audio_data = self.create_test_audio(source_rate, 0.1)
         
         # Clear cache and measure cold performance
-        AudioProcessor.clear_cache()
+        AudioTranscoder.clear_cache()
         
         cold_times = []
         for _ in range(5):
             start_time = time.perf_counter()
-            await AudioProcessor.resample_audio_data(audio_data, target_rate, ConversionMethod.POLYPHASE)
+            await AudioTranscoder.resample_audio_data(audio_data, target_rate, ConversionMethod.POLYPHASE)
             end_time = time.perf_counter()
             cold_times.append((end_time - start_time) * 1000)
         
@@ -429,7 +429,7 @@ class TestCachePerformance(PerformanceBenchmarkBase):
         warm_times = []
         for _ in range(5):
             start_time = time.perf_counter()
-            result = await AudioProcessor.resample_audio_data(audio_data, target_rate, ConversionMethod.POLYPHASE)
+            result = await AudioTranscoder.resample_audio_data(audio_data, target_rate, ConversionMethod.POLYPHASE)
             end_time = time.perf_counter()
             warm_times.append((end_time - start_time) * 1000)
             
@@ -462,9 +462,9 @@ class TestCachePerformance(PerformanceBenchmarkBase):
     async def test_cache_eviction_performance(self):
         """Test performance when cache reaches capacity and eviction occurs."""
         # Set small cache size for testing
-        original_max_size = AudioProcessor._max_cache_size
-        AudioProcessor._max_cache_size = 5
-        AudioProcessor.clear_cache()
+        original_max_size = AudioTranscoder._max_cache_size
+        AudioTranscoder._max_cache_size = 5
+        AudioTranscoder.clear_cache()
         
         try:
             conversion_times = []
@@ -478,13 +478,13 @@ class TestCachePerformance(PerformanceBenchmarkBase):
                 audio_data = self.create_test_audio(source_rate, 0.05)
                 
                 start_time = time.perf_counter()
-                await AudioProcessor.resample_audio_data(audio_data, target_rate, ConversionMethod.POLYPHASE)
+                await AudioTranscoder.resample_audio_data(audio_data, target_rate, ConversionMethod.POLYPHASE)
                 end_time = time.perf_counter()
                 
                 conversion_time = (end_time - start_time) * 1000
                 conversion_times.append(conversion_time)
                 
-                cache_stats = AudioProcessor.get_cache_stats()
+                cache_stats = AudioTranscoder.get_cache_stats()
                 cache_sizes.append(cache_stats['cache_size'])
             
             # Analyze performance during cache eviction
@@ -513,8 +513,8 @@ class TestCachePerformance(PerformanceBenchmarkBase):
             
         finally:
             # Restore original cache size
-            AudioProcessor._max_cache_size = original_max_size
-            AudioProcessor.clear_cache()
+            AudioTranscoder._max_cache_size = original_max_size
+            AudioTranscoder.clear_cache()
 
 
 class TestStressTests(PerformanceBenchmarkBase):
@@ -537,7 +537,7 @@ class TestStressTests(PerformanceBenchmarkBase):
             
             try:
                 start_time = time.perf_counter()
-                result = await AudioProcessor.resample_audio_data(
+                result = await AudioTranscoder.resample_audio_data(
                     audio_data, case['target'], ConversionMethod.ADAPTIVE
                 )
                 end_time = time.perf_counter()
@@ -583,7 +583,7 @@ class TestStressTests(PerformanceBenchmarkBase):
             
             try:
                 start_time = time.perf_counter()
-                result = await AudioProcessor.resample_audio_data(
+                result = await AudioTranscoder.resample_audio_data(
                     audio_data, target_rate, ConversionMethod.POLYPHASE
                 )
                 end_time = time.perf_counter()

@@ -593,9 +593,12 @@ See `docs/review/phase1_architecture_map.md` §5.
       (rename of `UniversalAudioProcessor` minus the if-else), **`AudioNegotiator`** (derive/validate/drive + trace).
       Symmetric in+out (output TTS→playback negotiates through the same transcoder, traced). Supersedes
       `onnx_inference_layer.md` §11.2's "small seam." Decisions D-1..D-7 LOCKED 2026-06-10 (§12). Implementation = ARCH-18.
-- [ ] **ARCH-18** [AUDIO] (P-TBD) — **Implement ARCH-17, sliced PR-1..6 (`audio_pipeline.md` §13).** **PR-1**
-      `AudioTranscoder` rename/consolidation (absorb `AudioFormatConverter`; collapse the 3 TTS resample dups;
-      behavior-preserving). **PR-2** VAD provider family (`VADPort` + energy/silero/microvad adapters + entry-points +
+- [~] **ARCH-18** [AUDIO] (P-TBD) — **Implement ARCH-17, sliced PR-1..6 (`audio_pipeline.md` §13).** **PR-1 DONE
+      2026-06-10** (`AudioProcessor`→`AudioTranscoder` rename everywhere — kills the `UniversalAudioProcessor` name
+      collision; behavior-preserving, pyright 0, suite 83=83). _Reconciliation:_ `AudioFormatConverter` is a **used,
+      tested convenience layer** (not the dead duplicate the plan assumed), so its dissolution moved to PR-3/PR-4 —
+      **`AudioFormatConverter` is deleted by the end of ARCH-18**, its transform methods folded onto the
+      transcoder/negotiator + the 3 TTS resample dups collapsed (PR-4). **PR-2** VAD provider family (`VADPort` + energy/silero/microvad adapters + entry-points +
       `[vad.providers.*]` schemas via auto_registry/config-ui) + `VoiceSegmenter` (extract the if-else) — **folds the 2
       live bugs**: delete the `vad_implementation` validator (entry-points discovery replaces it) and turn the
       unconditional `calibrate_threshold` into a `VADPort.calibrate` default-no-op (engines opt in). **PR-3**

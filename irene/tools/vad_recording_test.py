@@ -195,14 +195,14 @@ class VADRecordingTester:
             return audio_data
             
         # Use the same resampling that ASR component uses
-        from irene.utils.audio_helpers import AudioProcessor
+        from irene.utils.audio_helpers import AudioTranscoder
         
         try:
-            conversion_method = AudioProcessor.get_optimal_conversion_path(
+            conversion_method = AudioTranscoder.get_optimal_conversion_path(
                 audio_data.sample_rate, 16000, use_case="asr"
             )
             
-            resampled_audio = await AudioProcessor.resample_audio_data(
+            resampled_audio = await AudioTranscoder.resample_audio_data(
                 audio_data, 16000, conversion_method
             )
             

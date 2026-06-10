@@ -328,11 +328,11 @@ class VoiceTriggerComponent(Component, VoiceTriggerPlugin, WebAPIPlugin):
                 return await self._detect_with_fallback(audio_data, provider.get_provider_name())
             
             try:
-                # Use Phase 2 AudioProcessor for resampling
-                from ..utils.audio_helpers import AudioProcessor, ConversionMethod
+                # Use Phase 2 AudioTranscoder for resampling
+                from ..utils.audio_helpers import AudioTranscoder, ConversionMethod
                 
                 # Phase 6: Get optimal conversion method for voice trigger (latency-optimized)
-                conversion_method = AudioProcessor.get_optimal_conversion_path(
+                conversion_method = AudioTranscoder.get_optimal_conversion_path(
                     audio_data.sample_rate, config_sample_rate, use_case="voice_trigger"
                 )
                 
@@ -346,7 +346,7 @@ class VoiceTriggerComponent(Component, VoiceTriggerPlugin, WebAPIPlugin):
                 
                 try:
                     # Resample the audio data to configuration-required rate
-                    processed_audio = await AudioProcessor.resample_audio_data(
+                    processed_audio = await AudioTranscoder.resample_audio_data(
                         audio_data, config_sample_rate, conversion_method
                     )
                     
@@ -396,10 +396,10 @@ class VoiceTriggerComponent(Component, VoiceTriggerPlugin, WebAPIPlugin):
                         logger.info(f"Resampling audio from {audio_data.sample_rate}Hz to {default_rate}Hz for voice trigger")
                         
                         if allow_resampling:
-                            # Use Phase 2 AudioProcessor for resampling
-                            from ..utils.audio_helpers import AudioProcessor, ConversionMethod
+                            # Use Phase 2 AudioTranscoder for resampling
+                            from ..utils.audio_helpers import AudioTranscoder, ConversionMethod
                             
-                            conversion_method = AudioProcessor.get_optimal_conversion_path(
+                            conversion_method = AudioTranscoder.get_optimal_conversion_path(
                                 audio_data.sample_rate, default_rate, use_case="voice_trigger"
                             )
                             
@@ -410,7 +410,7 @@ class VoiceTriggerComponent(Component, VoiceTriggerPlugin, WebAPIPlugin):
                             start_time = time.time()
                             
                             try:
-                                processed_audio = await AudioProcessor.resample_audio_data(
+                                processed_audio = await AudioTranscoder.resample_audio_data(
                                     audio_data, default_rate, conversion_method
                                 )
                                 
@@ -491,7 +491,7 @@ class VoiceTriggerComponent(Component, VoiceTriggerPlugin, WebAPIPlugin):
                                 # External resampling for fallback
                                 logger.info(f"Resampling for fallback provider {fallback}: {audio_data.sample_rate}Hz -> {default_rate}Hz")
                                 
-                                from ..utils.audio_helpers import AudioProcessor, ConversionMethod
+                                from ..utils.audio_helpers import AudioTranscoder, ConversionMethod
                                 
                                 # Phase 5: Track fallback resampling metrics  
                                 import time
@@ -499,7 +499,7 @@ class VoiceTriggerComponent(Component, VoiceTriggerPlugin, WebAPIPlugin):
                                 
                                 try:
                                     # Use fast resampling for fallback scenarios
-                                    resampled_audio = await AudioProcessor.resample_audio_data(
+                                    resampled_audio = await AudioTranscoder.resample_audio_data(
                                         audio_data, default_rate, ConversionMethod.LINEAR
                                     )
                                     

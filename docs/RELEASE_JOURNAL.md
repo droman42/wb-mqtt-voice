@@ -12,6 +12,13 @@ newest entries near the top of each dated section.
 ## Action journal
 
 ### 2026-06-10
+- **ARCH-18 PR-1 — `AudioProcessor` → `AudioTranscoder` rename.** Behavior-preserving rename of the resample engine
+  everywhere (irene/ + the phase7 test suite), killing the `AudioProcessor` / `UniversalAudioProcessor` name collision
+  the design called out. Reconciliation (Invariant #8): `AudioFormatConverter` turned out to be a **used, tested
+  convenience layer** over the engine (`convert_audio_data`/`_streaming` used internally + tested; `supports_format`
+  used by the mic input), not the dead duplicate the PR-1 plan assumed — so its dissolution + the 3-TTS-block dedup
+  moved to PR-3/PR-4 (user-confirmed), with `AudioFormatConverter` deleted by the end of ARCH-18. Design doc + ledger
+  amended. pyright 0, suite 83=83 (0 net regression).
 - **ARCH-17 done — designed the audio I/O negotiation + transformation seam (interactive session); filed ARCH-18 to
   build it.** Deliverable `docs/design/audio_pipeline.md` — the input twin of ARCH-15. Triggered by "VAD now has 3
   impls, should it be a component?" plus two related asks (don't let VAD swallow wake-word onset frames; full
