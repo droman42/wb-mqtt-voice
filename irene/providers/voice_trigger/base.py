@@ -136,7 +136,7 @@ class VoiceTriggerProvider(ProviderBase):
     def get_capabilities(self) -> Dict[str, Any]:
         """
         Get provider capabilities and metadata.
-        
+
         Returns:
             Dictionary with provider capabilities
         """
@@ -149,6 +149,13 @@ class VoiceTriggerProvider(ProviderBase):
             "configurable_threshold": True,
             "multiple_wake_words": len(self.get_supported_wake_words()) > 1
         }
+
+    def audio_contract(self):
+        """What this wake-word engine needs from the pipeline (ARCH-18), from its capability methods."""
+        from ...utils.audio_negotiation import AudioContract
+        rates = self.get_supported_sample_rates() or [16000]
+        return AudioContract(list(rates), self.get_default_sample_rate(), ["pcm16"], "pcm16",
+                             self.get_default_channels())
     
     async def set_wake_words(self, wake_words: List[str]) -> bool:
         """

@@ -16,6 +16,7 @@ from typing import Any, Dict, List
 from ..base import ProviderBase
 from ...utils.audio_data import AudioData
 from ...utils.vad import VADResult
+from ...utils.audio_negotiation import AudioContract
 
 logger = logging.getLogger(__name__)
 
@@ -66,3 +67,7 @@ class VADProvider(ProviderBase):
             "formats": ["pcm16"],
             "detection_latency_ms": self.detection_latency_ms,
         }
+
+    def audio_contract(self) -> AudioContract:
+        """What this VAD engine needs from the pipeline (ARCH-18): 16 kHz / pcm16 / mono."""
+        return AudioContract([16000], 16000, ["pcm16"], "pcm16", 1)

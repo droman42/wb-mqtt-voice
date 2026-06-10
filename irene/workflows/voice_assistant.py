@@ -168,10 +168,16 @@ class UnifiedVoiceAssistantWorkflow(Workflow):
                 self.audio_processor_interface = AudioProcessorInterface(vad_config)
                 self.logger.info(f"VAD audio processor initialized: provider={vad_config.default_provider}, "
                                f"max_segment={vad_config.max_segment_duration_s}s")
-                # ARCH-18: derive the canonical audio format now — fatal here if no canonical satisfies
-                # the capture + every audio consumer (loud, at startup).
+                # ARCH-18: derive the canonical audio format from the ACTIVE providers' declared contracts
+                # (capability-driven; config rate as override) — fatal here if no canonical satisfies the
+                # capture + every audio consumer (loud, at startup).
                 from .audio_negotiator import AudioNegotiator
-                self.audio_negotiator = AudioNegotiator.from_config(config)
+                vad_provider = getattr(self.audio_processor_interface, "processor", None)
+                vad_provider = getattr(vad_provider, "vad_engine", None)
+                wake_provider = self._active_provider(self.voice_trigger)
+                asr_provider = self._active_provider(self.asr)
+                self.audio_negotiator = AudioNegotiator.from_pipeline(
+                    config, vad_provider=vad_provider, wake_provider=wake_provider, asr_provider=asr_provider)
             else:
                 self.logger.error("VAD configuration missing or disabled. VAD processing is required for audio workflows.")
                 raise ConfigValidationError("VAD configuration is required for audio processing")
@@ -181,8 +187,16 @@ class UnifiedVoiceAssistantWorkflow(Workflow):
         
         self.logger.info("UnifiedVoiceAssistantWorkflow initialized successfully")
         self.initialized = True
-    
-    async def process_text_input(self, text: str, context: RequestContext, 
+
+    @staticmethod
+    def _active_provider(component):
+        """The component's currently-selected provider instance, or None — for declaring audio contracts."""
+        if component is None:
+            return None
+        providers = getattr(component, "providers", None) or {}
+        return providers.get(getattr(component, "default_provider", None))
+
+    async def process_text_input(self, text: str, context: RequestContext,
                                 trace_context: Optional[TraceContext] = None) -> IntentResult:
         """
         Process text input through unified pipeline (skips audio stages)

@@ -34,6 +34,46 @@ async def test_to_canonical_downsamples_then_noops():
     assert await neg.to_canonical(canon_frame) is canon_frame
 
 
+class _MockConsumer:
+    """A consumer provider declaring an arbitrary audio contract."""
+    def __init__(self, rates):
+        from irene.utils.audio_negotiation import AudioContract
+        self._c = AudioContract(list(rates), rates[0], ["pcm16"], "pcm16", 1)
+
+    def audio_contract(self):
+        return self._c
+
+
+def test_from_pipeline_uses_provider_declared_contracts():
+    from irene.providers.vad.energy import EnergyVADProvider
+    cfg = CoreConfig(**tomllib.load(open(CONFIG_DIR / "config-master.toml", "rb")))  # mic 44.1k
+    # VAD provider declares 16 kHz; with asr/vt disabled the canonical comes purely from the provider.
+    cfg.asr.enabled = False
+    cfg.voice_trigger.enabled = False
+    neg = AudioNegotiator.from_pipeline(cfg, vad_provider=EnergyVADProvider({}))
+    assert neg.canonical.rate == 16000
+
+
+def test_provider_capability_used_when_config_rate_unset():
+    cfg = CoreConfig(**tomllib.load(open(CONFIG_DIR / "config-master.toml", "rb")))  # mic 44.1k
+    cfg.vad.enabled = False
+    cfg.asr.enabled = False
+    cfg.voice_trigger.enabled = True
+    cfg.voice_trigger.sample_rate = None              # no operator override → use the provider's capability
+    neg = AudioNegotiator.from_pipeline(cfg, wake_provider=_MockConsumer([8000]))
+    assert neg.canonical.rate == 8000                 # the provider's declared rate, not a config number
+
+
+def test_authoritative_config_overrides_provider_capability():
+    cfg = CoreConfig(**tomllib.load(open(CONFIG_DIR / "config-master.toml", "rb")))
+    cfg.vad.enabled = False
+    cfg.asr.enabled = False
+    cfg.voice_trigger.enabled = True
+    cfg.voice_trigger.sample_rate = 16000             # authoritative override
+    neg = AudioNegotiator.from_pipeline(cfg, wake_provider=_MockConsumer([8000]))
+    assert neg.canonical.rate == 16000                # operator pin wins over the provider's 8 kHz
+
+
 def test_infeasible_config_is_fatal():
     """A consumer needing a higher rate than the mic can deliver fails loudly at from_config."""
     from irene.utils.audio_negotiation import AudioNegotiationError

@@ -154,4 +154,16 @@ class ASRProvider(ProviderBase):
             "streaming": True,  # Most providers support streaming
             "real_time": False,  # Override if real-time processing supported
             "confidence_scores": False  # Override if confidence scores provided
-        } 
+        }
+
+    def audio_contract(self):
+        """What this ASR engine needs from the pipeline (ARCH-18). ASR is 16 kHz-standard; a provider with
+        a `get_supported_sample_rates` is honoured if present."""
+        from ...utils.audio_negotiation import AudioContract
+        get_rates = getattr(self, "get_supported_sample_rates", None)
+        rates: List[int] = [16000]
+        if callable(get_rates):
+            result: Any = get_rates()
+            if result:
+                rates = [int(r) for r in result]
+        return AudioContract(rates, rates[0], ["pcm16"], "pcm16", 1)
