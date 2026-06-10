@@ -27,7 +27,6 @@ from ..intents.ports import TTSPort  # QUAL-24: domain capability port (applicat
 # Import TTS provider base class and dynamic loader
 from ..providers.tts import TTSProvider
 from ..utils.loader import dynamic_loader
-from ..utils.audio_helpers import AudioTranscoder
 
 logger = logging.getLogger(__name__)
 
@@ -300,15 +299,20 @@ class TTSComponent(Component, TTSPlugin, WebAPIPlugin, TTSPort):
         except Exception as e:
             logger.error(f"Failed to load fallback console provider: {e}")
     
-    async def _conform_output_audio(self, audio_data, target_rate: int, target_channels: int):
-        """Conform synthesized audio to the requested output rate/channels via the shared `AudioTranscoder`
-        (ARCH-18 PR-4 — the one transform primitive, both directions). No-op if already conformant. This
-        collapses the three previously-duplicated TTS resample blocks into one call."""
-        if audio_data.sample_rate == target_rate and audio_data.channels == target_channels:
+    async def _conform_to_sink(self, audio_data, rate, channels):
+        """Conform synthesized audio DOWN to the streaming caller's sink (its requested rate/channels, CD
+        default) via the SHARED `core.audio_negotiator.to_sink` (ARCH-18 PR-4c — the output mirror of
+        `to_canonical`). Conform-down ONLY: a caller that asks for a higher rate than the TTS engine produces
+        receives the engine's native rate (any device plays lower); read the result's `sample_rate`/`channels`
+        for the actual output. No-op (pass-through) when the negotiator isn't wired."""
+        from ..utils.audio_negotiation import AudioContract
+        negotiator = getattr(self.core, "audio_negotiator", None)
+        if negotiator is None:
             return audio_data
-        logger.debug(f"Converting audio from {audio_data.sample_rate}Hz/{audio_data.channels}ch "
-                     f"to {target_rate}Hz/{target_channels}ch")
-        return await AudioTranscoder.resample_audio_data(audio_data, target_rate)
+        r = int(rate or 44100)
+        c = int(channels or 2)
+        sink = AudioContract([r], r, ["pcm16"], "pcm16", c)
+        return await negotiator.to_sink(audio_data, sink)
 
     # TTSPlugin interface - delegates to providers
     async def synthesize_to_file(self, text: str, output_path: Path, trace_context: Optional[TraceContext] = None, **kwargs) -> None:
@@ -661,11 +665,11 @@ class TTSComponent(Component, TTSPlugin, WebAPIPlugin, TTSPort):
                                 }
                             )
                             
-                            # Convert to requested format if needed
-                            target_rate = audio_config.sample_rate
-                            target_channels = audio_config.channels
-                            
-                            audio_data = await self._conform_output_audio(audio_data, target_rate, target_channels)
+                            # ARCH-18 PR-4c: conform DOWN to the caller's sink (CD default), then read the
+                            # actual rate/channels (conform-down may keep a lower native rate).
+                            audio_data = await self._conform_to_sink(audio_data, audio_config.sample_rate, audio_config.channels)
+                            target_rate = audio_data.sample_rate
+                            target_channels = audio_data.channels
 
                             # Extract PCM data and encode as base64
                             pcm_data = audio_data.data
@@ -924,11 +928,11 @@ class TTSComponent(Component, TTSPlugin, WebAPIPlugin, TTSPort):
                                         }
                                     )
                                     
-                                    # Convert to requested format if needed
-                                    target_rate = request.audio_config.sample_rate
-                                    target_channels = request.audio_config.channels
-                                    
-                                    audio_data = await self._conform_output_audio(audio_data, target_rate, target_channels)
+                                    # ARCH-18 PR-4c: conform DOWN to the caller's sink (CD default); the actual
+                                    # rate/channels may stay at the engine's native (conform-down only).
+                                    audio_data = await self._conform_to_sink(audio_data, request.audio_config.sample_rate, request.audio_config.channels)
+                                    target_rate = audio_data.sample_rate
+                                    target_channels = audio_data.channels
 
                                     # Split audio into chunks and stream
                                     chunk_duration_ms = 100  # 100ms chunks
@@ -1234,11 +1238,11 @@ class TTSComponent(Component, TTSPlugin, WebAPIPlugin, TTSPort):
                                         }
                                     )
                                     
-                                    # Convert to session format if needed
-                                    target_rate = session_config.sample_rate
-                                    target_channels = session_config.channels
-                                    
-                                    audio_data = await self._conform_output_audio(audio_data, target_rate, target_channels)
+                                    # ARCH-18 PR-4c: conform DOWN to the session's sink (CD default); the actual
+                                    # rate/channels may stay at the engine's native (conform-down only).
+                                    audio_data = await self._conform_to_sink(audio_data, session_config.sample_rate, session_config.channels)
+                                    target_rate = audio_data.sample_rate
+                                    target_channels = audio_data.channels
 
                                     # Stream binary audio chunks
                                     bytes_per_ms = (target_rate * target_channels * 2) // 1000  # 16-bit PCM

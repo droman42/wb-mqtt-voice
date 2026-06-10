@@ -205,6 +205,10 @@ class AudioConfig(BaseModel):
     canonical_rate: Optional[int] = Field(default=None, description="Pin the canonical pipeline sample rate (Hz); None = auto-derive")
     canonical_format: Optional[str] = Field(default=None, description="Pin the canonical sample format ('pcm16'|'float32'); None = auto")
     canonical_channels: Optional[int] = Field(default=None, description="Pin the canonical channel count; None = auto")
+    # ARCH-18 PR-4c: optional override of the OUTPUT sink (playback device) capability; else the active audio
+    # provider's declared capability, else CD (44.1 kHz / stereo). Producers conform DOWN to this.
+    output_rate: Optional[int] = Field(default=None, description="Override the output sink sample rate (Hz); None = provider/CD")
+    output_channels: Optional[int] = Field(default=None, description="Override the output sink channel count; None = provider/CD")
     providers: Dict[str, Dict[str, Any]] = Field(
         default_factory=dict,
         description="Provider-specific configurations"

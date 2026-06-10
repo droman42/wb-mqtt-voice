@@ -84,7 +84,7 @@ class AsyncVACore:
             return providers.get(getattr(comp, "default_provider", None)) if comp else None
 
         return AudioNegotiator.from_pipeline(self.config, wake_provider=_active("voice_trigger"),
-                                             asr_provider=_active("asr"))
+                                             asr_provider=_active("asr"), audio_provider=_active("audio"))
 
     async def start(self) -> None:
         """Initialize and start the assistant"""

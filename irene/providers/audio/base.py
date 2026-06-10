@@ -31,7 +31,16 @@ class AudioProvider(ProviderBase):
         """
         # Call ProviderBase.__init__ to get status tracking, logging, etc.
         super().__init__(config)
-    
+
+    def audio_contract(self):
+        """The output SINK capability this device can play (ARCH-18 PR-4c). Default = CD (44.1 kHz / pcm16 /
+        stereo); a device that supports more declares it, and 'any device plays lower' (conform-down only).
+        Providers reading a configured rate/channels (e.g. sounddevice) override this."""
+        from ...utils.audio_negotiation import AudioContract
+        rate = int(self.config.get("sample_rate", 44100))
+        channels = int(self.config.get("channels", 2))
+        return AudioContract([rate], rate, ["pcm16"], "pcm16", channels)
+
     @abstractmethod
     async def play_file(self, file_path: Path, **kwargs) -> None:
         """

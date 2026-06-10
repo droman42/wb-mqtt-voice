@@ -23,17 +23,20 @@ from ..utils.audio_negotiation import AudioContract, CanonicalFormat, derive_can
 logger = logging.getLogger(__name__)
 
 _VAD_RATE = 16000  # the VAD providers are 16 kHz
+# ARCH-18 PR-4c: default OUTPUT sink when nothing's declared — full CD (44.1 kHz / pcm16 / stereo).
+_CD_SINK = AudioContract([44100], 44100, ["pcm16"], "pcm16", 2)
 
 
 class AudioNegotiator:
-    """Holds the negotiated canonical format and transforms capture to it once."""
+    """Holds the negotiated canonical (input) format + the output sink, and transforms audio to each."""
 
     def __init__(self, canonical: CanonicalFormat):
         self.canonical = canonical
+        self.output_sink: AudioContract = _CD_SINK  # ARCH-18 PR-4c; resolved in from_pipeline
 
     @classmethod
     def from_pipeline(cls, config: CoreConfig, *, vad_provider=None, wake_provider=None,
-                      asr_provider=None) -> "AudioNegotiator":
+                      asr_provider=None, audio_provider=None) -> "AudioNegotiator":
         """Capability-driven build (ARCH-18): the **active providers declare** their `AudioContract`s, and
         the operator's AUTHORITATIVE `[asr]`/`[voice_trigger]` sample-rate (if set) overrides the provider's
         preference. Falls back to the config-only contract for any party whose provider isn't available.
@@ -57,7 +60,19 @@ class AudioNegotiator:
         derived = derive_canonical(source, consumers)
         canonical = cls._apply_config_pin(config, source, consumers, derived)
         cls._log_startup_summary(source, labeled, canonical)
-        return cls(canonical)
+        neg = cls(canonical)
+        neg.output_sink = cls._resolve_output_sink(config, audio_provider)
+        return neg
+
+    @staticmethod
+    def _resolve_output_sink(config: CoreConfig, audio_provider) -> AudioContract:
+        """The local OUTPUT sink (ARCH-18 PR-4c): the active audio provider's declared capability, with an
+        optional `[audio]` `output_rate`/`output_channels` override; **CD** when neither specifies."""
+        base = audio_provider.audio_contract() if audio_provider is not None else _CD_SINK
+        ac = getattr(config, "audio", None)
+        rate = getattr(ac, "output_rate", None) or max(base.supported_rates)
+        channels = getattr(ac, "output_channels", None) or base.channels
+        return AudioContract([rate], rate, ["pcm16"], "pcm16", channels)
 
     @staticmethod
     def _log_startup_summary(source, labeled, canonical: CanonicalFormat) -> None:
@@ -143,6 +158,37 @@ class AudioNegotiator:
                 {"sample_rate": out.sample_rate, "channels": out.channels},
                 {"canonical": f"{self.canonical.rate}Hz/{self.canonical.format}/{self.canonical.channels}ch",
                  "method": method},
+                (time.time() - t0) * 1000.0,
+            )
+        return out
+
+    async def to_sink(self, audio_data: AudioData, sink: Optional[AudioContract] = None,
+                      trace_context: Optional[TraceContext] = None) -> AudioData:
+        """Conform a producer's audio (e.g. TTS) DOWN to an output `sink`'s capability (ARCH-18 PR-4c) —
+        the OUTPUT mirror of `to_canonical`. `sink` defaults to the resolved local output sink (CD if
+        unspecified). Conform-down ONLY: any device plays lower, so pass through when the producer is `<=`
+        the sink, and downsample/downmix only when it exceeds it; never upsample."""
+        sink = sink or self.output_sink
+        sink_rate = max(sink.supported_rates)
+        if audio_data.sample_rate <= sink_rate and audio_data.channels <= sink.channels:
+            return audio_data  # already playable by the sink
+
+        t0 = time.time()
+        out = audio_data
+        method = "none"
+        if out.channels > sink.channels and sink.channels == 1:
+            out = self._downmix_to_mono(out)
+        if out.sample_rate > sink_rate:
+            conv = AudioTranscoder.get_optimal_conversion_path(out.sample_rate, sink_rate, "general")
+            method = getattr(conv, "value", str(conv))
+            out = await AudioTranscoder.resample_audio_data(out, sink_rate, conv)
+
+        if trace_context:
+            trace_context.record_stage(
+                "audio_output_conform",
+                {"sample_rate": audio_data.sample_rate, "channels": audio_data.channels},
+                {"sample_rate": out.sample_rate, "channels": out.channels},
+                {"sink": f"<={sink_rate}Hz/{sink.channels}ch", "method": method},
                 (time.time() - t0) * 1000.0,
             )
         return out

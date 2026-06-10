@@ -107,6 +107,48 @@ async def test_to_canonical_downmixes_stereo_to_mono():
     assert len(out.data) == len(stereo) // 2          # mono has half the samples
 
 
+def test_output_sink_defaults_to_cd():
+    cfg = CoreConfig(**tomllib.load(open(CONFIG_DIR / "development.toml", "rb")))
+    neg = AudioNegotiator.from_config(cfg)                 # no audio_provider → CD default
+    assert max(neg.output_sink.supported_rates) == 44100
+    assert neg.output_sink.channels == 2
+
+
+def test_output_sink_audio_override():
+    cfg = CoreConfig(**tomllib.load(open(CONFIG_DIR / "development.toml", "rb")))
+    cfg.audio.output_rate = 22050
+    cfg.audio.output_channels = 1
+    neg = AudioNegotiator.from_config(cfg)
+    assert max(neg.output_sink.supported_rates) == 22050
+    assert neg.output_sink.channels == 1
+
+
+async def test_to_sink_passes_through_when_below_device():
+    cfg = CoreConfig(**tomllib.load(open(CONFIG_DIR / "development.toml", "rb")))
+    neg = AudioNegotiator.from_config(cfg)                 # CD sink (44.1k/stereo)
+    # a 22 kHz mono TTS frame is <= the sink → played as-is (any device plays lower)
+    frame = AudioData(data=b"\x00\x00" * 220, timestamp=0.0, sample_rate=22050, channels=1)
+    assert await neg.to_sink(frame) is frame
+
+
+async def test_to_sink_downsamples_when_above_device():
+    cfg = CoreConfig(**tomllib.load(open(CONFIG_DIR / "development.toml", "rb")))
+    cfg.audio.output_rate = 16000                          # device max 16 kHz
+    neg = AudioNegotiator.from_config(cfg)
+    out = await neg.to_sink(AudioData(data=b"\x00\x00" * 480, timestamp=0.0, sample_rate=48000, channels=1))
+    assert out.sample_rate == 16000                        # conformed DOWN to the device
+
+
+async def test_to_sink_downmixes_stereo_for_mono_sink():
+    from irene.utils.audio_negotiation import AudioContract
+    cfg = CoreConfig(**tomllib.load(open(CONFIG_DIR / "development.toml", "rb")))
+    neg = AudioNegotiator.from_config(cfg)
+    mono_sink = AudioContract([44100], 44100, ["pcm16"], "pcm16", 1)
+    stereo = AudioData(data=b"\x10\x00\x20\x00" * 100, timestamp=0.0, sample_rate=44100, channels=2)
+    out = await neg.to_sink(stereo, mono_sink)
+    assert out.channels == 1
+
+
 def test_infeasible_config_is_fatal():
     """A consumer needing a higher rate than the mic can deliver fails loudly at from_config."""
     from irene.utils.audio_negotiation import AudioNegotiationError

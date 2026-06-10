@@ -185,6 +185,10 @@ concurrent_playback = false         # Allow multiple audio streams simultaneousl
 # canonical_rate = 16000            # Pin the internal sample rate (Hz)
 # canonical_format = "pcm16"        # Pin the internal sample format ("pcm16" | "float32")
 # canonical_channels = 1            # Pin the internal channel count
+# ARCH-18 PR-4c: optional override of the OUTPUT sink (playback device) capability. Omit to use the active
+# audio provider's declared capability, else CD (44.1 kHz / stereo). Producers (TTS) conform DOWN to this.
+# output_rate = 44100               # Override the output sink sample rate (Hz)
+# output_channels = 2               # Override the output sink channel count
 
 # Console Audio Provider (for testing/development)
 [audio.providers.console]
