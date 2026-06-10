@@ -661,7 +661,7 @@ export interface LLMConfig {
 export interface VoiceTriggerConfig {
   enabled: boolean;
   default_provider?: string;
-  wake_words: string[];
+  wake_words: WakeWordSpec[];
   confidence_threshold: number;
   buffer_seconds: number;
   timeout_seconds: number;
@@ -854,6 +854,15 @@ export interface ConfigFieldSchema {
   default?: any;
   constraints?: Record<string, any>;
   properties?: Record<string, ConfigFieldSchema>; // For nested objects
+  items?: ConfigFieldSchema; // For arrays of objects, e.g. wake_words: WakeWordSpec[] (QUAL-20)
+}
+
+// A single wake word, uniform across voice-trigger providers (QUAL-20).
+export interface WakeWordSpec {
+  name: string;
+  model: string;
+  threshold: number;
+  language: string;
 }
 
 export interface ConfigSectionSchema {
@@ -1110,7 +1119,7 @@ export interface VoiceTriggerConfigureResponse extends BaseApiResponse {
   message: string;
   default_provider?: string;
   enabled_providers: string[];
-  wake_words: string[];
+  wake_words: (string | WakeWordSpec)[];  // runtime response may carry names or full specs (QUAL-20)
 }
 
 export interface TextProcessorConfigureResponse extends BaseApiResponse {

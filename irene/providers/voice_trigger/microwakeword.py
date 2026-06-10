@@ -50,9 +50,6 @@ class MicroWakeWordProvider(VoiceTriggerProvider):
 
     def __init__(self, config: Dict[str, Any]):
         super().__init__(config)
-        # Custom model: a manifest (.json) or a bare .tflite path. None → resolve built-ins by name.
-        self.model_path: Optional[str] = config.get('model_path')
-
         # Lazily built in _do_initialize: one detector per wake word + a shared feature extractor.
         self._detectors: List[Any] = []
         self._features: Any = None
@@ -89,42 +86,42 @@ class MicroWakeWordProvider(VoiceTriggerProvider):
         self._detectors = []
         self._detector_words = []
 
-        for word in self.wake_words:
-            detector = await self._build_detector(pmw, word)
+        for spec in self.wake_word_specs:
+            detector = await self._build_detector(pmw, spec)
             if detector is not None:
                 self._detectors.append(detector)
-                self._detector_words.append(word)
+                self._detector_words.append(spec["name"])
 
         if not self._detectors:
             raise RuntimeError(
-                f"No microWakeWord model resolved for wake words {self.wake_words!r} "
-                f"(model_path={self.model_path!r})"
+                f"No microWakeWord model resolved for wake words {self.wake_words!r}"
             )
         logger.info("microWakeWord ready: %d detector(s) for %s", len(self._detectors), self._detector_words)
 
-    async def _build_detector(self, pmw: Any, word: str) -> Optional[Any]:
-        """Resolve a single wake word to a `MicroWakeWord` (built-in, custom manifest, or asset)."""
-        # 1) Custom model supplied directly (manifest .json → from_config; .tflite needs a manifest).
-        if self.model_path:
-            path = Path(self.model_path)
-            if path.suffix == ".json" and path.exists():
-                return pmw.MicroWakeWord.from_config(str(path))
-            logger.warning("microWakeWord model_path %s is not a usable manifest (.json)", self.model_path)
+    async def _build_detector(self, pmw: Any, spec: Dict[str, Any]) -> Optional[Any]:
+        """Resolve a wake word's `model` ref to a `MicroWakeWord` (custom manifest, built-in, or asset)."""
+        model_ref = spec["model"]
 
-        # 2) Built-in model by (aliased) name.
-        member = _BUILTIN_ALIASES.get(word.lower())
-        if member is not None:
-            return pmw.MicroWakeWord.from_builtin(pmw.Model[member])
+        # 1) Custom model manifest supplied by path (.json → from_config; the microwakeword.com output).
+        if model_ref.endswith(".json") and Path(model_ref).exists():
+            return pmw.MicroWakeWord.from_config(model_ref)
+
+        # 2) Built-in model by (aliased) name — check the model ref then the label.
+        for candidate in (model_ref, spec["name"]):
+            member = _BUILTIN_ALIASES.get(str(candidate).lower())
+            if member is not None:
+                return pmw.MicroWakeWord.from_builtin(pmw.Model[member])
 
         # 3) Asset-managed custom model (deployment-supplied manifest registered under "microwakeword").
         try:
-            resolved = await self.asset_manager.download_model("microwakeword", word)
-            if resolved and Path(resolved).exists() and Path(resolved).suffix == ".json":
+            resolved = await self.asset_manager.download_model("microwakeword", model_ref)
+            if resolved and Path(resolved).exists() and str(resolved).endswith(".json"):
                 return pmw.MicroWakeWord.from_config(str(resolved))
         except Exception as e:  # asset miss is not fatal — just means this word has no model
-            logger.debug("No asset-managed microWakeWord model for '%s': %s", word, e)
+            logger.debug("No asset-managed microWakeWord model for '%s': %s", model_ref, e)
 
-        logger.warning("microWakeWord: no built-in or custom model for wake word '%s' — skipped", word)
+        logger.warning("microWakeWord: no built-in or custom model for '%s' (%s) — skipped",
+                       spec["name"], model_ref)
         return None
 
     async def detect_wake_word(self, audio_data: AudioData) -> WakeWordResult:

@@ -152,19 +152,20 @@ class TestParameterSchemaUnification:
         # Test OpenWakeWord
         openwakeword_schema = AutoSchemaRegistry.get_provider_parameter_schema('voice_trigger', 'openwakeword')
         
-        expected_openwakeword_fields = {'wake_words', 'threshold', 'inference_framework'}
+        # QUAL-20: threshold/model_path moved into the per-WakeWordSpec wake_words list (uniform shape).
+        expected_openwakeword_fields = {'wake_words', 'inference_framework'}
         actual_fields = set(openwakeword_schema.keys())
-        
+
         # Check that expected fields are present (may have additional fields)
         missing_fields = expected_openwakeword_fields - actual_fields
         assert not missing_fields, f"OpenWakeWord missing expected parameters: {missing_fields}"
-        
+
         print(f"✓ OpenWakeWord parameter schema: {list(openwakeword_schema.keys())}")
-        
-        # Test MicroWakeWord  
+
+        # Test MicroWakeWord
         microwakeword_schema = AutoSchemaRegistry.get_provider_parameter_schema('voice_trigger', 'microwakeword')
-        
-        expected_microwakeword_fields = {'wake_words', 'threshold', 'model_path'}
+
+        expected_microwakeword_fields = {'wake_words', 'sliding_window_size'}
         actual_fields = set(microwakeword_schema.keys())
         
         missing_fields = expected_microwakeword_fields - actual_fields

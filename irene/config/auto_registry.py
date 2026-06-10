@@ -291,6 +291,13 @@ class AutoSchemaRegistry:
                     nested_schema = cls._extract_nested_object_schema(field_info.annotation, field_name, model_name)
                     if nested_schema:
                         field_schema["properties"] = nested_schema
+
+                # For arrays of nested models (e.g. List[WakeWordSpec]), extract the item schema so the
+                # schema-driven UI can render a structured editor instead of a string list (QUAL-20).
+                if field_type == "array" and hasattr(field_info, 'annotation'):
+                    item_schema = cls._extract_array_item_schema(field_info.annotation)
+                    if item_schema:
+                        field_schema["items"] = item_schema
                 
                 # Add constraints if available (from field annotations)
                 if hasattr(field_info, 'json_schema_extra') and isinstance(field_info.json_schema_extra, dict):
@@ -396,6 +403,26 @@ class AutoSchemaRegistry:
             logger.warning(f"Failed to extract nested schema for {annotation}: {e}")
             return None
     
+    @classmethod
+    def _extract_array_item_schema(cls, annotation) -> Optional[Dict[str, Any]]:
+        """For a `List[Model]` annotation, return the item's object schema
+        (`{"type": "object", "properties": {...}}`); ``None`` for plain arrays like `List[str]`."""
+        try:
+            if get_origin(annotation) is not list:
+                return None
+            args = get_args(annotation)
+            if not args:
+                return None
+            item_type = args[0]
+            if (hasattr(item_type, '__bases__') and
+                    any(issubclass(base, BaseModel) for base in item_type.__bases__ if hasattr(base, '__name__'))):
+                fields = cls._extract_model_schema(item_type).get("fields", {})
+                return {"type": "object", "properties": fields}
+            return None
+        except Exception as e:
+            logger.warning(f"Failed to extract array item schema for {annotation}: {e}")
+            return None
+
     @classmethod
     def _extract_provider_schemas(cls, component_type: str) -> Dict[str, Any]:
         """Extract provider schemas for a specific component type using AutoSchemaRegistry"""

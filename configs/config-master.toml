@@ -319,36 +319,37 @@ enabled = true                      # keep enabled — this is the offline fallb
 [voice_trigger]
 enabled = false                      # Enable voice trigger component
 default_provider = "openwakeword"   # Default provider: "openwakeword", "microwakeword"
-wake_words = ["jarvis", "alexa"]    # Wake words to detect - using supported OpenWakeWord models
+# Wake words are declared PER-PROVIDER below (QUAL-20). This component-level list is an optional
+# override: when non-empty it is injected into the active provider; normally leave it empty.
+wake_words = []
 confidence_threshold = 0.8          # Detection confidence threshold (0.0-1.0)
 buffer_seconds = 1.0               # Audio buffer duration in seconds
 timeout_seconds = 5.0              # Detection timeout in seconds
 sample_rate = 16000                # AUTHORITATIVE: Component sample rate (configuration takes precedence)
-channels = 1                       # AUTHORITATIVE: Number of audio channels (1=mono, 2=stereo)  
+channels = 1                       # AUTHORITATIVE: Number of audio channels (1=mono, 2=stereo)
 allow_resampling = true            # Enable resampling for voice triggers (with optimized algorithms)
 resample_quality = "fast"          # Resampling quality optimized for low-latency: "fast", "medium", "high"
 strict_validation = true           # Fatal error on provider requirement conflicts
 
-# OpenWakeWord Provider (recommended, open source)
+# OpenWakeWord Provider (recommended, open source). Each wake word: {name, model, threshold, language}.
+# `model` is a built-in catalog name (alexa | hey_jarvis | hey_mycroft) or a path to a custom .onnx/.tflite.
 [voice_trigger.providers.openwakeword]
 enabled = false                      # Enable OpenWakeWord provider
-wake_words = ["alexa", "jarvis"]   # List of wake words to detect
-threshold = 0.8                    # Detection threshold (0.0 - 1.0)
 inference_framework = "onnx"       # Framework: "onnx" (default, no torch), "tflite"
 preload_models = false             # Preload AI models during provider initialization for faster startup
+wake_words = [
+    { name = "hey_jarvis", model = "hey_jarvis", threshold = 0.8, language = "en" },
+]
 
-# MicroWakeWord Provider (ESP32/embedded)
+# MicroWakeWord Provider (server-side via pymicro-wakeword; same "micro" stack as the ESP32). `model` is a
+# built-in (okay_nabu | hey_jarvis | hey_mycroft | alexa) or a path to a custom .tflite/manifest (per-unit RU).
 [voice_trigger.providers.microwakeword]
 enabled = false                     # Enable MicroWakeWord provider
-wake_words = ["irene"]             # List of wake words to detect (must have corresponding models)
-threshold = 0.8                    # Detection threshold (0.0 - 1.0)
-model_path = ""                    # Legacy: Path to TensorFlow Lite model file (.tflite). Use asset management instead.
-feature_buffer_size = 49           # Feature buffer size (49 * 10ms = 490ms)
-detection_window_size = 3          # Detection window size (consecutive detections needed)
-stride_duration_ms = 10            # Audio processing stride in milliseconds  
-window_duration_ms = 30            # Audio analysis window duration
-num_mfcc_features = 40             # Number of MFCC features for analysis
-preload_models = false             # Preload AI models during provider initialization for faster startup
+sliding_window_size = 5            # Probabilities averaged per detection (micro-specific)
+preload_models = false             # Preload AI models
+wake_words = [
+    { name = "okay_nabu", model = "okay_nabu", threshold = 0.8, language = "en" },
+]
 
 # ============================================================
 # NLU (NATURAL LANGUAGE UNDERSTANDING) COMPONENT CONFIGURATION

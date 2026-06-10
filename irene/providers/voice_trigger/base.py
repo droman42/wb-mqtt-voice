@@ -24,10 +24,36 @@ class VoiceTriggerProvider(ProviderBase):
     
     def __init__(self, config: Dict[str, Any]):
         super().__init__(config)
-        self.wake_words = config.get('wake_words', ['irene', 'jarvis'])
+        # QUAL-20: wake words are a uniform list of WakeWordSpec-shaped entries {name, model, threshold,
+        # language} across all providers. Tolerate bare strings (name == model) for convenience.
+        self.wake_word_specs = self._normalize_wake_words(config.get('wake_words', []))
+        self.wake_words = [s['name'] for s in self.wake_word_specs]   # back-compat: the name list
         self.threshold = config.get('threshold', 0.8)
         self.sample_rate = config.get('sample_rate', 16000)
         self.channels = config.get('channels', 1)
+
+    @staticmethod
+    def _normalize_wake_words(raw: Any) -> List[Dict[str, Any]]:
+        """Coerce the configured wake words to a list of dicts {name, model, threshold, language},
+        accepting bare strings, dicts, or pydantic WakeWordSpec objects."""
+        specs: List[Dict[str, Any]] = []
+        for item in raw or []:
+            if isinstance(item, str):
+                name = item
+                model, threshold, language = item, 0.8, "en"
+            elif isinstance(item, dict):
+                name = item.get("name") or item.get("model") or ""
+                model = item.get("model") or name
+                threshold = float(item.get("threshold", 0.8))
+                language = item.get("language", "en")
+            else:  # pydantic WakeWordSpec (or any attr-bearing object)
+                name = getattr(item, "name", "") or getattr(item, "model", "")
+                model = getattr(item, "model", "") or name
+                threshold = float(getattr(item, "threshold", 0.8))
+                language = getattr(item, "language", "en")
+            if name:
+                specs.append({"name": name, "model": model, "threshold": threshold, "language": language})
+        return specs
         
     @abstractmethod
     async def detect_wake_word(self, audio_data: AudioData) -> WakeWordResult:

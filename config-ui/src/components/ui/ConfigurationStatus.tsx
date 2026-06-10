@@ -91,7 +91,12 @@ export const ConfigurationStatus: React.FC<ConfigurationStatusProps> = ({
                 <div>{t('configStatus.confidenceThreshold', { value: testResult.confidence_threshold })}</div>
               )}
               {status === 'applied' && testResult.wake_words && (
-                <div>{t('configStatus.wakeWords', { value: testResult.wake_words.join(', ') })}</div>
+                <div>{t('configStatus.wakeWords', {
+                  value: testResult.wake_words
+                    .map((w: any) => (typeof w === 'string' ? w : w?.name ?? ''))
+                    .filter(Boolean)
+                    .join(', ')
+                })}</div>
               )}
               {status === 'applied' && testResult.enabled_handlers && (
                 <div>{t('configStatus.handlers', { count: testResult.enabled_handlers.length })}</div>

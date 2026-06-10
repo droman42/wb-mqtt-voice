@@ -88,7 +88,7 @@ fallback_providers = ['console']
 [voice_trigger]
 enabled = true
 default_provider = "openwakeword"
-wake_words = ['irene', 'jarvis']
+wake_words = []                     # per-provider (QUAL-20); component-level override left empty
 confidence_threshold = 0.8
 buffer_seconds = 1.0
 timeout_seconds = 5.0

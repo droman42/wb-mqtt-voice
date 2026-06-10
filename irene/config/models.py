@@ -256,13 +256,29 @@ class LLMConfig(BaseModel):
     )
 
 
+class WakeWordSpec(BaseModel):
+    """A single wake word — the uniform unit shared by every voice-trigger provider (QUAL-20).
+
+    ``name`` is the provider-agnostic label (also the room/satellite identity key); ``model`` is an
+    artifact reference (a built-in catalog name, or a path to a custom ``.tflite``/``.onnx`` + manifest —
+    the per-ESP32-unit Russian model); ``threshold`` and ``language`` are the per-word knobs. Provider
+    mechanics (openWakeWord ``inference_framework``, microWakeWord ``sliding_window_size``) live on the
+    provider, not here — uniformity is the shared shape, not a merge of provider internals.
+    """
+    name: str = Field(description="Logical wake-word label, e.g. 'irene' (also the room/identity key)")
+    model: str = Field(description="Model ref: a built-in catalog name or a path to a custom model/manifest")
+    threshold: float = Field(default=0.8, ge=0.0, le=1.0, description="Detection threshold (0.0-1.0)")
+    language: str = Field(default="en", description="Wake-word language (2-letter), e.g. 'ru'")
+
+
 class VoiceTriggerConfig(BaseModel):
     """Voice trigger / wake word component configuration with Phase 5 audio enhancements"""
     enabled: bool = Field(default=False, description="Enable voice trigger component")
     default_provider: Optional[str] = Field(default=None, description="Default voice trigger provider")
-    wake_words: List[str] = Field(
+    wake_words: List[WakeWordSpec] = Field(
         default_factory=list,
-        description="Wake words to detect"
+        description="Optional component-level wake-word override (QUAL-20); when set, injected into the "
+                    "active provider. Normally left empty — wake words are declared per-provider."
     )
     confidence_threshold: float = Field(default=0.8, description="Detection confidence threshold")
     buffer_seconds: float = Field(default=1.0, description="Audio buffer duration in seconds")

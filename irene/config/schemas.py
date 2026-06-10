@@ -19,6 +19,8 @@ This module provides:
 from typing import Dict, Any, List, Optional, Type, Literal
 from pydantic import BaseModel, Field
 
+from .models import WakeWordSpec  # QUAL-20: the uniform per-provider wake-word unit
+
 
 # ============================================================
 # PROVIDER CONFIGURATION SCHEMAS
@@ -239,24 +241,26 @@ class ConsoleLLMProviderSchema(LLMProviderSchema):
 # ============================================================
 
 class OpenWakeWordProviderSchema(VoiceTriggerProviderSchema):
-    """OpenWakeWord provider configuration schema"""
-    wake_words: List[str] = Field(default_factory=lambda: ["alexa", "jarvis"], description="List of wake words to detect")
-    threshold: float = Field(default=0.8, ge=0.0, le=1.0, description="Detection threshold (0.0 - 1.0)")
+    """OpenWakeWord provider configuration schema (QUAL-20: uniform per-provider WakeWordSpec list)."""
+    wake_words: List[WakeWordSpec] = Field(
+        default_factory=lambda: [WakeWordSpec(name="hey_jarvis", model="hey_jarvis")],
+        description="Wake words to detect (uniform shape shared with microWakeWord)")
     inference_framework: str = Field(default="onnx", description="Inference framework: onnx (default, no torch) | tflite")
-    model_path: Optional[str] = Field(default=None, description="Optional custom wake-word model file (e.g. a trained Russian phrase)")
     preload_models: bool = Field(default=False, description="Preload AI models during provider initialization")
 
 
 class MicroWakeWordProviderSchema(VoiceTriggerProviderSchema):
-    """MicroWakeWord provider configuration schema"""
-    wake_words: List[str] = Field(default_factory=lambda: ["irene"], description="List of wake words to detect (must have corresponding models)")
-    threshold: float = Field(default=0.8, ge=0.0, le=1.0, description="Detection threshold (0.0 - 1.0)")
-    model_path: Optional[str] = Field(default=None, description="Legacy: Path to TensorFlow Lite model file (.tflite). Use asset management instead.")
-    feature_buffer_size: int = Field(default=49, description="Feature buffer size")
-    detection_window_size: int = Field(default=3, description="Detection window size")
-    stride_duration_ms: int = Field(default=10, description="Audio processing stride")
-    window_duration_ms: int = Field(default=30, description="Audio analysis window duration")
-    num_mfcc_features: int = Field(default=40, description="Number of MFCC features")
+    """microWakeWord provider configuration schema (QUAL-20: thin adapter over pymicro-wakeword).
+
+    The frontend/inference params (MFCC window/stride, feature buffer, detection window) are owned by
+    the library now and were removed — only the uniform wake-word list and the micro-specific
+    sliding window remain.
+    """
+    wake_words: List[WakeWordSpec] = Field(
+        default_factory=lambda: [WakeWordSpec(name="okay_nabu", model="okay_nabu")],
+        description="Wake words to detect (uniform shape shared with openWakeWord). `model` is a built-in "
+                    "name or a path to a custom .tflite/manifest (a per-unit Russian model)")
+    sliding_window_size: int = Field(default=5, ge=1, description="Probabilities averaged per detection (micro-specific)")
     preload_models: bool = Field(default=False, description="Preload AI models")
 
 

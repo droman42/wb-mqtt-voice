@@ -26,23 +26,22 @@ class OpenWakeWordProvider(VoiceTriggerProvider):
         self.model = None
         # ONNX by default (QUAL-20): keeps openWakeWord in the no-torch ONNX-family image; tflite is opt-in.
         self.inference_framework = config.get('inference_framework', 'onnx')
-        # Optional custom model file (a user-trained wake word, e.g. a Russian phrase) loaded alongside
-        # any built-in wake words.
-        self.model_path = config.get('model_path')
         self.chunk_size = config.get('chunk_size', 1280)  # 80ms at 16kHz
         self.n_samples_per_prediction = self.chunk_size
-        
+
         # Asset management integration - single source of truth
         from ...core.assets import get_asset_manager
         self.asset_manager = get_asset_manager()
-        
+
         # Available wake words and their default models (mapped to asset registry)
         self.available_models = {
             'alexa': 'alexa_v0.1',
-            'hey_jarvis': 'hey_jarvis_v0.1', 
+            'hey_jarvis': 'hey_jarvis_v0.1',
             'hey_mycroft': 'hey_mycroft_v0.1',
             'jarvis': 'hey_jarvis_v0.1'    # Alias for hey_jarvis
         }
+        # QUAL-20: per-wake-word detection thresholds (from the uniform WakeWordSpec list).
+        self._thresholds: Dict[str, float] = {s['name']: s['threshold'] for s in self.wake_word_specs}
     
     def get_provider_name(self) -> str:
         return "openwakeword"
@@ -89,46 +88,37 @@ class OpenWakeWordProvider(VoiceTriggerProvider):
             # First, ensure required feature extraction models are available
             await self._ensure_feature_models_available()
             
-            # Determine which models to load using asset management - unified pattern
+            # Determine which models to load from the uniform WakeWordSpec list (QUAL-20): each spec's
+            # `model` is either a custom model file (.onnx/.tflite — a trained Russian phrase) or a
+            # built-in catalog name resolved via asset management.
             models_to_load = []
-            for wake_word in self.wake_words:
-                if wake_word in self.available_models:
-                    # Use asset management for all models
-                    model_id = self.available_models[wake_word]
+            for spec in self.wake_word_specs:
+                name, model_ref = spec["name"], spec["model"]
+
+                # Custom model file supplied directly.
+                if model_ref.endswith((".onnx", ".tflite")) and Path(model_ref).exists():
+                    models_to_load.append(model_ref)
+                    logger.info(f"Using custom OpenWakeWord model for '{name}': {model_ref}")
+                    continue
+
+                # Built-in model (keyed by the model ref, then by the label).
+                key = model_ref if model_ref in self.available_models else name
+                if key in self.available_models:
+                    model_id = self.available_models[key]
                     try:
-                        # Get model info and attempt download
-                        model_info = self.asset_manager.get_model_info("openwakeword", model_id)
-                        if model_info:
-                            logger.info(f"Loading OpenWakeWord model {model_id} for '{wake_word}' (size: {model_info.get('size', 'unknown')})")
-                        
-                        # Try asset manager download first (will handle 'auto' URLs properly)
                         model_path = await self._get_model_via_asset_manager(model_id)
                         if model_path and model_path.exists():
                             models_to_load.append(str(model_path))
-                            logger.info(f"Using asset-managed model for '{wake_word}': {model_path}")
+                            logger.info(f"Using asset-managed model for '{name}': {model_path}")
                         else:
-                            # Fallback to OpenWakeWord's built-in download
-                            # Try the model_id directly first (OpenWakeWord might handle extensions automatically)
-                            models_to_load.append(model_id)
-                            logger.info(f"Falling back to OpenWakeWord auto-download for '{wake_word}': {model_id}")
-                            
+                            models_to_load.append(model_id)  # OpenWakeWord auto-download
+                            logger.info(f"Falling back to OpenWakeWord auto-download for '{name}': {model_id}")
                     except Exception as e:
-                        logger.warning(f"Asset manager failed for '{wake_word}', using OpenWakeWord auto-download: {e}")
-                        # Fallback to OpenWakeWord's built-in download
-                        # Try the model_id directly first (OpenWakeWord might handle extensions automatically)
+                        logger.warning(f"Asset manager failed for '{name}', using auto-download: {e}")
                         models_to_load.append(model_id)
                 else:
-                    logger.warning(f"Wake word '{wake_word}' not supported by OpenWakeWord")
-                    # For unsupported wake words like 'irene', suggest alternatives or provide fallback
-                    if wake_word.lower() == 'irene':
-                        logger.info("Suggestion: Consider using 'hey_jarvis' or 'alexa' as wake words, or switch to microwakeword provider for custom models")
-            
-            # Custom user-supplied model (e.g. a trained Russian wake word) — QUAL-20.
-            if self.model_path and Path(self.model_path).exists():
-                models_to_load.append(str(self.model_path))
-                logger.info(f"Using custom OpenWakeWord model: {self.model_path}")
-            elif self.model_path:
-                logger.warning(f"OpenWakeWord custom model_path not found: {self.model_path}")
+                    logger.warning(f"Wake word '{name}' (model '{model_ref}') is not a built-in OpenWakeWord "
+                                   f"model and not a file — for custom phrases use microwakeword or a model file")
 
             if not models_to_load:
                 raise ValueError("No valid wake word models found")
@@ -299,8 +289,9 @@ class OpenWakeWordProvider(VoiceTriggerProvider):
                             best_score = score
                             detected_word = wake_word
             
-            # Check if detection exceeds threshold
-            detected = best_score > self.threshold
+            # Check if detection exceeds this wake word's own threshold (QUAL-20: per-WakeWordSpec)
+            word_threshold = self._thresholds.get(detected_word, self.threshold) if detected_word else self.threshold
+            detected = detected_word is not None and best_score > word_threshold
             
             if detected:
                 logger.debug(f"Wake word '{detected_word}' detected with confidence {best_score:.3f}")

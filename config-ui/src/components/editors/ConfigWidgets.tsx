@@ -602,12 +602,102 @@ export const RangeSliderWidget: React.FC<ConfigWidgetProps> = ({
   );
 };
 
+/**
+ * Editor for an array of structured objects, driven by `schema.items.properties`
+ * (e.g. wake_words: WakeWordSpec[] — QUAL-20). Each entry is a row of one input per item
+ * property. Generic: works for any array-of-objects schema.
+ */
+export const ArrayOfObjectsEditor: React.FC<ConfigWidgetProps> = ({
+  name, value, schema, onChange, disabled
+}) => {
+  const { t } = useTranslation('configuration');
+  const itemProps = schema.items?.properties || {};
+  const propNames = Object.keys(itemProps);
+  const arrayValue: Record<string, any>[] = Array.isArray(value) ? value : (schema.default || []);
+
+  const blankItem = (): Record<string, any> => {
+    const item: Record<string, any> = {};
+    for (const [p, ps] of Object.entries(itemProps)) {
+      item[p] = ps.default ?? (ps.type === 'number' || ps.type === 'integer' ? 0 : ps.type === 'boolean' ? false : '');
+    }
+    return item;
+  };
+
+  const addItem = () => onChange([...arrayValue, blankItem()]);
+  const removeItem = (index: number) => onChange(arrayValue.filter((_, i) => i !== index));
+  const updateField = (index: number, prop: string, fieldValue: any) => {
+    onChange(arrayValue.map((row, i) => (i === index ? { ...row, [prop]: fieldValue } : row)));
+  };
+
+  return (
+    <div className="space-y-2">
+      <label className="block text-sm font-medium text-gray-700">
+        {name}
+        {schema.required && <span className="text-red-500 ml-1">*</span>}
+      </label>
+
+      <div className="space-y-3">
+        {arrayValue.map((row, index) => (
+          <div key={index} className="border border-gray-200 rounded-md p-3 space-y-2 bg-gray-50">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-medium text-gray-500">#{index + 1}</span>
+              <button
+                type="button"
+                onClick={() => removeItem(index)}
+                disabled={disabled}
+                className="px-2 text-red-600 hover:text-red-800 disabled:opacity-50"
+              >
+                ×
+              </button>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              {propNames.map((prop) => {
+                const ps = itemProps[prop];
+                const isNumber = ps.type === 'number' || ps.type === 'integer';
+                return (
+                  <div key={prop} className="flex flex-col">
+                    <label className="text-xs text-gray-600">{prop}</label>
+                    <input
+                      type={isNumber ? 'number' : 'text'}
+                      value={row?.[prop] ?? ''}
+                      onChange={(e) => updateField(index, prop, isNumber ? Number(e.target.value) : e.target.value)}
+                      disabled={disabled}
+                      title={ps.description}
+                      className="px-2 py-1 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-50 disabled:opacity-50 text-sm"
+                    />
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+
+        <button
+          type="button"
+          onClick={addItem}
+          disabled={disabled}
+          className="px-3 py-1 text-sm text-blue-600 hover:text-blue-800 disabled:opacity-50"
+        >
+          {t('widgets.addItem')}
+        </button>
+      </div>
+
+      {schema.description && (
+        <div className="flex items-center">
+          <Info className="h-3 w-3 text-gray-400 mr-1" />
+          <span className="text-xs text-gray-500">{schema.description}</span>
+        </div>
+      )}
+    </div>
+  );
+};
+
 // ============================================================
 // WIDGET FACTORY
 // ============================================================
 
-export const ConfigWidget: React.FC<ConfigWidgetProps & { 
-  componentName?: string 
+export const ConfigWidget: React.FC<ConfigWidgetProps & {
+  componentName?: string
 }> = (props) => {
   const { t } = useTranslation('configuration');
   const { name, value, schema, componentName, path } = props;
@@ -667,6 +757,11 @@ export const ConfigWidget: React.FC<ConfigWidgetProps & {
     case 'number':
       return <NumberWidget {...props} />;
     case 'array':
+      // Arrays of structured objects (e.g. wake_words: WakeWordSpec[]) get a per-field editor;
+      // plain arrays (string lists) keep the simple ArrayWidget. QUAL-20.
+      if (schema.items?.type === 'object' && schema.items.properties) {
+        return <ArrayOfObjectsEditor {...props} />;
+      }
       return <ArrayWidget {...props} />;
     case 'object':
       // Free-form maps (Dict[str, X]) carry no fixed `properties`; render an editable

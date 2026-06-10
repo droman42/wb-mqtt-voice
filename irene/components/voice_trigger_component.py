@@ -165,14 +165,14 @@ class VoiceTriggerComponent(Component, VoiceTriggerPlugin, WebAPIPlugin):
             provider_config = providers_config.get(provider_name, {})
             if provider_config.get("enabled", False):
                 try:
-                    # Add common configuration
-                    provider_config.update({
-                        "wake_words": self.words,
-                        "threshold": self.threshold,
-                        "sample_rate": 16000,
-                        "channels": 1
-                    })
-                    
+                    # Common (authoritative) audio settings. QUAL-20: wake words are declared per-provider;
+                    # the component-level list is an OPTIONAL override — inject it only when set, otherwise
+                    # the provider keeps its own `wake_words`.
+                    provider_config.update({"sample_rate": 16000, "channels": 1})
+                    if self.words:
+                        provider_config["wake_words"] = self.words
+                        provider_config["threshold"] = self.threshold
+
                     provider = provider_class(provider_config)
                     if await provider.is_available():
                         self.providers[provider_name] = provider
@@ -191,11 +191,12 @@ class VoiceTriggerComponent(Component, VoiceTriggerPlugin, WebAPIPlugin):
             try:
                 fallback_config = {
                     "enabled": True,
-                    "wake_words": self.words,
+                    # component-level override if set, else a sane built-in default
+                    "wake_words": self.words if self.words else [{"name": "hey_jarvis", "model": "hey_jarvis"}],
                     "threshold": self.threshold,
                     "sample_rate": 16000,
                     "channels": 1,
-                    "inference_framework": "tflite"
+                    "inference_framework": "onnx"
                 }
                 # Use entry-points discovery for fallback provider
                 openwakeword_class = dynamic_loader.get_provider_class("irene.providers.voice_trigger", "openwakeword")
