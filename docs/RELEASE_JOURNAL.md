@@ -12,6 +12,16 @@ newest entries near the top of each dated section.
 ## Action journal
 
 ### 2026-06-10
+- **ARCH-18 — input-path unification COMPLETE (shared negotiator + endpoints reconciled).** Hoisted
+  `AudioNegotiator` `workflows`→`core` (layering: core can't import workflows); the engine builds ONE negotiator at
+  startup (config + active wake/asr providers; VAD fixed 16 kHz) and injects it into the workflow, so the mic/web
+  boundary and `/asr/transcribe` share the **same `to_canonical`** (bespoke `_conform_to_rate` deleted). Deleted both
+  ASR-utility WS endpoints (`/asr/stream`, `/asr/binary`). **Correction to the earlier reconciliation:** I'd claimed
+  `/ws/audio` ran server VAD — it does **not**. The single-audio path (`_process_single_audio_pipeline`) runs
+  wake→ASR directly with **no VAD segmenter** (the segmenter is only in the *streaming* mic path), so `/ws/audio`
+  already does exactly the ESP32 model — accumulate-to-`{"type":"end"}` → `to_canonical` → wake-skipped → one ASR.
+  **No `/ws/audio` change was needed.** So the endpoints now: mic = stream→VAD→wake→ASR; `/ws/audio` = device-segmented
+  utterance→to_canonical→ASR (no VAD/wake); `/asr/transcribe` = file→to_canonical→ASR. pyright 0, lint 9/9, suite 81=81.
 - **ARCH-18 PR-4 input-path reconciliation + `/asr/stream` deleted; QUAL-45 filed.** Tracing the transcode paths
   (user review) surfaced two overlapping WS audio endpoints: `/ws/audio` (ARCH-6, the real ESP32 satellite driving
   input — already accumulates binary PCM until a `{"type":"end"}` frame → one `process_audio_input`) vs the
