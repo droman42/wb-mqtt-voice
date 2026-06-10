@@ -180,6 +180,11 @@ enabled = true                      # Enable audio component
 default_provider = "console"        # Default provider: "console", "sounddevice", "audioplayer", "aplay"
 fallback_providers = ["console"]    # Fallback providers in order
 concurrent_playback = false         # Allow multiple audio streams simultaneously
+# ARCH-18: optional pin of the canonical INTERNAL pipeline format. Omit (commented) to auto-derive from the
+# input + consumer contracts (the default); an infeasible pin is a fatal startup error.
+# canonical_rate = 16000            # Pin the internal sample rate (Hz)
+# canonical_format = "pcm16"        # Pin the internal sample format ("pcm16" | "float32")
+# canonical_channels = 1            # Pin the internal channel count
 
 # Console Audio Provider (for testing/development)
 [audio.providers.console]

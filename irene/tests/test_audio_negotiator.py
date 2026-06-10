@@ -74,6 +74,39 @@ def test_authoritative_config_overrides_provider_capability():
     assert neg.canonical.rate == 16000                # operator pin wins over the provider's 8 kHz
 
 
+def test_source_uses_enabled_input_not_irrelevant_mic_config():
+    # Satellite/WS-primary: mic disabled, web enabled. The source must be the WS delivery (16 kHz),
+    # NOT the (irrelevant) mic config — else a 16 kHz consumer would look infeasible.
+    cfg = CoreConfig(**tomllib.load(open(CONFIG_DIR / "config-master.toml", "rb")))
+    cfg.inputs.microphone = False
+    cfg.inputs.web = True
+    cfg.inputs.microphone_config.sample_rate = 8000   # irrelevant — mic is disabled
+    neg = AudioNegotiator.from_config(cfg)            # 16 kHz consumers + 16 kHz WS source → feasible
+    assert neg.canonical.rate == 16000
+
+
+def test_config_pin_is_honored_and_infeasible_pin_is_fatal():
+    from irene.utils.audio_negotiation import AudioNegotiationError
+    cfg = CoreConfig(**tomllib.load(open(CONFIG_DIR / "config-master.toml", "rb")))  # mic 44.1k
+    cfg.audio.canonical_rate = 16000                  # feasible pin
+    assert AudioNegotiator.from_config(cfg).canonical.rate == 16000
+
+    cfg2 = CoreConfig(**tomllib.load(open(CONFIG_DIR / "development.toml", "rb")))   # mic 16k
+    cfg2.audio.canonical_rate = 48000                 # exceeds the capture → fatal
+    with pytest.raises(AudioNegotiationError):
+        AudioNegotiator.from_config(cfg2)
+
+
+async def test_to_canonical_downmixes_stereo_to_mono():
+    cfg = CoreConfig(**tomllib.load(open(CONFIG_DIR / "development.toml", "rb")))    # canonical 16k/mono
+    neg = AudioNegotiator.from_config(cfg)
+    # 16 kHz stereo frame (interleaved int16, 2 ch) → downmixed to mono, rate already canonical
+    stereo = b"\x10\x00\x20\x00" * 100                # 100 stereo frames -> 200 int16
+    out = await neg.to_canonical(AudioData(data=stereo, timestamp=0.0, sample_rate=16000, channels=2))
+    assert out.channels == 1
+    assert len(out.data) == len(stereo) // 2          # mono has half the samples
+
+
 def test_infeasible_config_is_fatal():
     """A consumer needing a higher rate than the mic can deliver fails loudly at from_config."""
     from irene.utils.audio_negotiation import AudioNegotiationError

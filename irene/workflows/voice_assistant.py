@@ -18,6 +18,7 @@ from typing import AsyncIterator, Optional, Dict, Any, List
 
 from .base import Workflow, RequestContext
 from .audio_processor import AudioProcessorInterface, VoiceSegment
+from .audio_negotiator import AudioNegotiator
 from ..core.metrics import get_metrics_collector
 from ..core.trace_context import TraceContext
 from ..intents.models import AudioData, IntentResult
@@ -65,7 +66,7 @@ class UnifiedVoiceAssistantWorkflow(Workflow):
         # VAD processing components (always enabled)
         self.audio_processor_interface = None
         # ARCH-18: derives the canonical audio format + transforms capture to it once at the boundary
-        self.audio_negotiator = None
+        self.audio_negotiator: Optional[AudioNegotiator] = None
         
         # Pipeline stage flags - will be configured from config in initialize()
         self._voice_trigger_enabled = False
@@ -171,7 +172,6 @@ class UnifiedVoiceAssistantWorkflow(Workflow):
                 # ARCH-18: derive the canonical audio format from the ACTIVE providers' declared contracts
                 # (capability-driven; config rate as override) — fatal here if no canonical satisfies the
                 # capture + every audio consumer (loud, at startup).
-                from .audio_negotiator import AudioNegotiator
                 vad_provider = getattr(self.audio_processor_interface, "processor", None)
                 vad_provider = getattr(vad_provider, "vad_engine", None)
                 wake_provider = self._active_provider(self.voice_trigger)
@@ -195,6 +195,13 @@ class UnifiedVoiceAssistantWorkflow(Workflow):
             return None
         providers = getattr(component, "providers", None) or {}
         return providers.get(getattr(component, "default_provider", None))
+
+    async def _canonical_stream(self, audio_stream):
+        """Wrap a capture stream so each frame is transformed to the canonical format once (ARCH-18)."""
+        negotiator = self.audio_negotiator
+        assert negotiator is not None  # only wrapped when a negotiator exists
+        async for frame in audio_stream:
+            yield await negotiator.to_canonical(frame)
 
     async def process_text_input(self, text: str, context: RequestContext,
                                 trace_context: Optional[TraceContext] = None) -> IntentResult:
@@ -338,10 +345,15 @@ class UnifiedVoiceAssistantWorkflow(Workflow):
             self.logger.info("🔄 Using VAD-enabled audio processing pipeline")
             self.logger.info(f"📊 VAD Configuration: provider={self.audio_processor_interface.processor.config.default_provider}, "
                            f"max_segment_duration={self.audio_processor_interface.processor.config.max_segment_duration_s}s")
-            
+
+            # ARCH-18: transform every captured frame to the canonical format ONCE at this boundary, so the
+            # streaming path (like process_audio_input) feeds VAD/wake/ASR canonical audio.
+            if self.audio_negotiator is not None:
+                audio_stream = self._canonical_stream(audio_stream)
+
             pipeline_start_time = time.time()
             result_count = 0
-            
+
             async for result in self._process_audio_pipeline(
                 audio_stream=audio_stream,
                 context=context,

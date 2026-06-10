@@ -200,6 +200,11 @@ class AudioConfig(BaseModel):
     default_provider: Optional[str] = Field(default=None, description="Default audio provider")
     fallback_providers: List[str] = Field(default_factory=list, description="Fallback providers in order")
     concurrent_playback: bool = Field(default=False, description="Allow concurrent audio playback")
+    # ARCH-18: optional operator pin of the negotiated canonical pipeline format (else auto-derived from
+    # the input + consumer contracts). An infeasible pin is the same fatal startup error.
+    canonical_rate: Optional[int] = Field(default=None, description="Pin the canonical pipeline sample rate (Hz); None = auto-derive")
+    canonical_format: Optional[str] = Field(default=None, description="Pin the canonical sample format ('pcm16'|'float32'); None = auto")
+    canonical_channels: Optional[int] = Field(default=None, description="Pin the canonical channel count; None = auto")
     providers: Dict[str, Dict[str, Any]] = Field(
         default_factory=dict,
         description="Provider-specific configurations"

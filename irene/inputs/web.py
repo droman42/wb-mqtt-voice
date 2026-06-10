@@ -42,6 +42,11 @@ class WebInput(InputPort):
             logger.warning(f"Web input dependencies not available: {e}")
             self._fastapi_available = False
         
+    def audio_contract(self):
+        """What this input delivers (ARCH-18): the web/ESP32-satellite stream is 16 kHz / pcm16 / mono."""
+        from ..utils.audio_negotiation import AudioContract
+        return AudioContract([16000], 16000, ["pcm16"], "pcm16", 1)
+
     async def is_available(self) -> bool:
         """Check if web input is available"""
         return self._fastapi_available

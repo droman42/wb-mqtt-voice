@@ -61,6 +61,11 @@ class MicrophoneInput(InputPort):
             logger.warning(f"Audio input dependencies not available: {e}")
             self._sd_available = False
     
+    def audio_contract(self):
+        """What this input delivers (ARCH-18): captured PCM at its configured rate, mono."""
+        from ..utils.audio_negotiation import AudioContract
+        return AudioContract([self.samplerate], self.samplerate, ["pcm16"], "pcm16", 1)
+
     async def initialize(self):
         """Initialize using existing audio infrastructure with proper device selection"""
         # Device selection: Respect user configuration first
