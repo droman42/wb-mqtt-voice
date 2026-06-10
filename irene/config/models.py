@@ -415,8 +415,8 @@ class VADConfig(BaseModel):
     noise_percentile: int = Field(default=15, description="Percentile for noise floor estimation", ge=1, le=50)
     voice_multiplier: float = Field(default=3.0, description="Multiplier above noise floor for voice threshold", ge=1.0, le=10.0)
 
-    # VAD engine selection (mutually-exclusive; 64-bit only). QUAL-20 added 'microvad'.
-    vad_implementation: str = Field(default="energy", description="VAD engine: 'energy' (built-in), 'silero' (SileroVAD-ONNX via sherpa-onnx), or 'microvad' (pymicro-vad; unified with the ESP32 micro stack). 64-bit.")
+    # VAD provider selection (single-active, discovered via the irene.providers.vad entry-points — ARCH-18).
+    default_provider: str = Field(default="energy", description="VAD provider: 'energy' (built-in) | 'silero' (sherpa-onnx) | 'microvad' (pymicro-vad). 64-bit for the latter two.")
     silero_threshold: float = Field(default=0.5, description="SileroVAD speech probability threshold (only when vad_implementation='silero')", ge=0.0, le=1.0)
     silero_model_url: str = Field(default="https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/silero_vad.onnx", description="SileroVAD ONNX model URL (downloaded once into the asset folder)")
     microvad_threshold: float = Field(default=0.5, description="microVAD speech probability threshold (only when vad_implementation='microvad')", ge=0.0, le=1.0)
@@ -449,13 +449,8 @@ class VADConfig(BaseModel):
         if not 0.1 <= v <= 3.0:
             raise ValueError("VAD sensitivity must be between 0.1 and 3.0")
         return v
-
-    @field_validator('vad_implementation')
-    @classmethod
-    def validate_vad_implementation(cls, v):
-        if v not in ("energy", "silero"):
-            raise ValueError("vad_implementation must be 'energy' or 'silero'")
-        return v
+    # (ARCH-18: the `vad_implementation` enum validator is gone — the set of VAD providers is the
+    # `irene.providers.vad` entry-points, discovered at runtime, not a hand-maintained list.)
 
 
 # ============================================================

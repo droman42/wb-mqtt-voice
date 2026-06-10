@@ -16,7 +16,8 @@ from typing import Optional, List, Dict, Any, AsyncIterator, Awaitable, Callable
 
 from ..intents.models import AudioData
 from ..config.models import VADConfig
-from ..utils.vad import SimpleVAD, AdvancedVAD, VADResult
+from ..utils.vad import VADResult
+from ..utils.loader import dynamic_loader
 from ..utils.audio_helpers import calculate_audio_energy, estimate_optimal_vad_threshold
 from ..core.metrics import get_metrics_collector
 
@@ -134,35 +135,9 @@ class UniversalAudioProcessor:
         self.config = vad_config
         self.vad_state = VoiceActivityState.SILENCE
         
-        # Initialize VAD engine based on configuration (PR-4: energy vs silero seam)
-        vad_impl = getattr(vad_config, "vad_implementation", "energy")
-        if vad_impl == "silero":
-            from ..core.assets import get_asset_manager  # workflows may import core (not utils)
-            from ..utils.vad_silero import SileroVADEngine
-            model_path = get_asset_manager().get_model_path("vad", "silero_vad.onnx")
-            self.vad_engine = SileroVADEngine(vad_config, model_path)
-            logger.info("VAD engine: silero (SileroVAD-ONNX via sherpa-onnx)")
-        elif vad_impl == "microvad":
-            from ..utils.vad_microvad import MicroVADEngine  # self-contained; no asset path
-            self.vad_engine = MicroVADEngine(vad_config)
-            logger.info("VAD engine: microvad (pymicro-vad; unified with the ESP32 micro stack)")
-        elif vad_config.use_zero_crossing_rate or vad_config.adaptive_threshold:
-            self.vad_engine = AdvancedVAD(
-                threshold=vad_config.energy_threshold,
-                sensitivity=vad_config.sensitivity,
-                voice_frames_required=vad_config.voice_frames_required,
-                silence_frames_required=vad_config.silence_frames_required,
-                use_zcr=vad_config.use_zero_crossing_rate,
-                noise_percentile=vad_config.noise_percentile,
-                voice_multiplier=vad_config.voice_multiplier
-            )
-        else:
-            self.vad_engine = SimpleVAD(
-                threshold=vad_config.energy_threshold,
-                sensitivity=vad_config.sensitivity,
-                voice_frames_required=vad_config.voice_frames_required,
-                silence_frames_required=vad_config.silence_frames_required
-            )
+        # Select the VAD provider via entry-points discovery (ARCH-18 PR-2) — replaces the engine
+        # if-else; `[vad] default_provider` picks energy / silero / microvad.
+        self.vad_engine = self._build_vad_provider(vad_config)
         
         # Voice segment buffering
         self.voice_buffer: List[AudioData] = []
@@ -187,7 +162,29 @@ class UniversalAudioProcessor:
                    f"threshold={vad_config.threshold}, "
                    f"sensitivity={vad_config.sensitivity}, "
                    f"advanced_features={vad_config.use_zero_crossing_rate}")
-    
+
+    def _build_vad_provider(self, vad_config: VADConfig):
+        """Discover + instantiate the configured VAD provider (ARCH-18 PR-2).
+
+        Selection is `[vad] default_provider` resolved through the `irene.providers.vad` entry-points,
+        replacing the old engine if-else. Falls back to `energy` (always available) if the named provider
+        isn't registered. The provider config is the (flat) VAD config dict; the chosen provider reads its
+        own fields.
+        """
+        default = getattr(vad_config, "default_provider", None) or "energy"
+        cfg = vad_config.model_dump() if hasattr(vad_config, "model_dump") else dict(vad_config)
+        classes = dynamic_loader.discover_providers("irene.providers.vad", [default, "energy"])
+        provider_cls = classes.get(default) or classes.get("energy")
+        if provider_cls is None:
+            raise RuntimeError(
+                f"No VAD provider '{default}' registered and no 'energy' fallback available"
+            )
+        if default not in classes:
+            logger.warning(f"VAD provider '{default}' not found; falling back to 'energy'")
+        provider = provider_cls(cfg)
+        logger.info(f"VAD provider: {provider.get_provider_name()}")
+        return provider
+
     def set_voice_segment_callback(self, callback: Callable[[VoiceSegment], None]):
         """
         Set callback function for voice segment processing.
@@ -208,7 +205,7 @@ class UniversalAudioProcessor:
             True if calibration was successful, False otherwise
         """
         try:
-            success = self.vad_engine.calibrate_threshold(calibration_audio)
+            success = self.vad_engine.calibrate(calibration_audio)
             if success:
                 logger.info("VAD threshold calibration completed successfully")
             else:

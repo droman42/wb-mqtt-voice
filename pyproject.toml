@@ -263,6 +263,11 @@ anthropic = "irene.providers.llm.anthropic:AnthropicLLMProvider"
 openwakeword = "irene.providers.voice_trigger.openwakeword:OpenWakeWordProvider"
 microwakeword = "irene.providers.voice_trigger.microwakeword:MicroWakeWordProvider"
 
+[project.entry-points."irene.providers.vad"]
+energy = "irene.providers.vad.energy:EnergyVADProvider"
+silero = "irene.providers.vad.silero:SileroVADProvider"
+microvad = "irene.providers.vad.microvad:MicroVADProvider"
+
 [project.entry-points."irene.providers.nlu"]
 hybrid_keyword_matcher = "irene.providers.nlu.hybrid_keyword_matcher:HybridKeywordMatcherProvider"
 spacy_nlu = "irene.providers.nlu.spacy_provider:SpaCyNLUProvider"
@@ -441,6 +446,7 @@ modules = [
     "irene.providers.llm",
     "irene.providers.nlu",
     "irene.providers.voice_trigger",
+    "irene.providers.vad",
     "irene.providers.text_processor",
 ]
 

@@ -301,7 +301,7 @@ def calculate_zcr_optimized(audio_data: bytes, cache: Optional[object] = None) -
 class VADEngine(ABC):
     """Port for voice-activity engines (PR-4 seam).
 
-    Implementations are mutually exclusive and selected by `VADConfig.vad_implementation`:
+    Implementations are mutually exclusive and selected by `VADConfig.default_provider`:
     - `energy` → `SimpleVAD` / `AdvancedVAD` (built-in, dependency-light)
     - `silero` → `SileroVADEngine` (SileroVAD-ONNX via sherpa-onnx; 64-bit only)
 

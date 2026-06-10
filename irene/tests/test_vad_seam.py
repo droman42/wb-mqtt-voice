@@ -32,14 +32,15 @@ class TestVADPort:
 
 class TestSelectorConfig:
     def test_default_is_energy(self):
-        assert VADConfig().vad_implementation == "energy"
+        assert VADConfig().default_provider == "energy"
 
     def test_silero_selectable(self):
-        assert VADConfig(vad_implementation="silero").vad_implementation == "silero"
+        assert VADConfig(default_provider="silero").default_provider == "silero"
 
-    def test_unknown_impl_rejected(self):
-        with pytest.raises(Exception):
-            VADConfig(vad_implementation="bogus")
+    def test_unknown_provider_accepted_resolved_at_discovery(self):
+        # ARCH-18: the enum validator is gone — the provider set is the entry-points, so any string is
+        # config-valid and resolved (falling back to energy) at discovery time, not rejected here.
+        assert VADConfig(default_provider="bogus").default_provider == "bogus"
 
     def test_silero_threshold_bounds(self):
         assert VADConfig(silero_threshold=0.5).silero_threshold == 0.5

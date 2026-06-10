@@ -501,10 +501,10 @@ info_detail_level = "basic"        # Level of system info to provide (basic/deta
 # ============================================================
 [vad]
 enabled = true                     # Enable VAD processing to solve 23ms chunk problem
-vad_implementation = "energy"      # VAD engine: "energy" (built-in, default) | "silero" (SileroVAD-ONNX via sherpa-onnx, 64-bit) | "microvad" (pymicro-vad, 64-bit; unified with the ESP32 micro stack)
-silero_threshold = 0.5             # SileroVAD speech-probability threshold 0.0-1.0 (only when vad_implementation="silero")
+default_provider = "energy"        # VAD provider: "energy" (built-in, default) | "silero" (sherpa-onnx, 64-bit) | "microvad" (pymicro-vad, 64-bit; unified with the ESP32 micro stack)
+silero_threshold = 0.5             # SileroVAD speech-probability threshold 0.0-1.0 (only when default_provider="silero")
 silero_model_url = "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/silero_vad.onnx"  # downloaded once into the asset folder
-microvad_threshold = 0.5           # microVAD speech-probability threshold 0.0-1.0 (only when vad_implementation="microvad")
+microvad_threshold = 0.5           # microVAD speech-probability threshold 0.0-1.0 (only when default_provider="microvad")
 energy_threshold = 0.0008          # FIXED: Lower threshold for better vowel detection (was 0.0015)
 sensitivity = 3.0                  # FIXED: Maximum sensitivity for comprehensive detection (was 2.0, schema now allows 3.0)
 voice_duration_ms = 50             # FIXED: Shorter duration for brief vowels and consonants (was 80)

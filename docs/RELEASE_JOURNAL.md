@@ -12,6 +12,17 @@ newest entries near the top of each dated section.
 ## Action journal
 
 ### 2026-06-10
+- **ARCH-18 PR-2a — VAD provider family + segmenter discovery (the if-else is gone).** VAD engines are now
+  `irene.providers.vad` providers (`energy`/`silero`/`microvad`) wrapping the existing engines, discovered via
+  entry-points and selected by `[vad] default_provider` — the 4-way if-else in `UniversalAudioProcessor` is replaced by
+  one `_build_vad_provider` discovery call (falls back to `energy`). The silero provider resolves its model path via the
+  AssetManager directly (the workflow-side injection is gone). Folded the live bug: the `vad_implementation` enum
+  validator is deleted (the provider set is the entry-points, not a hand-maintained list); `vad_implementation` →
+  `default_provider`; `calibrate_threshold` → the provider `calibrate` method. Providers declare `detection_latency_ms`
+  (for PR-5 pre-roll). Re-reconciliation: the "unconditional `calibrate_threshold`" wasn't a live bug after all (the ABC
+  already defaults it to a no-op). dependency_validator 58/58 (+3), pyright 0, 9/9 contracts, suite 83=83 (0 net
+  regression). **Still flat** `[vad]` config — the `[vad.providers.*]` nesting + per-provider schemas + config-ui is
+  PR-2b (next).
 - **ARCH-18 PR-1 — `AudioProcessor` → `AudioTranscoder` rename.** Behavior-preserving rename of the resample engine
   everywhere (irene/ + the phase7 test suite), killing the `AudioProcessor` / `UniversalAudioProcessor` name collision
   the design called out. Reconciliation (Invariant #8): `AudioFormatConverter` turned out to be a **used, tested
