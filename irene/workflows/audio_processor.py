@@ -9,6 +9,7 @@ Phase 2 Implementation: State Machine - Universal Audio Processing
 """
 
 import logging
+import math
 import time
 from dataclasses import dataclass, field
 from enum import Enum
@@ -143,9 +144,18 @@ class VoiceSegmenter:
         self.voice_buffer: List[AudioData] = []
         self.voice_segment_start_time: Optional[float] = None
         
-        # Pre-buffering to capture audio before VAD triggers (prevents missing speech onset)
+        # Pre-buffering to capture audio before VAD triggers (prevents missing speech onset).
+        # ARCH-18 PR-5: size the pre-roll to the ACTIVE VAD engine's detection latency, not a magic 4 — the
+        # voice segment feeds the wake word, so the pre-roll must cover the engine's onset lag or the wake-word
+        # start is clipped (silero's 100 ms onset overran the old 4 frames ≈ 92 ms).
+        #   preroll_frames = ceil(detection_latency_ms / frame_ms) + margin
         self.pre_buffer: List[AudioData] = []
-        self.pre_buffer_size = 4  # Keep 4 frames before VAD trigger (~100ms) for better speech onset capture
+        _NOMINAL_FRAME_MS = 23          # ~23 ms capture chunks (the "23 ms chunk problem" the VAD solves)
+        _PREROLL_MARGIN_FRAMES = 2
+        latency_ms = max(0, int(getattr(self.vad_engine, "detection_latency_ms", 0)))
+        self.pre_buffer_size = math.ceil(latency_ms / _NOMINAL_FRAME_MS) + _PREROLL_MARGIN_FRAMES
+        logger.info(f"VAD pre-roll sized to {self.pre_buffer_size} frames "
+                    f"(~{self.pre_buffer_size * _NOMINAL_FRAME_MS}ms) for {latency_ms}ms detection latency")
         self.voice_segment_start_timestamp: Optional[float] = None
         
         # Timeout and buffer management
