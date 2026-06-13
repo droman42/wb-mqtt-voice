@@ -12,6 +12,18 @@ newest entries near the top of each dated section.
 ## Action journal
 
 ### 2026-06-13
+- **ARCH-20 filed — streamable audio output (research + task).** Following up the file-only-output limitation
+  ARCH-18/PR-4c deferred (intentionally, never task-tracked): checked all five audio providers — **every `play_stream`
+  is a stub** (buffer the whole stream → temp WAV → `play_file`), so file-only is unimplemented code, not a library
+  wall. Web research on streaming support + versions: **sounddevice** streams for real via `RawOutputStream` (plain PCM
+  buffers, cross-OS, PortAudio); **aplay** streams via stdin pipe (Linux); **audioplayer** is file-only and
+  **simpleaudio** is archived/unmaintained + buffer-only. Per the user's "no unstreamable outputs", researched a
+  cross-platform second backend and landed on **`miniaudio` (pyminiaudio)** — self-contained (no system lib, bundled
+  WASAPI/CoreAudio/ALSA), cross-OS incl. Raspberry Pi, MIT, maintained (v1.71 Apr 2026), `PlaybackDevice`+generator
+  streaming — giving ≥2 streamable backends on *every* OS on *different* stacks (sounddevice + miniaudio; +aplay on
+  Linux). Filed **ARCH-20** `[deferred]`: implement real `play_stream` (sounddevice/aplay/miniaudio), drop
+  audioplayer+simpleaudio, bump sounddevice/soundfile, wire TTS local playback through `play_stream`
+  (completes `audio_pipeline.md` §8). The async→sync generator bridge is the one implementation caveat.
 - **ARCH-19 filed — Trace persistence + playback (design DRAFT).** Design session: persist an utterance-execution
   trace to a **self-contained JSON** (audio **base64 inline, no WAV**) so it can be listened to AND replayed through
   the pipeline (regression + VAD tuning), as an opt-in save+replay layer over today's ephemeral `TraceContext`.

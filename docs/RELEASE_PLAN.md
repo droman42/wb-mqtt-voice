@@ -661,6 +661,22 @@ See `docs/review/phase1_architecture_map.md` §5.
       component (OS output), **`--step`** (pause per stage), **`--record-out`** a second trace (tester's + local replay
       for comparison); `vad_recording_test` **deleted** once its harness is ported (base64 not WAV, fix `to_canonical`).
       D-1..D-14. Slices §12; open questions §13. _Design session continues before implementation._
+- [ ] **ARCH-20** [AUDIO] (P-TBD) `[deferred]` — **Streamable audio output: implement real `play_stream`, add
+      `miniaudio`, drop the unstreamable providers.** Closes the file-only-output limitation ARCH-18/PR-4c deferred
+      (intentionally, never task-tracked): research (2026-06-13) found **all five providers' `play_stream` are stubs**
+      (buffer → temp WAV → `play_file`) — file-only is unimplemented code, not a library wall. Decision: **keep only
+      streamable backends.** Scope — **(1)** implement **real** `play_stream`: **sounddevice** via `RawOutputStream`
+      (plain PCM buffers, cross-OS), **aplay** via stdin pipe (Linux); **(2)** add a new **`miniaudio`** provider
+      ([pyminiaudio], self-contained — **no system lib**, bundled WASAPI/CoreAudio/ALSA backends, cross-OS incl. RPi,
+      MIT, maintained) via `PlaybackDevice` + generator → gives **≥2 streamable backends on every OS** (sounddevice +
+      miniaudio, different stacks; +aplay on Linux); **(3)** **drop `audioplayer`** (file-only) **+ `simpleaudio`**
+      (archived/unmaintained, buffer-only) — remove providers, entry-points, deps, `system_dependencies`/dependency
+      catalog refs; **(4)** bump **sounddevice→0.5.x, soundfile→0.13/0.14**; **(5)** wire **TTS local playback through
+      `play_stream`** (the actual "make output streamable" — completes `audio_pipeline.md` §8); **(6)** the
+      async→sync **generator bridge** (`play_stream` is async, sounddevice-callback/miniaudio-generator are pull-sync).
+      Gates: Invariant #4 (audio provider list → config-ui), `dependency_validator`/`build_analyzer` (extra changes),
+      update `docs/guides/audio.md` provider table. _(Research findings in the 2026-06-13 journal; `console` stub
+      kept/retired per taste — not an audio output.)_
 
 ### Code Quality & Review (QUAL)
 - [x] **QUAL-1** — Phase-0 static baseline (ruff/pyright/vulture/validators/import-graph). → `docs/review/phase0_static_baseline.md` (6e39886)
