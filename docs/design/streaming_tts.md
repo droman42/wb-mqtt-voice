@@ -62,20 +62,22 @@ TTS provider (producer)                Output seam (delivery)                 Si
 - Local playback, deferred F&F, and remote streaming all become *sinks behind one seam* — the three paths
   collapse into one.
 
-## 4. Per-engine capability matrix (research deliverable — to verify/expand)
+## 4. Per-engine capability matrix (PR-3 status)
 
-| Provider | Engine reality | In-memory before file | Native streaming | Plan |
-|---|---|---|---|---|
-| **silero_v4** | `apply_tts()` → numpy samples → `sf.write` | **yes (PCM)** | no (whole utterance) | override: yield `samples.tobytes()`; optional per-sentence |
-| **silero_v3** | `model.save_wav()` | no as-coded (`apply_tts` exists) | no | switch to `apply_tts`; same as v4 |
-| **elevenlabs** | API → bytes → write | **yes (MP3)** | **YES** (stream endpoint + WS input) | override: true streaming; **MP3→PCM decode** (miniaudio.decode) |
-| **vosk** | `synth.synth(text, path)` | no | no | base simulation (file read-back) |
-| **pyttsx** | `engine.save_to_file()` | no | no | base simulation (file read-back) |
-| **sherpa-onnx TTS** (ARCH-9/10, future) | VITS, per-chunk **generation callback** | yes | **YES (callback)** | override when the provider lands |
-| **console** | writes text | n/a | n/a | degenerate / no-op |
+| Provider | Engine reality | Native streaming | PR-3 outcome |
+|---|---|---|---|
+| **silero_v4** | `apply_tts()` → tensor (same call `synthesize_to_file` uses) | whole utterance | **override DONE** — `apply_tts` → `float_to_pcm16` → PCM stream (no WAV round-trip) |
+| **silero_v3** | `save_wav()` today; `apply_tts` available | whole utterance | **override DONE** — `apply_tts(put_accent/put_yo)` → int16 PCM (base sim was a working fallback) |
+| **elevenlabs** | API → **MP3** bytes | true network streaming | **override DONE** — request `output_format=pcm_<rate>` (signed-16 mono); base sim was BROKEN (MP3 ≠ WAV). True incremental network streaming deferred (PR-4-adjacent) |
+| **vosk** | `synth.synth(text, path)` | no | base simulation (WAV read-back) — works as-is |
+| **pyttsx** | `engine.save_to_file()` | no | base simulation (WAV read-back) — works as-is |
+| **sherpa-onnx TTS** (ARCH-9/10, future) | VITS, per-chunk **generation callback** | yes (callback) | override when the provider lands |
+| **console** | writes text | n/a | degenerate — base sim raises `NotImplementedError`, caller falls back to file |
 
-**Caveats to nail in research:** elevenlabs is MP3 (PCM-only path must decode); sample-rate/format per engine;
-whether silero per-sentence chunking is worth the latency vs whole-utterance.
+**Caveats:** elevenlabs `pcm_44100` needs a paid tier (default `pcm_22050`); silero overrides are whole-utterance
+(no latency win vs base sim, but they skip the temp-file round-trip); a broken neural override degrades to file
+playback (the conform helper returns `False`). True low-latency token streaming = elevenlabs `/stream` + sherpa
+callback, addressed when the remote-sink path (PR-4) lands.
 
 ## 5. Slices (proposed)
 

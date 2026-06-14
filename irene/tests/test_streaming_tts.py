@@ -149,3 +149,75 @@ async def test_synthesize_and_stream_to_returns_false_for_non_streamable_provide
 
     ok = await component.synthesize_and_stream_to(object(), "not audio")
     assert ok is False
+
+
+def test_float_to_pcm16_conversion():
+    import numpy as np
+
+    from irene.utils.audio_stream import float_to_pcm16
+
+    out = float_to_pcm16(np.array([0.0, 1.0, -1.0, 0.5], dtype=np.float32))
+    samples = np.frombuffer(out, dtype="<i2")
+    assert list(samples) == [0, 32767, -32767, 16383]
+
+
+@pytest.mark.asyncio
+async def test_silero_v4_native_override_yields_int16_pcm(monkeypatch):
+    """Silero v4 override: apply_tts samples -> int16 PCM stream, no WAV round-trip."""
+    import numpy as np
+
+    from irene.providers.tts.silero_v4 import SileroV4TTSProvider
+    from irene.utils.audio_stream import float_to_pcm16
+
+    provider = SileroV4TTSProvider.__new__(SileroV4TTSProvider)
+    provider._available = True
+    provider.default_speaker = "xenia"
+    provider.sample_rate = 48000
+    provider._speakers = ["xenia"]
+
+    samples = np.array([0.0, 0.25, -0.25, 0.75], dtype=np.float32)
+
+    class _FakeModel:
+        def apply_tts(self, text, speaker, sample_rate):
+            return samples
+
+    provider._model = _FakeModel()
+
+    async def _noop():
+        return None
+
+    async def _passthrough(t):
+        return t
+
+    monkeypatch.setattr(provider, "_ensure_model_loaded", _noop)
+    monkeypatch.setattr(provider, "_normalize_text_async", _passthrough)
+
+    stream = await provider.synthesize_to_stream("привет")
+
+    assert (stream.sample_rate, stream.channels, stream.sample_width) == (48000, 1, 2)
+    assert await collect_pcm(stream.frames) == float_to_pcm16(samples)
+
+
+@pytest.mark.asyncio
+async def test_elevenlabs_override_wraps_pcm(monkeypatch):
+    """ElevenLabs override returns a PCMStream of the raw PCM the API hands back."""
+    from irene.providers.tts.elevenlabs import ElevenLabsTTSProvider
+
+    provider = ElevenLabsTTSProvider.__new__(ElevenLabsTTSProvider)
+    provider.voice_id = "v"
+    provider.stability = 0.5
+    provider.similarity_boost = 0.5
+    provider.output_pcm_rate = 22050
+
+    pcm = b"\x11\x22\x33\x44" * 10
+
+    async def _fake_generate_pcm(text, voice_id, stability, similarity_boost, rate):
+        assert rate == 22050
+        return pcm
+
+    monkeypatch.setattr(provider, "_generate_pcm", _fake_generate_pcm)
+
+    stream = await provider.synthesize_to_stream("hello")
+
+    assert (stream.sample_rate, stream.channels, stream.sample_width) == (22050, 1, 2)
+    assert await collect_pcm(stream.frames) == pcm

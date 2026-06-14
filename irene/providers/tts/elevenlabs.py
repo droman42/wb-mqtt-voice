@@ -11,6 +11,7 @@ from pathlib import Path
 import logging
 
 from .base import TTSProvider
+from ...utils.audio_stream import PCMStream
 
 logger = logging.getLogger(__name__)
 
@@ -48,6 +49,10 @@ class ElevenLabsTTSProvider(TTSProvider):
         self.stability = config.get("stability", 0.5)
         self.similarity_boost = config.get("similarity_boost", 0.5)
         self.base_url = "https://api.elevenlabs.io/v1"
+        # ARCH-21: streaming requests raw PCM (not MP3) so it flows through the PCM-only output path.
+        # ElevenLabs `output_format=pcm_<rate>` returns signed-16 mono PCM. 44100 needs a paid tier; 22050
+        # is broadly available.
+        self.output_pcm_rate = config.get("output_pcm_rate", 22050)
         
     @classmethod
     def _get_default_extension(cls) -> str:
@@ -115,7 +120,51 @@ class ElevenLabsTTSProvider(TTSProvider):
         except Exception as e:
             logger.error(f"ElevenLabs file generation failed: {e}")
     
-    async def _generate_audio(self, text: str, voice_id: str, 
+    async def synthesize_to_stream(self, text: str, **kwargs) -> PCMStream:
+        """Native streaming override (ARCH-21): request raw PCM (not MP3) from ElevenLabs so it flows
+        through the PCM-only output path. The base buffer-then-stream simulation can't be used here
+        because `synthesize_to_file` writes MP3."""
+        voice_id = kwargs.get("voice_id", self.voice_id)
+        stability = kwargs.get("stability", self.stability)
+        similarity_boost = kwargs.get("similarity_boost", self.similarity_boost)
+        rate = int(kwargs.get("output_pcm_rate", self.output_pcm_rate))
+
+        pcm = await self._generate_pcm(text, voice_id, stability, similarity_boost, rate)
+
+        async def _frames():
+            yield pcm
+
+        return PCMStream(sample_rate=rate, channels=1, sample_width=2, frames=_frames())
+
+    async def _generate_pcm(self, text: str, voice_id: str, stability: float,
+                            similarity_boost: float, rate: int) -> bytes:
+        """Call the ElevenLabs API requesting raw signed-16 mono PCM at ``rate`` Hz."""
+        url = f"{self.base_url}/text-to-speech/{voice_id}"
+        params = {"output_format": f"pcm_{rate}"}
+        payload = {
+            "text": text,
+            "model_id": self.model,
+            "voice_settings": {
+                "stability": stability,
+                "similarity_boost": similarity_boost
+            }
+        }
+        headers = {
+            "Accept": "audio/pcm",
+            "Content-Type": "application/json",
+            "xi-api-key": self.api_key
+        }
+        try:
+            import httpx  # type: ignore
+            async with httpx.AsyncClient() as client:
+                response = await client.post(url, params=params, json=payload, headers=headers, timeout=30.0)
+                response.raise_for_status()
+                return response.content
+        except Exception as e:
+            logger.error(f"ElevenLabs PCM API call failed: {e}")
+            raise
+
+    async def _generate_audio(self, text: str, voice_id: str,
                             stability: float, similarity_boost: float) -> bytes:
         """Call ElevenLabs API to generate audio"""
         url = f"{self.base_url}/text-to-speech/{voice_id}"

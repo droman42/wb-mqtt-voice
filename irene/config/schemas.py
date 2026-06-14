@@ -89,6 +89,7 @@ class ElevenLabsProviderSchema(TTSProviderSchema):
     model: str = Field(default="eleven_monolingual_v1", description="Model name")
     stability: float = Field(default=0.5, ge=0.0, le=1.0, description="Voice stability")
     similarity_boost: float = Field(default=0.5, ge=0.0, le=1.0, description="Similarity boost")
+    output_pcm_rate: int = Field(default=22050, description="ARCH-21 streaming: PCM sample rate requested from the API (pcm_<rate>); 44100 needs a paid tier")
 
 
 class SileroV3ProviderSchema(TTSProviderSchema):

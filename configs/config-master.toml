@@ -137,6 +137,7 @@ voice_id = "21m00Tcm4TlvDq8ikWAM"  # Voice ID to use
 model = "eleven_multilingual_v2"   # Model: "eleven_multilingual_v2", "eleven_turbo_v2_5", "eleven_flash_v2_5"
 stability = 0.5                    # Voice stability (0.0-1.0)
 similarity_boost = 0.5             # Voice similarity boost (0.0-1.0)
+output_pcm_rate = 22050            # ARCH-21 streaming: PCM rate requested from the API (16000/22050/24000; 44100 = paid tier)
 
 # Silero v4 TTS Provider (neural TTS, latest version)
 [tts.providers.silero_v4]

@@ -70,3 +70,13 @@ def parse_wav(data: bytes) -> Tuple[bytes, int, int, int]:
 def width_to_alsa_format(sample_width: int) -> str:
     """Map a PCM sample width (bytes) to an ``aplay -f`` format token."""
     return {1: "U8", 2: "S16_LE", 3: "S24_3LE", 4: "S32_LE"}.get(sample_width, "S16_LE")
+
+
+def float_to_pcm16(samples) -> bytes:
+    """Convert float samples in [-1, 1] (numpy array / array-like) to little-endian int16 PCM bytes.
+
+    Used by neural TTS providers (e.g. Silero `apply_tts`) to stream their in-memory waveform without a
+    WAV round-trip (ARCH-21)."""
+    import numpy as np
+    arr = np.asarray(samples, dtype=np.float32)
+    return np.clip(arr * 32767.0, -32768.0, 32767.0).astype("<i2").tobytes()

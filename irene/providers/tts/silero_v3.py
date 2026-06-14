@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Dict, Any, List
 
 from .base import TTSProvider
+from ...utils.audio_stream import PCMStream, float_to_pcm16
 
 logger = logging.getLogger(__name__)
 
@@ -349,8 +350,41 @@ class SileroV3TTSProvider(TTSProvider):
             
         return normalized
         
-    async def _generate_speech_async(self, text: str, output_path: Path, 
-                                   speaker: str, sample_rate: int, 
+    async def synthesize_to_stream(self, text: str, **kwargs) -> PCMStream:
+        """Native streaming override (ARCH-21): run Silero `apply_tts` and yield the waveform as int16
+        PCM directly, instead of `save_wav` + a temp-file round-trip."""
+        if not self._available or not self._model:
+            await self._ensure_model_loaded()
+
+        speaker = kwargs.get('speaker', self.default_speaker)
+        sample_rate = kwargs.get('sample_rate', self.sample_rate)
+        put_accent = kwargs.get('put_accent', self.put_accent)
+        put_yo = kwargs.get('put_yo', self.put_yo)
+        if speaker not in self._speakers:
+            logger.warning(f"Unknown speaker: {speaker}, using default: {self.default_speaker}")
+            speaker = self.default_speaker
+
+        processed_text = await self._normalize_text_async(text)
+        pcm = await asyncio.to_thread(
+            self._synthesize_pcm_blocking, processed_text, speaker, sample_rate, put_accent, put_yo)
+
+        async def _frames():
+            yield pcm
+
+        return PCMStream(sample_rate=sample_rate, channels=1, sample_width=2, frames=_frames())
+
+    def _synthesize_pcm_blocking(self, text: str, speaker: str, sample_rate: int,
+                                 put_accent: bool, put_yo: bool) -> bytes:
+        """Run Silero v3 `apply_tts` and convert the waveform to int16 PCM (called from a thread)."""
+        if not self._model:
+            raise RuntimeError("Silero v3 model not loaded")
+        audio = self._model.apply_tts(text=text, speaker=speaker, sample_rate=sample_rate,
+                                      put_accent=put_accent, put_yo=put_yo)
+        samples = audio.detach().cpu().numpy() if hasattr(audio, "detach") else audio
+        return float_to_pcm16(samples)
+
+    async def _generate_speech_async(self, text: str, output_path: Path,
+                                   speaker: str, sample_rate: int,
                                    put_accent: bool, put_yo: bool) -> None:
         """Generate speech asynchronously"""
         await asyncio.to_thread(
