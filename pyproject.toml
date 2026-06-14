@@ -218,6 +218,9 @@ irene-dependency-validate = "irene.tools.dependency_validator:main"
 # Audio and VAD testing tools
 irene-vad-recording-test = "irene.tools.vad_recording_test:cli_main"
 
+# Trace replay (ARCH-19)
+irene-replay-trace = "irene.tools.replay_trace:main"
+
 # Main runners
 irene-cli = "irene.runners.cli:run_cli"
 irene-webapi = "irene.runners.webapi_runner:run_webapi"

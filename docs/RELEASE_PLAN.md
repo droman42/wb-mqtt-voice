@@ -721,8 +721,20 @@ See `docs/review/phase1_architecture_map.md` §5.
       F&F actions run in detached tasks (stale contextvar snapshot) → launch events live in the synchronous request
       path. Purely additive; domain→core edge pre-existed (`base.py`), 9/9 contracts kept. **Device-command MQTT events
       deferred (Invariant #8): no real send/publish call-site exists yet** — device handlers are stubs/ports pending the
-      bridge layer (ARCH-7/8). 6 new tests; handler suites net-zero (21 pre-existing TEST-2 failures). Remaining slices
-      5–6 (replay tool, delete `vad_recording_test`).
+      bridge layer (ARCH-7/8). 6 new tests; handler suites net-zero (21 pre-existing TEST-2 failures). **Slice 5
+      (replay tool) DONE 2026-06-14 (user-approved: full scope incl. `--step`):** wired the deferred **`seed_context`
+      capture** at the single spine (`_process_pipeline`, covers batch + per-utterance streaming); new
+      **`TraceInput`** (`InputPort`, D-9 — chunks the trace's audio into frames for streaming re-entry); new
+      **`irene/tools/replay_trace.py`** (`irene-replay-trace`): load → `build_core` → seed fresh context → re-inject
+      (utterance via `process_audio_input`, segmenter/raw via `TraceInput`→`process_audio_stream`, text via
+      `process_text_input`) → **diff vs `recorded_output`**; **`--local`/`--reproduce`** (D-10; `--reproduce` overlays
+      the captured `config_subset` and **fails clearly on a model the replayer lacks**, D-16); **`--listen`** (D-11,
+      audio component, best-effort), **`--step`** (D-12 — a `trace_step()` async pause seam at the pipeline stage
+      boundaries, hook reached via the contextvar / global for streaming-minted traces, no-op otherwise),
+      **`--record-out`** (D-13 — reuses the save-every-request machinery into a chosen dir). 15 new unit tests (pure
+      diff/subset/model-mismatch/seed + `TraceInput` chunker + `--step` seam + load round-trip); the full e2e run needs
+      real models (`build_core`) so it's manual/integration. 9/9 contracts kept; pipeline suites net-zero (24
+      pre-existing TEST-2 failures). Invariant #4 N/A. Remaining slice 6 (delete `vad_recording_test` + user/dev docs).
 - [x] **ARCH-20** [AUDIO] (P-TBD) `[deferred]` — **DONE 2026-06-14 (PR-1..4).** Streamable audio output: real
       `play_stream`, new self-contained `miniaudio` provider, unstreamable providers dropped, TTS local playback
       wired through the streaming path. **PR-1** dropped `audioplayer` (file-only) + `simpleaudio` (archived,

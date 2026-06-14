@@ -20,7 +20,9 @@ from .base import Workflow, RequestContext
 from .audio_processor import AudioProcessorInterface, VoiceSegment
 from ..core.audio_negotiator import AudioNegotiator
 from ..core.metrics import get_metrics_collector
-from ..core.trace_context import TraceContext, make_trace, save_trace, trace_scope, replay_request
+from ..core.trace_context import (
+    TraceContext, make_trace, save_trace, trace_scope, replay_request, trace_step,
+)
 from ..intents.models import AudioData, IntentResult
 from ..intents.context_models import UnifiedConversationContext
 from ..utils.audio_helpers import test_audio_playback_capability, calculate_audio_buffer_size
@@ -473,6 +475,10 @@ class UnifiedVoiceAssistantWorkflow(Workflow):
         # Record initial context state
         if trace_context:
             trace_context.record_context_snapshot("before", conversation_context)
+            # ARCH-19 (D-6): the faithful "before" snapshot a replay seeds a fresh context from. This is
+            # the single seed call-site (deferred from slice 1) — covers batch text/audio AND per-utterance
+            # streaming, since every path funnels through _process_pipeline before the context is mutated.
+            trace_context.record_seed_context(conversation_context)
 
         # Required components are guaranteed by initialize() (raises if missing); guard
         # fail-loud here so the pipeline never silently dereferences an uninitialized stage.
@@ -503,6 +509,7 @@ class UnifiedVoiceAssistantWorkflow(Workflow):
             self.logger.debug("Stage: Text Processing")
             # PASS CONVERSATION CONTEXT TO TEXT PROCESSOR
             processed_text = await self.text_processor.process(processed_text, conversation_context, trace_context)
+        await trace_step("text_processing", {"input": input_data, "output": processed_text})
 
         # Stage 2: NLU (Natural Language Understanding)
         # NLU matches on the (possibly normalized) processed_text, but Intent.raw_text must carry the
@@ -512,7 +519,9 @@ class UnifiedVoiceAssistantWorkflow(Workflow):
         recognition_start_time = time.time()
         intent = await self.nlu.process(processed_text, conversation_context, trace_context,
                                         original_text=effective_input)
-        
+        await trace_step("nlu", {"intent": intent.name, "domain": intent.domain,
+                                 "confidence": intent.confidence})
+
         # Phase 2: Record intent recognition metrics
         recognition_time = time.time() - recognition_start_time
         self.metrics_collector.record_intent_recognition(
@@ -525,6 +534,8 @@ class UnifiedVoiceAssistantWorkflow(Workflow):
         # Stage 3: Intent Execution
         self.logger.debug(f"Stage: Intent Execution - {intent.name}")
         result = await self.intent_orchestrator.execute(intent, conversation_context, trace_context)
+        await trace_step("intent", {"text": result.text, "success": result.success,
+                                    "confidence": result.confidence})
         
         # Stage 4: fire-and-forget actions are now registered directly in the action store by the
         # handler-base launch (QUAL-28) — no context write-back of result.action_metadata is needed.

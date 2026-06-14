@@ -12,6 +12,29 @@ newest entries near the top of each dated section.
 ## Action journal
 
 ### 2026-06-14
+- **ARCH-19 slice 5 — the replay tool (`irene-replay-trace`), full scope incl. `--step` (user-approved).** Closed the
+  loop: a saved trace can now be re-run through the real pipeline and diffed. **(a) Seed wiring** — the `record_seed_context`
+  call-site deferred from slice 1 landed at the single spine `_process_pipeline` (alongside the "before" snapshot), so
+  it covers batch text/audio AND per-utterance streaming, captured before the context is mutated (D-6). **(b) `TraceInput`**
+  (`irene/inputs/trace_input.py`, `InputPort`, D-9) — "the mic, sourced from a trace": re-chunks the trace's assembled
+  audio blob into AudioData frames so segmenter/raw replays re-enter the *streaming* pipeline (VAD→wake→ASR) without
+  standing up the InputManager. **(c) The tool** (`irene/tools/replay_trace.py`): load → `build_core` → seed a fresh
+  context from `seed_context` → re-inject at the capture level's entry (utterance→`process_audio_input`,
+  segmenter/raw→`TraceInput`→`process_audio_stream`, text→`process_text_input`) → **diff the fresh IntentResult vs
+  `recorded_output`** (text/success/actions) with a printed report + exit code. Modes (D-10): **`--local`** (default —
+  run through the replayer's own config; the VAD-tuning case) and **`--reproduce`** (overlay the captured `config_subset`;
+  **fail clearly, naming the model + pointing to `--local`, when a named provider isn't in the replayer's config** — D-16).
+  Extras: **`--listen`** (D-11 — play the captured audio via the audio component, best-effort/degrades), **`--step`**
+  (D-12 — a new `trace_step()` async pause seam awaited at the `_process_pipeline` stage boundaries text_processing/nlu/
+  intent; the hook is set per-trace for the utterance/text path and via a module global so streaming-minted traces inherit
+  it; no-op + zero cost otherwise), **`--record-out`** (D-13 — reuses the save-every-request machinery by enabling tracing
+  into a chosen dir, so a tester's trace + the local replay become two comparable files). Registered `irene-replay-trace`
+  in `pyproject [project.scripts]`. The `replay`/`--reproduce`-endpoint is deliberately NOT built (D-15: CLI-only v1).
+  New `test_trace_replay.py` (15 tests: pure diff/config-subset/model-mismatch/seed helpers + the `TraceInput` chunker +
+  the `--step` seam + a `TraceReplayer.load` round-trip); the full e2e run needs real models (`build_core`), so it's
+  manual/integration, not unit-covered. 9/9 import contracts kept (TraceInput in `inputs`, tool in `tools`, no new edge);
+  pipeline suites net-zero (24 pre-existing TEST-2 failures, verified by stash). Invariant #4 N/A. ARCH-19 stays `[ ]`
+  (5 of 6 slices — only the `vad_recording_test` deletion + user/dev docs remain).
 - **ARCH-19 slice 4 — handler `trace_event()` call-sites (D-5).** Wired the opt-in `trace_event()` helper (from
   slice 1; reads the `current_trace` contextvar, bound around handler execution in both the batch and streaming
   paths) by a consistent rule rather than ad-hoc per handler. **(1) Every fire-and-forget launch is traced once,

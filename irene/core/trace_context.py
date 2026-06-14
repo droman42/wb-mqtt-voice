@@ -24,7 +24,7 @@ from contextlib import contextmanager
 from contextvars import ContextVar
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, Iterator, List, Optional
+from typing import Any, Awaitable, Callable, Dict, Iterator, List, Optional
 
 from ..intents.context_models import UnifiedConversationContext
 
@@ -67,6 +67,34 @@ def trace_event(label: str, data: Optional[Dict[str, Any]] = None, *, handler: s
     if trace is None or not trace.enabled:
         return
     trace.add_handler_event(handler=handler, label=label, data=data or {})
+
+
+# ARCH-19 slice 5 (D-12) — the `--step` seam. A replay's `--step` sets a global pause hook; every
+# minted trace picks it up (see make_trace), and `trace_step()` awaits it at each pipeline stage
+# boundary. No-op in normal operation (no hook set). The hook is `async (stage, data) -> None`.
+StepHook = Callable[[str, Dict[str, Any]], Awaitable[None]]
+_step_hook: Optional["StepHook"] = None
+
+
+def set_step_hook(hook: Optional["StepHook"]) -> None:
+    """Install (or clear) the global step hook used by `replay_trace --step`."""
+    global _step_hook
+    _step_hook = hook
+
+
+async def trace_step(stage: str, data: Optional[Dict[str, Any]] = None) -> None:
+    """Pause point at a pipeline stage boundary — awaits the active trace's step hook if set.
+
+    No-op when no trace is active or no `--step` hook is installed, so the pipeline pays nothing.
+    """
+    trace = current_trace.get()
+    if trace is None or not trace.enabled:
+        return
+    hook = getattr(trace, "step_hook", None)
+    if hook is None:
+        return
+    trace.current_stage = stage
+    await hook(stage, data or {})
 
 
 class TraceLogger(logging.Handler):
@@ -149,7 +177,8 @@ class TraceContext:
         # Call-sites for some of these land in later slices (config→2, vad→3, logs→2, seed→5);
         # the fields + recorders exist now so the envelope schema is complete from slice 1.
         self.capture_level: str = "utterance"          # utterance | segmenter | raw (D-2)
-        self.current_stage: Optional[str] = None        # set at stage boundaries; tags TraceLogger records (slice 2; precise wiring in a later slice)
+        self.current_stage: Optional[str] = None        # set at stage boundaries; tags TraceLogger records + drives --step
+        self.step_hook: Optional["StepHook"] = None     # ARCH-19 D-12: set on replay --step, awaited by trace_step()
         self._input: Optional[Dict[str, Any]] = None   # faithful input: kind + format + audio_base64/text
         self._request: Optional[Dict[str, Any]] = None  # provider/language/skip_*/session/room/wants_audio
         self._canonical: Optional[Dict[str, Any]] = None  # canonical audio contract (rate/format/channels)
@@ -948,6 +977,7 @@ def make_trace(trace_config: Any) -> Optional["TraceContext"]:
                          max_stages=trace_config.max_stages,
                          max_data_size_mb=trace_config.max_data_size_mb)
     trace.capture_level = trace_config.capture_level
+    trace.step_hook = _step_hook  # workflow-minted traces (streaming) inherit the --step hook
     return trace
 
 
