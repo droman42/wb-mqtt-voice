@@ -771,8 +771,14 @@ See `docs/review/phase1_architecture_map.md` §5.
       (`fa56978`); **#3 streaming-endpointing (D-6) DEFERRED → ARCH-10** (Invariant #8: it's a new no-VAD streaming path,
       deployment-gated on a streaming ASR + WB7, testable only there; the accumulate-until-`end` + batch-ASR **fallback is
       the permanent floor and active** — `/ws/audio` correctly implements the wire contract; the wire/firmware design is
-      unchanged by the deferral). #4 asset endpoints + #5 CSR-approval flow **queued** (not started this batch). _Next when
-      resumed: #4/#5, then Phase 5 (closure)._
+      unchanged by the deferral). **#4 asset serving + #5 CSR/CA + #6 ops RECLASSIFIED →
+      Plane B (NOT Irene), 2026-06-14 (WB7 SSH recon):** they're a **fleet-provisioning plane** that runs as nginx +
+      openssl + scripts **directly on the WB7** (tiny armv7 box, ~1 GB RAM; Irene isn't even deployed there) —
+      implemented in the repo at **`nginx/`** (Ansible playbook + EC home-CA + two-zone nginx [:80 bootstrap / :443
+      mTLS] + `esp32-provision` approval CLI; CSR-approval flow proven end-to-end with openssl). **Plane A (Irene
+      voice pipeline) is COMPLETE for ESP32** (#1 reply channel, #2 register; #3 → ARCH-10). Amends D-13 (models =
+      Plane-B nginx static, not Irene AssetManager) + D-17 (approval = WB7 CLI, not config-ui). _Next: Phase 5
+      (ledger closure)._
 
 ### Code Quality & Review (QUAL)
 - [x] **QUAL-1** — Phase-0 static baseline (ruff/pyright/vulture/validators/import-graph). → `docs/review/phase0_static_baseline.md` (6e39886)

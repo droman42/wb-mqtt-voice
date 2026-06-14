@@ -12,6 +12,19 @@ newest entries near the top of each dated section.
 ## Action journal
 
 ### 2026-06-14
+- **ARCH-22 Plane A / Plane B split + Plane B implemented (`nginx/`).** WB7 SSH recon (root@192.168.110.250) found a
+  tiny armv7 controller (~1 GB RAM / 2 GB disk, nginx 1.18 w/ ssl+auth_request+dav, only `:80`, **no Irene container**
+  — bridge/ui both stopped 10mo). Concluded (user-driven, pushed back where warranted) that the remaining Phase-4
+  pieces (#4 asset serving, #5 CSR/CA, #6 ops) are **not Irene** — they're a **fleet-provisioning plane (Plane B)**
+  that belongs as **nginx + openssl + scripts directly on the WB7**, not a container. **Plane A (Irene voice
+  pipeline) is complete for ESP32** (#1 reply channel, #2 register; #3 → ARCH-10). Implemented Plane B in the repo at
+  **`nginx/`**: an **Ansible playbook** (`nginx/ansible/deploy.yml`, idempotent) deploying an **EC `prime256v1` home
+  CA**, a **two-zone nginx site** (`:80` bootstrap = public CA cert + CSR `PUT` + signed-cert `GET`, human approval is
+  the gate; `:443` mTLS = firmware/model static serving, `ssl_verify_client on`), and an **`esp32-provision`
+  {list,approve,revoke} CLI** (dedicated/SSH approval — amends D-17 away from config-ui; config-ui can call the same
+  scripts later). The CSR-approval flow was **proven end-to-end with openssl** (sign → verify-against-CA → clientAuth
+  EKU → idempotent re-init). Amends D-13 (per-node models = Plane-B nginx static, operator-managed, not Irene's
+  AssetManager). `bash -n` + ansible `--syntax-check` + YAML all clean.
 - **ARCH-22 Phase 4 (backend) batch 1 — reply channel + register extension; streaming-endpoint deferred.**
   **#1 (`d8b1c70`)** the ESP32 **reply channel**: `outputs/remote_audio.CallbackReplyChannel` (transport-agnostic
   `speak_begin`→PCM→`speak_end` framing) + a `/ws/audio/reply` WS endpoint pairing a `RemoteAudioOutput`

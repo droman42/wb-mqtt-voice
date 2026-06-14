@@ -1,0 +1,16 @@
+# Copy to group_vars/all.yml and adjust for your deployment.
+
+# The name(s) the device is told as the "WB7 address" in Stage-1 provisioning. Can be a hostname
+# and/or an IP, space-separated (nginx server_name). The first token is used as the server cert CN.
+esp32_server_name: "assistant.lan 192.168.110.250"
+
+# Subject Alternative Names for the WB7 server cert — must cover whatever the device connects to.
+esp32_server_sans: "DNS:assistant.lan,IP:192.168.110.250"
+
+# Home CA common name (cosmetic).
+esp32_ca_cn: "HomeVoice ESP32 CA"
+
+# Set host:port ONLY if Irene's WS runs on THIS controller and you want nginx to reverse-proxy
+# /ws/ behind mTLS. Leave empty if Irene runs elsewhere (the usual case) — the device then connects
+# to Irene directly / via wherever Irene is fronted.
+esp32_irene_upstream: ""

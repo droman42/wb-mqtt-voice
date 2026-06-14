@@ -204,11 +204,11 @@ Based on the proven **mitsubishi2wb** pattern (SoftAP captive portal + web admin
 | D-10 | Shared contract = the microWakeWord manifest (JSON + `.tflite`), byte-identical device+server |
 | D-11 | Inference split: device wake/µVAD; server = configured ASR (opportunistic streaming endpoint) + NLU/TTS/actuation |
 | D-12 | Device models in a flash data partition (runtime-loaded); OTA A/B · NVS · models; config+models survive OTA |
-| D-13 | Model push: prod = HTTPS-from-WB7 (versioned, hashed); dev = admin UI; server hosts via AssetManager |
+| D-13 | Model push: prod = HTTPS-from-WB7 (versioned, hashed); dev = admin UI. **Amended: served by Plane-B nginx static from `/srv/esp32/models/` (operator-managed), NOT Irene's AssetManager** |
 | D-14 | Identity = client_id + name + primary_room + covered_rooms[]; resolve_physical_id unchanged for output |
 | D-15 | Multi-room resolution policy (impl → ARCH-7/QUAL-35 + ARCH-8 catalog; data carried now) |
 | D-16 | Two-stage SoftAP→STA provisioning + web admin UI (v1 no-auth/no-button; v2 adds them) |
-| D-17 | Cert provisioning = CSR-approval via config-ui (no token); private key stays on device |
+| D-17 | Cert provisioning = CSR-approval (no token); private key stays on device. **Amended: Plane-B home CA on the WB7; approval via the `esp32-provision` CLI over SSH (dedicated/LAN-only > config-ui for a once-per-device op); config-ui may call the same scripts later** |
 | D-18 | OTA A/B + esp_https_ota from WB7; config/models preserved; auto-rollback |
 
 ## 12. Backend implementation plan (Phase 4 — this session builds backend only)
@@ -222,14 +222,28 @@ Based on the proven **mitsubishi2wb** pattern (SoftAP captive portal + web admin
    + endpoint, opportunistic; accumulate-until-`end` + batch ASR stays the permanent fallback (active today).
    **DEFERRED to ARCH-10** — deployment-gated (streaming ASR + WB7), testable only there; the wire contract is
    unchanged. *(Not `process_audio_stream` — that's the VAD-segmented mic path.)*
-4. **Asset endpoints** — `GET /esp32/model/{ref}` + `GET /esp32/firmware/{ref}` (served from AssetManager; mTLS at
-   nginx; versioned + hashed).
-5. **CSR-approval flow** *(security-sensitive)* — `POST /esp32/provision/csr` (→ pending queue), config-ui approval
-   UI (Invariant #4), WB7 CA signing, `GET …/cert`. Built + unit-tested against fake CSRs; live validation needs
-   hardware + the nginx/CA ops setup.
-6. **Ops (WB7, via SSH)** — home CA generation + nginx mTLS config (documented; not app code).
+**★ Plane A / Plane B split (refined 2026-06-14, WB7 SSH recon).** Items 4–6 are **not Irene** — they're a
+separate **fleet-provisioning plane (Plane B)** that runs as **nginx + openssl + scripts directly on the WB7**, not
+in any container. Rationale: it's security-critical PKI + static serving, must not depend on Irene being up, and the
+WB7 is tiny (~1 GB RAM / 2 GB disk, armv7 — another service is the wrong weight; Irene isn't even deployed there).
+**Plane A (Irene voice pipeline) is complete for ESP32** with #1+#2 (#3 → ARCH-10). Plane B lives in the repo at
+**`nginx/`** (an Ansible playbook the operator runs on the controller).
 
-Each lands within the invariants (net-0 regression, pyright 0, config-ui green, import contracts).
+4. **Asset serving** → **Plane B: nginx static.** `GET https://<host>/esp32/{firmware,models}/…` behind
+   `ssl_verify_client on`. **No Irene endpoint.** Operator/CI publishes files into `/srv/esp32/{firmware,models}/`
+   (the per-node model is operator-managed there — amends D-13: *not* served by Irene's AssetManager, which is for
+   Irene's own server-side models in the standalone-64-bit scenario).
+5. **CSR-approval / CA** → **Plane B: openssl home-CA + nginx + CLI.** Two zones: `:80` bootstrap (public CA cert +
+   CSR `PUT` + signed-cert `GET`; no secrets cross — the device key never leaves it; the **human approval is the
+   gate**) and `:443` mTLS operations. Approval is **`esp32-provision {list,approve,revoke}`** over SSH (amends D-17:
+   a dedicated, LAN-only CLI — more isolated than config-ui for a once-per-device crown-jewel op; config-ui can call
+   the same scripts later). EC (`prime256v1`) keys throughout (light for the device handshake). CSR treated as
+   untrusted input (client_id validated, signed by file). Proven end-to-end with openssl.
+6. **Ops (WB7)** → **Plane B Ansible playbook** (`nginx/ansible/deploy.yml`): creates the layout, installs the
+   scripts, inits the CA once, templates + enables the nginx site, validates + reloads. Idempotent.
+
+Plane-A items land within the Irene invariants (net-0, pyright 0, config-ui green, contracts); Plane B is a deploy
+artifact (no Irene code), validated by `bash -n` + an end-to-end openssl dry-run.
 
 ## 13. Ledger closure (Phase 5)
 

@@ -1,0 +1,89 @@
+---
+# Deploy the ESP32 fleet-provisioning plane (ARCH-22 Plane B) on the Wirenboard controller.
+# Idempotent: creates the layout, installs the scripts, inits the CA ONCE (guarded on ca.key),
+# templates + enables the nginx site, validates and reloads nginx. Never overwrites an existing CA.
+#
+#   ansible-playbook -i inventory.ini deploy.yml
+- name: ESP32 fleet-provisioning plane
+  hosts: esp32_controller
+  become: true
+
+  vars:
+    esp32_web_root: /srv
+    esp32_srv_dir: /srv/esp32
+    esp32_ca_dir: /etc/esp32-ca
+    nginx_user: www-data
+
+  tasks:
+    - name: Ensure nginx + openssl are present
+      ansible.builtin.apt:
+        name:
+          - nginx
+          - openssl
+        state: present
+        update_cache: false
+
+    - name: Create the private CA directory
+      ansible.builtin.file:
+        path: "{{ esp32_ca_dir }}"
+        state: directory
+        owner: root
+        group: root
+        mode: "0700"
+
+    - name: Create the web roots
+      ansible.builtin.file:
+        path: "{{ item.path }}"
+        state: directory
+        owner: "{{ item.owner }}"
+        group: "{{ item.group }}"
+        mode: "{{ item.mode }}"
+      loop:
+        - { path: "{{ esp32_srv_dir }}/provision/pending", owner: "{{ nginx_user }}", group: "{{ nginx_user }}", mode: "0755" }
+        - { path: "{{ esp32_srv_dir }}/provision/cert",    owner: "root",             group: "{{ nginx_user }}", mode: "0755" }
+        - { path: "{{ esp32_srv_dir }}/firmware",          owner: "root",             group: "{{ nginx_user }}", mode: "0755" }
+        - { path: "{{ esp32_srv_dir }}/models",            owner: "root",             group: "{{ nginx_user }}", mode: "0755" }
+
+    - name: Install the provisioning scripts
+      ansible.builtin.copy:
+        src: "files/{{ item }}"
+        dest: "/usr/local/bin/{{ item }}"
+        owner: root
+        group: root
+        mode: "0755"
+      loop:
+        - esp32-ca-init.sh
+        - esp32-sign-csr.sh
+        - esp32-provision.sh
+
+    - name: Initialise the home CA + server cert (once)
+      ansible.builtin.command: /usr/local/bin/esp32-ca-init.sh
+      environment:
+        CA_DIR: "{{ esp32_ca_dir }}"
+        SRV_DIR: "{{ esp32_srv_dir }}"
+        CA_CN: "{{ esp32_ca_cn }}"
+        SERVER_CN: "{{ esp32_server_name.split() | first }}"
+        SERVER_SANS: "{{ esp32_server_sans }}"
+      args:
+        creates: "{{ esp32_ca_dir }}/ca.key"
+
+    - name: Template the nginx site
+      ansible.builtin.template:
+        src: templates/esp32-site.conf.j2
+        dest: /etc/nginx/sites-available/esp32.conf
+        owner: root
+        group: root
+        mode: "0644"
+      notify: reload nginx
+
+    - name: Enable the nginx site
+      ansible.builtin.file:
+        src: /etc/nginx/sites-available/esp32.conf
+        dest: /etc/nginx/sites-enabled/esp32.conf
+        state: link
+      notify: reload nginx
+
+  handlers:
+    - name: reload nginx
+      ansible.builtin.shell: nginx -t && systemctl reload nginx
+      changed_when: true
