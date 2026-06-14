@@ -5,11 +5,14 @@ Defines the interface that all TTS provider implementations must follow.
 This is used by UniversalTTSPlugin to manage multiple TTS backends.
 """
 
+import tempfile
+import wave
 from typing import Dict, Any, List
 from pathlib import Path
 from abc import abstractmethod
 
 from ..base import ProviderBase
+from ...utils.audio_stream import PCMStream, iter_frames, parse_wav
 
 
 class TTSProvider(ProviderBase):
@@ -46,7 +49,44 @@ class TTSProvider(ProviderBase):
             **kwargs: Provider-specific parameters (speaker, speed, etc.)
         """
         pass
-    
+
+    async def synthesize_to_stream(self, text: str, **kwargs) -> PCMStream:
+        """Synthesize ``text`` to a raw-PCM stream (ARCH-21 — the producer twin of `play_stream`).
+
+        **Base default = buffer-then-stream simulation:** synthesize to a temp WAV via the required
+        `synthesize_to_file`, parse it to raw PCM, and yield it in frame-aligned blocks. This makes EVERY
+        WAV-producing provider streamable with no extra work; a provider whose engine streams natively
+        (or holds samples/bytes in memory) overrides this for true incremental output. Providers that emit
+        a non-WAV container (e.g. MP3) or non-audio (console text) must override — the default raises a
+        clear error rather than guessing.
+
+        Returns:
+            A `PCMStream` whose `(sample_rate, channels, sample_width)` are known up front and whose
+            `frames` yields raw little-endian PCM chunks.
+        """
+        with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tf:
+            temp_path = Path(tf.name)
+        try:
+            await self.synthesize_to_file(text, temp_path, **kwargs)
+            try:
+                pcm, rate, channels, width = parse_wav(temp_path.read_bytes())
+            except (wave.Error, EOFError) as e:
+                raise NotImplementedError(
+                    f"{self.get_provider_name()} does not produce WAV PCM ({e}); "
+                    f"override synthesize_to_stream for this provider") from e
+        finally:
+            if temp_path.exists():
+                temp_path.unlink()
+
+        # ~1024-sample blocks; a frame is channels * sample_width bytes
+        block_bytes = max(1, channels * width) * 1024
+
+        async def _frames():
+            for chunk in iter_frames(pcm, block_bytes):
+                yield chunk
+
+        return PCMStream(sample_rate=rate, channels=channels, sample_width=width, frames=_frames())
+
     def get_parameter_schema(self) -> Dict[str, Any]:
         """
         Auto-generate parameter schema from Pydantic model.

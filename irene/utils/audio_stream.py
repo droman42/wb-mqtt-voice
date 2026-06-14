@@ -8,7 +8,23 @@ raw PCM + format, and map a sample width to an ALSA format token. PCM-only
 
 import io
 import wave
+from dataclasses import dataclass
 from typing import AsyncIterator, Iterator, Tuple
+
+
+@dataclass
+class PCMStream:
+    """A producer's raw-PCM output as a format header + an async frame iterator (ARCH-21).
+
+    Mirrors the ``play_stream`` contract — ``(sample_rate, channels, sample_width)`` are known up front
+    so a sink can be opened before the first frame, and ``frames`` yields raw little-endian PCM chunks.
+    A whole-utterance engine fills ``frames`` from a buffer (simulation); a true streaming engine yields
+    incrementally. PCM-only (``audio_pipeline.md`` §8 D-12).
+    """
+    sample_rate: int
+    channels: int
+    sample_width: int
+    frames: AsyncIterator[bytes]
 
 
 async def collect_pcm(stream: AsyncIterator[bytes]) -> bytes:

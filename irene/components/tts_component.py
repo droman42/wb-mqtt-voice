@@ -27,6 +27,7 @@ from ..intents.ports import TTSPort  # QUAL-24: domain capability port (applicat
 # Import TTS provider base class and dynamic loader
 from ..providers.tts import TTSProvider
 from ..utils.loader import dynamic_loader
+from ..utils.audio_stream import PCMStream
 
 logger = logging.getLogger(__name__)
 
@@ -435,6 +436,35 @@ class TTSComponent(Component, TTSPlugin, WebAPIPlugin, TTSPort):
         """
         # Delegate to existing synthesize_to_file implementation
         await self.synthesize_to_file(text, output_path, **kwargs)
+
+    async def synthesize_to_stream(self, text: str, **kwargs) -> PCMStream:
+        """Synthesize ``text`` to a raw-PCM stream via the selected provider (ARCH-21).
+
+        The producer twin of `AudioComponent.play_stream`: returns a `PCMStream` (format header + async
+        PCM frame iterator) a sink can consume directly. Mirrors `synthesize_to_file`'s provider selection
+        and fallback. Each provider streams natively or via the base buffer-then-stream simulation."""
+        provider_name = kwargs.get("provider", self.default_provider)
+        provider = await self._get_provider(provider_name)
+        if provider is not None:
+            try:
+                return await provider.synthesize_to_stream(text, **kwargs)
+            except Exception as e:
+                logger.error(f"TTS provider {provider_name} streaming failed: {e}")
+        return await self._stream_with_fallback(text, provider_name, **kwargs)
+
+    async def _stream_with_fallback(self, text: str, failed_provider: str, **kwargs) -> PCMStream:
+        """Try fallback providers' streaming synthesis when the primary fails (ARCH-21)."""
+        for fallback_provider in self.fallback_providers:
+            if fallback_provider != failed_provider and fallback_provider in self.providers:
+                try:
+                    result = await self.providers[fallback_provider].synthesize_to_stream(text, **kwargs)
+                    logger.info(f"Used fallback TTS provider for stream: {fallback_provider}")
+                    return result
+                except Exception as e:
+                    logger.warning(f"Fallback TTS provider {fallback_provider} streaming failed: {e}")
+                    continue
+        logger.error("All TTS providers failed for streaming synthesis")
+        raise RuntimeError("No TTS providers available for streaming synthesis")
 
     def get_supported_voices(self) -> List[str]:
         """Get voices from all available providers"""
