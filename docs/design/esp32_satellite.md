@@ -92,11 +92,16 @@ Disconnect → server unregisters the output. Reply conforms DOWN to the device'
 - **Single mic v1** (D-5) — far-field/TV robustness via a 2-mic array is a v2 upgrade (§14).
 - **Device emits `{"type":"end"}`** on µVAD trailing-silence (700 ms) ∥ max-window (8 s) ∥ session-end — a
   **stream-boundary HINT**, NVS-tunable.
-- **Server ASR endpointing is authoritative (D-6).** Target: `/ws/audio` streams frames into the configured ASR
-  (`process_audio_stream`) and finalizes on the ASR endpoint; the device end-frame is secondary. Works with
-  **whatever ASR provider is configured** (D-11) — streaming-endpointing is **opportunistic** (sherpa-onnx /
-  vosk-streaming), else it falls back to accumulate-until-`end`. This is the real defense for the background-noise
-  (TV) case (endpoints on decoded tokens, not raw energy).
+- **Server ASR endpointing is authoritative (D-6) — target; fallback active.** *Today* `/ws/audio` accumulates the
+  buffer until `{"type":"end"}` and runs **batch ASR** — the **permanent floor** (a non-streaming provider like
+  whisper can *only* batch-on-end) and a correct implementation of the wire contract. The **target** adds an
+  **opportunistic** server-side endpoint when the configured ASR can stream (sherpa-onnx `OnlineRecognizer` /
+  vosk-streaming): a **new no-VAD streaming path** feeds PCM into `transcribe_stream` and finalizes on the model's
+  endpoint (decoded-token timing, not raw energy) — the real defense for the background-noise (TV) case. **NOT**
+  `process_audio_stream` (that's the VAD-segmented mic path, wrong for the no-server-VAD ESP32 path). **Deferred to
+  ARCH-10** — it's deployment-gated (needs a streaming ASR + the WB7) and testable only there; the wire contract is
+  **unchanged** by the deferral (device sends the same frames + end-frame; only the server-internal ASR handling
+  gains the enhancement).
 
 ## 5. On-device audio I/O + hardware (T2)
 
@@ -192,7 +197,7 @@ Based on the proven **mitsubishi2wb** pattern (SoftAP captive portal + web admin
 | D-3 | ESP-IDF + PlatformIO; not Arduino |
 | D-4 | Device is a pure MQTT-unaware voice terminal; smart-home stays backend (ARCH-7/8) |
 | D-5 | Single mic v1 (2-mic array = v2) |
-| D-6 | Server-streaming ASR endpointing is the target & authority; device end-frame is a hint |
+| D-6 | Server-streaming ASR endpointing is the target & authority; device end-frame is a hint. **Fallback (accumulate-until-end + batch ASR) is the permanent floor & active; the streaming enhancement is deferred to ARCH-10** |
 | D-7 | Half-duplex v1: digital I2S mic + MAX98357A; ES8311 + analog + self-driver = v2 |
 | D-8 | Capture 16k/mono/16-bit/20ms/300ms pre-roll; playback 22.05k/mono/16-bit; end-hint 700ms/8s |
 | D-9 | Device wake stack = ported microWakeWord on ESP-IDF (TFLite-Micro micro-features frontend + µVAD); not the draft's MFCC/energy VAD |
@@ -209,11 +214,14 @@ Based on the proven **mitsubishi2wb** pattern (SoftAP captive portal + web admin
 ## 12. Backend implementation plan (Phase 4 — this session builds backend only)
 
 1. **Reply channel** — `/ws/audio/reply` WS endpoint + `register-reply` → `OutputManager.add_output(client_id,
-   RemoteAudioOutput)` on connect, `remove_output` on disconnect; `ReplyChannel` WS adapter (the ARCH-21 device-half).
+   RemoteAudioOutput)` on connect, `remove_output` on disconnect; `CallbackReplyChannel` adapter (the ARCH-21
+   device-half). **✓ DONE** (`d8b1c70`).
 2. **`register` extension** — `audio_out`, `primary_room`/`covered_rooms`, `firmware_version`/`model_version` in
-   `ClientRegistration` + the `/ws/audio` handler (D-14); back-compat `room_name` alias.
-3. **Streaming endpointing (D-6)** — rewire `/ws/audio` to feed `process_audio_stream` + finalize on the ASR
-   endpoint when the configured provider streams; keep accumulate-until-`end` as fallback. (Leans on ARCH-10.)
+   `ClientRegistration` + the `/ws/audio` handler (D-14); back-compat `room_name` alias. **✓ DONE** (`fa56978`).
+3. **Streaming endpointing (D-6)** — a **new no-VAD streaming path** feeding the configured ASR's `transcribe_stream`
+   + endpoint, opportunistic; accumulate-until-`end` + batch ASR stays the permanent fallback (active today).
+   **DEFERRED to ARCH-10** — deployment-gated (streaming ASR + WB7), testable only there; the wire contract is
+   unchanged. *(Not `process_audio_stream` — that's the VAD-segmented mic path.)*
 4. **Asset endpoints** — `GET /esp32/model/{ref}` + `GET /esp32/firmware/{ref}` (served from AssetManager; mTLS at
    nginx; versioned + hashed).
 5. **CSR-approval flow** *(security-sensitive)* — `POST /esp32/provision/csr` (→ pending queue), config-ui approval

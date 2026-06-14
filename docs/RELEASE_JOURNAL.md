@@ -12,6 +12,20 @@ newest entries near the top of each dated section.
 ## Action journal
 
 ### 2026-06-14
+- **ARCH-22 Phase 4 (backend) batch 1 — reply channel + register extension; streaming-endpoint deferred.**
+  **#1 (`d8b1c70`)** the ESP32 **reply channel**: `outputs/remote_audio.CallbackReplyChannel` (transport-agnostic
+  `speak_begin`→PCM→`speak_end` framing) + a `/ws/audio/reply` WS endpoint pairing a `RemoteAudioOutput`
+  (`origin_key==client_id`) on the `OutputManager`; `/ws/audio` now routes the SPOKEN reply via
+  `OutputManager.deliver(SPEECH)` (wants_audio=False, no local playback) — completing the ARCH-21 device-half.
+  **#2 (`fa56978`)** the `register` extension (D-14): `name`/`covered_rooms`/`audio_out`/`firmware_version`/
+  `model_version` on `ClientRegistration`, `primary_room` alias of `room_name`, `covered_rooms` threaded into
+  `/ws/audio` `client_context` (carry-ready for the room resolver). **#3 streaming-endpointing (D-6) deferred to
+  ARCH-10** (Invariant #8): `process_audio_stream` is the VAD-segmented mic path (wrong for the no-server-VAD ESP32
+  path); the real target is a **new no-VAD streaming path** feeding the ASR's `transcribe_stream` + endpoint, which
+  is deployment-gated (streaming ASR + WB7) and testable only with ARCH-10. The accumulate-until-`end` + batch-ASR
+  fallback is the **permanent floor and active** — `/ws/audio` correctly implements the wire contract, and deferring
+  #3 leaves the wire/firmware design unchanged. ARCH-10 tagged as owner. #4 (asset endpoints) + #5 (CSR flow) queued.
+  pyright 0; net-0 regression (81 = baseline; +4 tests across #1/#2).
 - **ARCH-22 Phase 2+3 — consolidated ESP32 design doc written.** Interactive design session locked **D-1..D-18**
   across T1–T7: device shape (headless satellite, ESP-IDF+PlatformIO, MQTT-unaware); wire protocol (two WS —
   `/ws/audio` in + `/ws/audio/reply` out; raw PCM; extended `register`; device end-hint + server-authoritative ASR

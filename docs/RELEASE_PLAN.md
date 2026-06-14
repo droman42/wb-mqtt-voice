@@ -356,6 +356,13 @@ See `docs/review/phase1_architecture_map.md` §5.
       pymicro-vad on Linux x86_64/aarch64 only (extras now carry honest markers). WB7 hardware re-validation
       deferred to ARCH-10 completion (user).
       Build/Docker corrections = BUILD-5/3.
+      **★ OWNS the ESP32 streaming-endpoint (ARCH-22 #3 / D-6, deferred here 2026-06-14):** a **new no-VAD streaming path**
+      for `/ws/audio` that feeds the configured ASR's `transcribe_stream` + finalizes on the model endpoint (sherpa-onnx
+      `OnlineRecognizer`), opportunistic — server-authoritative end-of-utterance for the background-noise/TV case. NOT
+      `process_audio_stream` (that's the VAD-segmented mic path). Deployment-gated (streaming ASR + WB7 — testable here with
+      the deferred WB7 hardware re-validation); the accumulate-until-`end` + batch-ASR fallback in `/ws/audio` is the
+      permanent floor and already active, so the wire contract + firmware design are unaffected. See `esp32_satellite.md`
+      §4.4/§12.
 - [x] **ARCH-11** `[release]` (P1) — **DONE 2026-06-03 (S1-S4, commits 64c4050·0453b12·b64be87·+S4).** Inverted all 4
       `core → inputs/workflows/components.base` composition-root edges + locked them with the import-linter contract "Core
       does not import the outer layers (ARCH-11)" (8th contract; teeth-checked: a planted `core→inputs` import breaks it).
@@ -759,8 +766,13 @@ See `docs/review/phase1_architecture_map.md` §5.
       QUAL-45 (input+output protocol), ARCH-21 reply-channel device-half handoff, the ESP32 pieces of ARCH-6/ARCH-9/ARCH-10.
       The **firmware rewrite itself** (the C++ effort) is tracked as a separate deferred item (quarantine → fresh build per
       `esp32_wakeword_review.md`); this session implements **backend only**. **Phase 2 (design) DONE — D-1..D-18 locked;
-      Phase 3 DONE — consolidated `docs/design/esp32_satellite.md` written (backend plan §12).** _Next: Phase 4 (backend
-      impl), Phase 5 (ledger closure)._
+      Phase 3 DONE — consolidated `docs/design/esp32_satellite.md` (backend plan §12).** **Phase 4 (backend) IN PROGRESS:**
+      #1 reply channel `/ws/audio/reply` ✓ (`d8b1c70`); #2 `register` extension (D-14 identity/multi-room/audio_out) ✓
+      (`fa56978`); **#3 streaming-endpointing (D-6) DEFERRED → ARCH-10** (Invariant #8: it's a new no-VAD streaming path,
+      deployment-gated on a streaming ASR + WB7, testable only there; the accumulate-until-`end` + batch-ASR **fallback is
+      the permanent floor and active** — `/ws/audio` correctly implements the wire contract; the wire/firmware design is
+      unchanged by the deferral). #4 asset endpoints + #5 CSR-approval flow **queued** (not started this batch). _Next when
+      resumed: #4/#5, then Phase 5 (closure)._
 
 ### Code Quality & Review (QUAL)
 - [x] **QUAL-1** — Phase-0 static baseline (ruff/pyright/vulture/validators/import-graph). → `docs/review/phase0_static_baseline.md` (6e39886)
