@@ -12,6 +12,18 @@ newest entries near the top of each dated section.
 ## Action journal
 
 ### 2026-06-14
+- **ARCH-22 Phase 2+3 — consolidated ESP32 design doc written.** Interactive design session locked **D-1..D-18**
+  across T1–T7: device shape (headless satellite, ESP-IDF+PlatformIO, MQTT-unaware); wire protocol (two WS —
+  `/ws/audio` in + `/ws/audio/reply` out; raw PCM; extended `register`; device end-hint + server-authoritative ASR
+  endpointing; single mic v1); audio I/O (digital I2S mic + MAX98357A, half-duplex; capture 16k / playback 22.05k;
+  ES8311+barge-in = v2); micro stack (ported microWakeWord on ESP-IDF with the TFLite-Micro micro-features frontend
+  + µVAD — NOT the draft's MFCC; manifest = shared device+server artifact); models (flash data-partition,
+  runtime-loaded; push via HTTPS-from-WB7 / dev admin UI); identity (client_id + name + primary_room +
+  covered_rooms; multi-room resolution policy D-15 → ARCH-7/QUAL-35); provisioning (two-stage SoftAP→STA per the
+  mitsubishi2wb pattern; CSR-approval via config-ui, no token; OTA A/B config-preserving; admin-UI auth deferred to
+  v2). Deliverable `docs/design/esp32_satellite.md` (supersedes `ws_esp32_transport.md`, folds
+  `esp32_wakeword_review.md` + `onnx §10/11` + ARCH-21). Backend plan in §12; closes QUAL-45 + ARCH-21 device-half +
+  ESP32 pieces of ARCH-6/9/10 on completion. Phase 4 (backend impl) next.
 - **ARCH-22 filed — full ESP32 review + consolidated design session (started).** Umbrella for (a) implementation
   review, (b) consolidating scattered ledger ESP32 topics, (c) the user's not-in-ledger inputs → one consolidated
   design doc + backend implementation + ESP32 design-task closure. **Phase 1 (review) done:** the quarantined
