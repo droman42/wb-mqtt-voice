@@ -32,11 +32,19 @@ class ClientDevice:
 class ClientRegistration:
     """Complete client registration with identity and capabilities"""
     client_id: str
-    room_name: str
+    room_name: str  # the PRIMARY room (ARCH-22 D-14: `primary_room` is an alias of this)
+    name: Optional[str] = None  # human-friendly device name (ARCH-22 D-14)
+    # ARCH-22 D-14: the rooms this device manages. The resolver (ARCH-7/QUAL-35) treats the primary
+    # room as implicitly covered; carried ready-but-inert until those handlers land.
+    covered_rooms: List[str] = field(default_factory=list)
+    # ARCH-22: the device's output AudioContract {rate, channels, width} — drives the reply conform.
+    audio_out: Dict[str, Any] = field(default_factory=dict)
+    firmware_version: Optional[str] = None
+    model_version: Optional[str] = None
     language: str = "ru"
     location: Optional[str] = None
     client_type: str = "unknown"  # "esp32", "web", "mobile", "desktop"
-    
+
     # Device capabilities
     available_devices: List[ClientDevice] = field(default_factory=list)
     
@@ -62,6 +70,10 @@ class ClientRegistration:
         also carries control fields like `type`/`sample_rate`/`wants_audio`) — only known registration
         fields are used; devices likewise keep only ClientDevice fields."""
         import dataclasses
+        data = dict(data)  # don't mutate the caller's frame
+        # ARCH-22 D-14: `primary_room` is an alias for `room_name` (the canonical primary room).
+        if "room_name" not in data and "primary_room" in data:
+            data["room_name"] = data["primary_room"]
         reg_fields = {f.name for f in dataclasses.fields(cls)}
         dev_fields = {f.name for f in dataclasses.fields(ClientDevice)}
 
@@ -72,6 +84,11 @@ class ClientRegistration:
         registration_data = {k: v for k, v in data.items() if k in reg_fields}
         registration_data['available_devices'] = devices
         return cls(**registration_data)
+
+    @property
+    def primary_room(self) -> str:
+        """ARCH-22 D-14: the primary room is the canonical `room_name`."""
+        return self.room_name
     
     def update_last_seen(self):
         """Update last seen timestamp"""

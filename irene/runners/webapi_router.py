@@ -813,7 +813,8 @@ def create_webapi_router(
                 "source": "ws_audio",
                 "skip_wake_word": True,  # on-device wake word
                 "client_id": registration.client_id,
-                "room_name": registration.room_name,
+                "room_name": registration.room_name,  # primary room (ARCH-22 D-14)
+                "covered_rooms": registration.covered_rooms,  # ARCH-22 D-14: ready for the room resolver
                 "device_context": {"available_devices": [
                     {"id": d.id, "name": d.name, "type": d.type, "capabilities": d.capabilities,
                      "location": d.location} for d in registration.available_devices]},

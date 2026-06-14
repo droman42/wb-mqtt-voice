@@ -39,6 +39,27 @@ def test_client_registration_from_handshake_payload():
     assert reg.available_devices[0].type == "light"
 
 
+def test_registration_carries_arch22_d14_fields():
+    """ARCH-22 D-14: register carries name + primary/covered rooms + audio_out + versions; `primary_room`
+    aliases `room_name`; extra wire keys (type/wants_audio) are ignored."""
+    reg = ClientRegistration.from_dict({
+        "type": "register",
+        "client_id": "hall_node",
+        "name": "Прихожая",
+        "primary_room": "Прихожая",                      # alias for room_name
+        "covered_rooms": ["Прихожая", "Кухня"],
+        "audio_out": {"rate": 22050, "channels": 1, "width": 16},
+        "firmware_version": "1.2.0",
+        "model_version": "jarvis-2026.06",
+        "wants_audio": True,
+    })
+    assert reg.room_name == "Прихожая" and reg.primary_room == "Прихожая"
+    assert reg.covered_rooms == ["Прихожая", "Кухня"]
+    assert reg.audio_out["rate"] == 22050
+    assert reg.firmware_version == "1.2.0" and reg.model_version == "jarvis-2026.06"
+    assert reg.name == "Прихожая"
+
+
 def test_ws_audio_adapter_handshake_and_pipeline():
     """End-to-end adapter: register → stream PCM → response, with the pipeline stubbed.
 
