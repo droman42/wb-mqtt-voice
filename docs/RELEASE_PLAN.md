@@ -736,6 +736,28 @@ See `docs/review/phase1_architecture_map.md` §5.
       physical id + remote `AudioSink` `OutputPort` + `OutputManager` origin routing), built protocol-agnostic +
       fake-client-tested, with the device protocol + F&F-offline policy finalized in the ESP32 design session
       (`ws_esp32_transport.md`/QUAL-45). Open questions §6.
+- [ ] **ARCH-22** [ESP32][WS] (P-TBD) `[deferred]` — **DOING — full ESP32 review + consolidated design session**
+      (started 2026-06-14; deliverable `docs/design/esp32_satellite.md` — being written interactively). **Container/umbrella**
+      that (a) reviews the current implementation (firmware draft **+** backend contract), (b) consolidates the ESP32 design
+      topics scattered across the ledger, and (c) folds in the user's not-in-ledger inputs — producing **ONE** consolidated
+      ESP32 design doc, implementing the missing **backend** pieces, and closing the ESP32 design tasks (or the ESP32 pieces
+      of bigger tasks). **Phase 1 (implementation review) DONE:** the quarantined `ESP32/firmware/` draft (rev 2, Jul 2025,
+      ~5.2k LoC) is a real on-device audio-acquisition + microWakeWord(INT8 TFLite-Micro) + microVAD + mTLS-WS pipeline, but
+      its wire protocol **predates every backend decision** (sends `/stt` + `{"config":…}` + `{"eof":1}`, ignores replies, no
+      audio-out path) and its UI/output/codec halves are stubs. **Locked decisions:** **D-1** backend authoritative, firmware
+      draft = inspiration only; **D-2** headless voice satellite (board + mic + speaker, 3D-printed case; no display/touch/RTC/
+      UI; memory bump-able); **D-3** ESP-IDF + PlatformIO (not Arduino); **D-4** device is a pure MQTT-unaware voice terminal
+      (audio in / audio out only; all smart-home/MQTT/actuation stays backend per ARCH-7/8). **Topics T1–T7** (each maps to
+      ledger items): T1 WS transport+wire protocol (ARCH-6 input ✓ + QUAL-45 end-of-utterance + ARCH-21 reply-to-device
+      device-half + capability declaration); T2 on-device audio I/O + **hardware selection** (mic, speaker+amp) + the absent
+      playback path; T3 microWakeWord+microVAD "micro" stack (QUAL-19/20 — same `.tflite` artifact device+server); T4
+      inference + models (ARCH-9/10 WB7-satellite-vs-standalone split, model storage/format/**push**, close ARCH-10 ESP32
+      piece + WB7 re-validation); T5 identity + multi-room (ARCH-6/QUAL-28); T6 provisioning + lifecycle [**T-A**: WiFi, certs/
+      mTLS, OTA config-preserving, model push]; T7 backend cross-cutting [**T-B** voice-confirmation of actuation, depends
+      ARCH-8; + device-half resolver ownership note → ARCH-7/QUAL-35, not re-opened here]. **Closes/absorbs on completion:**
+      QUAL-45 (input+output protocol), ARCH-21 reply-channel device-half handoff, the ESP32 pieces of ARCH-6/ARCH-9/ARCH-10.
+      The **firmware rewrite itself** (the C++ effort) is tracked as a separate deferred item (quarantine → fresh build per
+      `esp32_wakeword_review.md`); this session implements **backend only**. _Session in progress (Phase 2, T1)._
 
 ### Code Quality & Review (QUAL)
 - [x] **QUAL-1** — Phase-0 static baseline (ruff/pyright/vulture/validators/import-graph). → `docs/review/phase0_static_baseline.md` (6e39886)

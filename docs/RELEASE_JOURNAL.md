@@ -12,6 +12,17 @@ newest entries near the top of each dated section.
 ## Action journal
 
 ### 2026-06-14
+- **ARCH-22 filed — full ESP32 review + consolidated design session (started).** Umbrella for (a) implementation
+  review, (b) consolidating scattered ledger ESP32 topics, (c) the user's not-in-ledger inputs → one consolidated
+  design doc + backend implementation + ESP32 design-task closure. **Phase 1 (review) done:** the quarantined
+  `ESP32/firmware/` draft is a genuine on-device acquisition + microWakeWord(INT8 TFLite-Micro) + microVAD + mTLS-WS
+  pipeline, but its protocol predates the backend contract (`/stt`, `{"config":…}`, `{"eof":1}`, ignores replies, no
+  audio-out) and its UI/output/codec are stubs. Locked D-1 (backend authoritative, firmware=inspiration), D-2
+  (headless voice satellite: board+mic+speaker, 3D case, no display/UI, memory bump-able), D-3 (ESP-IDF + PlatformIO,
+  not Arduino), D-4 (device is a pure MQTT-unaware voice terminal; smart-home/MQTT stays backend). Topics T1–T7 mapped
+  to ledger items (ARCH-6 / QUAL-45 / ARCH-21 / QUAL-19-20 / ARCH-9-10 / QUAL-28 / ARCH-7-8). Phase 2 (interactive
+  design) starting at T1 (WS transport + wire protocol). Session codes BACKEND only; the firmware rewrite is a
+  separate deferred item.
 - **ARCH-21 PR-5 — reply-to-device server seam (ARCH-21 COMPLETE).** Added `outputs/remote_audio.py`:
   `RemoteAudioOutput(OutputPort)` + a `ReplyChannel` Protocol. Reply-to-device (D-4) needs no new registry — an
   output with `origin_key() == physical_id` is already routed by the `OutputManager` conversational
