@@ -9,7 +9,6 @@ import asyncio
 import logging
 from pathlib import Path
 from typing import Dict, Any, List, AsyncIterator
-import uuid
 
 from .base import AudioProvider
 
@@ -141,35 +140,57 @@ class AplayAudioProvider(AudioProvider):
         finally:
             self._current_playback = None
     
-    async def play_stream(self, audio_stream: AsyncIterator[bytes], **kwargs) -> None:
-        """Play audio from a byte stream using aplay."""
+    async def play_stream(self, audio_stream: AsyncIterator[bytes], *, sample_rate: int = 44100,
+                          channels: int = 1, sample_width: int = 2, **kwargs) -> None:
+        """Stream raw PCM to ALSA by piping it to ``aplay`` over stdin (ARCH-20) — no temp file.
+
+        aplay reads from stdin and plays as frames arrive, so this is a real incremental
+        stream (the producer's chunks go straight to the device).
+
+        Args:
+            audio_stream: Async iterator of raw little-endian PCM byte chunks.
+            sample_rate: PCM sample rate (Hz).
+            channels: Channel count.
+            sample_width: Bytes per sample (2 = 16-bit).
+            **kwargs: device (str).
+        """
+        if not self._available:
+            raise RuntimeError("Aplay audio backend not available")
+
+        from ...utils.audio_stream import width_to_alsa_format
+        device = kwargs.get('device', self.device)
+        fmt = width_to_alsa_format(sample_width)
+        cmd = ["aplay", "-D", device, "-t", "raw", "-f", fmt,
+               "-r", str(sample_rate), "-c", str(channels)]
+
         try:
-            # Collect stream data and save to temporary file
-            audio_data = b''
+            self._current_playback = "stream"
+            process = await asyncio.create_subprocess_exec(
+                *cmd,
+                stdin=asyncio.subprocess.PIPE,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE
+            )
+            assert process.stdin is not None
+
             async for chunk in audio_stream:
-                audio_data += chunk
-            
-            # Use asset manager for temp file instead of system temp
-            temp_dir = self.asset_manager.get_cache_path("temp")
-            temp_file = temp_dir / f"audio_stream_{uuid.uuid4().hex}.wav"
-            
-            # Ensure temp directory exists
-            temp_dir.mkdir(parents=True, exist_ok=True)
-            
-            # Write audio data to temp file
-            with open(temp_file, 'wb') as f:
-                f.write(audio_data)
-            
-            try:
-                await self.play_file(temp_file, **kwargs)
-            finally:
-                if temp_file.exists():
-                    temp_file.unlink()
-                    
+                process.stdin.write(chunk)
+                await process.stdin.drain()
+            process.stdin.close()
+            await process.stdin.wait_closed()
+
+            returncode = await process.wait()
+            if returncode != 0:
+                stderr = await process.stderr.read() if process.stderr else b""
+                error_msg = stderr.decode().strip() or f"aplay failed with code {returncode}"
+                raise RuntimeError(f"Aplay failed: {error_msg}")
+
         except Exception as e:
             logger.error(f"Failed to play audio stream: {e}")
             raise RuntimeError(f"Audio stream playback failed: {e}")
-    
+        finally:
+            self._current_playback = None
+
     
     def get_supported_formats(self) -> List[str]:
         """Get list of supported audio formats"""

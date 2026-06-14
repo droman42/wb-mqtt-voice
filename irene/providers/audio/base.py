@@ -53,13 +53,17 @@ class AudioProvider(ProviderBase):
         pass
     
     @abstractmethod
-    async def play_stream(self, audio_stream: AsyncIterator[bytes], **kwargs) -> None:
+    async def play_stream(self, audio_stream: AsyncIterator[bytes], *, sample_rate: int = 44100,
+                          channels: int = 1, sample_width: int = 2, **kwargs) -> None:
         """
-        Play audio from a byte stream.
-        
+        Play raw PCM frames from a byte stream (ARCH-20: PCM-only — no container/codec).
+
         Args:
-            audio_stream: Async iterator of audio data chunks
-            **kwargs: Provider-specific parameters
+            audio_stream: Async iterator of raw little-endian PCM byte chunks.
+            sample_rate: PCM sample rate (Hz).
+            channels: Channel count.
+            sample_width: Bytes per sample (2 = 16-bit).
+            **kwargs: Provider-specific parameters (volume, device).
         """
         pass
     

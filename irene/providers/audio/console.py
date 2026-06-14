@@ -150,42 +150,44 @@ class ConsoleAudioProvider(AudioProvider):
             logger.error(f"Failed to process audio file {file_path}: {e}")
             raise RuntimeError(f"Console audio processing failed: {e}")
     
-    async def play_stream(self, audio_stream: AsyncIterator[bytes], **kwargs) -> None:
+    async def play_stream(self, audio_stream: AsyncIterator[bytes], *, sample_rate: int = 44100,
+                          channels: int = 1, sample_width: int = 2, **kwargs) -> None:
         """
-        'Play' audio from a byte stream by printing information.
-        
+        'Play' raw PCM from a byte stream by printing stream info (ARCH-20 raw-PCM contract).
+
         Args:
-            audio_stream: Async iterator of audio data chunks
-            **kwargs: volume, device, simulate_timing
+            audio_stream: Async iterator of raw little-endian PCM byte chunks.
+            sample_rate: PCM sample rate (Hz).
+            channels: Channel count.
+            sample_width: Bytes per sample (2 = 16-bit).
+            **kwargs: volume, device, simulate_timing.
         """
         try:
             volume = kwargs.get('volume', self._volume)
             device = kwargs.get('device', self._output_device)
             simulate_timing = kwargs.get('simulate_timing', self.timing_simulation)
-            
-            # Collect stream data to get size
-            audio_data = b''
-            async for chunk in audio_stream:
-                audio_data += chunk
-            
+
+            from ...utils.audio_stream import collect_pcm
+            audio_data = await collect_pcm(audio_stream)
+
             # Create stream info
             stream_info = {
                 'type': 'audio stream',
                 'size': f"{len(audio_data):,} bytes",
-                'format': 'stream',
+                'format': f"PCM {sample_rate} Hz / {channels} ch / {sample_width * 8}-bit",
                 'volume': f"{volume:.2f}",
                 'device': device
             }
-            
+
             # Print stream information
             await self._print_playback_info(stream_info)
-            
+
             # Simulate playback duration if enabled
             if simulate_timing:
-                # Estimate duration based on data size (rough approximation)
-                estimated_duration = len(audio_data) / 44100 / 2 / 2  # 44.1kHz, 2 channels, 2 bytes per sample
+                frame_bytes = max(1, channels * sample_width)
+                estimated_duration = len(audio_data) / max(1, sample_rate) / frame_bytes
                 await self._simulate_duration(estimated_duration)
-                
+
         except Exception as e:
             logger.error(f"Failed to process audio stream: {e}")
             raise RuntimeError(f"Console audio stream processing failed: {e}")

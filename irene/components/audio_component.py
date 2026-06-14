@@ -270,23 +270,30 @@ class AudioComponent(Component, AudioPlugin, WebAPIPlugin, AudioPort):
             processing_time_ms=(time.time() - stage_start) * 1000
         )
     
-    async def play_stream(self, audio_data: bytes, format: str = "wav", **kwargs) -> None:
-        """Play audio from a byte stream"""
+    async def play_stream(self, audio_data: bytes, *, sample_rate: int = 44100,
+                          channels: int = 1, sample_width: int = 2, **kwargs) -> None:
+        """Play raw PCM bytes through the active provider's streaming backend (ARCH-20)."""
         provider_name = kwargs.get("provider", self.default_provider)
-        
-        # Convert bytes to async iterator
+
+        # Convert bytes to a one-shot async iterator (buffer-then-stream).
         async def byte_stream():
             yield audio_data
-        
+
         if provider_name in self.providers:
             try:
-                await self.providers[provider_name].play_stream(byte_stream(), **kwargs)
+                await self.providers[provider_name].play_stream(
+                    byte_stream(), sample_rate=sample_rate, channels=channels,
+                    sample_width=sample_width, **kwargs)
                 self._current_provider = provider_name
             except Exception as e:
                 logger.error(f"Audio stream playback failed with provider {provider_name}: {e}")
-                await self._stream_with_fallback(audio_data, format, provider_name, **kwargs)
+                await self._stream_with_fallback(
+                    audio_data, provider_name, sample_rate=sample_rate,
+                    channels=channels, sample_width=sample_width, **kwargs)
         else:
-            await self._stream_with_fallback(audio_data, format, provider_name, **kwargs)
+            await self._stream_with_fallback(
+                audio_data, provider_name, sample_rate=sample_rate,
+                channels=channels, sample_width=sample_width, **kwargs)
     
     async def stop_playback(self) -> None:
         """Stop current audio playback"""
@@ -434,18 +441,29 @@ class AudioComponent(Component, AudioPlugin, WebAPIPlugin, AudioPort):
             provider: Optional[str] = None,
             volume: Optional[float] = None
         ):
-            """Play audio from raw data stream"""
+            """Play audio from raw data stream.
+
+            ARCH-20: playback is PCM-only. A posted WAV container is parsed down to its
+            PCM payload + format; otherwise the bytes are treated as raw 16-bit PCM at
+            the canonical 44.1 kHz / mono. (External contract unchanged — Invariant #4.)
+            """
             provider_name = provider or self.default_provider
-            
+
             if provider_name not in self.providers:
                 raise HTTPException(404, f"Provider '{provider_name}' not available")
-            
+
             kwargs: Dict[str, Any] = {"provider": provider_name}
             if volume is not None:
                 kwargs["volume"] = volume
-            
-            await self.play_stream(audio_data, format, **kwargs)
-            
+
+            from ..utils.audio_stream import is_wav, parse_wav
+            if is_wav(audio_data):
+                pcm, rate, ch, width = parse_wav(audio_data)
+            else:
+                pcm, rate, ch, width = audio_data, 44100, 1, 2
+
+            await self.play_stream(pcm, sample_rate=rate, channels=ch, sample_width=width, **kwargs)
+
             return AudioStreamResponse(
                 success=True,
                 provider=provider_name,
@@ -564,21 +582,25 @@ class AudioComponent(Component, AudioPlugin, WebAPIPlugin, AudioPort):
         
         raise RuntimeError("All audio providers failed")
     
-    async def _stream_with_fallback(self, audio_data: bytes, format: str, failed_provider: str, **kwargs) -> None:
+    async def _stream_with_fallback(self, audio_data: bytes, failed_provider: str, *,
+                                    sample_rate: int = 44100, channels: int = 1,
+                                    sample_width: int = 2, **kwargs) -> None:
         """Attempt stream playback with fallback providers"""
         async def byte_stream():
             yield audio_data
-            
+
         for fallback in self.fallback_providers:
             if fallback != failed_provider and fallback in self.providers:
                 try:
                     logger.info(f"Trying fallback audio provider for stream: {fallback}")
-                    await self.providers[fallback].play_stream(byte_stream(), **kwargs)
+                    await self.providers[fallback].play_stream(
+                        byte_stream(), sample_rate=sample_rate, channels=channels,
+                        sample_width=sample_width, **kwargs)
                     self._current_provider = fallback
                     return
                 except Exception as e:
                     logger.warning(f"Fallback provider {fallback} also failed for stream: {e}")
-        
+
         raise RuntimeError("All audio providers failed for stream playback")
     
     def _parse_provider_name(self, command: str) -> Optional[str]:

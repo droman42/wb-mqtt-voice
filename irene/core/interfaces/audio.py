@@ -32,14 +32,17 @@ class AudioPlugin(EntryPointMetadata):
         pass
         
     @abstractmethod
-    async def play_stream(self, audio_data: bytes, format: str = "wav", **kwargs) -> None:
+    async def play_stream(self, audio_data: bytes, *, sample_rate: int = 44100,
+                          channels: int = 1, sample_width: int = 2, **kwargs) -> None:
         """
-        Play audio from a byte stream.
-        
+        Play raw PCM audio (ARCH-20: PCM-only — no container/codec).
+
         Args:
-            audio_data: Raw audio data
-            format: Audio format (wav, mp3, etc.)
-            **kwargs: Playback parameters
+            audio_data: Raw little-endian PCM bytes.
+            sample_rate: PCM sample rate (Hz).
+            channels: Channel count.
+            sample_width: Bytes per sample (2 = 16-bit).
+            **kwargs: Playback parameters (volume, device, provider).
         """
         pass
         

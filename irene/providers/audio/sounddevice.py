@@ -9,7 +9,6 @@ import asyncio
 import logging
 from pathlib import Path
 from typing import Dict, Any, List, AsyncIterator, Union, cast
-import uuid
 
 from .base import AudioProvider
 
@@ -184,47 +183,72 @@ class SoundDeviceAudioProvider(AudioProvider):
             logger.error(f"Failed to play audio file {file_path}: {e}")
             raise RuntimeError(f"Audio playback failed: {e}")
     
-    async def play_stream(self, audio_stream: AsyncIterator[bytes], **kwargs) -> None:
+    async def play_stream(self, audio_stream: AsyncIterator[bytes], *, sample_rate: int = 44100,
+                          channels: int = 1, sample_width: int = 2, **kwargs) -> None:
         """
-        Play audio from a byte stream.
-        
+        Stream raw PCM frames to the device via sounddevice's ``RawOutputStream`` (ARCH-20).
+
+        Buffer-then-stream: drain the async stream, then write the PCM to a real output
+        stream in blocking chunks on a worker thread — no temp file, no soundfile/WAV hop.
+
         Args:
-            audio_stream: Async iterator of audio data chunks
-            **kwargs: volume (float), device (str/int), format (str)
+            audio_stream: Async iterator of raw little-endian PCM byte chunks.
+            sample_rate: PCM sample rate (Hz).
+            channels: Channel count.
+            sample_width: Bytes per sample (2 = 16-bit).
+            **kwargs: volume (float), device (str/int).
         """
         if not self._available or not self._sd:
             raise RuntimeError("SoundDevice audio backend not available")
-            
-        # For now, collect all stream data and play as file
-        # Future enhancement: implement real streaming
+
+        from ...utils.audio_stream import collect_pcm
         try:
-            audio_data = b''
-            async for chunk in audio_stream:
-                audio_data += chunk
-            
-            # Use asset manager for temp file instead of system temp
-            temp_dir = self.asset_manager.get_cache_path("temp")
-            temp_file = temp_dir / f"audio_stream_{uuid.uuid4().hex}.wav"
-            
-            # Ensure temp directory exists
-            temp_dir.mkdir(parents=True, exist_ok=True)
-            
-            # Write audio data to temp file
-            with open(temp_file, 'wb') as f:
-                f.write(audio_data)
-            
-            try:
-                # Play the temporary file
-                await self.play_file(temp_file, **kwargs)
-            finally:
-                # Clean up temporary file
-                if temp_file.exists():
-                    temp_file.unlink()
-                    
+            pcm = await collect_pcm(audio_stream)
+            if not pcm:
+                return
+            volume = kwargs.get('volume', self._volume)
+            device = kwargs.get('device', self._output_device)
+            await asyncio.to_thread(
+                self._stream_pcm_blocking, pcm, sample_rate, channels, sample_width, volume, device)
         except Exception as e:
             logger.error(f"Failed to play audio stream: {e}")
             raise RuntimeError(f"Audio stream playback failed: {e}")
-    
+
+    def _stream_pcm_blocking(self, pcm: bytes, sample_rate: int, channels: int,
+                             sample_width: int, volume: float, device) -> None:
+        """Blocking raw-PCM playout via RawOutputStream (called from a thread)."""
+        if not self._sd:
+            return
+
+        dtype = {1: 'int8', 2: 'int16', 3: 'int24', 4: 'int32'}.get(sample_width, 'int16')
+        frame_bytes = max(1, channels * sample_width)
+
+        # Apply volume on 16-bit PCM (the common case) without a WAV round-trip; leave
+        # other widths untouched (24-bit has no native numpy dtype).
+        if volume != 1.0 and sample_width == 2 and self._np is not None:
+            samples = self._np.frombuffer(pcm, dtype=self._np.int16).astype(self._np.float32) * volume
+            samples = self._np.clip(samples, -32768, 32767).astype(self._np.int16)
+            pcm = samples.tobytes()
+
+        # Trim any trailing partial frame so write() always gets whole frames.
+        usable = len(pcm) - (len(pcm) % frame_bytes)
+        pcm = pcm[:usable]
+
+        block = (self.buffer_size * frame_bytes) if self.buffer_size else len(pcm)
+        block = max(block, frame_bytes)
+
+        stream = self._sd.RawOutputStream(
+            samplerate=sample_rate, channels=channels, dtype=dtype, device=device)
+        try:
+            self._current_playback = pcm
+            stream.start()
+            for i in range(0, len(pcm), block):
+                stream.write(pcm[i:i + block])
+        finally:
+            stream.stop()
+            stream.close()
+            self._current_playback = None
+
     
     def get_supported_formats(self) -> List[str]:
         """Get list of supported audio formats"""
