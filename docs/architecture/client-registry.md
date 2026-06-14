@@ -6,32 +6,35 @@ with very different lifetimes, bound together by one idea — *physical identity
 ![The client registry](../images/client-registry.png)
 
 - **Registrations** — *persisted.* Who is out there: each `ClientRegistration` is a connected client (an
-  ESP32 node, a web client) with its `client_id`, its `room_name`, and the `ClientDevice`s in that room.
-  Survives restarts.
+  ESP32 node, a web client) with its `client_id` and its `room_name` — its **identity and location**, not a
+  device catalogue (smart-home devices come from the bridge; see below). Survives restarts.
 - **The action store** — *runtime only.* What is running right now: one `ActionRecord` per live
   fire-and-forget action. It holds a live `asyncio.Task` reference, so it must never be persisted — it is
   deliberately kept separate from the registrations.
 
 ## Registrations
 
-A client registers once, declaring its room and devices:
+A client registers once, declaring **who and where it is**:
 
 ```python
 await registry.register_esp32_node(
     client_id="kitchen_node", room_name="Кухня",
-    devices=[{"id": "light1", "name": "потолок", "type": "light"}],
+    devices=[],          # a satellite reports no smart-home devices — the bridge owns those
     language="ru",
 )
 ```
 
-`register_web_client` does the same for a browser. Each `ClientDevice` carries an `id`, `name`, `type`
-(light / switch / sensor / speaker / …) and capabilities. A voice satellite declares a little more in its
-handshake: the **room(s) it covers** (a primary room plus any others it manages), its **output audio
-capability** (so a spoken reply is conformed down to what it can actually play), and its **firmware/model
-versions** (so the controller knows when to push an update). Registrations are queryable — `get_client`,
-`get_clients_by_room`, `get_all_rooms`, `get_devices_by_type` — and expire on inactivity (`last_seen` →
-`cleanup_expired_clients`). This is the catalogue NLU draws on to resolve "the kitchen light" to a real
-device.
+`register_web_client` does the same for a browser. A voice satellite declares a little more in its handshake:
+the **room(s) it covers** (a primary room plus any others it manages), its **output audio capability** (so a
+spoken reply is conformed down to what it can actually play), and its **firmware/model versions** (so the
+controller knows when to push an update). What it does **not** carry is the smart-home devices in the room —
+a satellite is a pure voice terminal that knows nothing about lights or switches.
+
+**Device knowledge lives with the bridge.** Irene pulls a device/room catalogue from `wb-mqtt-bridge` — the
+single device authority (see [MQTT](mqtt.md)) — and *that* is what NLU resolves "the kitchen light" against.
+(A registration can technically still carry a `ClientDevice` list; it's a holdover from the early handshake,
+not the catalogue.) Registrations themselves are queryable — `get_client`, `get_clients_by_room`,
+`get_all_rooms` — and expire on inactivity (`last_seen` → `cleanup_expired_clients`).
 
 ## Physical identity
 

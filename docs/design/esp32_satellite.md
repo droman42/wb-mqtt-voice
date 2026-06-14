@@ -67,8 +67,12 @@ Two WebSocket connections (mTLS terminated at **nginx**; the app sees plain WS):
   "primary_room":"...", "covered_rooms":["...","..."],
   "sample_rate":16000, "wants_audio":true,
   "audio_out":{"rate":22050,"channels":1,"width":16},
-  "available_devices":[...], "firmware_version":"...", "model_version":"..." }
+  "firmware_version":"...", "model_version":"..." }
 ```
+The satellite declares **identity + capability only** — *not* smart-home devices (it's MQTT-unaware, D-4).
+The device/room catalogue is owned by the bridge (ARCH-7/8); Irene resolves "the kitchen light" against
+*that*, not the registration. (`ClientRegistration.available_devices` is a vestigial ARCH-6 field — a
+candidate for code cleanup.)
 Server → `{"type":"registered", "client_id", "session_id"}`.
 
 ### 4.2 Reply — `/ws/audio/reply` (NEW, device listens)
