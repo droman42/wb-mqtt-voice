@@ -215,10 +215,8 @@ irene-config-validate = "irene.tools.config_validator_cli:main"
 irene-build-analyze = "irene.tools.build_analyzer:main"
 irene-dependency-validate = "irene.tools.dependency_validator:main"
 
-# Audio and VAD testing tools
-irene-vad-recording-test = "irene.tools.vad_recording_test:cli_main"
-
-# Trace replay (ARCH-19)
+# Trace recording + replay (ARCH-19) — also covers the old VAD-recording workflow
+# (capture_level=segmenter on a mic session → read vad_frames, then replay to tune)
 irene-replay-trace = "irene.tools.replay_trace:main"
 
 # Main runners

@@ -101,7 +101,7 @@ Living findings behind the tasks (Invariant #5). `[x]` = exists; others are prod
 | `docs/design/onnx_inference_layer.md` `[x]` (complete 2026-06-04; ASR/platform/build + VAD/wake-word all resolved) | shared sherpa-onnx inference layer — ASR-centric; WB7 armv7 feasibility proven on hardware | ARCH-9/10 |
 | `docs/design/io_architecture.md` (DRAFT 2026-06-07) | symmetric configurable hexagonal I/O — format-vs-input, OutputPort + modality matrix, daemon multiplexing, event-bus delivery+observation, F&F via OutputManager, runners-as-presets | ARCH-14/15 |
 | `docs/design/audio_pipeline.md` `[x]` (2026-06-10) | audio I/O negotiation+transformation seam (input twin of ARCH-15) — VAD provider family, canonical transform-once + derived/fatal negotiation, pre-roll contract, AudioTranscoder/VoiceSegmenter/AudioNegotiator, symmetric in+out, traced | ARCH-17 ✓, ARCH-18 |
-| `docs/design/trace_persistence.md` (COMPLETE 2026-06-14; D-1..D-18 locked, ready for impl) | persist utterance traces to self-contained JSON (base64 audio) for listen + pipeline replay (regression + VAD tuning) — capture levels, `current_trace` contextvar, TraceLogger, handler `trace_event`, seed+diff replay | ARCH-19 |
+| `docs/design/trace_persistence.md` (COMPLETE 2026-06-14; D-1..D-18; **ARCH-19 shipped slices 1–6**) | persist utterance traces to self-contained JSON (base64 audio) for listen + pipeline replay (regression + VAD tuning) — capture levels, `current_trace` contextvar, TraceLogger, handler `trace_event`, seed+diff replay | ARCH-19 ✓ |
 | `docs/design/streaming_tts.md` (DRAFT 2026-06-14) | producer twin of ARCH-20 — streaming TTS synthesis + output-seam delivery unification: `synthesize_to_stream` port + base simulation/native overrides, remote `AudioSink` OutputPort, collapse the 3 fragmented playout paths, retire PR-4's parse_wav bridge | ARCH-21 |
 | `docs/design/esp32_satellite.md` (DRAFT 2026-06-14) | **consolidated** ESP32 voice-satellite design — supersedes `ws_esp32_transport.md`, folds `esp32_wakeword_review.md` + `onnx §10/11` + ARCH-21; D-1..D-18 (device shape, wire protocol in+reply, micro stack, models/push, identity/multi-room, provisioning/CSR/OTA); backend plan §12 | ARCH-22 |
 | `config-ui/docs/donation_editor_ux.md` | human-friendly donations editor design | UI-1/2/3 |
@@ -668,8 +668,8 @@ See `docs/review/phase1_architecture_map.md` §5.
       sink). Stale-term sweep across guides/architecture clean. Invariant #4:
       the `[vad.providers.*]` schema change updates config-ui in the same PR (PR-2). VAD providers wrap the existing
       energy/silero/microvad engines (no new ML). **ARCH-18 COMPLETE — all of PR-1..6 + the input-path unification done.**
-- [ ] **ARCH-19** [TRACE] (P-TBD) `[deferred]` — **Trace persistence + playback** (design DRAFT 2026-06-13,
-      `docs/design/trace_persistence.md`; design session ongoing). Persist an utterance-execution trace to a
+- [x] **ARCH-19** [TRACE] (P-TBD) `[deferred]` — **DONE 2026-06-14 (slices 1–6).** Trace persistence + playback
+      (`docs/design/trace_persistence.md`, design COMPLETE D-1..D-18). Persist an utterance-execution trace to a
       **self-contained JSON** (audio **base64 inline, no WAV**) so it can be **listened to** AND **replayed** through the
       pipeline (regression + VAD tuning). Adds an opt-in save+replay layer over today's ephemeral `TraceContext` (normal
       traffic unchanged). LOCKED decisions D-1..D-10: 3 configurable **capture levels** (utterance / segmenter+`vad_frames`
@@ -734,7 +734,14 @@ See `docs/review/phase1_architecture_map.md` §5.
       **`--record-out`** (D-13 — reuses the save-every-request machinery into a chosen dir). 15 new unit tests (pure
       diff/subset/model-mismatch/seed + `TraceInput` chunker + `--step` seam + load round-trip); the full e2e run needs
       real models (`build_core`) so it's manual/integration. 9/9 contracts kept; pipeline suites net-zero (24
-      pre-existing TEST-2 failures). Invariant #4 N/A. Remaining slice 6 (delete `vad_recording_test` + user/dev docs).
+      pre-existing TEST-2 failures). Invariant #4 N/A. **Slice 6 (retire `vad_recording_test` + docs) DONE
+      2026-06-14 — ARCH-19 COMPLETE:** deleted `irene/tools/vad_recording_test.py` + its `irene-vad-recording-test`
+      entry point (its purpose was already ported in slices 2/3 — `capture_level=segmenter` on a mic session
+      captures `vad_frames` + base64 audio with VAD at canonical 16 kHz, and replay tunes from it, D-8/D-14; no code
+      or config still referenced it). New user guide `docs/guides/tracing.md` (runner `--trace`/`--trace-raw-mic`,
+      the three capture levels, the `[trace]` config, and the `irene-replay-trace` tool incl. `--local`/`--reproduce`/
+      `--listen`/`--step`/`--record-out`); `vad.md` Tuning now points to the trace-based workflow; README guides
+      index updated. All six slices shipped; 9/9 contracts; trace suite net-zero.
 - [x] **ARCH-20** [AUDIO] (P-TBD) `[deferred]` — **DONE 2026-06-14 (PR-1..4).** Streamable audio output: real
       `play_stream`, new self-contained `miniaudio` provider, unstreamable providers dropped, TTS local playback
       wired through the streaming path. **PR-1** dropped `audioplayer` (file-only) + `simpleaudio` (archived,

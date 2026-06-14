@@ -41,6 +41,8 @@ Russian-first, English supported. Version 15.0.0 · Python 3.11+ · MIT.
 - **[Docker builds](docs/guides/build-docker.md)** — multi-platform images that ship only what a
   config profile needs.
 - **[Configuration](docs/guides/configuration.md)** — the TOML configuration model, end to end.
+- **[Tracing & replay](docs/guides/tracing.md)** — record a request to a self-contained file, then listen
+  to it or replay it through the pipeline to debug and tune.
 - **[Contributing](CONTRIBUTING.md)** — developer setup and how-tos: adding an intent, a model, or
   a language.
 - **[Quickstart](docs/QUICKSTART.md)** — install it, run it, talk to it.

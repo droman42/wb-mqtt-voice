@@ -108,6 +108,10 @@ Start from `energy` and adjust by symptom (energy knobs under `[vad.providers.en
   energy `silence_frames_required`.
 - **Laggy** (waits too long to cut off) — lower them.
 
+To tune by evidence rather than by ear, **record a trace at the `segmenter` level** and read its per-frame
+`vad_frames` — voice/silence, energy and the active threshold for every frame — to see exactly where VAD fired,
+then replay the same audio after each change and compare. See [tracing & replay](tracing.md).
+
 ## Performance
 
 The energy engine is effectively free; Silero adds a small ONNX inference cost but stays real-time. On weak

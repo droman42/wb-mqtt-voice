@@ -12,6 +12,20 @@ newest entries near the top of each dated section.
 ## Action journal
 
 ### 2026-06-14
+- **ARCH-19 slice 6 — retire `vad_recording_test` + user docs; ARCH-19 COMPLETE.** Deleted
+  `irene/tools/vad_recording_test.py` and its `irene-vad-recording-test` entry point (D-8/D-14). Its purpose was
+  already ported in slices 2/3 — capturing a mic session at `capture_level=segmenter` records the `vad_frames`
+  (per-frame voice/energy/threshold) + the base64 segment audio with VAD running at the canonical 16 kHz (the
+  legacy tool's 44.1 kHz-VAD bug, fixed by construction), and `irene-replay-trace --local` tunes from it — so there
+  is no second mic-capture path to maintain. Nothing in code or config still referenced the tool (only design/release
+  docs, which describe the retirement). New **user guide `docs/guides/tracing.md`** (prose-style matched): recording a
+  trace with `--trace`/`--trace-raw-mic`, the three capture levels and when to use each, the `[trace]` config, what a
+  trace folds in (audio + logs + handler events), and the `irene-replay-trace` playback tool — `--local`/`--reproduce`
+  (incl. the fail-clear-on-missing-model behaviour), `--listen`, `--step`, `--record-out` — plus a "tuning VAD with a
+  trace" section that replaces the old recording workflow. Updated `docs/guides/vad.md` (Tuning now points to the
+  trace-based, evidence-driven workflow) and the README guides index. **ARCH-19 is DONE — all six slices shipped**
+  (spine → TraceLogger/config/flag → capture levels → handler events → replay tool → retire+docs); the task stays
+  `[deferred]` (never in the release gate) but is now `[x]`. 9/9 import contracts; trace suite net-zero.
 - **ARCH-19 slice 5 — the replay tool (`irene-replay-trace`), full scope incl. `--step` (user-approved).** Closed the
   loop: a saved trace can now be re-run through the real pipeline and diffed. **(a) Seed wiring** — the `record_seed_context`
   call-site deferred from slice 1 landed at the single spine `_process_pipeline` (alongside the "before" snapshot), so
