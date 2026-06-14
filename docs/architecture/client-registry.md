@@ -25,7 +25,10 @@ await registry.register_esp32_node(
 ```
 
 `register_web_client` does the same for a browser. Each `ClientDevice` carries an `id`, `name`, `type`
-(light / switch / sensor / speaker / …) and capabilities. Registrations are queryable — `get_client`,
+(light / switch / sensor / speaker / …) and capabilities. A voice satellite declares a little more in its
+handshake: the **room(s) it covers** (a primary room plus any others it manages), its **output audio
+capability** (so a spoken reply is conformed down to what it can actually play), and its **firmware/model
+versions** (so the controller knows when to push an update). Registrations are queryable — `get_client`,
 `get_clients_by_room`, `get_all_rooms`, `get_devices_by_type` — and expire on inactivity (`last_seen` →
 `cleanup_expired_clients`). This is the catalogue NLU draws on to resolve "the kitchen light" to a real
 device.

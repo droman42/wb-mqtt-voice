@@ -4,10 +4,12 @@ A voice satellite is a cheap microphone-and-speaker node in a room. It does the 
 — capture audio, run a wake word, play a reply — and leaves the thinking to Irene over the network. One
 Irene can serve a house full of them.
 
-> **Status: partly built.** The WebSocket transport and the identity handshake exist today (Irene's
-> `/ws/audio` endpoint). The ESP32 firmware itself — mic capture and the on-device wake word (a
-> per-satellite model trained with the microWakeWord pipeline and flashed as tflite C headers) — and the
-> spoken reply on the way back are designed but not yet built.
+> **Status: Irene's side built, firmware pending.** The WebSocket transport, the identity handshake, *and*
+> the spoken reply back to the device all exist today (`/ws/audio` in, `/ws/audio/reply` out). What's left is
+> the **ESP32 firmware**: mic capture, the on-device wake word (a per-satellite microWakeWord model, loaded at
+> runtime from a flash partition so a new word doesn't need a reflash), and playing the reply. The whole
+> satellite — wire protocol, provisioning, models, OTA — is laid out in the
+> [satellite design](../design/esp32_satellite.md).
 
 ## A turn
 
@@ -20,7 +22,9 @@ records as the connection's identity. Then, per utterance:
   Irene isn't streaming or transcribing all day;
 - the satellite **streams the audio** to Irene over the open socket;
 - Irene runs the full pipeline — **ASR → NLU → intent** — exactly as for any audio input;
-- the **response comes back** over the same socket: text today, and (planned) TTS audio the satellite plays.
+- the **spoken reply comes back as audio** — Irene synthesizes it, conforms it down to what the satellite can
+  play, and streams it over a **second socket the satellite keeps open for output**; a short text
+  acknowledgement still returns on the input socket.
 
 To Irene this is simply an **input adapter** of format `audio` with the wake word already done — no special
 case. The satellite is thin on purpose: no models, no intent logic, just ears and a mouth.
