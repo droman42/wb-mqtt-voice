@@ -16,6 +16,7 @@ from pydantic import BaseModel
 from .base import IntentHandler
 from ..models import Intent, IntentResult
 from ..context_models import UnifiedConversationContext
+from ...core.trace_context import trace_event  # ARCH-19 (D-5): opt-in, no-op when no trace is active
 
 logger = logging.getLogger(__name__)
 
@@ -222,7 +223,9 @@ class TimerIntentHandler(IntentHandler):
                 session_id=context.session_id,
                 timer_id=timer_id
             )
-            
+            trace_event("timer_set", {"duration_s": duration_seconds, "timer_id": timer_id},
+                        handler="timer")
+
             # Format response using template
             language = context.language
             time_str = self._format_duration(duration_seconds)
@@ -264,6 +267,7 @@ class TimerIntentHandler(IntentHandler):
         # Cancel the timer task(s); the store done-callback reaps them. (A specific-id cancel currently
         # cancels the domain — fine for the common single-timer case.)
         context.cancel_action("timers")
+        trace_event("timer_cancel", {"timer_id": timer_id, "count": len(active)}, handler="timer")
         if timer_id:
             return IntentResult(text=self._get_template("timer_cancel_success", language, timer_id=timer_id),
                                 should_speak=True)
@@ -282,6 +286,7 @@ class TimerIntentHandler(IntentHandler):
             return IntentResult(text=self._get_template("stop_no_timers", language),
                                 should_speak=True, success=True)
         context.cancel_action("timers")  # cancel all timer tasks; the store reaps them
+        trace_event("timer_stop", {"count": len(active)}, handler="timer")
         return IntentResult(text=self._get_template("stop_all_timers", language, count=len(active)),
                             should_speak=True)
     

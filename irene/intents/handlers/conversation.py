@@ -12,6 +12,7 @@ from typing import Dict, List, Optional, Any, Type
 from pydantic import BaseModel
 
 from .base import IntentHandler
+from ...core.trace_context import trace_event  # ARCH-19 (D-5): opt-in, no-op when no trace is active
 from ..models import Intent, IntentResult
 from ..context_models import UnifiedConversationContext, ConversationState
 from ..ports import LLMPort
@@ -404,7 +405,9 @@ class ConversationIntentHandler(IntentHandler):
                 messages=[{"role": "user", "content": formatted_prompt}],
                 trace_context=self._trace_context
             )
-            
+            trace_event("llm_call", {"method": "generate_response", "purpose": "reference",
+                                     "chars_out": len(response or "")}, handler="conversation")
+
             return IntentResult(
                 text=response,
                 should_speak=True,
@@ -472,7 +475,10 @@ class ConversationIntentHandler(IntentHandler):
                 messages=messages,
                 trace_context=self._trace_context
             )
-            
+            trace_event("llm_call", {"method": "generate_response", "purpose": "conversation",
+                                     "domain": target_domain, "chars_out": len(response or "")},
+                        handler="conversation")
+
             # Add assistant response to handler context
             handler_context["messages"].append({"role": "assistant", "content": response})
             

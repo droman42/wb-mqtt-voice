@@ -9,6 +9,7 @@ import logging
 from typing import List, Dict, Optional
 
 from .base import IntentHandler
+from ...core.trace_context import trace_event  # ARCH-19 (D-5): opt-in, no-op when no trace is active
 from ..models import Intent, IntentResult
 from ..context_models import UnifiedConversationContext
 from ..ports import LLMPort
@@ -96,6 +97,9 @@ class TextEnhancementIntentHandler(IntentHandler):
         if text_to_enhance:
             try:
                 enhanced = await llm_component.enhance_text(text_to_enhance, task="improve", language=context.language, trace_context=self._trace_context)
+                trace_event("llm_call", {"method": "enhance_text", "task": "improve",
+                                         "chars_in": len(text_to_enhance), "chars_out": len(enhanced or "")},
+                            handler="text_enhancement")
                 response_text = self._get_template("enhanced_text", language, enhanced=enhanced)
                     
                 self.logger.info(f"Text enhancement completed")
@@ -137,7 +141,10 @@ class TextEnhancementIntentHandler(IntentHandler):
         focus = self.get_param(intent, "improvement_type", default=None)
         try:
             improved = await llm_component.enhance_text(text_to_improve, task="improve", language=context.language, focus=focus, trace_context=self._trace_context)
-            
+            trace_event("llm_call", {"method": "enhance_text", "task": "improve", "focus": focus,
+                                     "chars_in": len(text_to_improve), "chars_out": len(improved or "")},
+                        handler="text_enhancement")
+
             # Use language from context (detected by NLU)
             language = context.language
             
@@ -181,7 +188,10 @@ class TextEnhancementIntentHandler(IntentHandler):
         focus = self.get_param(intent, "correction_type", default=None)
         try:
             corrected = await llm_component.enhance_text(text_to_correct, task="grammar_correction", language=context.language, focus=focus, trace_context=self._trace_context)
-            
+            trace_event("llm_call", {"method": "enhance_text", "task": "grammar_correction", "focus": focus,
+                                     "chars_in": len(text_to_correct), "chars_out": len(corrected or "")},
+                        handler="text_enhancement")
+
             # Use language from context (detected by NLU)
             language = context.language
             

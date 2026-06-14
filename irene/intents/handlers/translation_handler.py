@@ -9,6 +9,7 @@ import logging
 from typing import List, Dict, Optional
 
 from .base import IntentHandler
+from ...core.trace_context import trace_event  # ARCH-19 (D-5): opt-in, no-op when no trace is active
 from ..models import Intent, IntentResult
 from ..context_models import UnifiedConversationContext
 from ..ports import LLMPort
@@ -97,6 +98,9 @@ class TranslationIntentHandler(IntentHandler):
             text, target_lang = text_and_lang
             try:
                 translated = await llm_component.enhance_text(text, task="translation", target_language=target_lang, language=context.language, trace_context=self._trace_context)
+                trace_event("llm_call", {"method": "enhance_text", "task": "translation",
+                                         "target_language": target_lang, "chars_in": len(text),
+                                         "chars_out": len(translated or "")}, handler="translation")
                 response_text = self._get_template("translation_result", language, translated=translated)
                     
                 self.logger.info(f"Translation completed: {text} -> {target_lang}")
@@ -148,7 +152,10 @@ class TranslationIntentHandler(IntentHandler):
                 language=context.language,
                 trace_context=self._trace_context
             )
-            
+            trace_event("llm_call", {"method": "enhance_text", "task": "translation",
+                                     "target_language": target_language, "chars_in": len(text_to_translate),
+                                     "chars_out": len(translated or "")}, handler="translation")
+
             response_text = self._get_template("translation_result", language, translated=translated)
             
             self.logger.info(f"Specific translation: {text_to_translate} -> {target_language}")
