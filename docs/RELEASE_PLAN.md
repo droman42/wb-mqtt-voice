@@ -102,6 +102,7 @@ Living findings behind the tasks (Invariant #5). `[x]` = exists; others are prod
 | `docs/design/io_architecture.md` (DRAFT 2026-06-07) | symmetric configurable hexagonal I/O — format-vs-input, OutputPort + modality matrix, daemon multiplexing, event-bus delivery+observation, F&F via OutputManager, runners-as-presets | ARCH-14/15 |
 | `docs/design/audio_pipeline.md` `[x]` (2026-06-10) | audio I/O negotiation+transformation seam (input twin of ARCH-15) — VAD provider family, canonical transform-once + derived/fatal negotiation, pre-roll contract, AudioTranscoder/VoiceSegmenter/AudioNegotiator, symmetric in+out, traced | ARCH-17 ✓, ARCH-18 |
 | `docs/design/trace_persistence.md` (DRAFT 2026-06-13) | persist utterance traces to self-contained JSON (base64 audio) for listen + pipeline replay (regression + VAD tuning) — capture levels, `current_trace` contextvar, TraceLogger, handler `trace_event`, seed+diff replay | ARCH-19 |
+| `docs/design/streaming_tts.md` (DRAFT 2026-06-14) | producer twin of ARCH-20 — streaming TTS synthesis + output-seam delivery unification: `synthesize_to_stream` port + base simulation/native overrides, remote `AudioSink` OutputPort, collapse the 3 fragmented playout paths, retire PR-4's parse_wav bridge | ARCH-21 |
 | `config-ui/docs/donation_editor_ux.md` | human-friendly donations editor design | UI-1/2/3 |
 
 ---
@@ -692,6 +693,30 @@ See `docs/review/phase1_architecture_map.md` §5.
       Gates: Invariant #4 (audio provider list → config-ui), `dependency_validator`/`build_analyzer` (extra changes),
       update `docs/guides/audio.md` provider table. _(Research findings in the 2026-06-13 journal; `console` stub
       kept/retired per taste — not an audio output.)_
+- [ ] **ARCH-21** [AUDIO][TTS] (P-TBD) `[deferred]` — **Streaming TTS + output-seam delivery unification**
+      (design DRAFT 2026-06-14, `docs/design/streaming_tts.md`). The **producer twin** of ARCH-20: that task made
+      *playback* stream raw PCM, but the **TTS producer is file-only at the contract level** (only
+      `TTSProvider.synthesize_to_file`), so ARCH-20 PR-4's `stream` mode is an **interim bridge**
+      (`synthesize_to_file → parse_wav → to_sink → play_stream` — real conform + streaming backend, but **no
+      latency win**, and `parse_wav` exists only because the port can't hand back PCM). Subsumes the smaller "true
+      streaming TTS synthesis" framing. **Reconciliation finding:** delivery is fragmented across **three** surfaces
+      doing the same synth+emit — `_handle_tts_output` (sync reply; PR-4 updated), `AudioSpeechOutput.deliver`
+      (`outputs/audio.py`, ARCH-15 `OutputPort`, deferred F&F — **PR-4 did NOT touch it, still `play_file`**), and
+      the WS `/tts/stream`+`/tts/binary` endpoints in the TTS component (chunk a *finished* buffer). **Locked
+      decisions (D-1..D-3):** **D-1** delivery belongs at the **output seam** (ARCH-15 `OutputPort`/`OutputManager`),
+      NOT in the TTS component and NOT as an audio provider (providers are config-selected local-device singletons;
+      a WS client is dynamic/per-connection → a remote `AudioSink`/`OutputPort` sibling to `AudioSpeechOutput`,
+      consuming the producer's PCM stream via the `play_stream`/`AudioSink` contract + `to_sink`; §8 D-13). **D-2**
+      KEEP every provider — "streaming" is a delivery-layer chunking concern decoupled from the engine; **base-class
+      simulation** (synth→read→yield) covers all, with **native overrides** where the engine supports it (elevenlabs
+      true-stream + MP3→PCM decode; silero v3/v4 via `apply_tts` samples; sherpa-onnx TTS per-chunk callback when
+      ARCH-9/10 lands). Dropping non-streaming engines would leave only cloud elevenlabs and gut offline-first RU
+      TTS — rejected. **D-3** `synthesize_to_file` STAYS (file deliverable + `playback_mode="file"`); the port grows
+      an additive `synthesize_to_stream`. **Slices §5:** PR-1 port + base simulation · PR-2 local playout (incl.
+      `AudioSpeechOutput`) consumes the producer + retire PR-4's `parse_wav` bridge · PR-3 native overrides +
+      capabilities matrix · PR-4 move WS delivery to a remote-sink `OutputPort` (ESP32-over-WS substrate). Includes
+      an **explicit sub-item: fix the PR-4 `AudioSpeechOutput` file-only inconsistency** (deferred F&F audio doesn't
+      get the conform/streaming sync replies now do). Open questions §6. _Implementation starting now (PR-1)._
 
 ### Code Quality & Review (QUAL)
 - [x] **QUAL-1** — Phase-0 static baseline (ruff/pyright/vulture/validators/import-graph). → `docs/review/phase0_static_baseline.md` (6e39886)

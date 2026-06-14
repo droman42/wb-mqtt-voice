@@ -12,6 +12,18 @@ newest entries near the top of each dated section.
 ## Action journal
 
 ### 2026-06-14
+- **ARCH-21 filed — streaming TTS + output-seam delivery unification (design DRAFT).** Follow-on analysis to
+  ARCH-20 (its producer twin). Established that the TTS producer is file-only **at the contract level** (only
+  `synthesize_to_file`), though implementations split — silero_v4 (PCM samples) and elevenlabs (MP3 bytes) already
+  hold audio in memory; pyttsx/vosk are genuinely file-native. Found delivery fragmented across **three** surfaces
+  (`_handle_tts_output` sync reply, `AudioSpeechOutput.deliver` ARCH-15 OutputPort for deferred F&F, WS
+  `/tts/stream`+`/tts/binary`), and that **ARCH-20 PR-4 only updated the first** — `AudioSpeechOutput` still does
+  file-only `play_file`. Concluded: PR-4's `parse_wav→to_sink→play_stream` is a correct **interim bridge** (real
+  conform + streaming backend, but no latency win) that the streaming-synth port retires. Locked D-1 (delivery →
+  output seam, not TTS-component endpoint and not an audio provider — a WS client is a dynamic per-connection
+  remote `AudioSink`, not a config-selected device backend), D-2 (keep all providers; base simulation + native
+  overrides; dropping non-streaming engines would gut offline-first RU TTS), D-3 (`synthesize_to_file` stays;
+  port grows `synthesize_to_stream`). Deliverable `docs/design/streaming_tts.md`; sliced PR-1..4 in §5.
 - **ARCH-20 implemented — streamable audio output (PR-1..4).** Turned the file-only playback path into real
   streaming and trimmed the provider set to streamable-only.
   - **PR-1** removed `audioplayer` (file-only) and `simpleaudio` (archived, WAV-buffer-only) end-to-end —
