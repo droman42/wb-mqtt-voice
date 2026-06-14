@@ -48,6 +48,20 @@ stack (silero/vosk). So:
 File output remains the `/tts` file deliverable and the `playback_mode="file"` path. The port gains a second,
 additive method — it does not replace the first.
 
+### D-4 — Reply-to-**device** (user, 2026-06-14). Output goes back to the device the input came from.
+Routing is **origin-addressed**, for both sync replies and fire-and-forget: local input (mic/CLI/text) →
+local configured output; **input from a WS device → output back to that *device*** (no local playback), and
+the **device's declared `AudioContract` drives the output conform** (`to_sink` with the device's contract).
+Delivery is to the same **device, not the same connection** — the device opens a **separate reply-channel WS**
+and listens on it; the server pushes the reply there. Decoupling input/output connections (simpler than
+bidirectional) dissolves the F&F-offline and identity-across-the-gap problems into a reply-channel-presence
+check. Clean per-deployment config falls out: a WS-satellite deployment configures **no** `[audio]` provider
+and **no** microphone — only the WS driving-input + the WS reply sink (so `AudioSpeechOutput` isn't registered
+there). The device-facing reply-channel protocol (handshake, frame format, offline policy) is finalized in the
+**ESP32 design session** (`ws_esp32_transport.md` / QUAL-45); PR-5 builds the protocol-agnostic **server seam**.
+The standalone `/tts/stream`+`/tts/binary` endpoints **contradict** this (a parallel synthesis API, not
+origin-addressed delivery) → removed in PR-4.
+
 ## 3. Target shape
 
 ```
@@ -89,9 +103,14 @@ callback, addressed when the remote-sink path (PR-4) lands.
   ARCH-15 output port onto the same conform+stream path (fixes the PR-4 inconsistency).
 - **PR-3 — Native overrides.** silero_v4/v3 (samples), elevenlabs (true stream + MP3 decode). Capabilities
   matrix doc finalized.
-- **PR-4 — Output-seam remote sink.** Move WS `/tts/stream` + `/tts/binary` out of the TTS component into a
-  remote `AudioSink`/`OutputPort`; retire the duplicate handlers; route via `OutputManager`. Substrate for
-  ESP32-over-WS.
+- **PR-4 — Delete the vestigial WS synthesis endpoints.** `/tts/stream` + `/tts/binary` are an untested
+  request/response synthesis API that contradicts reply-to-device (D-4) — twins of the ASR `/stream`+`/binary`
+  already deleted as ZERO-value. Remove the handlers + the orphaned WS-response schema cluster.
+- **PR-5 — Origin-addressed reply-to-device (server seam).** A reply-channel WS the device listens on + a live
+  reply-connection registry keyed by physical identity + a remote `AudioSink`/`OutputPort` that runs
+  `synthesize_to_stream` → conform to the **device's** contract → push over the reply channel + `OutputManager`
+  routing by origin. Built protocol-agnostic and unit-tested with a fake reply client; the device-facing
+  protocol + F&F-offline policy finalize in the ESP32 design session (`ws_esp32_transport.md` / QUAL-45).
 
 ## 6. Open questions
 

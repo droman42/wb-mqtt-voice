@@ -12,6 +12,18 @@ newest entries near the top of each dated section.
 ## Action journal
 
 ### 2026-06-14
+- **ARCH-21 PR-4 + scope reconciliation (Invariant #8, user-approved).** Investigating PR-4 ("move the WS TTS
+  delivery into a remote-sink OutputPort") found it infeasible as written: `ClientRegistry` holds only metadata
+  (no live `WebSocket`), and `/ws/audio` replies text-only — so `OutputManager` has nothing to push audio to;
+  building that push infra is ESP32-transport scope. Also, `/tts/stream`+`/tts/binary` are untested
+  request/response synthesis endpoints (twins of the ASR `/stream`+`/binary` already deleted as ZERO-value).
+  User set the routing philosophy (**D-4 reply-to-device**): output is origin-addressed — a WS device's reply
+  goes back to that *device* over a *separate reply-channel WS* it listens on (not the same connection), the
+  device's contract drives the conform, local input → local output, clean per-deployment config. **Redefined
+  (approved):** PR-4 = delete the vestigial endpoints; PR-5 = the reply-to-device server seam (device protocol
+  deferred to the ESP32 design session). PR-4 deleted `/tts/stream`+`/tts/binary` (~540 lines) + the orphaned
+  WS-response schema cluster in `api/schemas.py` (~568 lines) + dead imports + the now-empty `get_websocket_spec`
+  override. pyright 0; config-ui green; net-0 regression (81 = baseline).
 - **ARCH-21 filed — streaming TTS + output-seam delivery unification (design DRAFT).** Follow-on analysis to
   ARCH-20 (its producer twin). Established that the TTS producer is file-only **at the contract level** (only
   `synthesize_to_file`), though implementations split — silero_v4 (PCM samples) and elevenlabs (MP3 bytes) already

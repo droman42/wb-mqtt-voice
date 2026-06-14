@@ -712,11 +712,21 @@ See `docs/review/phase1_architecture_map.md` §5.
       true-stream + MP3→PCM decode; silero v3/v4 via `apply_tts` samples; sherpa-onnx TTS per-chunk callback when
       ARCH-9/10 lands). Dropping non-streaming engines would leave only cloud elevenlabs and gut offline-first RU
       TTS — rejected. **D-3** `synthesize_to_file` STAYS (file deliverable + `playback_mode="file"`); the port grows
-      an additive `synthesize_to_stream`. **Slices §5:** PR-1 port + base simulation · PR-2 local playout (incl.
-      `AudioSpeechOutput`) consumes the producer + retire PR-4's `parse_wav` bridge · PR-3 native overrides +
-      capabilities matrix · PR-4 move WS delivery to a remote-sink `OutputPort` (ESP32-over-WS substrate). Includes
-      an **explicit sub-item: fix the PR-4 `AudioSpeechOutput` file-only inconsistency** (deferred F&F audio doesn't
-      get the conform/streaming sync replies now do). Open questions §6. _Implementation starting now (PR-1)._
+      an additive `synthesize_to_stream`. **Slices §5:** PR-1 port + base simulation ✓ · PR-2 local playout (incl.
+      `AudioSpeechOutput`, fixing the ARCH-20-PR-4 file-only inconsistency) consumes the producer + retire the
+      `parse_wav` bridge ✓ · PR-3 native overrides (silero v3/v4, elevenlabs PCM) + capabilities matrix ✓ · PR-4
+      **delete** the vestigial WS synthesis endpoints ✓ · PR-5 origin-addressed reply-to-device (server seam).
+      **★ D-4 reply-to-device (user 2026-06-14):** output is **origin-addressed** — input from a WS device → reply
+      back to that **device** (NOT the same connection: a **separate reply-channel WS** the device listens on),
+      the device's `AudioContract` drives the conform; local input → local output; clean per-deployment config
+      (WS-satellite = no `[audio]`/mic). **Invariant #8 scope change (user-approved 2026-06-14):** PR-4 was "move WS
+      delivery into a remote-sink OutputPort" but that needs live-connection push infra that doesn't exist
+      (`ClientRegistry` holds metadata only; `/ws/audio` replies text-only) = ESP32-transport scope. **Redefined:**
+      PR-4 = delete `/tts/stream`+`/tts/binary` (untested twins of the deleted ASR endpoints; contradict
+      reply-to-device); PR-5 = the reply-to-device **server seam** (reply-channel WS + live-connection registry by
+      physical id + remote `AudioSink` `OutputPort` + `OutputManager` origin routing), built protocol-agnostic +
+      fake-client-tested, with the device protocol + F&F-offline policy finalized in the ESP32 design session
+      (`ws_esp32_transport.md`/QUAL-45). Open questions §6.
 
 ### Code Quality & Review (QUAL)
 - [x] **QUAL-1** — Phase-0 static baseline (ruff/pyright/vulture/validators/import-graph). → `docs/review/phase0_static_baseline.md` (6e39886)
