@@ -1,6 +1,7 @@
 # Trace persistence + playback (ARCH-19)
 
-**Status:** design DRAFT 2026-06-13 (design session with user). Builds on the existing ephemeral
+**Status:** design COMPLETE 2026-06-14 (D-1..D-18 locked; §13 open questions all resolved — ready for
+implementation per the §12 slices). Builds on the existing ephemeral
 `core/trace_context.py` (`TraceContext`) and the ARCH-15 observe/event-bus vocabulary. Goal: persist an
 utterance-execution trace to a **self-contained JSON file** so it can be (a) **listened to** and (b)
 **replayed through the pipeline** — for regression debugging and VAD tuning.
@@ -172,9 +173,9 @@ intents (disambiguation, "стоп") replay meaningfully.
 - **Now:** runner flags — `--trace` (on/off, save every request while on) and `--trace-raw-mic` (the extra
   live-mic rolling-buffer level). Bare `--trace` "just works" on sensible defaults.
 - **Later:** a `[trace]` TOML section (config-ui-editable): `enabled`, `capture_level`, `capture_raw_mic`,
-  `log_threshold`, `traces_dir`. (Reserved for a future `save_policy` — v1 saves **every** request; an
-  on-error / recent-N ring is a later refinement.)
-- Files land in `[trace] traces_dir` (under the assets root); **retention is manual in v1**.
+  `log_threshold`, `traces_dir`. (No `save_policy` knob — per **D-17** the startup tracing flag is the only
+  gate; while on, **every** request is saved. The ring/on-error idea was considered and declined.)
+- Files land in `[trace] traces_dir` (under the assets root); **retention is manual** (D-17).
 
 ## 9. Hexagon seams (new vs reused)
 
@@ -223,6 +224,23 @@ then read `vad_frames`) fully covers its purpose, so there's no second mic-captu
 - **D-13** The CLI can **`--record-out`** a second trace of a replay run (same capture machinery; default
   `capture_level` = the source's), so a tester's trace + the local replay are two comparable files for analysis.
 - **D-14** `vad_recording_test` is **deleted** once its harness is ported (no second mic-capture path).
+- **D-15** Replay surface = **CLI only for v1**; a `/trace/replay` endpoint is **deferred, not dropped**. The
+  rich UX is terminal-native (listen on the OS output D-11, interactive `--step` D-12, `--record-out` D-13),
+  none of which survives an HTTP boundary; the workflow entry points are source-agnostic, so an endpoint can be
+  added later with no rework and without pulling config-ui into Invariant #4 before a caller exists.
+- **D-16** `--reproduce` against a **missing model** → **fail clearly**, naming the absent model(s) and
+  suggesting `--local`. `--reproduce` is "what did *their* system do," so a silent substitution would be a
+  false reproduction; degrading-and-running is exactly what `--local` already does. Keeps the two modes clean —
+  `--reproduce` is faithful-or-nothing, `--local` always works. (Lifts the D-10 "out of scope for now"
+  deferral: the rule is decided; the superset assumption just means it rarely fires.)
+- **D-17** **Save policy = save every request whenever tracing was enabled at startup** (the runner `--trace`
+  flag now / a future `[trace] enabled`). The startup flag is the **only** gate — **no** ring-buffer or
+  on-error variant. Retention stays **manual**. (Resolves the deferred ring/on-error idea by declining it: a
+  trace session is a deliberate, bounded debugging act, so "all while on" is the whole policy.)
+- **D-18** A saved trace stays **file-only** — the full envelope (inline base64 audio, logs, `vad_frames`) is
+  too heavy for the observation bus. When ARCH-15's event bus lands, emit only a **lightweight `trace_saved`
+  pointer-event** (`request_id` + path + a short summary), never the payload, so observers learn a trace exists
+  without it crossing the bus. Until then, strictly file-only.
 
 ## 12. Implementation slices (ARCH-19, TBD ordering)
 
@@ -237,13 +255,18 @@ then read `vad_frames`) fully covers its purpose, so there's no second mic-captu
    **`--record-out`** a second trace; optional `/trace/replay`.
 6. **Delete `vad_recording_test`**; tests; user/dev docs (PR-6 style) + a diagram if warranted.
 
-## 13. Open questions (for the next design round)
+## 13. Open questions — RESOLVED (design session 2026-06-14)
 
-- Replay surface: CLI tool only, or also a `/trace/replay` endpoint?
+All five are now decided; nothing left for a further design round before implementation.
+
+- ~~Replay surface: CLI only, or also a `/trace/replay` endpoint?~~ — **resolved (D-15): CLI only for v1**, the
+  endpoint deferred (entry points are source-agnostic, addable later without rework).
 - ~~`vad_recording_test`: delete vs wrapper~~ — **resolved (D-14): deleted** once ported.
 - ~~`config_digest`: hash vs subset~~ — **resolved (D-10): capture a config *subset*** (+ a digest for quick
   equality), since cross-system `--reproduce` can't replay from a hash.
-- **Model-availability fallback** (deferred — the superset assumption holds for now): when a `--reproduce`
-  trace needs a model the replayer lacks, fail clearly vs degrade-to-a-local-provider-and-report?
-- Save policy beyond v1 (on-error / recent-N ring) — when, and what retention/cleanup for `traces_dir`?
-- Cross-cut with ARCH-15 observe: should a saved trace also be emitted on the event bus, or stay file-only?
+- ~~Model-availability fallback~~ — **resolved (D-16): `--reproduce` fails clearly** (names the missing model,
+  points to `--local`); no degrade path — that's what `--local` is for.
+- ~~Save policy beyond v1 (on-error / recent-N ring)~~ — **resolved (D-17): save-all, gated solely on the
+  startup tracing flag**; no ring/on-error; retention manual.
+- ~~Cross-cut with ARCH-15 observe~~ — **resolved (D-18): file-only**; a lightweight `trace_saved` pointer-event
+  (not the payload) once ARCH-15's bus exists.

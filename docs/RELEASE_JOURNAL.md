@@ -12,6 +12,19 @@ newest entries near the top of each dated section.
 ## Action journal
 
 ### 2026-06-14
+- **ARCH-19 — design session closed; §13 open questions all resolved (D-15..D-18).** Decided the four remaining
+  trace-persistence design edges with the user, lifting the doc from DRAFT to design-COMPLETE: **D-15** replay surface
+  = **CLI only for v1** (a `/trace/replay` endpoint is deferred, not dropped — the rich UX is terminal-native and the
+  source-agnostic entry points let it be added later with no rework, avoiding a premature Invariant #4 obligation);
+  **D-16** `--reproduce` against a **missing model fails clearly** (names the model, points to `--local`) — no
+  degrade-and-run, since that *is* `--local`, keeping the two modes semantically clean; **D-17** **save policy =
+  save-all gated solely on the startup tracing flag** (the ring-buffer / on-error variants were considered and
+  declined — a trace run is a deliberate bounded debugging act; retention stays manual, no `save_policy` knob);
+  **D-18** a saved trace stays **file-only** (the inline-base64 envelope is too heavy for the observation bus) — once
+  ARCH-15's bus exists, emit only a lightweight `trace_saved` pointer-event (id + path + summary), never the payload.
+  Updated `trace_persistence.md` (§8 reservation, §11 D-15..D-18, §13 marked all-resolved, status line) and the ledger
+  (ARCH-19 entry + review-index row). ARCH-19 stays `[ ]` / `[deferred]` — design is done, implementation (§12 slices)
+  is the next step when the task is picked up.
 - **ARCH-22 Phase 5 — ledger closure; ARCH-22 DONE.** Closed **QUAL-45** (ESP32 audio-streaming protocol — *design*
   subsumed by ARCH-22 / `esp32_satellite.md`; firmware impl rides the rewrite). Amended every ARCH-22-touched task with
   explicit `esp32_satellite.md` pointers: **ARCH-6** (transport consolidated; reply channel + register extension realized),
