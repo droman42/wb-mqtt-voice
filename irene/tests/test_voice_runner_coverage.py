@@ -16,6 +16,7 @@ hardware and a booted core, so it is intentionally left to the smoke harness.
 """
 
 import asyncio
+import builtins
 import contextlib
 import sys
 import unittest
@@ -52,6 +53,41 @@ def _no_sounddevice():
         if saved is _MISSING:
             sys.modules.pop("sounddevice", None)
         else:
+            sys.modules["sounddevice"] = saved
+
+
+@contextlib.contextmanager
+def _with_sounddevice():
+    """Make ``import sounddevice`` succeed with a stub — HERMETIC 'present' (no real PortAudio
+    native lib needed, so this holds on a headless CI runner)."""
+    saved = sys.modules.get("sounddevice", _MISSING)
+    sys.modules["sounddevice"] = SimpleNamespace(__name__="sounddevice")
+    try:
+        yield
+    finally:
+        if saved is _MISSING:
+            sys.modules.pop("sounddevice", None)
+        else:
+            sys.modules["sounddevice"] = saved
+
+
+@contextlib.contextmanager
+def _sounddevice_raises(exc):
+    """Force ``import sounddevice`` to raise `exc` (e.g. OSError: PortAudio not found) — models the
+    package-present-but-native-lib-absent case the probe must survive."""
+    saved = sys.modules.pop("sounddevice", _MISSING)
+    real_import = builtins.__import__
+
+    def fake_import(name, *args, **kwargs):
+        if name == "sounddevice":
+            raise exc
+        return real_import(name, *args, **kwargs)
+
+    try:
+        with patch.object(builtins, "__import__", side_effect=fake_import):
+            yield
+    finally:
+        if saved is not _MISSING:
             sys.modules["sounddevice"] = saved
 
 
@@ -131,24 +167,38 @@ def _core(*, results=None, raise_exc=None, has_mic=True, has_voice_trigger=True,
 
 class TestDependencyProbe(unittest.TestCase):
     def test_check_voice_dependencies_present(self):
-        # sounddevice is installed in this environment → True.
-        self.assertTrue(check_voice_dependencies())
+        with _with_sounddevice():
+            self.assertTrue(check_voice_dependencies())
 
     def test_check_voice_dependencies_absent(self):
         with _no_sounddevice():
             self.assertFalse(check_voice_dependencies())
 
+    def test_check_voice_dependencies_oserror_degrades(self):
+        # package present but PortAudio native lib missing → OSError on import → must return False,
+        # not crash (the probe's job is to report availability).
+        with _sounddevice_raises(OSError("PortAudio library not found")):
+            self.assertFalse(check_voice_dependencies())
+
     def test_check_dependencies_check_deps_flag_delegates(self):
         runner = _runner()
         args = SimpleNamespace(check_deps=True, quiet=True)
-        self.assertTrue(_arun(runner._check_dependencies(args)))
+        with _with_sounddevice():
+            self.assertTrue(_arun(runner._check_dependencies(args)))
         with _no_sounddevice():
             self.assertFalse(_arun(runner._check_dependencies(args)))
 
     def test_check_dependencies_probe_present(self):
         runner = _runner()
         args = SimpleNamespace(check_deps=False, quiet=True)
-        self.assertTrue(_arun(runner._check_dependencies(args)))
+        with _with_sounddevice():
+            self.assertTrue(_arun(runner._check_dependencies(args)))
+
+    def test_check_dependencies_probe_oserror_degrades(self):
+        runner = _runner()
+        with _sounddevice_raises(OSError("PortAudio library not found")):
+            self.assertFalse(_arun(runner._check_dependencies(
+                SimpleNamespace(check_deps=False, quiet=True))))
 
     def test_check_dependencies_probe_absent_quiet_and_verbose(self):
         runner = _runner()

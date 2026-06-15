@@ -36,7 +36,9 @@ def check_voice_dependencies() -> bool:
         import sounddevice as sd  # type: ignore  # noqa: F401  # availability probe
         print("✅ Microphone capture available (sounddevice)")
         return True
-    except ImportError as e:
+    except (ImportError, OSError) as e:
+        # ImportError = package missing; OSError = package present but the PortAudio native
+        # library is absent. A dependency probe must report unavailable, never crash.
         print(f"❌ Microphone capture unavailable: {e}")
         print("💡 Install with: uv add irene-voice-assistant[audio-input]")
         return False
@@ -107,7 +109,8 @@ The ASR engine is whatever [asr] default_provider selects — there is no hardco
         try:
             import sounddevice as sd  # type: ignore  # noqa: F401  # availability probe
             return True
-        except ImportError:
+        except (ImportError, OSError):
+            # package missing OR PortAudio native lib absent — degrade, don't crash.
             if not args.quiet:
                 print("❌ Microphone capture unavailable (sounddevice)")
                 print("💡 Install with: uv add irene-voice-assistant[audio-input]")

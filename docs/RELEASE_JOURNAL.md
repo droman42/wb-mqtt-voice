@@ -32,6 +32,17 @@ newest entries near the top of each dated section.
   (`trace_context` 76%, `trace_input` 89%), new wiring is thin (`replay_trace`/`voice_runner` 34%). Suite still at its
   baseline (82 failed / 472 passed / 15 skipped — the ±1 is a coverage-perturbed timing benchmark, not a regression).
   Next: Phase B triage + risk-ranked worklist, then the workflow.
+- **CI Tests gate red on a second real bug (PortAudio/OSError) — surfaced + fixed (user-approved).** With pyright
+  green, the newly-enabled Tests gate ran and failed on the GitHub runner (Python 3.11.15) — 3 `test_voice_runner_coverage`
+  tests raised `OSError: PortAudio library not found`. Root cause = a **real robustness bug in QUAL-46's voice_runner**:
+  `check_voice_dependencies()` / `_check_dependencies()` catch only `ImportError`, but `import sounddevice` raises
+  **`OSError`** when the package is installed without the PortAudio native lib (exactly a headless CI box / a server
+  deployment) — so the dependency *probe crashes* instead of reporting "unavailable". Surfaced with options per the
+  standing rule; user chose **fix the code** → broadened both probes to `except (ImportError, OSError)` (degrade, never
+  crash). Also made the Phase-D tests **hermetic** (they had asserted the real environment had working sounddevice):
+  added `_with_sounddevice()` (stub → present) and `_sounddevice_raises(exc)` (models the OSError), and added two tests
+  asserting the graceful degradation — so the fix is locked in and the suite no longer depends on a system audio lib.
+  Full suite 890 passed; pyright 0; no other test touches PortAudio.
 - **CI red since ARCH-19 slice 5 — fixed (pyright); avoiding `cast` surfaced a real bug in my own tool.** CI had
   failed every run since `ARCH-19 slice 5` (the replay tool) — **5 pyright errors in `irene/tools/replay_trace.py`**
   (I'd checked import-linter + tests but never run pyright there). The Tests step never ran (gated behind pyright), so
