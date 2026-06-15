@@ -100,15 +100,6 @@ from .schemas import (
     get_schema_version, validate_schema_compatibility
 )
 
-# Migration utilities
-from .migration import (
-    migrate_config, 
-    V13ToV14Migrator, 
-    ConfigurationCompatibilityChecker,
-    ConfigurationMigrationError,
-    create_migration_backup
-)
-
 __all__ = [
     # Core configuration
     "CoreConfig",
@@ -137,8 +128,4 @@ __all__ = [
     # Schema validation
     "SchemaValidator", "SchemaVersion", "CURRENT_SCHEMA_VERSION",
     "get_schema_version", "validate_schema_compatibility",
-    
-    # Migration support
-    "migrate_config", "V13ToV14Migrator", "ConfigurationCompatibilityChecker",
-    "ConfigurationMigrationError", "create_migration_backup"
 ] 

@@ -22,7 +22,6 @@ from pydantic import ValidationError  # type: ignore
 from .models import (
     CoreConfig, create_default_config, create_config_from_profile, EnvironmentVariableResolver
 )
-from .migration import migrate_config, ConfigurationCompatibilityChecker
 from .toml_roundtrip import (
     load_toml_with_comments, doc_to_plain_dict, apply_changes, 
     save_doc, validate_toml_with_pydantic, TomlRoundTripError
@@ -544,15 +543,8 @@ stages = {str(tp_config.stages)}
         return await asyncio.to_thread(json.dumps, data, indent=2)
         
     async def _dict_to_config_validated(self, data: dict[str, Any]) -> CoreConfig:
-        """Convert dictionary to CoreConfig with validation and v13→v14 migration"""
+        """Convert dictionary to CoreConfig with validation"""
         try:
-            # Check if migration is needed
-            if ConfigurationCompatibilityChecker.requires_migration(data):
-                logger.info("Detected v13 configuration format, performing automatic migration to v14")
-                config = await asyncio.to_thread(migrate_config, data)
-                logger.info("Configuration migration completed successfully")
-                return config
-            
             # Resolve environment variables if needed (enablement-aware)
             resolved_data = EnvironmentVariableResolver.substitute_env_vars(data)
             

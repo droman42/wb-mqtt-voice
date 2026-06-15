@@ -305,14 +305,15 @@ See `docs/review/phase1_architecture_map.md` §5.
       **`scripts/migrate_donations_v11.py`** (QUAL-29 donation v1.0→v1.1 — **QUAL-29 is `[x]` and the assets are already
       v1.1**: 13 `contract.json` + per-lang files, so the one-time migration is applied/spent). Surfaced a related
       finding kept OUT of scope → **QUAL-48**: `irene/config/migration.py` is *live* v13→v14 runtime auto-migration.
-- [ ] **QUAL-48** [DFLOW] (P2) `[deferred]` — **OPEN (finding, 2026-06-15).** Evaluate removing the v13→v14 runtime
-      config-migration path. `irene/config/migration.py` (`migrate_config` + `ConfigurationCompatibilityChecker`) is
-      still wired into `config/manager.py:_dict_to_config` (line ~550), guarded by `requires_migration(data)` — it only
-      fires for a **v13-format** config, which on v15.0.0 should never occur. So it's almost certainly dead weight (the
-      last v13/v14 standalone migrators were retired in QUAL-47), but unlike those it is **live runtime code** wired into
-      every config load, so removing it is a deliberate code change (drop the import in `config/__init__.py` + `manager.py`,
-      delete the module, confirm no v13 config still in play) — not a tool deletion. Decide: keep as a v13 safety net, or
-      remove. NOT started — surfaced during the QUAL-47 sweep.
+- [x] **QUAL-48** [DFLOW] (P2) `[deferred]` — **DONE 2026-06-15 (decision: remove).** Removed the v13→v14 runtime
+      config-migration path — the last v13/v14 relic after QUAL-47 retired the standalone migrators. `irene/config/migration.py`
+      (637 lines: `V13ToV14Migrator`/`migrate_config`/`ConfigurationCompatibilityChecker`/`create_migration_backup`) was
+      wired into `config/manager.py:_dict_to_config`, guarded by `requires_migration(data)` so it only fired for a
+      **v13-format** config — which never occurs on v15.0.0. Deleted the module; dropped the import + the guard block in
+      `manager.py` (the normal env-resolve → `model_validate` path is unchanged); removed the import + 5 `__all__` entries
+      from `config/__init__.py`. A v13 config now fails plainly at pydantic validation instead of silently morphing —
+      correct for v15 (v13 is unsupported). No test depended on auto-migration (verified net-zero vs baseline); all shipped
+      configs (config-master/minimal/api-only) load clean; re-exports intact; 9/9 import contracts. Invariant #4 N/A.
 - [x] **ARCH-7** [MQTT] — **✓ DONE 2026-06-06** (design session; deliverable `docs/design/mqtt_integration.md`, and the
       cross-project bridge contract AGREED with the user in the bridge session — `wb-mqtt-bridge/docs/
       voice_integration_contract_draft.md`, status AGREED 2026-06-06). **Approach REDEFINED (Invariant #8(d), approved):**

@@ -12,6 +12,19 @@ newest entries near the top of each dated section.
 ## Action journal
 
 ### 2026-06-15
+- **QUAL-48 — removed the v13→v14 runtime config-migration path (decision: remove).** The last v13/v14 relic after the
+  QUAL-47 sweep. `irene/config/migration.py` (637 lines — `V13ToV14Migrator`, `migrate_config`,
+  `ConfigurationCompatibilityChecker`, `create_migration_backup`) was *live* but guarded: `config/manager.py:_dict_to_config`
+  called `ConfigurationCompatibilityChecker.requires_migration(data)` and only auto-migrated a **v13-format** config —
+  impossible to hit on v15.0.0. Reconciled the full surface first (Invariant #8): only two importers (`config/__init__.py`
+  re-exports + `manager.py`), no tests, no other code. Deleted the module; removed the import + the migration guard in
+  `_dict_to_config` (the normal path — env-var resolve → `CoreConfig.model_validate` — is untouched); removed the import
+  block + the 5 `__all__` entries from `config/__init__.py`. Net effect: a v13 config now fails at pydantic validation
+  with a plain error rather than silently transforming — the right behaviour on v15, where v13 is unsupported. Verified:
+  config-master/minimal/api-only all load clean, the `irene.config` re-exports still resolve, no lingering reference to
+  any migration symbol, 9/9 import contracts, and the config/manager test suites are net-zero (7 pre-existing TEST-2
+  failures, identical with the change stashed — nothing depended on auto-migration). Invariant #4 N/A. _Irene no longer
+  carries any v13/v14 migration code or tooling._
 - **QUAL-47 (extended) — swept for stale migrators, retired two more; surfaced one live-code finding (QUAL-48).**
   Broadened the verify-then-delete sweep across `tools/`, `irene/tools/`, `scripts/`. Retired two more standalone
   migrators (neither an entry point, neither imported by any code or test): **`tools/migrate_to_universal_plugins.py`**
