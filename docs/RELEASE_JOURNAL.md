@@ -32,6 +32,25 @@ newest entries near the top of each dated section.
   (`trace_context` 76%, `trace_input` 89%), new wiring is thin (`replay_trace`/`voice_runner` 34%). Suite still at its
   baseline (82 failed / 472 passed / 15 skipped — the ±1 is a coverage-perturbed timing benchmark, not a regression).
   Next: Phase B triage + risk-ranked worklist, then the workflow.
+- **CI red since ARCH-19 slice 5 — fixed (pyright); avoiding `cast` surfaced a real bug in my own tool.** CI had
+  failed every run since `ARCH-19 slice 5` (the replay tool) — **5 pyright errors in `irene/tools/replay_trace.py`**
+  (I'd checked import-linter + tests but never run pyright there). The Tests step never ran (gated behind pyright), so
+  the green local suite was masked. Fixes: typed `self.core: Optional[AsyncVACore]` + `assert ... is not None` narrowing
+  (real runtime checks, not band-aids); narrowed `TraceInput.listen() -> AsyncIterator[AudioData]` at the source (legal
+  covariant override) instead of a call-site `cast`; and for the audio component used `isinstance(audio, AudioComponent)`
+  narrowing instead of `cast(Any, audio)`. The user pushed back ("isn't cast a dirty trick?") — correct: `cast(Any)` is
+  a typed `# type: ignore`, and here it was **hiding a genuine bug** — `_listen` passed an async generator to
+  `AudioComponent.play_stream`, which takes raw **bytes** (it buffers→streams internally), so `--listen` would have
+  silently failed (swallowed by its try/except). Fixed `_listen` to pass the decoded bytes, and updated the 2 Phase-D
+  coverage tests that had pinned the buggy contract (fake `SimpleNamespace` audio + async-gen) to a real `AudioComponent`
+  receiving bytes. Verified: pyright 0 errors, all other CI gates pass locally (no-TYPE_CHECKING / config profiles /
+  config files / dependency resolution), full suite 888 passed, 9/9 import contracts. Audited `cast` across all product
+  code (user request): **12 usages, 0 dirty** — all cast an under-typed *third-party* return (sounddevice/pyttsx
+  `query_devices`/`getProperty`, the OpenAI SDK `ChatCompletionMessageParam`) to its known concrete shape, so the call
+  stays checked; one `cast(object, …)`→`isinstance` is exemplary. **No `cast(Any, …)` anywhere** — the only one was
+  mine, now gone. _Lesson: run pyright locally on new code (not just import-linter + tests); the honest line is
+  `cast(ConcreteType, untyped_external_value)` ✅ vs `cast(Any, our_value)` ❌ — the latter is a typed `# type: ignore`
+  that disables checking and conceals bugs (it hid this one)._
 - **TEST-7 DONE + folded-in TEST tasks reconciled + full-suite pytest is now a CI gate.** Marked **TEST-7 `[x]`**
   (suite rewritten + 100% green, coverage 45.6→52.3%; the `workflow_manager`/`context` deep-pipeline residual accepted
   as integration/smoke-level, user-approved). Reconciled the tasks "folded into TEST-7" honestly against measured

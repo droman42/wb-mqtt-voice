@@ -13,7 +13,7 @@ fixed frames here; VAD re-segments it fresh on replay, so the exact framing is n
 import logging
 from typing import AsyncIterator
 
-from ..core.interfaces.input import InputPort, InputData
+from ..core.interfaces.input import InputPort
 from ..intents.models import AudioData
 
 logger = logging.getLogger(__name__)
@@ -46,7 +46,7 @@ class TraceInput(InputPort):
         return max(bytes_per_sample,
                    int(self.sample_rate * self.frame_ms / 1000) * bytes_per_sample)
 
-    async def listen(self) -> AsyncIterator[InputData]:
+    async def listen(self) -> AsyncIterator[AudioData]:  # narrower than InputPort's InputData — only audio
         """Yield the decoded audio as monotonically-timestamped frames, then stop."""
         if not self._listening:
             return

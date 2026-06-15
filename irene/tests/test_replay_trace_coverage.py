@@ -235,21 +235,24 @@ class TestListen(unittest.TestCase):
 
     def test_plays_stream_when_component_present(self):
         import base64
+        from irene.components.audio_component import AudioComponent
         played = {}
 
-        async def play_stream(gen, sample_rate=None, channels=None, sample_width=None):
-            chunks = [c async for c in gen]
-            played.update(chunks=chunks, sample_rate=sample_rate,
+        # AudioComponent.play_stream takes raw PCM BYTES (not an async generator); _listen must
+        # pass the decoded bytes. The component must be a real AudioComponent (isinstance gate).
+        async def play_stream(data, sample_rate=None, channels=None, sample_width=None):
+            played.update(data=data, sample_rate=sample_rate,
                           channels=channels, sample_width=sample_width)
 
-        audio_comp = SimpleNamespace(play_stream=play_stream)
+        audio_comp = object.__new__(AudioComponent)
+        audio_comp.play_stream = play_stream
         core = SimpleNamespace(component_manager=SimpleNamespace(
             get_component=lambda name: audio_comp))
         payload = base64.b64encode(b"WAVE").decode()
         r = _replayer(core=core, replay={"input": {
             "kind": "audio", "audio_base64": payload, "format": {"rate": 22050, "channels": 2}}})
         _arun(r._listen())
-        self.assertEqual(played["chunks"], [b"WAVE"])
+        self.assertEqual(played["data"], b"WAVE")
         self.assertEqual(played["sample_rate"], 22050)
         self.assertEqual(played["channels"], 2)
 
@@ -365,14 +368,17 @@ class TestRun(unittest.TestCase):
                                       trace_context=None):
             return _Result(text="готово")
 
-        async def play_stream(gen, sample_rate=None, channels=None, sample_width=None):
-            listened["played"] = [c async for c in gen]
+        from irene.components.audio_component import AudioComponent
 
+        async def play_stream(data, sample_rate=None, channels=None, sample_width=None):
+            listened["played"] = data  # raw bytes, per AudioComponent.play_stream
+
+        audio_comp = object.__new__(AudioComponent)
+        audio_comp.play_stream = play_stream
         core = SimpleNamespace(
             context_manager=SimpleNamespace(get_or_create_context=get_or_create_context),
             workflow_manager=SimpleNamespace(process_audio_input=process_audio_input),
-            component_manager=SimpleNamespace(
-                get_component=lambda name: SimpleNamespace(play_stream=play_stream)))
+            component_manager=SimpleNamespace(get_component=lambda name: audio_comp))
         payload = base64.b64encode(b"snd").decode()
         r = _replayer(core=core, do_listen=True, replay={
             "input": {"kind": "audio", "capture_level": "utterance", "audio_base64": payload},
@@ -380,7 +386,7 @@ class TestRun(unittest.TestCase):
             recorded={"text": "готово", "success": True})
         report = _arun(r.run())
         self.assertTrue(report["match"])
-        self.assertEqual(listened["played"], [b"snd"])
+        self.assertEqual(listened["played"], b"snd")
 
     def test_run_handles_none_result(self):
         # a stream that yields nothing → _reinject returns None → report is the not-matched sentinel

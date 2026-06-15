@@ -25,6 +25,10 @@ import sys
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
+from ..components.audio_component import AudioComponent
+from ..core.engine import AsyncVACore
+from ..intents.models import AudioData
+
 logger = logging.getLogger("irene.replay_trace")
 
 
@@ -115,7 +119,7 @@ class TraceReplayer:
         self.trace: Dict[str, Any] = {}
         self.replay: Dict[str, Any] = {}
         self.recorded: Dict[str, Any] = {}
-        self.core = None
+        self.core: Optional[AsyncVACore] = None  # set by build()
 
     def load(self) -> None:
         self.trace = json.loads(self.trace_path.read_text(encoding="utf-8"))
@@ -167,6 +171,7 @@ class TraceReplayer:
         return report
 
     async def _seed(self) -> str:
+        assert self.core is not None  # build() ran first
         seed = self.replay.get("seed_context") or {}
         session_id = seed.get("session_id") or "replay_session"
         ctx = await self.core.context_manager.get_or_create_context(session_id)
@@ -184,9 +189,9 @@ class TraceReplayer:
         return t
 
     async def _reinject(self, session_id: str):
-        from ..intents.models import AudioData
         from ..inputs.trace_input import TraceInput
 
+        assert self.core is not None  # build() ran first
         wm = self.core.workflow_manager
         inp = self.replay["input"]
         if inp.get("kind") == "text":
@@ -222,17 +227,15 @@ class TraceReplayer:
         if inp.get("kind") != "audio":
             return
         try:
+            assert self.core is not None  # build() ran first
             audio = self.core.component_manager.get_component("audio")
-            if audio is None or not hasattr(audio, "play_stream"):
-                logger.warning("listen: no audio component with play_stream; skipping playback")
+            if not isinstance(audio, AudioComponent):
+                logger.warning("listen: no AudioComponent available; skipping playback")
                 return
             data = base64.b64decode(inp.get("audio_base64") or "")
             fmt = inp.get("format") or {}
-
-            async def _one():
-                yield data
-
-            await audio.play_stream(_one(), sample_rate=fmt.get("rate") or 16000,
+            # AudioComponent.play_stream takes raw PCM bytes (it buffers→streams internally).
+            await audio.play_stream(data, sample_rate=fmt.get("rate") or 16000,
                                     channels=fmt.get("channels") or 1, sample_width=2)
         except Exception as e:
             logger.warning(f"listen: playback failed ({e}); continuing")
