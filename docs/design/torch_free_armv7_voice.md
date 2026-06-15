@@ -210,8 +210,13 @@ verification; standalone needs nothing new.
   - **Sub-PRs:** **PR1 (asset layer) — DONE 2026-06-15:** `AssetManager._extract_archive` gained `.tar.bz2`/`.tar.xz`
     support (Piper voices ship as k2-fsa `.tar.bz2`: model.onnx + tokens.txt + `espeak-ng-data/`) — `test_asset_extract.py`.
     _Env note:_ the custom dev/CI CPython lacks the `bz2` module (like `_sqlite3`), so those tests `skipif`; the Docker
-    `python:3.11-slim` images have libbz2, so extraction works in the real deployment. **PR2** = `PiperTTSProvider` base
-    (sherpa `OfflineTts`, `synthesize_to_file`/`_to_stream`, voice packs via `download_model(extract=True)`). **PR3** =
+    `python:3.11-slim` images have libbz2, so extraction works in the real deployment. **PR2 (base provider) — DONE
+    2026-06-15:** `PiperTTSProvider` (`providers/tts/piper.py`, entry point `piper`) — sherpa `OfflineTts`/VITS, lazy
+    off-loop session build, `synthesize_to_file` + native-streaming `synthesize_to_stream`, **numpy-free** float→PCM16
+    (armv7 has no numpy wheel — sherpa-ASR policy), k2-fsa voice packs (irina/ruslan/denis/dmitri) via
+    `download_model(extract=True)` → `piper/<voice>/` (resolved recursively — the tarball nests), `_prepare_text` hook
+    (PR3 overrides), deps `asr-onnx` (no torch / no system espeak-ng / bz2). `test_piper_tts.py` (7). API verified against
+    the installed wheel; gates all green (suite 943, validators 58/58, pyright 0, no-TYPE_CHECKING). **PR3** =
     `PiperRuAccentTTSProvider` subclass + `ruaccent`.
 - **T3** Platform taxonomy + validation: add `armv7l` to provider `get_platform_support()` taxonomy; extend the CI
   `dependency_validator --platforms` to include armv7 so **any armv7 profile enabling a torch provider fails the build**;

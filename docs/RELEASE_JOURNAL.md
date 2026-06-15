@@ -12,6 +12,15 @@ newest entries near the top of each dated section.
 ## Action journal
 
 ### 2026-06-15
+- **ARCH-24 T2 PR2 — PiperTTSProvider (base).** New `providers/tts/piper.py` + entry point `piper`: VITS via sherpa-onnx
+  `OfflineTts` (the one armv7 ONNX engine), one provider with the `voice` chosen by config (irina/ruslan/denis/dmitri
+  k2-fsa packs → `download_model(extract=True)` → `piper/<voice>/`, resolved recursively since the tarball nests).
+  `synthesize_to_file` + native-streaming `synthesize_to_stream`; **numpy-free** PCM conversion (armv7 has no numpy wheel —
+  same policy as the sherpa ASR provider); `_prepare_text` hook that PR3's ruaccent subclass overrides. Deps = `asr-onnx`;
+  no torch, no system espeak-ng/bz2 (espeak statically linked in sherpa, espeak-ng-data ships in the pack, bz2 in the
+  python base). sherpa `OfflineTts*` API verified against the installed wheel. `test_piper_tts.py` (7). Gates: suite 943
+  green, pyright 0, contracts 9/9, no-TYPE_CHECKING clean, dependency_validator 58/58, build_analyzer + config_validator
+  valid; uv.lock unchanged. Inv #4 N/A (free-form provider config). Next: PR3 ruaccent subclass.
 - **ARCH-24 T2 started — PR1: asset-layer `.tar.bz2` support (Piper prerequisite).** Piper TTS voices ship as k2-fsa
   `.tar.bz2` (model.onnx + tokens.txt + `espeak-ng-data/`; both ru voices irina/ruslan verified live at the k2-fsa
   release). `_extract_archive` only dispatched .tar/.tar.gz/.tgz (and `Path.suffix` on `foo.tar.bz2` is `.bz2`), header

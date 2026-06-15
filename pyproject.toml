@@ -250,6 +250,7 @@ pyttsx = "irene.providers.tts.pyttsx:PyttsTTSProvider"
 silero_v3 = "irene.providers.tts.silero_v3:SileroV3TTSProvider"
 silero_v4 = "irene.providers.tts.silero_v4:SileroV4TTSProvider"
 vosk_tts = "irene.providers.tts.vosk:VoskTTSProvider"
+piper = "irene.providers.tts.piper:PiperTTSProvider"
 elevenlabs = "irene.providers.tts.elevenlabs:ElevenLabsTTSProvider"
 
 [project.entry-points."irene.providers.asr"]
