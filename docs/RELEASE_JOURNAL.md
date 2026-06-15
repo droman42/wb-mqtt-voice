@@ -12,6 +12,16 @@ newest entries near the top of each dated section.
 ## Action journal
 
 ### 2026-06-15
+- **ARCH-24 research session — torch-free inference & the armv7 voice stack (no code).** Started from the deferred
+  torch/transformers Dependabot alerts (commits 05aa763/4e05a38) + the user's need for a self-contained VAD+ASR+TTS on
+  the Wirenboard 7. Mapped the real torch surface (opt-in `advanced-asr` + Silero TTS; `transformers` only transitive via
+  the default-off `runorm`), researched replacements (Whisper→sherpa-onnx confirmed; **no torch-free Silero TTS exists or
+  can — Silero refuses ONNX export, issue #283 — so Piper is the path**, with RUAccent for Russian stress on 64-bit only),
+  and SSH'd the actual WB7 (192.168.110.250) for ground truth: Cortex-A7 quad armv7l, **~367 MB available RAM** + 256 MB
+  swap, **784 MB free disk**, glibc 2.31, py3.9 — which bars Whisper *and* vosk_tts on WB7 and pins sherpa at 1.10.46.
+  Deliverable `docs/design/torch_free_armv7_voice.md`; filed **ARCH-24** (`[deferred]`, T1 Whisper→sherpa / T2 new Piper
+  TTS provider / T3 armv7 platform-taxonomy + validator gate + standalone profile). Also bumped safe Dependabot deps
+  (uv.lock + config-ui) — 65→14 open alerts, the 14 remainder all gated behind risky majors → folded into ARCH-24.
 - **TEST-7 kicked off — gate lifted, approach locked, Phase A (coverage tooling + baseline) done.** The TEST-7 gate
   (ARCH-1..5 + QUAL-8/10/12/14) is fully `[x]`, so the suite rewrite is unblocked. Locked the approach with the user
   (6 decisions — see the ledger): same contract-level method as the release-plan new code, 100% green, delete stale
