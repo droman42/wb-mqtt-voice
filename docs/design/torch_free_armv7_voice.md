@@ -229,6 +229,12 @@ verification; standalone needs nothing new.
   `dependency_validator --platforms` to include armv7 so **any armv7 profile enabling a torch provider fails the build**;
   evolve the `embedded-armv7` profile from headless-ASR-satellite → **ASR+TTS satellite-server** (TTS synthesis on +
   stream PCM back to the ESP32; VAD/voice-trigger/mic/playback stay **off** — ESP32's job; no `config-ui`; lazy TTS load).
+  - **PR1 (taxonomy) — DONE 2026-06-15:** chose the **explicit arch method** (user decision, over markers/hybrid). New
+    `EntryPointMetadata.get_supported_architectures()` (default `[x86_64, aarch64, armv7l]`); 8 armv7-incapable providers
+    override to `["x86_64","aarch64"]` — silero_v3/v4 + whisper (torch), vosk_tts + piper_ruaccent + openwakeword
+    (standalone onnxruntime), microwakeword + microvad (pymicro). PEP 508 markers stay as the install-time guard.
+    `test_arch_support.py` (13). **PR2** = the gate (`build_analyzer --arch`: an armv7 profile enabling an
+    armv7-unsupported provider fails the build) + CI wiring. **PR3** = the satellite-server profile skeletons.
 - **T4 (packaging) → BUILD-3:** **three Docker images, split by architecture** (canonical matrix = **§5**):
   `Dockerfile.x86_64`→**standalone** (torch: Whisper + Silero v4), **NEW `Dockerfile.aarch64`**→**WB8/Pi satellite**
   (sherpa: Whisper-small + Piper+RUAccent), `Dockerfile.armv7`→**WB7 satellite** (sherpa: vosk-small + Piper-direct).

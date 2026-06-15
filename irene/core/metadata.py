@@ -132,8 +132,23 @@ class EntryPointMetadata(ABC):
         Default supports all common platforms. Override for platform-specific limitations.
         """
         return ["linux.ubuntu", "linux.alpine", "macos", "windows"]
-        
-    @classmethod  
+
+    @classmethod
+    def get_supported_architectures(cls) -> List[str]:
+        """
+        CPU architectures this entry-point can actually run on (ARCH-24 T3).
+
+        Returns:
+            List of `platform.machine()`-style arch tokens. Default = all three Irene targets.
+            **Override to a subset** when a hard dependency has no wheel / cannot run on an arch —
+            most importantly `["x86_64", "aarch64"]` for providers that need torch or the standalone
+            `onnxruntime` (no armv7 wheel). The `dependency_validator`/`build_analyzer` arch gate fails
+            a build whose target arch is enabled with a provider that does not list it here, so the
+            torch-free-armv7 invariant can't silently regress.
+        """
+        return ["x86_64", "aarch64", "armv7l"]
+
+    @classmethod
     def get_platform_dependencies(cls) -> Dict[str, List[str]]:
         """
         Platform-specific system package mappings.

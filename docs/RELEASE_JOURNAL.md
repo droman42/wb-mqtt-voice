@@ -12,6 +12,12 @@ newest entries near the top of each dated section.
 ## Action journal
 
 ### 2026-06-15
+- **ARCH-24 T3 PR1 — architecture-support taxonomy.** User chose the explicit-arch-method approach (over markers/hybrid).
+  New `EntryPointMetadata.get_supported_architectures()` (default `[x86_64, aarch64, armv7l]`); 8 armv7-incapable providers
+  override to `["x86_64","aarch64"]`: silero_v3/v4 + whisper (torch — no armv7 wheel), vosk_tts + piper_ruaccent +
+  openwakeword (standalone onnxruntime — no armv7 wheel), microwakeword + microvad (pymicro). The PEP 508 extra markers
+  stay as the install-time guard. `test_arch_support.py` (13). Suite 961 green, pyright 0, contracts 9/9,
+  dependency_validator 118/118 (additive). Next: PR2 — the `build_analyzer --arch` profile gate + CI step.
 - **ARCH-24 T2 PR3 — PiperRuAccentTTSProvider (T2 COMPLETE).** Subclass of `PiperTTSProvider` (entry point
   `piper_ruaccent`) overriding ONLY `_prepare_text` to run RUAccent (Russian stress `+`/ё) before the inherited sherpa
   synth. New `tts-ruaccent` extra (`ruaccent>=1.5.8; platform_machine != 'armv7l'` — 64-bit only; armv7 resolves to

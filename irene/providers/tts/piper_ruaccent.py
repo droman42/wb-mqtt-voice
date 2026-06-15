@@ -87,8 +87,12 @@ class PiperRuAccentTTSProvider(PiperTTSProvider):
 
     @classmethod
     def get_platform_support(cls) -> List[str]:
-        # 64-bit only in practice — the `tts-ruaccent` extra's marker excludes armv7 (onnxruntime has
-        # no armv7 wheel), so on the WB7 this resolves to nothing and `piper` is used instead. The
-        # OS-level taxonomy can't express the arch split yet (ARCH-24 T3 adds armv7l to it + the
-        # dependency_validator gate); the dependency marker is the effective guard until then.
+        # OS support is the full set; the armv7 exclusion is expressed via get_supported_architectures()
+        # (the arch dimension), enforced by the ARCH-24 T3 build gate + the `tts-ruaccent` extra's marker.
         return ["linux.ubuntu", "linux.alpine", "macos", "windows"]
+
+    @classmethod
+    def get_supported_architectures(cls) -> List[str]:
+        # 64-bit only — ruaccent → standalone onnxruntime, which has no armv7 wheel. On the WB7 use the
+        # plain `piper` provider (espeak-ng stress) instead (ARCH-24 T3).
+        return ["x86_64", "aarch64"]

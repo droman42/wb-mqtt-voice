@@ -423,6 +423,11 @@ class OpenWakeWordProvider(VoiceTriggerProvider):
     def get_platform_support(cls) -> List[str]:
         """OpenWakeWord supports all platforms"""
         return ["linux.ubuntu", "linux.alpine", "macos", "windows"]
+
+    @classmethod
+    def get_supported_architectures(cls) -> List[str]:
+        # standalone onnxruntime has no armv7 wheel; on armv7 the ESP32 satellite wakes on-device (ARCH-24 T3).
+        return ["x86_64", "aarch64"]
     
     async def initialize(self) -> None:
         """Initialize OpenWakeWord detection"""

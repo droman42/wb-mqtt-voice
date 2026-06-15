@@ -233,6 +233,10 @@ class MicroWakeWordProvider(VoiceTriggerProvider):
         return ["linux.ubuntu", "linux.alpine", "macos", "windows"]
 
     @classmethod
+    def get_supported_architectures(cls) -> List[str]:
+        return ["x86_64", "aarch64"]  # pymicro-wakeword has no armv7 wheel (ARCH-24 T3)
+
+    @classmethod
     def _get_default_extension(cls) -> str:
         return ".tflite"
 

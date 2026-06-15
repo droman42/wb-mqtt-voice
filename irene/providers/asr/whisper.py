@@ -237,6 +237,11 @@ class WhisperASRProvider(ASRProvider):
     def get_platform_support(cls) -> List[str]:
         """Whisper supports all platforms"""
         return ["linux.ubuntu", "linux.alpine", "macos", "windows"]
+
+    @classmethod
+    def get_supported_architectures(cls) -> List[str]:
+        # torch/torchaudio have no armv7 wheel — on armv7 use sherpa_onnx (whisper or vosk model) (ARCH-24 T3).
+        return ["x86_64", "aarch64"]
     
     def get_supported_languages(self) -> List[str]:
         """Return list of supported language codes"""

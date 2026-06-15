@@ -237,6 +237,10 @@ class SileroV4TTSProvider(TTSProvider):
         """Silero v4 supports all platforms"""
         return ["linux.ubuntu", "linux.alpine", "macos", "windows"]
 
+    @classmethod
+    def get_supported_architectures(cls) -> List[str]:
+        return ["x86_64", "aarch64"]  # torch has no armv7 wheel (ARCH-24 T3)
+
     async def _ensure_model_loaded(self) -> None:
         """Ensure model is loaded and ready with caching optimization"""
         if not self._available:

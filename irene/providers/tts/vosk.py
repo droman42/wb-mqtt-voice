@@ -305,6 +305,10 @@ class VoskTTSProvider(TTSProvider):
     def get_platform_support(cls) -> List[str]:
         """VOSK TTS supports all platforms"""
         return ["linux.ubuntu", "linux.alpine", "macos", "windows"]
+
+    @classmethod
+    def get_supported_architectures(cls) -> List[str]:
+        return ["x86_64", "aarch64"]  # vosk-tts → standalone onnxruntime (no armv7 wheel) + ~746 MB model (ARCH-24 T3)
     
     async def validate_parameters(self, **kwargs) -> bool:
         """Validate provider-specific parameters"""
