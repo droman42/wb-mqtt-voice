@@ -15,6 +15,7 @@ import logging
 from typing import Dict, Any, List, cast
 
 from .base import LLMProvider
+from ...utils.llm_capabilities import output_budget
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +36,7 @@ class DeepSeekLLMProvider(LLMProvider):
         self.api_key = credentials.get("deepseek_api_key") or os.getenv(config.get("api_key_env", "DEEPSEEK_API_KEY"))
         self.base_url = config.get("base_url", "https://api.deepseek.com")
         self.default_model = config.get("default_model") or config.get("model") or "deepseek-chat"
-        self.max_tokens = config.get("max_tokens", 150)
+        self.max_tokens = config.get("max_tokens")  # None → the model's real max_output (QUAL-52)
         self.temperature = config.get("temperature", 0.3)
         self.timeout = config.get("timeout", 30)  # per-call timeout (s) — never hang offline
 
@@ -72,7 +73,7 @@ class DeepSeekLLMProvider(LLMProvider):
         response = await client.chat.completions.create(
             model=model,
             messages=[{"role": "system", "content": system_prompt}, {"role": "user", "content": text}],
-            max_tokens=kwargs.get("max_tokens", self.max_tokens),
+            max_tokens=output_budget(model, kwargs.get("max_tokens", self.max_tokens)),
             temperature=kwargs.get("temperature", self.temperature),
         )
         return (response.choices[0].message.content or "").strip()
@@ -85,7 +86,7 @@ class DeepSeekLLMProvider(LLMProvider):
         response = await client.chat.completions.create(
             model=model,
             messages=cast(List[ChatCompletionMessageParam], messages),
-            max_tokens=kwargs.get("max_tokens", self.max_tokens),
+            max_tokens=output_budget(model, kwargs.get("max_tokens", self.max_tokens)),
             temperature=kwargs.get("temperature", self.temperature),
         )
         return (response.choices[0].message.content or "").strip()

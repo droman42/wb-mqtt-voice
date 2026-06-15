@@ -10,6 +10,7 @@ from typing import Dict, Any, List, cast
 import logging
 
 from .base import LLMProvider
+from ...utils.llm_capabilities import output_budget
 
 logger = logging.getLogger(__name__)
 
@@ -52,7 +53,7 @@ class OpenAILLMProvider(LLMProvider):
             
         self.base_url = config.get("base_url", "https://api.openai.com/v1")
         self.default_model = config.get("default_model", "gpt-4o-mini")
-        self.max_tokens = config.get("max_tokens", 150)
+        self.max_tokens = config.get("max_tokens")  # None -> model max_output (QUAL-52)
         self.temperature = config.get("temperature", 0.3)
         self.timeout = config.get("timeout", 30)  # per-call timeout (s) — never hang offline
     
@@ -100,7 +101,7 @@ class OpenAILLMProvider(LLMProvider):
         """Enhance text using OpenAI GPT models with smart API routing. The hardened, externalized
         system prompt is resolved by the component and passed in `system_prompt` (QUAL-16)."""
         model = kwargs.get("model") or self.default_model  # Handle None model parameter
-        max_tokens = kwargs.get("max_tokens", self.max_tokens)
+        max_tokens = output_budget(model, kwargs.get("max_tokens", self.max_tokens))
         temperature = kwargs.get("temperature", self.temperature)
         system_prompt = kwargs.get("system_prompt") or _GENERIC_SYSTEM_FALLBACK
 
@@ -156,7 +157,7 @@ class OpenAILLMProvider(LLMProvider):
     async def chat_completion(self, messages: List[Dict], **kwargs) -> str:
         """Generate chat completion using OpenAI with smart API routing"""
         model = kwargs.get("model") or self.default_model  # Handle None model parameter
-        max_tokens = kwargs.get("max_tokens", self.max_tokens)
+        max_tokens = output_budget(model, kwargs.get("max_tokens", self.max_tokens))
         temperature = kwargs.get("temperature", self.temperature)
         
         try:

@@ -12,6 +12,13 @@ newest entries near the top of each dated section.
 ## Action journal
 
 ### 2026-06-15
+- **QUAL-52 PR1 — real per-model LLM token budgets.** New `utils/llm_capabilities.py`: `ModelCapabilities`
+  (context_window + max_output) for deepseek / gpt-4o / 4o-mini / 4 / 3.5 / claude-4.x + a conservative fallback;
+  `output_budget(model, requested)` caps any request at the model's real `max_output` and defaults to it — replacing the
+  arbitrary `max_tokens=150` that truncated replies. Wired into all 3 cloud providers (deepseek/openai/anthropic: default
+  None → model max, bound the per-call output). config-master + the provider schemas now carry each model's real max_output
+  (8000/16384/8192), not 150. `test_llm_capabilities.py` (5). Inv #4: config-ui builds. Suite 976 green, pyright 0,
+  contracts 9/9, configs valid. Next PR2: budget-aware prompting (utf-8 bytes/4 input estimate + trim oversized context).
 - **QUAL-50 design confirmed + filed QUAL-52 (LLM component rework) as its prerequisite.** Confidence is **derived**, not
   the LLM's self-rating: intent ∈ donation-set [gate] + fraction of required params that resolve against catalog/context +
   an evidence span the LLM must quote; commands need ALL required params resolved (missing → CLARIFYING; unresolvable →

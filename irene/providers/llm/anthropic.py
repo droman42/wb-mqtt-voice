@@ -10,6 +10,7 @@ from typing import Dict, Any, List
 import logging
 
 from .base import LLMProvider
+from ...utils.llm_capabilities import output_budget
 
 logger = logging.getLogger(__name__)
 
@@ -46,7 +47,7 @@ class AnthropicLLMProvider(LLMProvider):
             logger.warning("Using legacy api_key_env config. Consider using ANTHROPIC_API_KEY environment variable.")
             
         self.default_model = config.get("default_model", "claude-haiku-4-5-20251001")
-        self.max_tokens = config.get("max_tokens", 150)
+        self.max_tokens = config.get("max_tokens")  # None -> model max_output (QUAL-52)
         self.temperature = config.get("temperature", 0.3)
         self.timeout = config.get("timeout", 30)  # per-call timeout (s) — never hang offline
         
@@ -88,7 +89,7 @@ class AnthropicLLMProvider(LLMProvider):
         """Enhance text using Anthropic Claude. The hardened, externalized system prompt is resolved by
         the component and passed in `system_prompt` (QUAL-16)."""
         model = kwargs.get("model") or self.default_model  # Handle None model parameter
-        max_tokens = kwargs.get("max_tokens", self.max_tokens)
+        max_tokens = output_budget(model, kwargs.get("max_tokens", self.max_tokens))
         temperature = kwargs.get("temperature", self.temperature)
         system_prompt = kwargs.get("system_prompt") or _GENERIC_SYSTEM_FALLBACK
 
@@ -119,7 +120,7 @@ class AnthropicLLMProvider(LLMProvider):
     async def chat_completion(self, messages: List[Dict], **kwargs) -> str:
         """Generate chat completion using Anthropic Claude"""
         model = kwargs.get("model") or self.default_model  # Handle None model parameter
-        max_tokens = kwargs.get("max_tokens", self.max_tokens)
+        max_tokens = output_budget(model, kwargs.get("max_tokens", self.max_tokens))
         temperature = kwargs.get("temperature", self.temperature)
         
         try:

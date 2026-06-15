@@ -225,7 +225,7 @@ class OpenAIProviderSchema(LLMProviderSchema):
     """OpenAI provider configuration schema"""
     api_key: str = Field(description="OpenAI API key (use ${OPENAI_API_KEY})")
     model: str = Field(default="gpt-4", description="Model to use")
-    max_tokens: int = Field(default=150, ge=1, description="Maximum tokens")
+    max_tokens: int = Field(default=16384, ge=1, description="Maximum tokens")
     temperature: float = Field(default=0.3, ge=0.0, le=2.0, description="Temperature")
     target_language: str = Field(default="English", description="Target language for translation")
 
@@ -234,7 +234,7 @@ class AnthropicProviderSchema(LLMProviderSchema):
     """Anthropic provider configuration schema"""
     api_key: str = Field(description="Anthropic API key (use ${ANTHROPIC_API_KEY})")
     model: str = Field(default="claude-3-haiku-20240307", description="Model to use")
-    max_tokens: int = Field(default=150, ge=1, description="Maximum tokens")
+    max_tokens: int = Field(default=8192, ge=1, description="Maximum tokens")
     temperature: float = Field(default=0.3, ge=0.0, le=1.0, description="Temperature")
 
 
@@ -243,7 +243,7 @@ class DeepSeekProviderSchema(LLMProviderSchema):
     api_key: str = Field(description="DeepSeek API key (use ${DEEPSEEK_API_KEY})")
     base_url: str = Field(default="https://api.deepseek.com", description="DeepSeek API base URL")
     model: str = Field(default="deepseek-chat", description="Model: deepseek-chat (V3) | deepseek-reasoner (R1)")
-    max_tokens: int = Field(default=150, description="Maximum response tokens")
+    max_tokens: int = Field(default=8000, description="Maximum response tokens")
     temperature: float = Field(default=0.3, description="Creativity level")
 
 
