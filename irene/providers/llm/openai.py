@@ -168,6 +168,8 @@ class OpenAILLMProvider(LLMProvider):
             client = AsyncOpenAI(api_key=self.api_key, base_url=self.base_url, timeout=self.timeout)
             typed_messages = cast(List[ChatCompletionMessageParam], messages)
 
+            rf = kwargs.get("response_format")  # QUAL-52 PR3: {"type": "json_object"} for structured output
+
             # Smart routing: use appropriate API for the model
             if model in self._get_chat_compatible_models():
                 logger.debug("Using Chat Completions API for model: %s", model)
@@ -175,7 +177,8 @@ class OpenAILLMProvider(LLMProvider):
                     model=model,
                     messages=typed_messages,
                     max_tokens=max_tokens,
-                    temperature=temperature
+                    temperature=temperature,
+                    **({"response_format": rf} if rf else {}),
                 )
                 return (response.choices[0].message.content or "").strip()
                 

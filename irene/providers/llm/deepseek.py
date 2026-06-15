@@ -85,12 +85,14 @@ class DeepSeekLLMProvider(LLMProvider):
         model = kwargs.get("model") or self.default_model
         max_out = output_budget(model, kwargs.get("max_tokens", self.max_tokens))
         messages = fit_messages(messages, model, max_out, context_window=self.context_window)  # QUAL-52: keep input within the context window
+        rf = kwargs.get("response_format")  # QUAL-52 PR3: {"type": "json_object"} for structured output
         client = self._client()
         response = await client.chat.completions.create(
             model=model,
             messages=cast(List[ChatCompletionMessageParam], messages),
             max_tokens=max_out,
             temperature=kwargs.get("temperature", self.temperature),
+            **({"response_format": rf} if rf else {}),
         )
         return (response.choices[0].message.content or "").strip()
 

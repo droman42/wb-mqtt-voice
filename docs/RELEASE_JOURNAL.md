@@ -12,6 +12,13 @@ newest entries near the top of each dated section.
 ## Action journal
 
 ### 2026-06-15
+- **QUAL-52 PR3 — structured/JSON output (the QUAL-50 seam).** Added `llm_component.generate_structured(messages) ->
+  Optional[dict]`: requests `response_format={"type":"json_object"}` (passed through by the openai/deepseek providers;
+  ignored by others, which lean on the prompt) + a robust `_parse_json_response` (strips ```json fences, extracts the
+  outermost {...}); returns the parsed dict or **None** (abstain) on offline/malformed. This is the capability the
+  QUAL-50 NLU classifier will return through — **not yet wired into the pipeline** (QUAL-52 precedes QUAL-50; the
+  consumer is the LLMNLUProvider, which needs the LLM port injected). `test_llm_structured.py` (6). Suite 988 green,
+  pyright 0, contracts 9/9, no-TYPE_CHECKING clean. Next PR4: drop temperature/fine-tuning + schema sync.
 - **QUAL-52 PR2 follow-up — `context_window` in config (you flagged: only the output side was defined).** PR1 put the
   output budget (`max_tokens` → model max) into config but the input `context_window` lived only in the code registry.
   Added `context_window` to the LLM provider config + schemas (deepseek 64000 / gpt-4o 128000 / claude 200000) and a
