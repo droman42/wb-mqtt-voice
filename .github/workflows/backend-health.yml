@@ -70,11 +70,11 @@ jobs:
       - name: Provider dependency resolution
         run: uv run python -m irene.tools.dependency_validator --validate-all --platforms linux.ubuntu,linux.alpine
 
+      # Full test suite — hard gate (enabled 2026-06-15: TEST-7 greened the suite, 888 passed / 0 failed).
+      - name: Tests
+        run: uv run python -m pytest irene/tests/ -p no:cacheprovider
+
       # --- Deferred gates (flip on when the blocker lands) ---
-      # pytest: the full suite becomes a hard gate once the TEST- items resolve (stale-test cleanup, TEST-7).
-      # - name: Tests
-      #   run: uv run python -m pytest irene/tests/
-      #
       # black + isort: format check becomes a hard gate once the tree is formatted to them.
       # - name: Format check
       #   run: |

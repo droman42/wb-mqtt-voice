@@ -1788,7 +1788,9 @@ _Apply to every remediation task below (from the 4 review docs + QUAL-25/26). So
       `ConversationContext`→`UnifiedConversationContext` (rename); `TTLCache`/`ContextualCommandPerformanceManager`/
       `initialize_performance_manager` were **deleted** (v13→v15 contextual-command unification) → those tests
       skipped-with-reason; `Intent.text`→`raw_text`, `ComponentConfig.audio_output`→`audio` renamed in tests.
-- [~] **TEST-2** (P1) — **PAUSED 2026-06-01 (deliberate — see strategy note).** Suite now **runs** and is a
+- [x] **TEST-2** (P1) — **DONE 2026-06-15 — SUBSUMED BY TEST-7.** The deliberately-paused suite-stabilization is
+      complete: TEST-7 rewrote/deleted the drifted clusters and greened the suite (the `56→82 failed` drift this task
+      tracked is now `0 failed`). Closed as subsumed. _Original paused note below._ **PAUSED 2026-06-01 (deliberate — see strategy note).** Suite now **runs** and is a
       partial safety net: 136/100/0 → **166 passed / 56 failed / 13 skipped / 2 xfailed** (committed). Cleared:
       async config, symbol renames, obsolete skips, hardcoded-path bug, and the fixture-wiring cluster. The
       remaining 56 drift failures are **left unfixed on purpose** (will be obsoleted by ARCH/review then rewritten,
@@ -1798,7 +1800,9 @@ _Apply to every remediation task below (from the 4 review docs + QUAL-25/26). So
       (`IntentResult.error_type`, `SpaCyNLUProvider.model_name`, `IntentRegistry._handlers`,
       `IntentComponent.get_system_status`), phase4 contextual-command + assertions. Value already banked:
       **QUAL-21**, **QUAL-22**, text_processor trace fix.
-- [~] **TEST-7** (P1) — **DOING 2026-06-15. Gate lifted** (ARCH-1..5 ✓ + QUAL-8/10/12/14 ✓ all `[x]`). Rewrite the
+- [x] **TEST-7** (P1) — **DONE 2026-06-15 — suite rewritten + 100% green; coverage 45.6%→52.3%; full-suite pytest is
+      now a hard CI gate (`backend-health.yml`).** Residual deep-pipeline coverage (`workflow_manager` 29%, `context`
+      31%) accepted as integration/smoke-level (user-approved). Phases A–D below. Gate lifted** (ARCH-1..5 ✓ + QUAL-8/10/12/14 ✓ all `[x]`). Rewrite the
       test suite against the stabilized architecture; absorbs TEST-2 (the paused suite) + the coverage goals
       TEST-3/4/5/6/8. **Approach LOCKED with user 2026-06-15 (6 decisions):** (1) **same method as the release-plan
       new-code** — contract-level unit tests at the ports/seams (`object.__new__`/`SimpleNamespace`, test the
@@ -1849,16 +1853,30 @@ _Apply to every remediation task below (from the 4 review docs + QUAL-25/26). So
       Phase-C `no_intent_clarification` fix). **Suite 100% green (888 passed / 0 failed / 7 skipped); 9/9 contracts; no
       product code changed.** Optional follow-up: a deep-path round for `workflow_manager`/`context` (or accept as
       integration-level).
-- [ ] **TEST-6** (P2) — _(folded into TEST-7)_ Restore ASR provider-fallback + resampling coverage (the 7 phase7
-      tests skipped in TEST-1 called the removed `_handle_sample_rate_mismatch`; feature lives in
-      `AudioProcessor.resample_audio_data`).
+- [x] **TEST-6** (P2) — **DONE 2026-06-15 (TEST-7 Phase C/D).** ASR provider-fallback + resampling coverage restored:
+      the `test_phase7_performance` resampling-latency tests were rewritten to `AudioProcessor.resample_audio_data`
+      (`audio_processor.py` 71%), and the ASR provider-selection/fallback surface is covered by `test_asr_component_coverage`
+      (`asr_component.py` 46%; the new test file 98%). Individual ASR providers' model-loading internals stay uncovered
+      (smoke/model territory) — out of TEST-6's fallback+resampling scope. _Original:_ Restore ASR provider-fallback +
+      resampling coverage (the 7 phase7 tests skipped in TEST-1 called the removed `_handle_sample_rate_mismatch`).
 - [ ] **TEST-3** [FAF] (P2) — _(coverage goal for TEST-7)_ Fire-and-forget lifecycle coverage (launch → completion
-      → error → cleanup → context propagation). Scope after QUAL-8.
+      → error → cleanup → context propagation). Scope after QUAL-8. **PARTIAL after TEST-7 Phase D** — the F&F *launch*
+      seam is covered (`handlers/base` 45% incl. the generic `action_launched`; `workflow_manager` save-trace helpers),
+      but the full *lifecycle* (completion/error/cleanup of the action store, deferred-result context propagation) is
+      not yet exercised. Residual coverage task — kept open.
 - [ ] **TEST-4** [PEX] (P1) — _(coverage goal for TEST-7)_ Parameter-extraction coverage (user-flagged as key):
       the 8 ParameterTypes, the 4 entity resolvers, pattern matching; rebuild around `test_parameter_schema_unification`/
-      `test_context_aware_nlu`/`test_cascading_nlu`/`test_web_api_parameter_schemas`.
+      `test_context_aware_nlu`/`test_cascading_nlu`/`test_web_api_parameter_schemas`. **PARTIAL after TEST-7 Phase C/D** —
+      the recognition *cascade* is covered (`nlu_component` 59%, the rewritten cascading/param-schema tests), but the
+      extraction internals proper are NOT: **`hybrid_keyword_matcher.py` is at 0%**, `spacy_provider` 21%, and the
+      8 ParameterTypes / 4 entity resolvers are unexercised. Kept open — the genuine residual P1 coverage gap.
 - [ ] **TEST-5** [TXTPROC] (P2) — _(coverage goal for TEST-7)_ Text-processor / normalizer coverage, after QUAL-12/13.
-- [ ] **TEST-8** [PORTS] (P1) — _(coverage goal for TEST-7)_ **Capability-port handler coverage (surfaced by QUAL-24).**
+      **NOT done** — not a TEST-7 Phase-D target; `text_processor_component.py` is at 29%. Kept open.
+- [x] **TEST-8** [PORTS] (P1) — **DONE 2026-06-15 (TEST-7 Phase D).** All 5 capability handlers now covered through
+      their injected ports + the graceful-degradation-when-absent path (the QUAL-24 bug class): `text_enhancement` 99%,
+      `speech_recognition` 97%, `translation` 97%, `audio_playback` 80%, `voice_synthesis` 65% (the residual is the
+      model-dependent TTS execution → smoke). The QUAL-24 repair is now verified. _Original scope below._
+      **Capability-port handler coverage (surfaced by QUAL-24).**
       QUAL-24 found that only `conversation` was ever injected — the **5 other capability handlers**
       (`voice_synthesis`, `audio_playback`, `speech_recognition`, `translation`, `text_enhancement`) were silently
       getting `None` for their component (compounded by an await-sync bug) and are now **wired for the first time**

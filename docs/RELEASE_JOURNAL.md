@@ -32,6 +32,21 @@ newest entries near the top of each dated section.
   (`trace_context` 76%, `trace_input` 89%), new wiring is thin (`replay_trace`/`voice_runner` 34%). Suite still at its
   baseline (82 failed / 472 passed / 15 skipped — the ±1 is a coverage-perturbed timing benchmark, not a regression).
   Next: Phase B triage + risk-ranked worklist, then the workflow.
+- **TEST-7 DONE + folded-in TEST tasks reconciled + full-suite pytest is now a CI gate.** Marked **TEST-7 `[x]`**
+  (suite rewritten + 100% green, coverage 45.6→52.3%; the `workflow_manager`/`context` deep-pipeline residual accepted
+  as integration/smoke-level, user-approved). Reconciled the tasks "folded into TEST-7" honestly against measured
+  coverage — closed the genuinely-complete ones, kept the rest open with the specific residual: **DONE** → **TEST-2**
+  (the paused suite-stabilization, subsumed — its `56→82 failed` drift is now `0`), **TEST-8** (all 5 capability
+  handlers covered through their ports + graceful-degradation: text_enhancement 99% / speech_recognition 97% /
+  translation 97% / audio_playback 80% / voice_synthesis 65% — the QUAL-24 repair is finally verified), **TEST-6**
+  (ASR fallback + resampling restored — `test_phase7_performance` rewritten to `resample_audio_data`, `audio_processor`
+  71%, `asr_component` fallback covered). **STILL OPEN (honest residual)** → **TEST-4** P1 (recognition cascade covered
+  but the extraction internals are not — `hybrid_keyword_matcher` at **0%**, the 8 ParameterTypes / 4 resolvers
+  unexercised), **TEST-3** (F&F *launch* covered, *lifecycle* completion/cleanup not), **TEST-5** (text-processor not
+  targeted, 29%). **CI:** the full pytest suite was explicitly deferred in `backend-health.yml` ("becomes a hard gate
+  once … TEST-7"); that precondition is met, so enabled it — `uv run python -m pytest irene/tests/` is now a hard gate
+  alongside the existing import-linter / no-TYPE_CHECKING / pyright / config-validation / dependency gates. (Plain
+  pytest needs no sqlite shim — that's only for `--cov`.) Suite verified green (888 passed / 0 failed); 9/9 contracts.
 - **TEST-7 Phase D — coverage fill 45.6% → 52.3% (13-agent workflow; recovered from a mid-run crash).** Fanned out
   one agent per Tier-1 target — the cold spine (`workflow_manager`, `core/components`, `nlu_component`, `context`,
   `voice_assistant`, `asr_component`), the 5 capability-port handlers (TEST-8), and the new-code wiring
