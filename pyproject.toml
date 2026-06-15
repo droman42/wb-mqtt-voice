@@ -160,6 +160,14 @@ text-multilingual = [
     "eng-to-ipa>=0.0.2",
 ]
 
+# Russian stress/homograph accentor for the `piper_ruaccent` TTS provider (ARCH-24 T2/PR3).
+# 64-bit ONLY: ruaccent pulls onnxruntime + transformers, and onnxruntime has no armv7 wheel —
+# the marker keeps it off the armv7 image (it resolves to nothing there, like pymicro). The plain
+# `piper` provider remains the armv7 TTS.
+tts-ruaccent = [
+    "ruaccent>=1.5.8; platform_machine != 'armv7l'",
+]
+
 # Note: wake-word-training dependencies moved to separate project
 
 # Development dependencies — single opt-in source (install via `--extra dev`).
@@ -251,6 +259,7 @@ silero_v3 = "irene.providers.tts.silero_v3:SileroV3TTSProvider"
 silero_v4 = "irene.providers.tts.silero_v4:SileroV4TTSProvider"
 vosk_tts = "irene.providers.tts.vosk:VoskTTSProvider"
 piper = "irene.providers.tts.piper:PiperTTSProvider"
+piper_ruaccent = "irene.providers.tts.piper_ruaccent:PiperRuAccentTTSProvider"
 elevenlabs = "irene.providers.tts.elevenlabs:ElevenLabsTTSProvider"
 
 [project.entry-points."irene.providers.asr"]

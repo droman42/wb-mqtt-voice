@@ -12,6 +12,17 @@ newest entries near the top of each dated section.
 ## Action journal
 
 ### 2026-06-15
+- **ARCH-24 T2 PR3 — PiperRuAccentTTSProvider (T2 COMPLETE).** Subclass of `PiperTTSProvider` (entry point
+  `piper_ruaccent`) overriding ONLY `_prepare_text` to run RUAccent (Russian stress `+`/ё) before the inherited sherpa
+  synth. New `tts-ruaccent` extra (`ruaccent>=1.5.8; platform_machine != 'armv7l'` — 64-bit only; armv7 resolves to
+  nothing, like pymicro); deps `["asr-onnx","tts-ruaccent"]`. Full integration (the PR2 lesson): `PiperRuAccentProviderSchema`
+  registered + `[tts.providers.piper_ruaccent]` config-master block (8/8 TTS). **User caught** that `RUAccent.load()`
+  downloads its NN models from HF and defaults `workdir` to its own (ephemeral, maybe read-only) package dir → pointed it
+  at `models_root/ruaccent/` (mounted volume). `test_piper_ruaccent.py` (5; accentizer mocked — no model pull). Gates:
+  suite 948 green, schema-unification 19/19, pyright 0, contracts 9/9, no-TYPE_CHECKING clean, dependency_validator
+  118/118, config_validator valid, config-ui builds; uv.lock += ruaccent/python-crfsuite. **Open:** the RUAccent `+` ↔
+  espeak stress-bridge is an on-device A/B item. T2 done; ARCH-24 remaining: T3 (taxonomy/validator/profile) / T4 (BUILD-3
+  packaging) / T5 (shared helpers).
 - **ARCH-24: config-master + parameter schema for piper (Inv #2/#4 — gaps from PR2/T1).** User caught that PR2 added the
   `piper` provider without the canonical `config-master.toml` block (it documents every provider — was 6/7 TTS) and that
   T1's `whisper-small` pack wasn't in the sherpa `model` list. The completeness test (`test_parameter_schema_unification`)

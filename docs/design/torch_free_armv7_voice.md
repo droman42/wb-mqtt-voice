@@ -216,8 +216,15 @@ verification; standalone needs nothing new.
     (armv7 has no numpy wheel — sherpa-ASR policy), k2-fsa voice packs (irina/ruslan/denis/dmitri) via
     `download_model(extract=True)` → `piper/<voice>/` (resolved recursively — the tarball nests), `_prepare_text` hook
     (PR3 overrides), deps `asr-onnx` (no torch / no system espeak-ng / bz2). `test_piper_tts.py` (7). API verified against
-    the installed wheel; gates all green (suite 943, validators 58/58, pyright 0, no-TYPE_CHECKING). **PR3** =
-    `PiperRuAccentTTSProvider` subclass + `ruaccent`.
+    the installed wheel; gates all green (suite 943, validators 58/58, pyright 0, no-TYPE_CHECKING). **PR3 (RUAccent
+    subclass) — DONE 2026-06-15 → T2 COMPLETE:** `PiperRuAccentTTSProvider(PiperTTSProvider)` (entry point
+    `piper_ruaccent`) overrides **only** `_prepare_text` to run RUAccent (stress `+`/ё) before the inherited sherpa synth.
+    New `tts-ruaccent` extra (`ruaccent>=1.5.8; platform_machine != 'armv7l'` — 64-bit only; armv7 resolves to nothing,
+    like pymicro); deps `["asr-onnx","tts-ruaccent"]`. Full integration (the PR2 lesson): `PiperRuAccentProviderSchema`
+    registered + `[tts.providers.piper_ruaccent]` config-master block (now **8/8 TTS**). RUAccent's model download pointed
+    at `models_root/ruaccent/` (mounted volume) via `workdir=` — not its ephemeral package dir. `test_piper_ruaccent.py`
+    (5). **Open quality item:** the RUAccent `+`-mark ↔ espeak-ng stress-input bridge needs an on-device A/B (no aarch64/
+    x86 hardware yet). Gates: suite 948, schema-unification 19/19, dependency_validator 118/118, pyright 0, config-ui builds.
 - **T3** Platform taxonomy + validation: add `armv7l` to provider `get_platform_support()` taxonomy; extend the CI
   `dependency_validator --platforms` to include armv7 so **any armv7 profile enabling a torch provider fails the build**;
   evolve the `embedded-armv7` profile from headless-ASR-satellite → **ASR+TTS satellite-server** (TTS synthesis on +

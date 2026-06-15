@@ -131,6 +131,12 @@ class PiperProviderSchema(TTSProviderSchema):
     preload_models: bool = Field(default=False, description="Preload model during init (pay graph-init at boot)")
 
 
+class PiperRuAccentProviderSchema(PiperProviderSchema):
+    """Piper + RUAccent TTS provider schema (ARCH-24: Russian stress/homograph accentor, 64-bit only)"""
+    omograph_model_size: str = Field(default="turbo", description="RUAccent homograph model: turbo | tiny | big")
+    use_dictionary: bool = Field(default=True, description="Use RUAccent's stress dictionary")
+
+
 # ============================================================
 # AUDIO PROVIDER SCHEMAS
 # ============================================================

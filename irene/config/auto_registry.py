@@ -150,6 +150,7 @@ class AutoSchemaRegistry:
                 # TTS providers
                 ConsoleProviderSchema, ElevenLabsProviderSchema, SileroV3ProviderSchema,
                 SileroV4ProviderSchema, VoskTTSProviderSchema, PyttSXProviderSchema, PiperProviderSchema,
+                PiperRuAccentProviderSchema,
                 # Audio providers
                 SoundDeviceProviderSchema, APlayProviderSchema, ConsoleAudioProviderSchema, MiniaudioProviderSchema,
                 # ASR providers
@@ -176,6 +177,7 @@ class AutoSchemaRegistry:
                     "vosk": VoskTTSProviderSchema,
                     "pyttsx": PyttSXProviderSchema,
                     "piper": PiperProviderSchema,
+                    "piper_ruaccent": PiperRuAccentProviderSchema,
                 },
                 "audio": {
                     "console": ConsoleAudioProviderSchema,
