@@ -85,11 +85,16 @@ sherpa/openWakeWord paths "NO torch").
 | Fact | Value | Consequence |
 |---|---|---|
 | SoC | Allwinner sun8i **Cortex-A7 quad**, armv7l, NEON/vfpv4 | weak cores → Piper RTF may be 1–3× (consider Piper **"low"** model) |
-| RAM | **1 GB total, ~367 MB *available*** (java 352 MB + wb services use ~600 MB) + 256 MB swap | Irene's whole stack must fit ~367 MB + swap backstop |
-| Disk | **784 MB free** (2 GB rootfs, 58% used) | rules out Whisper small (470 MB) & vosk_tts (746 MB) on disk alone |
+| RAM | **1 GB total. ~367 MB available *with SprutHub running*; ~712 MB after SprutHub was stopped+disabled (2026-06-15, frees ~343 MB)** + 256 MB swap | the three deploy containers fit in ~712 MB |
+| Disk | **`/mnt/data` = 4.7 GB, 2.3 GB free** (docker root = `/mnt/data/.docker`); rootfs `/` has only ~785 MB free **but images + models live on `/mnt/data`** | disk is **NOT** the constraint (my earlier "784 MB" cited the wrong partition); vosk_tts/Whisper-small are barred by **RAM**, not disk |
 | glibc | **2.31** | newer `sherpa-onnx-core` needs ≥2.35 → **stays pinned at `sherpa-onnx==1.10.46`** (matches pyproject) |
 | Python | **3.9** | wheels must be cp39 |
-| Irene installed? | **No** — vanilla WB7 | numbers above are the baseline to deploy *into* |
+| Deployment | **dockerized** — Irene runs as a container alongside `wb-mqtt-bridge` + `wb-mqtt-ui` (Irene's own `config-ui` is **NOT** deployed on WB7) | armv7 images already on GHCR (`ghcr.io/droman42/*`, linux/armv7) |
+
+> **Topology (corrected 2026-06-15):** the **ESP32 satellites** own mic capture, **VAD**, **wake-word/voice-trigger**, and
+> audio **playback**. WB7's Irene is the **back half only** — it receives a gated, segmented utterance, runs
+> **ASR → NLU → intent → TTS**, and streams TTS PCM **back** to the ESP32 (ARCH-21/22 reply channel). So WB7 has **no
+> server-side VAD, no voice-trigger, no local mic/speaker** (`skip_wake_word=True`).
 
 **The armv7 ORT wall:** anything depending on the **standalone `onnxruntime` pip package** (RUAccent, vosk_tts,
 onnx-asr) is blocked on armv7l — no Microsoft armhf wheel — and **cannot** borrow sherpa-onnx's statically-linked ORT.
@@ -99,7 +104,7 @@ So on WB7: **Piper *direct only*** (espeak-ng stress). RUAccent + vosk_tts are *
 
 | Stage / model | Disk | RAM | WB7 |
 |---|---|---|---|
-| VAD Silero (ONNX) | ~2 MB | ~30 MB | ✅ |
+| VAD Silero (ONNX) | ~2 MB | ~30 MB | **ESP32, not WB7** (✅ on 64-bit standalone) |
 | ASR vosk-model-small-ru | ~27 MB | ~120 MB | ✅ **recommended** |
 | ASR Whisper tiny / base / small int8 | 75 / 145 / 470 MB | ~200 / ~350 / ~800 MB | tiny⚠ base⚠ small❌ |
 | TTS Piper ru medium (+espeak-data) | ~75 MB | ~150 MB | ✅ **recommended** |
@@ -108,10 +113,22 @@ So on WB7: **Piper *direct only*** (espeak-ng stress). RUAccent + vosk_tts are *
 | vosk_tts model | 746 MB | >1 GB | ❌ |
 | torch (any Silero) | — | ~1–2 GB | ❌ |
 
-**Recommended WB7 standalone stack:** Silero-VAD + sherpa_onnx/vosk-small + Piper-direct ≈ **~105 MB disk / ~300 MB
-RAM** — fits, but tight; prefer **lazy TTS load** over the profile's blanket `preload_models = true`.
+**Recommended WB7 stack (satellite-server role):** Irene = **ASR (sherpa/vosk-small) + NLU + intent + TTS (Piper-direct)**
+only — no VAD/voice-trigger (ESP32's job), no local audio. Models ≈ **~114 MB** (vosk-small 27 + Piper ru-med 75 +
+espeak-data 12), runtime ≈ **~280–350 MB RAM**; prefer **lazy TTS load** over the profile's blanket `preload_models = true`.
 
-**Whisper is NOT for WB7** — disk + RAM bar it, and tiny/base are worse at Russian than vosk-small. Whisper-via-sherpa
+**Three-container WB7 budget (post-SprutHub, measured 2026-06-15):**
+
+| Container | Disk | RAM (est.) |
+|---|---|---|
+| wb-mqtt-bridge | ~155 MB | ~120–200 MB |
+| wb-mqtt-ui | ~40 MB | ~10–20 MB (nginx static) |
+| Irene (backend; no config-ui) | ~120–180 MB img + ~114 MB models | ~280–350 MB |
+| **Total** | **~430–490 MB of 2.3 GB free** | **~410–570 MB of 712 MB** (+256 MB swap) |
+
+Fits with ~140–300 MB RAM headroom. Softest number = the bridge's runtime RSS (estimate, not measured).
+
+**Whisper is NOT for WB7** — RAM bars it, and tiny/base are worse at Russian than vosk-small. Whisper-via-sherpa
 is the **64-bit** win (small/medium fit there).
 
 ---
@@ -121,8 +138,11 @@ is the **64-bit** win (small/medium fit there).
 1. **Whisper → sherpa-onnx** as a model option behind the existing `sherpa_onnx` provider. 64-bit-focused. **Agreed.**
 2. **Silero stays torch**, supported on 64-bit installs; **excluded from armv7** by packaging + a validated profile.
 3. **New `piper` TTS provider** via sherpa-onnx `OfflineTts`: **direct** (armv7 + 64-bit) and **+RUAccent** (64-bit only).
-4. **armv7 role change:** today `embedded-armv7.toml` is a **headless satellite** (mic/playback/TTS **off**, ESP32 wakes
-   on-device). A self-contained voice WB7 is a **new profile** (mic + playback + TTS on).
+4. **armv7 role = satellite-*server* (NOT standalone).** The ESP32 satellites own mic + VAD + voice-trigger + playback;
+   WB7's Irene is the back half — ASR/NLU/intent/TTS, `skip_wake_word=True`, **no** server VAD, mic, speaker, or
+   `config-ui`. It evolves today's headless `embedded-armv7.toml` (which returns text only) by turning **TTS synthesis
+   on** + wiring the ESP32 reply-channel transport — *not* by adding local mic/playback. Runs **dockerized** beside
+   `wb-mqtt-bridge` + `wb-mqtt-ui`.
 
 ## 6. Work threads (for ARCH-24 when scheduled)
 
@@ -131,7 +151,8 @@ is the **64-bit** win (small/medium fit there).
 - **T2** New `piper` TTS provider (sherpa `OfflineTts`/VITS); `ru_RU` voice asset; direct + optional RUAccent stage.
 - **T3** Platform taxonomy + validation: add `armv7l` to provider `get_platform_support()` taxonomy; extend the CI
   `dependency_validator --platforms` to include armv7 so **any armv7 profile enabling a torch provider fails the build**;
-  author a real standalone `embedded-armv7` profile (mic/playback/TTS on, lazy TTS load).
+  evolve the `embedded-armv7` profile from headless-ASR-satellite → **ASR+TTS satellite-server** (TTS synthesis on +
+  stream PCM back to the ESP32; VAD/voice-trigger/mic/playback stay **off** — ESP32's job; no `config-ui`; lazy TTS load).
 - **Open checks:** (a) **verify `sherpa-onnx==1.10.46` cp39 armv7 wheel exposes `OfflineTts`/VITS** on the real WB7
   (the one must-pass before committing to Piper-via-sherpa); (b) Piper medium vs "low" RTF on the A7; (c) on-device RAM
   peak with all three models loaded.

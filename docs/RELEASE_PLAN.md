@@ -915,8 +915,12 @@ See `docs/review/phase1_architecture_map.md` §5.
       it's not an orphan finding. Depends on hardware selection finalised (mic/speaker parts) + the Plane-B controller deploy.
 - [ ] **ARCH-24** [ASR][TTS][IO] (P-TBD) `[deferred]` — **Torch-free inference & the armv7 voice stack.** Research/analysis
       session **DONE 2026-06-15** (no code); deliverable **`docs/design/torch_free_armv7_voice.md`** + the real WB7 ground
-      truth (SSH'd 192.168.110.250: Cortex-A7 quad armv7l, 1 GB RAM / **~367 MB available** + 256 MB swap, **784 MB free
-      disk**, glibc 2.31, py3.9, Irene not yet installed). **Thesis (revises ARCH-9 for armv7 only — torch stays on 64-bit):**
+      truth (SSH'd 192.168.110.250: Cortex-A7 quad armv7l, 1 GB RAM — **~712 MB available after SprutHub was stopped+disabled
+      2026-06-15** (was ~367 MB; SprutHub's JVM held ~352 MB) + 256 MB swap; disk on **`/mnt/data` 2.3 GB free** (not the
+      cramped rootfs), glibc 2.31, py3.9, dockerized deploy). **Topology corrected:** ESP32 satellites own VAD + voice-trigger
+      + mic/playback; WB7 Irene = **ASR/NLU/intent/TTS only** (no server VAD, no local audio, no `config-ui`), running as a
+      container beside `wb-mqtt-bridge` + `wb-mqtt-ui` — three-container budget ≈ 410–570 MB of 712. **Thesis (revises ARCH-9
+      for armv7 only — torch stays on 64-bit):**
       drop torch from the default/armv7 build by (T1) folding **Whisper → sherpa-onnx** (`from_whisper`, same weights,
       parity; 64-bit-focused — Whisper is barred from WB7 by disk+RAM, vosk-small stays the armv7 ASR), and (T2) a **new
       `piper` TTS provider** via sherpa `OfflineTts`/VITS (`ru_RU` voices, **direct** on armv7 + **+RUAccent** on 64-bit only —
@@ -924,8 +928,9 @@ See `docs/review/phase1_architecture_map.md` §5.
       can exist (Silero refuses ONNX export — issue #283; undisclosed Tacotron-lineage; sherpa has no loader) → Piper is the
       replacement, accepting weaker espeak-ng Russian stress (RUAccent closes the gap on 64-bit). (T3) add `armv7l` to the
       provider platform taxonomy + extend CI `dependency_validator --platforms` so any armv7 profile enabling a torch provider
-      **fails the build**, and author a real standalone `embedded-armv7` profile (mic/playback/TTS on — today's is a headless
-      satellite). **Must-check before committing:** that `sherpa-onnx==1.10.46` cp39 armv7 wheel exposes `OfflineTts`/VITS on
+      **fails the build**, and evolve the `embedded-armv7` profile from headless-ASR-satellite → **ASR+TTS satellite-server**
+      (TTS synthesis on + stream PCM back to the ESP32; VAD/voice-trigger/mic/playback stay off — ESP32's job). **Must-check
+      before committing:** that `sherpa-onnx==1.10.46` cp39 armv7 wheel exposes `OfflineTts`/VITS on
       the real WB7. Completing T1+T2 is the clean resolution for the deferred **torch ×4 / transformers ×1** Dependabot alerts
       (commits 05aa763/4e05a38) — no risky major bumps. **No code until scheduled + green-lit.**
 

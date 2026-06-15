@@ -12,6 +12,16 @@ newest entries near the top of each dated section.
 ## Action journal
 
 ### 2026-06-15
+- **WB7 controller investigation + SprutHub stopped → ARCH-24 budget reconciled.** Diagnosed the controller's memory:
+  the elephant was **SprutHub** (Java hub under `/mnt/data/makesimple`, ~352 MB RSS = 59% of used RAM); Node-RED was a
+  red herring (not installed/running). Per the user's plan (bridge + dockerized Irene will run on WB7, SprutHub retired),
+  **stopped + disabled both `spruthub.service` and `spruthub-update.service`** (reversible, no files removed) → available
+  RAM **364 → 712 MB**. Reconciled the ARCH-24 WB7 budget against reality and **corrected the design doc**: (1) ESP32
+  satellites own VAD + voice-trigger + mic/playback → WB7 Irene is ASR/NLU/intent/TTS only (no Silero-VAD, no local audio);
+  (2) Irene's `config-ui` not deployed on WB7 (`wb-mqtt-ui` is) — three containers (bridge + wb-mqtt-ui + Irene); (3) disk
+  budget is `/mnt/data` (2.3 GB free, docker root there), not the 785 MB rootfs; (4) post-SprutHub 712 MB available. Bridge
+  armv7 images already on GHCR (`ghcr.io/droman42/*`, linux/armv7, latest = `8c39b88` 2026-05-31 — 92 commits behind main,
+  rebuild needed before deploy). Three-container budget ≈ 430–490 MB disk / 410–570 MB RAM → fits with headroom.
 - **ARCH-24 research session — torch-free inference & the armv7 voice stack (no code).** Started from the deferred
   torch/transformers Dependabot alerts (commits 05aa763/4e05a38) + the user's need for a self-contained VAD+ASR+TTS on
   the Wirenboard 7. Mapped the real torch surface (opt-in `advanced-asr` + Silero TTS; `transformers` only transitive via
