@@ -162,6 +162,14 @@ is the **64-bit** win (small/medium fit there).
   `dependency_validator --platforms` to include armv7 so **any armv7 profile enabling a torch provider fails the build**;
   evolve the `embedded-armv7` profile from headless-ASR-satellite → **ASR+TTS satellite-server** (TTS synthesis on +
   stream PCM back to the ESP32; VAD/voice-trigger/mic/playback stay **off** — ESP32's job; no `config-ui`; lazy TTS load).
+- **T4 (packaging) → BUILD-3:** **three Docker images**, each one role + one config + one manual `workflow_dispatch`
+  buildx→GHCR workflow: **A** 64-bit satellite-server (x86_64 + aarch64 — servers/WB8.5/Pi, bigger models: Whisper small/med
+  + Piper`_ruaccent`), **B** armv7 WB7 satellite-server (vosk-small + `piper`-direct, no torch — redo `embedded-armv7.toml`),
+  **C** NEW `Dockerfile.standalone` full local `voice` runner (mic→…→playback, audio passthrough, arch TBD). A & B share the
+  satellite-server role (ESP32 owns VAD/VT/audio); differ only by HW tier + model allowance. Delivered via interactive
+  sessions (config per target → Dockerfile design: baked-in vs mounted volumes, ports, `/dev/snd`, entrypoint → per-image
+  workflow). This is **BUILD-3** in the ledger — see it for the running scope.
+
 - **Open checks:** (a) ~~verify `sherpa-onnx==1.10.46` cp39 armv7 wheel exposes `OfflineTts`/VITS on the real WB7~~ —
   **✅ VERIFIED 2026-06-15 on 192.168.110.250.** Downloaded `sherpa_onnx-1.10.46-cp39-cp39-linux_armv7l.whl` (14.5 MB),
   imported under the box's Python 3.9 — the compiled `.so` **loads and runs** on glibc 2.31 / Cortex-A7, and exposes both

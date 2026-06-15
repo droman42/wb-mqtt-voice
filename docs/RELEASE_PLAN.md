@@ -1950,7 +1950,19 @@ _Apply to every remediation task below (from the 4 review docs + QUAL-25/26). So
       pytest (until the TEST- items resolve), black/isort (until the tree is formatted). **Known honest-red
       (accepted):** `config_validator_cli` fails on 3 stale fixtures — tracked as **BUILD-6**. Done together with
       **BUILD-4** (frontend).
-- [ ] **BUILD-3** (P2) — **DEFERRED to the release phase (decided 2026-06-01): Docker builds are an end-stage
+- [ ] **BUILD-3** (P2) — **SCOPE EXPANDED 2026-06-15 — now the packaging thread of ARCH-24** (the architecture has settled,
+      so image contents are decidable). **Three image targets, each = one role + one config + one manually-triggerable
+      (`workflow_dispatch`) buildx→GHCR workflow** (mirroring the bridge's `v<date>-<sha>`+`latest` tagging):
+      **(A) server (64-bit: x86_64 + aarch64 — servers, WB8.5, Pi)** — `Dockerfile.x86_64`; **satellite-server** role (ASR+TTS
+      for ESP32, no local audio), **same role as B** but roomier HW → bigger models (Whisper small/med, Piper+RUAccent); new
+      config. **(B) embedded (armv7 — WB7)** — `Dockerfile.armv7`; satellite-server, constrained (vosk-small ASR + Piper-direct
+      TTS, sherpa-onnx only, no torch); **redo `embedded-armv7.toml`** (current stub is bad). **(C) standalone (arch TBD →
+      Session 4)** — **NEW `Dockerfile.standalone`**; full local `voice` runner (mic→VAD→wake→ASR→NLU→TTS→playback) with audio
+      device passthrough; new config. **Delivered via interactive sessions:** (0 ✓ targets locked 2026-06-15) → (1–3) config
+      per target → (4) Dockerfile design (baked-in vs mounted: models/config/assets/logs volumes, ports, `/dev/snd`, entrypoint,
+      extras) → (5) per-image workflow. Carries forward the BUILD-5 Dockerfile fixes (armv7 Debian base, `intent_validator`
+      removal) for real build/boot verification on hardware. _Original deferred note below._ **DEFERRED to the release phase
+      (decided 2026-06-01): Docker builds are an end-stage
       task**, after the architecture/code work settles (image contents, extras, and armv7 viability all depend on
       the post-refactor shape — incl. QUAL-19/20 [ESP32] and ARCH-9/10 [INFER] for the sherpa-onnx/runtime
       footprint). Then verify the minimal x86_64 Docker build (builder feeds analyzer package names to

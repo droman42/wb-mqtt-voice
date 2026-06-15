@@ -12,6 +12,13 @@ newest entries near the top of each dated section.
 ## Action journal
 
 ### 2026-06-15
+- **BUILD-3 reopened as ARCH-24's packaging thread — three Docker images.** Coupled the deferred Docker-build task to
+  ARCH-24 now the architecture has settled. Three targets, each = one role + one config + one manual `workflow_dispatch`
+  workflow: **A** 64-bit satellite-server (x86_64/aarch64 — WB8.5/Pi, bigger models), **B** armv7 WB7 satellite-server
+  (vosk-small + piper-direct; redo the bad `embedded-armv7.toml`), **C** NEW standalone full-`voice` runner (arch TBD →
+  Session 4). User refinement: **A & B are the same satellite-server role** (ESP32 owns VAD/VT/audio), differing only by HW
+  tier + model allowance. Two profile-parameterized Dockerfiles exist (`Dockerfile.x86_64`, `.armv7`); C's is new.
+  Interactive sessions to follow: config per target → Dockerfile design (baked vs mounted) → per-image workflow.
 - **ARCH-24 gating check VERIFIED on the real WB7 — sherpa-onnx 1.10.46 does TTS.** The whole "one ONNX engine for both
   ASR + TTS on armv7" plan hung on whether the pinned `sherpa-onnx==1.10.46` armv7 wheel exposes `OfflineTts` (the box's
   glibc 2.31 blocks the newer `sherpa-onnx-core` wheels, so 1.10.46 is the ceiling). Tested directly without touching the
