@@ -12,6 +12,7 @@ from typing import Dict, Any, List
 
 from .base import TTSProvider
 from ...utils.audio_stream import PCMStream, float_to_pcm16
+from ...utils.torch_model_cache import TorchModelCache
 
 logger = logging.getLogger(__name__)
 
@@ -30,8 +31,7 @@ class SileroV4TTSProvider(TTSProvider):
     """
     
     # Class-level model cache for sharing across instances
-    _model_cache: Dict[str, Any] = {}
-    _cache_lock = asyncio.Lock()  # Protect concurrent access to cache
+    _model_cache = TorchModelCache()  # class-level cache shared across instances (ARCH-24 T5)
     
     def __init__(self, config: Dict[str, Any]):
         """Initialize SileroV4TTSProvider with configuration"""
@@ -242,38 +242,19 @@ class SileroV4TTSProvider(TTSProvider):
         return ["x86_64", "aarch64"]  # torch has no armv7 wheel (ARCH-24 T3)
 
     async def _ensure_model_loaded(self) -> None:
-        """Ensure model is loaded and ready with caching optimization"""
+        """Ensure the model is loaded — cached across instances by (model_file, device) (ARCH-24 T5)."""
         if not self._available:
             raise RuntimeError("Silero v4 TTS provider not available (torch dependency missing)")
-            
         if not self._model:
-            # Try to get model from cache first
             cache_key = f"{self.model_file}:{self.torch_device}"
-            await self._get_or_load_cached_model(cache_key)
-            
+            self._model = await self._model_cache.get_or_load(cache_key, self._load_model_returning)
         if not self._model:
             raise RuntimeError("Failed to load Silero v4 model")
-    
-    async def _get_or_load_cached_model(self, cache_key: str) -> None:
-        """Get model from cache or load it if not cached"""
-        async with self._cache_lock:
-            # Check if model is already cached
-            if cache_key in self._model_cache:
-                self._model = self._model_cache[cache_key]
-                logger.info(f"Using cached Silero v4 model: {cache_key}")
-                return
-            
-            # Model not in cache, load it
-            try:
-                await self._load_model_async()
-                
-                # Cache the loaded model
-                self._model_cache[cache_key] = self._model
-                logger.info(f"Silero v4 model loaded and cached: {cache_key}")
-                
-            except Exception as e:
-                logger.error(f"Failed to load Silero v4 model: {e}")
-                raise
+
+    async def _load_model_returning(self) -> Any:
+        """Loader for the shared cache: download (if needed) + load, returning the model."""
+        await self._load_model_async()  # sets self._model
+        return self._model
     
     async def _load_model_async(self) -> None:
         """Load Silero v4 model asynchronously"""

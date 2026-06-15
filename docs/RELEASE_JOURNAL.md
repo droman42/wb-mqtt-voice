@@ -12,6 +12,12 @@ newest entries near the top of each dated section.
 ## Action journal
 
 ### 2026-06-15
+- **ARCH-24 T5 PR2 — TorchModelCache (T5 COMPLETE).** Extracted the silero v3/v4 copy-pasted model cache (class-level
+  dict + `asyncio.Lock` + `_get_or_load_cached_model`) to `utils/torch_model_cache.TorchModelCache` (async, lock-guarded
+  `get_or_load`: loads once per key, serializes concurrent first loads). Both silero providers now hold
+  `_model_cache = TorchModelCache()` + a small `_load_model_returning` loader; ~25 dup lines × 2 removed. torch whisper
+  untouched (library-cached). `test_torch_model_cache.py` (3). Suite 970 green, pyright 0, contracts 9/9, no-TYPE_CHECKING
+  clean. **T5 complete → ARCH-24 code threads T1/T2/T3/T5 all done; only T4 (BUILD-3 images + config sessions) remains.**
 - **ARCH-24 T5 PR1 — shared InferencePolicy.** Extracted the sherpa thread/CPU budget (was `SherpaInferencePolicy` in the
   ASR provider, a duplicated `_num_threads` in piper, and ignored by silero VAD) to `utils/inference_policy.InferencePolicy`.
   Now shared by sherpa ASR + Piper TTS + silero VAD (which now sets `cfg.num_threads` — sherpa's `VadModelConfig` has it).

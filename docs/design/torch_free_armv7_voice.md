@@ -263,9 +263,11 @@ verification; standalone needs nothing new.
     it; `SherpaInferencePolicy` kept as a back-compat alias; the duplicated `_num_threads` in piper removed.
     `test_inference_policy.py`. (A full `SherpaSession` build-helper was deemed unnecessary — only the thread budget is
     genuinely shared.) **PR2** = the torch cache below.
-  - **Torch:** optional `TorchModelCache` for `silero_v3`/`silero_v4` — near-identical copy-pasted class-level
-    `_model_cache` + lock + `_get_or_load_cached_model` (~30 lines each). The torch `whisper.py` provider does **NOT** need
-    it (caching delegated to `whisper.load_model()`; one lazy instance, no manual cache/lock to dedupe).
+  - **Torch — DONE 2026-06-15 (PR2) → T5 COMPLETE:** extracted the near-identical silero v3/v4 cache (class-level dict +
+    `asyncio.Lock` + `_get_or_load_cached_model`, ~25 lines each) to `utils/torch_model_cache.TorchModelCache` (async,
+    lock-guarded `get_or_load` — loads once per key, serializes concurrent first loads). Both silero providers now hold
+    `_model_cache = TorchModelCache()` + a tiny `_load_model_returning` loader. `test_torch_model_cache.py` (3). The torch
+    `whisper.py` provider does **NOT** need it (caching delegated to `whisper.load_model()`; one lazy instance).
 
 - **Open checks:** (a) ~~verify `sherpa-onnx==1.10.46` cp39 armv7 wheel exposes `OfflineTts`/VITS on the real WB7~~ —
   **✅ VERIFIED 2026-06-15 on 192.168.110.250.** Downloaded `sherpa_onnx-1.10.46-cp39-cp39-linux_armv7l.whl` (14.5 MB),
