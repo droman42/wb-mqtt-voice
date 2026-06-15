@@ -13,6 +13,7 @@ import pytest
 import tempfile
 import logging
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Dict, Any, List
 from unittest.mock import Mock, patch
 
@@ -21,6 +22,32 @@ from irene.components.intent_component import IntentComponent
 from irene.components.nlu_component import NLUComponent
 from irene.intents.manager import IntentHandlerManager
 from irene.core.components import ComponentManager
+
+
+class _StubHandler:
+    """Minimal handler test double honoring the init contract the manager calls.
+
+    Mirrors the handler surface used by
+    IntentHandlerManager._initialize_handlers_with_donations: set_asset_loader,
+    set_donation, has_donation. A handler can be told to fail at set_asset_loader
+    to exercise the isolation/drop path.
+    """
+
+    def __init__(self, fail_on_asset_loader: bool = False):
+        self._fail_on_asset_loader = fail_on_asset_loader
+        self.asset_loader = None
+        self.donation = None
+
+    def set_asset_loader(self, loader):
+        if self._fail_on_asset_loader:
+            raise RuntimeError("simulated handler initialization failure")
+        self.asset_loader = loader
+
+    def set_donation(self, donation):
+        self.donation = donation
+
+    def has_donation(self) -> bool:
+        return self.donation is not None
 
 
 class TestIntentHandlerConfiguration:
@@ -76,15 +103,30 @@ class TestIntentHandlerConfiguration:
                 )
             )
     
-    def test_missing_configuration_validation(self):
-        """Test validation of missing handler configurations."""
-        # This would require a handler enabled but not in config mapping
-        # For now, we test with the existing handlers
+    def test_enabled_handler_without_configuration_raises(self):
+        """An enabled handler whose configuration object is None must fail validation.
+
+        This is the current public contract of validate_handler_configurations():
+        configuration *presence* is enforced per enabled handler that owns a config slot.
+        """
+        config = IntentSystemConfig()
+        config.conversation = None  # enabled by default but now has no config
+
+        with pytest.raises(ValueError, match="Handler 'conversation' is enabled but has no configuration"):
+            config.validate_handler_configurations()
+
+    def test_unknown_handler_name_is_not_rejected_by_config_validation(self):
+        """Handler *existence* is not validated at the config layer.
+
+        Unknown handler names without a config slot are tolerated by
+        validate_handler_configurations() (existence is enforced later at
+        IntentHandlerManager.initialize, see test_missing_handlers_error).
+        The method returns the config unchanged.
+        """
         config = IntentSystemConfig()
         config.handlers.enabled = ["conversation", "timer", "nonexistent_handler"]
-        
-        with pytest.raises(ValueError, match="Enabled handlers missing configuration classes"):
-            config.validate_handler_configurations()
+
+        assert config.validate_handler_configurations() is config
 
 
 class TestIntentHandlerManager:
@@ -211,46 +253,48 @@ class TestErrorRecovery:
     """Test error recovery and graceful degradation."""
     
     @pytest.mark.asyncio
-    async def test_partial_handler_failure_recovery(self):
-        """Test system continues when some handlers fail."""
+    async def test_partial_handler_failure_is_dropped_not_fatal(self):
+        """A handler that fails initialization is dropped; working handlers survive.
+
+        Contract of _initialize_handlers_with_donations(): failures are isolated.
+        Failing handlers are removed from _handler_instances and the call returns
+        normally as long as at least one handler succeeds.
+        """
         manager = IntentHandlerManager()
-        
-        # Mock scenario where some handlers fail initialization
-        with patch.object(manager, '_handler_instances') as mock_instances:
-            mock_instances.__iter__ = lambda x: iter(["working_handler", "failing_handler"])
-            mock_instances.items.return_value = [
-                ("working_handler", Mock()),
-                ("failing_handler", Mock())
-            ]
-            
-            # Mock the failing handler
-            working_handler = Mock()
-            working_handler.set_asset_loader = Mock()
-            working_handler.set_donation = Mock()
-            working_handler.has_donation.return_value = True
-            
-            failing_handler = Mock()
-            failing_handler.set_asset_loader = Mock(side_effect=Exception("Handler failure"))
-            
-            mock_instances.__getitem__ = lambda x, key: {
-                "working_handler": working_handler,
-                "failing_handler": failing_handler
-            }[key]
-            
-            manager._donations = {"working_handler": Mock(), "failing_handler": Mock()}
-            manager._donations["working_handler"].method_donations = []
-            manager._donations["failing_handler"].method_donations = []
-            
-            # Should not raise exception, but should log warnings
-            with patch('irene.intents.manager.logger') as mock_logger:
-                try:
-                    await manager._initialize_handlers_with_donations()
-                except Exception:
-                    pass  # Expected for this test setup
-                
-                # Verify warning was logged
-                assert any("Failed to initialize handler" in str(call) 
-                          for call in mock_logger.error.call_args_list)
+        manager._asset_loader = object()  # opaque; only passed to set_asset_loader
+        manager._handler_instances = {
+            "working_handler": _StubHandler(),
+            "failing_handler": _StubHandler(fail_on_asset_loader=True),
+        }
+        manager._donations = {
+            "working_handler": SimpleNamespace(method_donations=[]),
+            "failing_handler": SimpleNamespace(method_donations=[]),
+        }
+
+        # Must not raise: failure is isolated.
+        await manager._initialize_handlers_with_donations()
+
+        assert "working_handler" in manager._handler_instances
+        assert "failing_handler" not in manager._handler_instances
+        # Surviving handler actually received its donation.
+        assert manager._handler_instances["working_handler"].donation is not None
+
+    @pytest.mark.asyncio
+    async def test_all_handlers_failing_is_fatal(self):
+        """If every handler fails, the intent system cannot function -> RuntimeError."""
+        manager = IntentHandlerManager()
+        manager._asset_loader = object()
+        manager._handler_instances = {
+            "h1": _StubHandler(fail_on_asset_loader=True),
+            "h2": _StubHandler(fail_on_asset_loader=True),
+        }
+        manager._donations = {
+            "h1": SimpleNamespace(method_donations=[]),
+            "h2": SimpleNamespace(method_donations=[]),
+        }
+
+        with pytest.raises(RuntimeError, match="All intent handlers failed initialization"):
+            await manager._initialize_handlers_with_donations()
 
 
 def test_logging_configuration():

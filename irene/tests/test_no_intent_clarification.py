@@ -17,7 +17,10 @@ from irene.intents.models import Intent
 
 
 def _run(coro):
-    return asyncio.get_event_loop().run_until_complete(coro)
+    # asyncio.run creates+closes a fresh loop per call. The old get_event_loop().run_until_complete
+    # raised "no current event loop" once another async test had closed the thread's loop — an
+    # order-dependent failure (passed alone, failed in the full suite).
+    return asyncio.run(coro)
 
 
 def _handler() -> ConversationIntentHandler:

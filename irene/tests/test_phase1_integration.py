@@ -1,64 +1,59 @@
-"""
-Phase 1 Integration Tests - Context-Aware Foundation
+"""Client-registry + request→conversation context seam.
 
-Comprehensive tests for client identification, room/device context,
-and Russian language support in the context-aware foundation.
+Survivors of the pre-refactor "phase1 integration" scaffolding (TEST-7). Only the behaviors that
+are LIVE and covered nowhere else are kept here, re-asserted at the public/port level:
+
+  * `ClientRegistry` node/web registration and room lookup (the action-store side lives in
+    test_action_store; registration + room indexing is only exercised here).
+  * `ContextManager.get_context_with_request_info` — the RequestContext → UnifiedConversationContext
+    transfer that the entry adapters depend on.
+
+Dropped as covered elsewhere or not-in-this-build:
+  * temporal entity resolution → test_context_aware_nlu::test_entity_resolver_temporal_entities
+  * language-default contracts (RequestContext.language / UnifiedConversationContext default) →
+    test_language_source_of_truth (QUAL-36)
+  * device/location entity resolution → unbuilt smart-home resolution (ARCH-6/ARCH-8); the current
+    resolver intentionally returns `_resolution_failed` until physical devices/rooms are registered.
 """
 
 import pytest
-import asyncio
-import time
-from typing import Dict, Any, List
 
-from irene.intents.context_models import UnifiedConversationContext
 from irene.intents.context import ContextManager
 from irene.workflows.base import RequestContext
-from irene.core.client_registry import ClientRegistry, ClientRegistration, ClientDevice
-from irene.core.entity_resolver import ContextualEntityResolver, DeviceEntityResolver
+from irene.core.client_registry import ClientRegistry
 
 
-class TestPhase1ClientIdentification:
-    """Test client identification and registration functionality"""
-    
-    @pytest.fixture
-    def client_registry(self):
-        """Create a test client registry"""
-        return ClientRegistry({"persistent_storage": False})
-    
-    @pytest.fixture
-    def context_manager(self):
-        """Create a test context manager"""
-        return ContextManager(session_timeout=3600, max_history_turns=10)
-    
+@pytest.fixture
+def client_registry():
+    """A non-persistent registry (no disk side effects)."""
+    return ClientRegistry({"persistent_storage": False})
+
+
+@pytest.fixture
+def context_manager():
+    return ContextManager(session_timeout=3600, max_history_turns=10)
+
+
+class TestClientRegistration:
+    """Registration + room-index contract of ClientRegistry (Russian room/device names)."""
+
     @pytest.mark.asyncio
-    async def test_esp32_client_registration(self, client_registry):
-        """Test ESP32 node registration with devices"""
+    async def test_esp32_node_registration_records_devices_and_capabilities(self, client_registry):
         devices = [
-            {
-                "id": "light1",
-                "name": "Кухонный свет",
-                "type": "light",
-                "capabilities": {"dimmable": True, "color": False}
-            },
-            {
-                "id": "sensor1", 
-                "name": "Датчик температуры",
-                "type": "sensor",
-                "capabilities": {"temperature": True, "humidity": True}
-            }
+            {"id": "light1", "name": "Кухонный свет", "type": "light",
+             "capabilities": {"dimmable": True}},
+            {"id": "sensor1", "name": "Датчик температуры", "type": "sensor",
+             "capabilities": {"temperature": True}},
         ]
-        
-        success = await client_registry.register_esp32_node(
+
+        assert await client_registry.register_esp32_node(
             client_id="kitchen_esp32",
             room_name="Кухня",
             devices=devices,
             source_address="192.168.1.100",
-            language="ru"
+            language="ru",
         )
-        
-        assert success
-        
-        # Verify registration
+
         client = client_registry.get_client("kitchen_esp32")
         assert client is not None
         assert client.client_id == "kitchen_esp32"
@@ -66,434 +61,114 @@ class TestPhase1ClientIdentification:
         assert client.language == "ru"
         assert client.client_type == "esp32"
         assert len(client.available_devices) == 2
+        # ESP32 nodes are voice-capable by construction.
         assert client.capabilities["voice_input"] is True
         assert client.source_address == "192.168.1.100"
-        
-        print("✅ ESP32 client registration test passed!")
-    
+
     @pytest.mark.asyncio
-    async def test_web_client_registration(self, client_registry):
-        """Test web client registration"""
-        success = await client_registry.register_web_client(
+    async def test_web_client_registration_marks_visual_output(self, client_registry):
+        assert await client_registry.register_web_client(
             client_id="web_living_room",
             room_name="Гостиная",
             user_agent="Mozilla/5.0 (Chrome)",
-            language="ru"
+            language="ru",
         )
-        
-        assert success
-        
-        # Verify registration
+
         client = client_registry.get_client("web_living_room")
         assert client is not None
-        assert client.client_id == "web_living_room"
-        assert client.room_name == "Гостиная"
-        assert client.language == "ru"
         assert client.client_type == "web"
+        assert client.room_name == "Гостиная"
+        # A web client has no physical devices but does have a screen.
+        assert client.available_devices == []
         assert client.capabilities["visual_output"] is True
         assert client.user_agent == "Mozilla/5.0 (Chrome)"
-        
-        print("✅ Web client registration test passed!")
-    
+
     @pytest.mark.asyncio
-    async def test_client_lookup_by_room(self, client_registry):
-        """Test finding clients by room name"""
-        # Register multiple clients in same room
+    async def test_room_index_groups_clients_and_lists_rooms(self, client_registry):
         await client_registry.register_esp32_node("kitchen_esp32", "Кухня", [])
         await client_registry.register_web_client("kitchen_web", "Кухня")
         await client_registry.register_web_client("living_room_web", "Гостиная")
-        
-        # Test room lookup
-        kitchen_clients = client_registry.get_clients_by_room("Кухня")
-        assert len(kitchen_clients) == 2
-        assert all(client.room_name == "Кухня" for client in kitchen_clients)
-        
-        living_room_clients = client_registry.get_clients_by_room("Гостиная")
-        assert len(living_room_clients) == 1
-        assert living_room_clients[0].room_name == "Гостиная"
-        
-        # Test all rooms
-        all_rooms = client_registry.get_all_rooms()
-        assert "Кухня" in all_rooms
-        assert "Гостиная" in all_rooms
-        
-        print("✅ Client room lookup test passed!")
 
+        kitchen = client_registry.get_clients_by_room("Кухня")
+        assert len(kitchen) == 2
+        assert all(c.room_name == "Кухня" for c in kitchen)
 
-class TestPhase1ContextFlow:
-    """Test context information flow from request to conversation"""
-    
-    @pytest.fixture
-    def context_manager(self):
-        """Create a test context manager"""
-        return ContextManager(session_timeout=3600, max_history_turns=10)
-    
+        living = client_registry.get_clients_by_room("Гостиная")
+        assert [c.client_id for c in living] == ["living_room_web"]
+
+        # Lookup is case-insensitive on the room name.
+        assert len(client_registry.get_clients_by_room("кухня")) == 2
+
+        rooms = client_registry.get_all_rooms()
+        assert set(rooms) == {"Кухня", "Гостиная"}
+
     @pytest.mark.asyncio
-    async def test_request_context_to_conversation_context_flow(self, context_manager):
-        """Test that client information flows from RequestContext to ConversationContext"""
-        # Create request context with client information
-        request_context = RequestContext(
+    async def test_unknown_client_lookup_returns_none(self, client_registry):
+        # Off-path: nothing registered → no client, no rooms, empty room query.
+        assert client_registry.get_client("nope") is None
+        assert client_registry.get_clients_by_room("Кухня") == []
+        assert client_registry.get_all_rooms() == []
+
+
+class TestRequestToConversationContext:
+    """`get_context_with_request_info` is the seam entry adapters use to seed a conversation."""
+
+    @pytest.mark.asyncio
+    async def test_request_fields_transfer_to_conversation_context(self, context_manager):
+        request = RequestContext(
             source="esp32",
-            session_id="test_session",
+            session_id="sess-1",
             client_id="kitchen_esp32",
             room_name="Кухня",
-            device_context={
-                "available_devices": [
-                    {"id": "light1", "name": "Кухонный свет", "type": "light"},
-                    {"id": "speaker1", "name": "Колонка", "type": "speaker"}
-                ]
-            },
-            language="ru"
-        )
-        
-        # Get conversation context with request information
-        conv_context = await context_manager.get_context_with_request_info(
-            "test_session", request_context
-        )
-        
-        # Verify client information was transferred
-        assert conv_context.client_id == "kitchen_esp32"
-        assert conv_context.language == "ru"
-        assert conv_context.request_source == "esp32"
-        
-        # Verify room name resolution
-        room_name = conv_context.get_room_name()
-        assert room_name == "Кухня"
-        
-        # Verify device capabilities
-        devices = conv_context.get_device_capabilities()
-        assert len(devices) == 2
-        assert any(device["name"] == "Кухонный свет" for device in devices)
-        assert any(device["name"] == "Колонка" for device in devices)
-        
-        print("✅ Request-to-conversation context flow test passed!")
-    
-    @pytest.mark.asyncio
-    async def test_device_name_resolution(self, context_manager):
-        """Test device name resolution with fuzzy matching"""
-        request_context = RequestContext(
-            client_id="test_client",
-            room_name="Кухня",
-            device_context={
-                "available_devices": [
-                    {"id": "light1", "name": "Кухонный свет", "type": "light"},
-                    {"id": "light2", "name": "Kitchen Light", "type": "light"},
-                    {"id": "tv1", "name": "Телевизор Samsung", "type": "tv"}
-                ]
-            },
-            language="ru"
-        )
-        
-        conv_context = await context_manager.get_context_with_request_info(
-            "test_session", request_context
-        )
-        
-        # Test exact match (Russian)
-        device = conv_context.get_device_by_name("Кухонный свет")
-        assert device is not None
-        assert device["name"] == "Кухонный свет"
-        
-        # Test exact match (English)
-        device = conv_context.get_device_by_name("Kitchen Light")
-        assert device is not None
-        assert device["name"] == "Kitchen Light"
-        
-        # Test fuzzy match
-        device = conv_context.get_device_by_name("кухонный")  # Lower case, partial
-        assert device is not None
-        assert "Кухонный" in device["name"]
-        
-        # Test non-existent device
-        device = conv_context.get_device_by_name("несуществующее устройство")
-        assert device is None
-        
-        print("✅ Device name resolution test passed!")
-
-
-class TestPhase1EntityResolution:
-    """Test context-aware entity resolution"""
-    
-    @pytest.fixture
-    def entity_resolver(self):
-        """Create entity resolver"""
-        return ContextualEntityResolver()
-    
-    @pytest.fixture
-    def sample_context_with_devices(self):
-        """Create context with Russian device names"""
-        context = UnifiedConversationContext(
-            session_id="test_session",
-            client_id="kitchen_esp32",
-            language="ru"
-        )
-        
-        context.set_client_context("kitchen_esp32", {
-            "room_name": "Кухня",
-            "available_devices": [
+            device_context={"available_devices": [
                 {"id": "light1", "name": "Кухонный свет", "type": "light"},
-                {"id": "speaker1", "name": "Умная колонка", "type": "speaker"},
-                {"id": "sensor1", "name": "Датчик температуры", "type": "sensor"}
-            ]
-        })
-        
-        return context
-    
+                {"id": "speaker1", "name": "Колонка", "type": "speaker"},
+            ]},
+            language="ru",
+        )
+
+        ctx = await context_manager.get_context_with_request_info("sess-1", request)
+
+        assert ctx.client_id == "kitchen_esp32"
+        assert ctx.language == "ru"
+        assert ctx.request_source == "esp32"
+        assert ctx.get_room_name() == "Кухня"
+
+        devices = ctx.get_device_capabilities()
+        assert {d["name"] for d in devices} == {"Кухонный свет", "Колонка"}
+
     @pytest.mark.asyncio
-    async def test_russian_device_entity_resolution(self, entity_resolver, sample_context_with_devices):
-        """Test device entity resolution with Russian terms"""
-        from irene.intents.models import Intent
-        
-        # Test with Russian device reference
-        intent = Intent(
-            name="device.control",
-            entities={"device": "свет", "action": "включи"},
-            confidence=0.9,
-            raw_text="включи свет"
-        )
-        
-        resolved_entities = await entity_resolver.resolve_entities(intent, sample_context_with_devices)
-        
-        # Check device resolution
-        assert "device_resolved" in resolved_entities
-        device_resolved = resolved_entities["device_resolved"]
-        assert device_resolved["name"] == "Кухонный свет"
-        assert device_resolved["type"] == "light"
-        
-        print("✅ Russian device entity resolution test passed!")
-    
-    @pytest.mark.asyncio 
-    async def test_russian_temporal_entity_resolution(self, entity_resolver):
-        """Test temporal entity resolution with Russian time expressions"""
-        from irene.intents.models import Intent
-        
-        context = UnifiedConversationContext(session_id="test", language="ru")
-        
-        # Test Russian duration
-        intent = Intent(
-            name="timer.set",
-            entities={"duration": "5 минут"},
-            confidence=0.9,
-            raw_text="поставь таймер на 5 минут"
-        )
-        
-        resolved_entities = await entity_resolver.resolve_entities(intent, context)
-        
-        # Check duration resolution
-        assert "duration_resolved" in resolved_entities
-        duration_resolved = resolved_entities["duration_resolved"]
-        assert duration_resolved["value"] == 5
-        assert duration_resolved["unit"] == "minutes"
-        
-        print("✅ Russian temporal entity resolution test passed!")
-    
+    async def test_unspecified_request_language_does_not_override_seed(self, context_manager):
+        # QUAL-36 at the seam: language=None must not stomp the session's seeded language.
+        request = RequestContext(source="cli", session_id="sess-2", language=None)
+        ctx = await context_manager.get_context_with_request_info("sess-2", request)
+        assert ctx.language == "ru"  # the structural seed, not overwritten by None
+
     @pytest.mark.asyncio
-    async def test_russian_location_entity_resolution(self, entity_resolver, sample_context_with_devices):
-        """Test location entity resolution with Russian location terms"""
-        from irene.intents.models import Intent
-        
-        # Test "здесь" (here) resolution
-        intent = Intent(
-            name="device.status",
-            entities={"location": "здесь"},
-            confidence=0.9,
-            raw_text="какие устройства здесь"
-        )
-        
-        resolved_entities = await entity_resolver.resolve_entities(intent, sample_context_with_devices)
-        
-        # Check location resolution to current room
-        assert "location_resolved" in resolved_entities
-        location_resolved = resolved_entities["location_resolved"]
-        assert location_resolved == "Кухня"
-        
-        print("✅ Russian location entity resolution test passed!")
+    async def test_no_request_context_yields_a_bare_session(self, context_manager):
+        # Off-path: callers may invoke with no RequestContext at all.
+        ctx = await context_manager.get_context_with_request_info("sess-3", None)
+        assert ctx.session_id == "sess-3"
+        assert ctx.client_id is None
+        assert ctx.get_device_capabilities() == []
 
-
-class TestPhase1RussianLanguageSupport:
-    """Test Russian language support and configuration"""
-    
-    def test_russian_language_defaults(self):
-        """Test Russian-first language configuration in modules"""
-        # Test text processing defaults by importing and checking
-        from irene.providers.text_processor.general_text_processor import GeneralTextProcessor
-        from irene.providers.text_processor.number_text_processor import NumberTextProcessor
-        from irene.providers.nlu.spacy_provider import SpaCyNLUProvider
-        
-        # Test that modules default to Russian when no config provided
-        general_processor = GeneralTextProcessor({})
-        assert general_processor.language == "ru"
-        
-        number_processor = NumberTextProcessor({})
-        assert number_processor.language == "ru"
-        
-        # Test spaCy provider Russian model default
-        spacy_provider = SpaCyNLUProvider({})
-        assert spacy_provider.model_name == "ru_core_news_sm"
-        
-        print("✅ Russian language defaults test passed!")
-    
-    def test_russian_language_preference_in_context(self):
-        """Test language defaults in context objects (QUAL-36 contract)."""
-        # UnifiedConversationContext keeps a structural default; the ContextManager seeds the real
-        # value from the canonical config source.
-        context = UnifiedConversationContext(session_id="test")
-        assert context.language == "ru"
-
-        # QUAL-36: RequestContext no longer hardcodes a language. None means "unspecified by this
-        # request" → the session's resolved language is used (not stomped with a literal "ru").
-        from irene.workflows.base import RequestContext
-        request_context = RequestContext()
-        assert request_context.language is None
-
-        # When the request DOES carry a language, it is honored.
-        assert RequestContext(language="en").language == "en"
-
-        print("✅ Language-default context contract test passed!")
-    
-    def test_conversation_context_russian_defaults(self):
-        """Test that UnifiedConversationContext defaults to Russian"""
-        context = UnifiedConversationContext(session_id="test")
-        assert context.language == "ru"
-        
-        # Test context creation with explicit language
-        context_en = UnifiedConversationContext(session_id="test", language="en")
-        assert context_en.language == "en"
-        
-        print("✅ ConversationContext Russian defaults test passed!")
-
-
-class TestPhase1EndToEndIntegration:
-    """End-to-end integration tests for complete Phase 1 functionality"""
-    
     @pytest.mark.asyncio
-    async def test_complete_context_aware_flow(self):
-        """Test complete flow from client registration to context-aware processing"""
-        # 1. Set up client registry and register ESP32 node
-        registry = ClientRegistry({"persistent_storage": False})
-        
-        devices = [
-            {"id": "light1", "name": "Кухонный свет", "type": "light"},
-            {"id": "speaker1", "name": "Колонка Yandex", "type": "speaker"}
-        ]
-        
-        await registry.register_esp32_node(
-            client_id="kitchen_esp32",
-            room_name="Кухня", 
-            devices=devices,
-            language="ru"
-        )
-        
-        # 2. Create request context with client information
-        request_context = RequestContext(
-            source="esp32",
-            session_id="integration_test",
-            client_id="kitchen_esp32",
+    async def test_device_name_resolution_exact_and_miss(self, context_manager):
+        request = RequestContext(
+            client_id="test_client",
+            session_id="sess-4",
             room_name="Кухня",
-            device_context={"available_devices": devices},
-            language="ru"
+            device_context={"available_devices": [
+                {"id": "light1", "name": "Кухонный свет", "type": "light"},
+                {"id": "light2", "name": "Kitchen Light", "type": "light"},
+                {"id": "tv1", "name": "Телевизор Samsung", "type": "tv"},
+            ]},
+            language="ru",
         )
-        
-        # 3. Get conversation context with client info
-        context_manager = ContextManager()
-        conv_context = await context_manager.get_context_with_request_info(
-            "integration_test", request_context
-        )
-        
-        # 4. Test entity resolution
-        from irene.intents.models import Intent
-        resolver = ContextualEntityResolver()
-        
-        intent = Intent(
-            name="device.control",
-            entities={"device": "свет", "action": "включи"},
-            confidence=0.9,
-            raw_text="включи свет на кухне"
-        )
-        
-        resolved_entities = await resolver.resolve_entities(intent, conv_context)
-        
-        # 5. Verify complete flow
-        assert conv_context.client_id == "kitchen_esp32"
-        assert conv_context.language == "ru"
-        assert conv_context.get_room_name() == "Кухня"
-        assert len(conv_context.get_device_capabilities()) == 2
-        
-        # Device resolution should work
-        assert "device_resolved" in resolved_entities
-        device = resolved_entities["device_resolved"]
-        assert device["name"] == "Кухонный свет"
-        assert device["type"] == "light"
-        
-        # Client context should include device information
-        assert conv_context.client_id in registry.clients
-        client_reg = registry.get_client(conv_context.client_id)
-        assert client_reg.room_name == "Кухня"
-        assert len(client_reg.available_devices) == 2
-        
-        print("✅ Complete context-aware flow integration test passed!")
-        print(f"   Client: {conv_context.client_id}")
-        print(f"   Room: {conv_context.get_room_name()}")
-        print(f"   Devices: {len(conv_context.get_device_capabilities())}")
-        print(f"   Resolved device: {device['name']}")
+        ctx = await context_manager.get_context_with_request_info("sess-4", request)
 
-
-async def run_phase1_tests():
-    """Run all Phase 1 integration tests"""
-    print("🧪 Running Phase 1 Context-Aware Foundation Integration Tests...\n")
-    
-    # Test client identification
-    print("📝 Testing Client Identification...")
-    test_client = TestPhase1ClientIdentification()
-    registry = ClientRegistry({"persistent_storage": False})
-    
-    await test_client.test_esp32_client_registration(registry)
-    await test_client.test_web_client_registration(registry)
-    await test_client.test_client_lookup_by_room(registry)
-    
-    print("\n🔗 Testing Context Flow...")
-    test_flow = TestPhase1ContextFlow()
-    context_manager = ContextManager()
-    
-    await test_flow.test_request_context_to_conversation_context_flow(context_manager)
-    await test_flow.test_device_name_resolution(context_manager)
-    
-    print("\n🎯 Testing Entity Resolution...")
-    test_entities = TestPhase1EntityResolution()
-    resolver = ContextualEntityResolver()
-    
-    # Create sample context
-    sample_context = UnifiedConversationContext(session_id="test", client_id="kitchen", language="ru")
-    sample_context.set_client_context("kitchen", {
-        "room_name": "Кухня",
-        "available_devices": [
-            {"id": "light1", "name": "Кухонный свет", "type": "light"},
-            {"id": "speaker1", "name": "Умная колонка", "type": "speaker"}
-        ]
-    })
-    
-    await test_entities.test_russian_device_entity_resolution(resolver, sample_context)
-    await test_entities.test_russian_temporal_entity_resolution(resolver)
-    await test_entities.test_russian_location_entity_resolution(resolver, sample_context)
-    
-    print("\n🇷🇺 Testing Russian Language Support...")
-    test_russian = TestPhase1RussianLanguageSupport()
-    
-    test_russian.test_russian_language_defaults()
-    test_russian.test_russian_language_preference_in_context()
-    test_russian.test_conversation_context_russian_defaults()
-    
-    print("\n🚀 Testing End-to-End Integration...")
-    test_e2e = TestPhase1EndToEndIntegration()
-    await test_e2e.test_complete_context_aware_flow()
-    
-    print("\n🎉 All Phase 1 Context-Aware Foundation Tests Passed!")
-    print("✅ Client identification and registration working")
-    print("✅ Context metadata flow working")  
-    print("✅ Russian-first language support working")
-    print("✅ Device and entity resolution working")
-    print("✅ End-to-end context-aware processing working")
-    print("\n📈 Phase 1 implementation is complete and functional!")
-
-
-if __name__ == "__main__":
-    asyncio.run(run_phase1_tests())
+        # Exact match in either script.
+        assert ctx.get_device_by_name("Кухонный свет")["id"] == "light1"
+        assert ctx.get_device_by_name("Kitchen Light")["id"] == "light2"
+        # No plausible match → None (not a wrong-device false positive).
+        assert ctx.get_device_by_name("несуществующее устройство") is None

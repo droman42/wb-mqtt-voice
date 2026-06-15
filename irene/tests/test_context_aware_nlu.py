@@ -1,17 +1,29 @@
 """
-Test Context-Aware NLU Implementation
+Context-aware NLU — port/contract tests.
 
-Test suite for validating the context-aware NLU functionality with 
-simple room/device scenarios as described in Phase 1 requirements.
+Covers the live context-aware recognition seam:
+  ContextAwareNLUProcessor.process_with_context() → context injection + entity resolution,
+  ContextualEntityResolver.resolve_entities() → temporal resolution,
+and the UnifiedConversationContext device/room lookup helpers.
+
+Notes on scope (TEST-7):
+  * `Intent(...)` no longer carries `session_id` — the session id lives on the context
+    (UnifiedConversationContext.session_id), see irene/intents/models.py.
+  * Device/room *resolution success* (exact / type-inference against the in-context device
+    list) is live behavior of ContextualEntityResolver and is asserted here. The unbuilt
+    MQTT/bridge resolution (`*_resolution_failed`, ARCH-8) is intentionally NOT exercised.
+
+`_LocalizationAssetLoader` is the reference asset-loader fixture pattern: it backs the
+Device/Location resolvers with the real assets/localization/ YAMLs without standing up a
+full IntentAssetLoader (the live NLU component rebuilds the resolver with the real loader
+during provider loading).
 """
 
-import pytest
-import asyncio
-from unittest.mock import AsyncMock, MagicMock
-from typing import Dict, Any
-
 from pathlib import Path
+
+import pytest
 import yaml
+from unittest.mock import AsyncMock, MagicMock
 
 from irene.intents.models import Intent
 from irene.intents.context_models import UnifiedConversationContext
@@ -21,9 +33,8 @@ from irene.core.entity_resolver import ContextualEntityResolver
 
 class _LocalizationAssetLoader:
     """Minimal asset-loader stub exposing `.localizations` loaded from the real
-    assets/localization/ YAMLs, so Device/Location entity resolvers work in tests
-    without a full IntentAssetLoader (the live NLU component rebuilds the resolver
-    with the real asset loader during provider loading)."""
+    assets/localization/ YAMLs, so the Device/Location entity resolvers work in tests
+    without a full IntentAssetLoader."""
 
     def __init__(self):
         self.localizations = {}
@@ -37,301 +48,218 @@ class _LocalizationAssetLoader:
 
 
 class TestContextAwareNLU:
-    """Test suite for context-aware NLU functionality"""
-    
+    """Context-aware NLU processing seam."""
+
     @pytest.fixture
     def mock_nlu_component(self):
-        """Create a mock NLU component for testing"""
+        """A NLUComponent stub whose `recognize` is injectable.
+
+        spec=NLUComponent doesn't expose the instance attr `core`; the context-aware path
+        reads core.config.nlu (_should_redetect_language). Wire a minimal config so language
+        re-detection is disabled and the recognized language is left intact.
+        """
         nlu_component = MagicMock(spec=NLUComponent)
         nlu_component.recognize = AsyncMock()
-        # spec=NLUComponent doesn't expose the instance attr `core`; the context-aware
-        # path reads core.config.nlu (_should_redetect_language). Wire a minimal config
-        # so language re-detection is disabled and the device-resolution logic runs.
         nlu_component.core = MagicMock()
         nlu_component.core.config.nlu.auto_detect_language = False
         return nlu_component
-    
+
     @pytest.fixture
     def context_processor(self, mock_nlu_component):
-        """Create context-aware NLU processor for testing"""
+        """Context-aware processor whose entity resolver is backed by the real
+        localization assets (device/room mappings)."""
         processor = ContextAwareNLUProcessor(mock_nlu_component)
-        # Back the entity resolver with the real localization assets (device/room
-        # mappings); the live component does this with the IntentAssetLoader.
         processor.entity_resolver = ContextualEntityResolver(_LocalizationAssetLoader())
         return processor
-    
+
     @pytest.fixture
     def sample_context_kitchen(self):
-        """Create a sample kitchen context with devices"""
         context = UnifiedConversationContext(
             session_id="test_session",
             user_id="test_user",
             client_id="kitchen_node",
             language="en",
-            timezone="UTC"
+            timezone="UTC",
         )
-        
-        # Set up kitchen context with devices
-        kitchen_metadata = {
-            "room_name": "Kitchen", 
-            "available_devices": [
-                {
-                    "id": "kitchen_light_1",
-                    "name": "Kitchen Light",
-                    "type": "light",
-                    "capabilities": ["brightness", "color"]
-                },
-                {
-                    "id": "kitchen_speaker_1", 
-                    "name": "Kitchen Speaker",
-                    "type": "speaker",
-                    "capabilities": ["volume", "play", "pause"]
-                },
-                {
-                    "id": "coffee_maker_1",
-                    "name": "Coffee Maker",
-                    "type": "appliance",
-                    "capabilities": ["brew", "timer"]
-                }
-            ]
-        }
-        
-        context.set_client_context("kitchen_node", kitchen_metadata)
-        context.client_capabilities = {
-            "voice_output": True,
-            "display": False,
-            "smart_devices": True
-        }
-        
+        context.set_client_context(
+            "kitchen_node",
+            {
+                "room_name": "Kitchen",
+                "available_devices": [
+                    {"id": "kitchen_light_1", "name": "Kitchen Light",
+                     "type": "light", "capabilities": ["brightness", "color"]},
+                    {"id": "kitchen_speaker_1", "name": "Kitchen Speaker",
+                     "type": "speaker", "capabilities": ["volume", "play", "pause"]},
+                    {"id": "coffee_maker_1", "name": "Coffee Maker",
+                     "type": "appliance", "capabilities": ["brew", "timer"]},
+                ],
+            },
+        )
         return context
-    
+
     @pytest.fixture
     def sample_context_living_room(self):
-        """Create a sample living room context with devices"""
         context = UnifiedConversationContext(
             session_id="test_session_2",
             user_id="test_user",
             client_id="living_room_node",
-            language="en", 
-            timezone="UTC"
+            language="en",
+            timezone="UTC",
         )
-        
-        # Set up living room context with devices
-        living_room_metadata = {
-            "room_name": "Living Room",
-            "available_devices": [
-                {
-                    "id": "tv_1",
-                    "name": "Smart TV",
-                    "type": "tv",
-                    "capabilities": ["power", "volume", "channel"]
-                },
-                {
-                    "id": "living_room_lights_1",
-                    "name": "Living Room Lights", 
-                    "type": "light",
-                    "capabilities": ["brightness", "dimming"]
-                },
-                {
-                    "id": "soundbar_1",
-                    "name": "Soundbar",
-                    "type": "speaker",
-                    "capabilities": ["volume", "bass", "treble"]
-                }
-            ]
-        }
-        
-        context.set_client_context("living_room_node", living_room_metadata)
-        context.client_capabilities = {
-            "voice_output": True,
-            "display": True,
-            "smart_devices": True
-        }
-        
+        context.set_client_context(
+            "living_room_node",
+            {
+                "room_name": "Living Room",
+                "available_devices": [
+                    {"id": "tv_1", "name": "Smart TV",
+                     "type": "tv", "capabilities": ["power", "volume", "channel"]},
+                    {"id": "living_room_lights_1", "name": "Living Room Lights",
+                     "type": "light", "capabilities": ["brightness", "dimming"]},
+                    {"id": "soundbar_1", "name": "Soundbar",
+                     "type": "speaker", "capabilities": ["volume", "bass", "treble"]},
+                ],
+            },
+        )
         return context
 
     @pytest.mark.asyncio
     async def test_device_resolution_exact_match(self, context_processor, sample_context_kitchen):
-        """Test exact device name resolution"""
-        # Mock intent with device reference
-        mock_intent = Intent(
+        """Exact device-name reference resolves to the in-context device, and the
+        client/room context is injected into the enhanced intent's entities."""
+        context_processor.nlu_component.recognize.return_value = Intent(
             name="device.control",
             entities={"device": "Kitchen Light", "action": "turn_on"},
             confidence=0.9,
             raw_text="turn on the kitchen light",
-            session_id="test_session"
         )
-        
-        # Mock NLU component to return our test intent
-        context_processor.nlu_component.recognize.return_value = mock_intent
-        
-        # Process with context
+
         result = await context_processor.process_with_context(
-            "turn on the kitchen light", 
-            sample_context_kitchen
+            "turn on the kitchen light", sample_context_kitchen
         )
-        
-        # Verify device was resolved
-        assert "device_resolved" in result.entities
-        assert result.entities["device_resolved"]["name"] == "Kitchen Light"
-        assert result.entities["device_resolved"]["type"] == "light"
-        assert result.entities["device_device_id"] == "kitchen_light_1"
-        
-        # Verify client context was added
+
+        # Resolved device is the full in-context device record (id lives on it).
+        device = result.entities["device_resolved"]
+        assert device["name"] == "Kitchen Light"
+        assert device["type"] == "light"
+        assert device["id"] == "kitchen_light_1"
+        assert result.entities["device_resolution_type"] == "exact"
+
+        # Client/room context injected.
         assert result.entities["client_id"] == "kitchen_node"
         assert result.entities["room_name"] == "Kitchen"
 
     @pytest.mark.asyncio
-    async def test_device_resolution_fuzzy_match(self, context_processor, sample_context_living_room):
-        """Test fuzzy device name resolution"""
-        # Mock intent with fuzzy device reference
-        mock_intent = Intent(
+    async def test_device_resolution_type_inference(self, context_processor, sample_context_living_room):
+        """A bare device-type word ("tv") resolves to the sole device of that type via
+        localization keyword type-inference."""
+        context_processor.nlu_component.recognize.return_value = Intent(
             name="device.control",
-            entities={"device": "tv", "action": "turn_on"},  # "tv" should match "Smart TV"
+            entities={"device": "tv", "action": "turn_on"},
             confidence=0.8,
             raw_text="turn on tv",
-            session_id="test_session_2"
         )
-        
-        context_processor.nlu_component.recognize.return_value = mock_intent
-        
-        # Process with context
+
         result = await context_processor.process_with_context(
-            "turn on tv",
-            sample_context_living_room
+            "turn on tv", sample_context_living_room
         )
-        
-        # Verify fuzzy device resolution worked
-        assert "device_resolved" in result.entities
-        device_resolved = result.entities["device_resolved"]
-        assert device_resolved["name"] == "Smart TV"
-        assert device_resolved["type"] == "tv"
+
+        device = result.entities["device_resolved"]
+        assert device["name"] == "Smart TV"
+        assert device["type"] == "tv"
+
+    @pytest.mark.asyncio
+    async def test_unknown_device_not_resolved(self, context_processor, sample_context_kitchen):
+        """A device reference with no in-context match yields no `device_resolved`
+        (off-path: resolution simply does not fabricate a device)."""
+        context_processor.nlu_component.recognize.return_value = Intent(
+            name="device.control",
+            entities={"device": "nonexistent gadget", "action": "turn_on"},
+            confidence=0.7,
+            raw_text="turn on the nonexistent gadget",
+        )
+
+        result = await context_processor.process_with_context(
+            "turn on the nonexistent gadget", sample_context_kitchen
+        )
+
+        assert "device_resolved" not in result.entities
+        # Original entity + client context are still present.
+        assert result.entities["device"] == "nonexistent gadget"
+        assert result.entities["client_id"] == "kitchen_node"
 
     @pytest.mark.asyncio
     async def test_context_enhancement_conversation_history(self, context_processor, sample_context_kitchen):
-        """Test context enhancement with conversation history"""
-        # Add some conversation history
-        sample_context_kitchen.record_turn(
-            "what's the weather like", 
-            "It's sunny today", 
-            "weather.current"
-        )
-        sample_context_kitchen.record_turn(
-            "set a timer for 10 minutes",
-            "Timer set for 10 minutes",
-            "timer.set"
-        )
-        
-        # Mock current intent
-        mock_intent = Intent(
+        """Recent intents from conversation history are injected into the enhanced entities."""
+        sample_context_kitchen.record_turn("what's the weather like", "It's sunny today", "weather.current")
+        sample_context_kitchen.record_turn("set a timer for 10 minutes", "Timer set for 10 minutes", "timer.set")
+
+        context_processor.nlu_component.recognize.return_value = Intent(
             name="system.status",
             entities={},
             confidence=0.8,
             raw_text="how are things",
-            session_id="test_session"
         )
-        
-        context_processor.nlu_component.recognize.return_value = mock_intent
-        
-        # Process with context
-        result = await context_processor.process_with_context(
-            "how are things",
-            sample_context_kitchen
-        )
-        
-        # Verify conversation context was added
-        assert "recent_intents" in result.entities
+
+        result = await context_processor.process_with_context("how are things", sample_context_kitchen)
+
         recent_intents = result.entities["recent_intents"]
         assert "timer.set" in recent_intents
         assert "weather.current" in recent_intents
 
-    # Removed (QUAL-11/QUAL-22): test_client_capability_context + test_room_context_inference tested the
-    # deleted `_disambiguate_with_device_context` stub (computed enhanced_entities, returned original
-    # intent); test_device_not_found_suggestions tested the deleted hardcoded `_resolve_device_entities`
-    # duplicate path (`available_devices` suggestions, removed in QUAL-11 Stage C). Capability/room-aware
-    # disambiguation is now ARCH-6 scope and will get real coverage in TEST-7.
-
     @pytest.mark.asyncio
     async def test_entity_resolver_temporal_entities(self):
-        """Test temporal entity resolution"""
+        """Duration entities are resolved to a structured {value, unit} by the temporal resolver."""
         resolver = ContextualEntityResolver()
-        
-        # Mock intent with temporal entities
         intent = Intent(
             name="timer.set",
             entities={"duration": "5 minutes", "message": "Coffee ready"},
             confidence=0.9,
             raw_text="set timer for 5 minutes",
-            session_id="test"
         )
-        
         context = UnifiedConversationContext(session_id="test")
-        
-        # Resolve entities
-        resolved_entities = await resolver.resolve_entities(intent, context)
-        
-        # Check temporal resolution
-        assert "duration_resolved" in resolved_entities
-        duration_resolved = resolved_entities["duration_resolved"]
-        assert duration_resolved["value"] == 5
-        assert duration_resolved["unit"] == "minutes"
+
+        resolved = await resolver.resolve_entities(intent, context)
+
+        duration = resolved["duration_resolved"]
+        assert duration["value"] == 5
+        assert duration["unit"] == "minutes"
 
 
+class TestContextDeviceLookup:
+    """UnifiedConversationContext device/room lookup helpers (bilingual)."""
 
-def run_simple_device_scenario_test():
-    """
-    Simple test function that can be run independently to validate 
-    basic context-aware functionality for Phase 1.
-    """
-    print("🧪 Running simple device scenario test...")
-    
-    # Create test context
-    context = UnifiedConversationContext(
-        session_id="test",
-        client_id="kitchen"
-    )
-    
-    # Set up simple device context with Russian names
-    context.set_client_context("kitchen", {
-        "room_name": "Кухня",  # Russian room name
-        "available_devices": [
-            {"id": "light1", "name": "Кухонный свет", "type": "light"},  # Russian device name
-            {"id": "light2", "name": "Kitchen Light", "type": "light"}   # English device name
-        ]
-    })
-    
-    # Test Russian device resolution
-    device_ru = context.get_device_by_name("Кухонный свет")
-    assert device_ru is not None
-    assert device_ru["name"] == "Кухонный свет"
-    print("✅ Russian device name resolution test passed!")
-    
-    # Test English device resolution
-    device_en = context.get_device_by_name("Kitchen Light")
-    assert device_en is not None
-    assert device_en["name"] == "Kitchen Light"
-    print("✅ English device name resolution test passed!")
-    
-    # Test room name resolution (Russian)
-    room_name = context.get_room_name()
-    assert room_name == "Кухня"
-    print("✅ Russian room name resolution test passed!")
-    
-    # Test fuzzy matching using rapidfuzz
-    device_fuzzy = context.get_device_by_name("кухонный")  # Should match "Кухонный свет" (higher similarity)
-    if device_fuzzy:
-        print("✅ Russian fuzzy device matching test passed!")
-    else:
-        # Try with a more similar term
-        device_fuzzy2 = context.get_device_by_name("Kitchen")  # Should match "Kitchen Light"
-        if device_fuzzy2:
-            print("✅ English fuzzy device matching test passed!")
-        else:
-            print("⚠️  Fuzzy matching failed - no match found")
-    
-    print("🎉 Phase 1 context-aware foundation with Russian language support is working correctly!")
+    @pytest.fixture
+    def context(self):
+        ctx = UnifiedConversationContext(session_id="test", client_id="kitchen")
+        ctx.set_client_context(
+            "kitchen",
+            {
+                "room_name": "Кухня",  # Russian room name
+                "available_devices": [
+                    {"id": "light1", "name": "Кухонный свет", "type": "light"},
+                    {"id": "light2", "name": "Kitchen Light", "type": "light"},
+                ],
+            },
+        )
+        return ctx
 
+    def test_get_device_by_name_exact_bilingual(self, context):
+        ru = context.get_device_by_name("Кухонный свет")
+        assert ru is not None
+        assert ru["name"] == "Кухонный свет"
 
-if __name__ == "__main__":
-    # Run simple test
-    run_simple_device_scenario_test() 
+        en = context.get_device_by_name("Kitchen Light")
+        assert en is not None
+        assert en["name"] == "Kitchen Light"
+
+    def test_get_room_name_uses_metadata(self, context):
+        assert context.get_room_name() == "Кухня"
+
+    def test_get_device_by_name_fuzzy(self, context):
+        # "Kitchen" is a high-similarity prefix of "Kitchen Light" (>= 70% threshold).
+        device = context.get_device_by_name("Kitchen")
+        assert device is not None
+        assert device["name"] == "Kitchen Light"
+
+    def test_get_device_by_name_no_match(self, context):
+        assert context.get_device_by_name("zzz totally unrelated") is None

@@ -18,7 +18,7 @@ from irene.intents.handlers.conversation import ConversationIntentHandler
 
 
 def _run(coro):
-    return asyncio.get_event_loop().run_until_complete(coro)
+    return asyncio.run(coro)
 
 
 def test_session_seeds_from_canonical_default_english():

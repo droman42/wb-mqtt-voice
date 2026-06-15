@@ -17,7 +17,7 @@ from irene.intents.context_models import UnifiedConversationContext
 
 
 def _run(c):
-    return asyncio.get_event_loop().run_until_complete(c)
+    return asyncio.run(c)
 
 
 def _handler(cls, name):

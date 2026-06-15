@@ -1,431 +1,264 @@
 """
-Phase 3 VAD Testing Script - Workflow Integration
+VAD ↔ workflow integration contracts (TEST-7 rewrite).
 
-Tests the workflow integration with VAD processing as specified in Phase 3.
-This ensures that the VAD system integrates properly with the existing
-voice assistant workflow without breaking compatibility.
+These assert the CURRENT public/port behaviour of `UnifiedVoiceAssistantWorkflow`'s VAD wiring,
+not the pre-refactor internals the old Phase-3 script poked at. The contract today (QUAL-46 / ARCH-18):
+
+- VAD is ALWAYS required for audio workflows — it is configured from an injected `config` COMPONENT
+  (`workflow.get_component('config').vad`), not from a `_vad_processing_enabled` flag (that attribute
+  is gone) and not from `UnifiedVoiceAssistantWorkflowConfig.enable_vad_processing`.
+- `initialize()` fails loud when the config component is absent ("Configuration not available in
+  workflow") or when VAD is disabled/missing ("VAD configuration is required for audio processing").
+- `AudioProcessorInterface.get_metrics()` returns a plain dict (no `.average_processing_time_ms`
+  attribute access — metrics are dict-keyed now).
 """
 
 import asyncio
-import logging
-import time
-from typing import List, AsyncIterator
-from unittest.mock import AsyncMock, MagicMock
+from types import SimpleNamespace
+from typing import AsyncIterator, List
 
-# Import Phase 3 components
+import pytest
+
 from irene.workflows.voice_assistant import UnifiedVoiceAssistantWorkflow
+from irene.workflows.audio_processor import AudioProcessorInterface, VoiceSegment
 from irene.workflows.base import RequestContext
 from irene.config.models import VADConfig, UnifiedVoiceAssistantWorkflowConfig
+from irene.config.manager import ConfigValidationError
 from irene.intents.models import AudioData, IntentResult
 from irene.intents.context_models import UnifiedConversationContext
-
-# Import Phase 1 & 2 components for testing
 from irene.tests.test_vad_basic import generate_test_audio_data
 
-logger = logging.getLogger(__name__)
+
+# --------------------------------------------------------------------------- helpers
 
 
-class MockComponent:
-    """Mock component for testing workflow integration"""
-    def __init__(self, component_type: str):
-        self.component_type = component_type
-        
-    async def process_audio(self, audio_data: AudioData):
-        """Mock audio processing"""
-        await asyncio.sleep(0.001)  # Small delay to simulate processing
-        if self.component_type == 'asr':
-            return "test recognition result from mock ASR"
-        elif self.component_type == 'voice_trigger':
-            return {'detected': True, 'confidence': 0.9, 'wake_word': 'irene'}
-        return None
+class _MockASR:
+    """Minimal ASR component: returns a fixed transcription for any segment."""
+    async def process_audio(self, audio_data):
+        await asyncio.sleep(0)
+        return "test recognition result"
+
+    def reset_provider_state(self):
+        pass
 
 
-class MockContextManager:
-    """Mock context manager for testing"""
-    async def get_or_create_context(self, session_id: str, client_id: str = None, client_metadata: dict = None):
-        return UnifiedConversationContext(
-            session_id=session_id,
-            user_id="test_user",
-            client_id=client_id
-        )
+class _MockContextManager:
+    """Context manager honouring the current port: get_context_with_request_info(session_id, ctx)."""
+    async def get_context_with_request_info(self, session_id, request_context):
+        return UnifiedConversationContext(session_id=session_id, user_id="test_user")
 
 
-class MockIntentOrchestrator:
-    """Mock intent orchestrator for testing"""
-    async def process_request(self, text: str, context, conversation_context):
-        return IntentResult(
-            text=f"Mock response to: {text}",
-            confidence=0.9,
-            action_metadata={}
-        )
+class _MockIntentOrchestrator:
+    async def execute(self, intent, conversation_context, trace_context=None):
+        return IntentResult(text="ok", confidence=0.9)
 
 
-class MockConfig:
-    """Mock configuration for testing"""
-    def __init__(self, enable_vad: bool = False):
-        self.vad = VADConfig(
-            enabled=True,
-            threshold=0.01,
-            sensitivity=0.5,
-            voice_frames_required=2,
-            silence_frames_required=3,
-            max_segment_duration_s=5
-        )
+def _config_component(*, vad_enabled: bool = True) -> SimpleNamespace:
+    """A stand-in for the injected `config` component the workflow reads VAD from."""
+    return SimpleNamespace(vad=VADConfig(enabled=vad_enabled))
 
 
-async def generate_test_audio_stream(sequence: List[tuple], chunk_duration_ms: float = 50) -> AsyncIterator[AudioData]:
-    """Generate test audio stream from sequence description"""
-    for audio_type, count in sequence:
-        for _ in range(count):
-            yield generate_test_audio_data(chunk_duration_ms, audio_type=audio_type)
-            await asyncio.sleep(0.001)  # Small delay between chunks
-
-
-def create_test_workflow(enable_vad: bool = False) -> UnifiedVoiceAssistantWorkflow:
-    """Create a test workflow with mock components"""
+def _workflow(*, with_config: bool = True, vad_enabled: bool = True) -> UnifiedVoiceAssistantWorkflow:
+    """Build a workflow with the required components wired (and optionally the config component)."""
     workflow = UnifiedVoiceAssistantWorkflow()
-    
-    # Mock components
-    workflow.components = {
-        'asr': MockComponent('asr'),
-        'voice_trigger': MockComponent('voice_trigger'),
-        'nlu': MockComponent('nlu'),
-        'intent_orchestrator': MockIntentOrchestrator(),
-        'context_manager': MockContextManager(),
-        'tts': None,  # Optional
-        'audio': None,  # Optional
-        'text_processor': None  # Optional
+    components = {
+        "asr": _MockASR(),
+        "nlu": _MockASR(),  # presence-only; required component
+        "intent_orchestrator": _MockIntentOrchestrator(),
+        "context_manager": _MockContextManager(),
+        "tts": None,
+        "audio": None,
+        "text_processor": None,
     }
-    
-    # Mock configuration
-    workflow.config = MockConfig(enable_vad=enable_vad)
-    
-    # Mock the _process_pipeline method
-    async def mock_process_pipeline(input_data, context, conversation_context):
-        return IntentResult(
-            text=f"Processed: {input_data}",
-            confidence=0.9,
-            action_metadata={}
-        )
-    
-    workflow._process_pipeline = mock_process_pipeline
-    
+    if with_config:
+        components["config"] = _config_component(vad_enabled=vad_enabled)
+    workflow.components = components
     return workflow
 
 
-async def test_workflow_vad_enabled():
-    """Test workflow with VAD processing enabled"""
-    print("Testing workflow with VAD processing enabled...")
-    
-    # Create workflow with VAD enabled
-    workflow = create_test_workflow(enable_vad=True)
-    
-    # Create workflow configuration
-    workflow_config = UnifiedVoiceAssistantWorkflowConfig(
-        enable_vad_processing=True,
-        voice_trigger_enabled=True,
-        asr_enabled=True,
-        nlu_enabled=True,
-        intent_execution_enabled=True
-    )
-    
-    # Initialize workflow
-    await workflow.initialize(workflow_config)
-    
-    # Verify VAD is enabled
-    assert workflow._vad_processing_enabled == True
+def _stage_config() -> UnifiedVoiceAssistantWorkflowConfig:
+    return UnifiedVoiceAssistantWorkflowConfig()
+
+
+async def _audio_stream(sequence: List[tuple], chunk_ms: float = 50) -> AsyncIterator:
+    for audio_type, count in sequence:
+        for _ in range(count):
+            yield generate_test_audio_data(chunk_ms, audio_type=audio_type)
+            await asyncio.sleep(0)
+
+
+# --------------------------------------------------------------------------- initialize() contract
+
+
+async def test_initialize_wires_vad_from_injected_config():
+    """With a config component carrying enabled VAD, initialize builds the audio processor interface."""
+    workflow = _workflow(with_config=True, vad_enabled=True)
+
+    await workflow.initialize(_stage_config())
+
+    assert workflow.initialized is True
     assert workflow.audio_processor_interface is not None
-    print(f"  ✅ VAD processing enabled: {workflow._vad_processing_enabled}")
-    print(f"  ✅ Audio processor interface created: {workflow.audio_processor_interface is not None}")
-    
-    # Test audio stream processing
-    test_sequence = [
-        ("silence", 3),
-        ("speech_like", 5),
-        ("silence", 2),
-        ("speech_like", 4),
-        ("silence", 3)
-    ]
-    
-    context = RequestContext(
-        source="test_microphone",
-        skip_wake_word=True,  # Test Mode B (direct ASR)
-        session_id="test_session"
-    )
-    
+    # The interface wraps the VAD config it was built from (default provider = "energy").
+    assert workflow.audio_processor_interface.processor.config.default_provider == "energy"
+    # No negotiator component injected → stays None (the no-op canonical path).
+    assert workflow.audio_negotiator is None
+
+
+async def test_initialize_raises_when_config_component_missing():
+    """No injected config component → fail loud with the 'Configuration not available' contract."""
+    workflow = _workflow(with_config=False)
+
+    with pytest.raises(ConfigValidationError) as exc:
+        await workflow.initialize(_stage_config())
+
+    assert "Configuration not available" in str(exc.value)
+    assert workflow.audio_processor_interface is None
+
+
+async def test_initialize_raises_when_vad_disabled():
+    """VAD disabled in the injected config → fail loud; the error names the VAD requirement.
+
+    NOTE (TEST-7 §3 fix-code candidate): this is the QUAL-46 VAD-required path. The current
+    message "VAD configuration is required for audio processing" correctly names VAD, so the
+    assertion is rewritten to it — no product regression observed.
+    """
+    workflow = _workflow(with_config=True, vad_enabled=False)
+
+    with pytest.raises(ConfigValidationError) as exc:
+        await workflow.initialize(_stage_config())
+
+    assert "VAD" in str(exc.value)
+    assert "required" in str(exc.value).lower()
+
+
+async def test_initialize_requires_no_workflow_config():
+    """initialize() with no stage config at all is a hard error (stages cannot be left undefined)."""
+    workflow = _workflow(with_config=True)
+
+    with pytest.raises(ValueError):
+        await workflow.initialize(None)
+
+
+# --------------------------------------------------------------------------- metrics contract
+
+
+def test_get_metrics_returns_dict_not_object():
+    """AudioProcessorInterface.get_metrics() is dict-keyed (the Phase-3 attribute drift)."""
+    interface = AudioProcessorInterface(VADConfig(enabled=True))
+
+    metrics = interface.get_metrics()
+
+    assert isinstance(metrics, dict)
+    # Keys the workflow's logging path reads via .get(...) must exist.
+    for key in ("total_chunks_processed", "voice_segments_detected",
+                "average_processing_time_ms", "timeout_events", "buffer_overflow_count"):
+        assert key in metrics, key
+    # These are no longer attributes — accessing them as such must fail.
+    assert not hasattr(metrics, "average_processing_time_ms")
+
+
+# --------------------------------------------------------------------------- streaming behaviour
+
+
+class _FakeInterface:
+    """Lightweight stand-in for AudioProcessorInterface that yields one voice segment.
+
+    Lets us assert the WORKFLOW's routing contract (asr_result → _process_pipeline → yield) without
+    depending on energy-VAD tuning, which is the segmenter's concern (covered by the Phase-2 tests).
+    """
+    def __init__(self):
+        self.processor = SimpleNamespace(
+            config=SimpleNamespace(default_provider="energy", max_segment_duration_s=10))
+
+    def _segment(self) -> VoiceSegment:
+        audio = AudioData(data=b"\x00\x00" * 160, sample_rate=16000, channels=1, timestamp=0.0)
+        return VoiceSegment(audio_chunks=[audio], start_timestamp=0.0, end_timestamp=0.1,
+                            total_duration_ms=100.0, chunk_count=1, combined_audio=audio)
+
+    async def process_audio_pipeline(self, audio_stream, context, handler):
+        # Drain the stream (the workflow may have wrapped it) then emit one segment.
+        async for _ in audio_stream:
+            pass
+        seg = self._segment()
+        await handler(seg, context)
+        yield seg
+
+    async def process_voice_segment_for_mode(self, voice_segment, context, asr, vt, wake_detected):
+        return {"type": "asr_result", "result": "test recognition result", "mode": "direct_asr"}
+
+    def get_metrics(self):
+        return {"total_chunks_processed": 3, "voice_segments_detected": 1,
+                "silence_chunks_skipped": 0, "average_processing_time_ms": 0.0,
+                "buffer_overflow_count": 0, "timeout_events": 0}
+
+
+async def test_process_audio_stream_routes_asr_result_to_pipeline():
+    """Streaming routing contract: an asr_result segment flows through _process_pipeline and yields it.
+
+    Energy-VAD tuning is the segmenter's job (Phase-2 tests); here the interface is stubbed so the
+    workflow's own orchestration seam is what gets exercised.
+    """
+    workflow = _workflow(with_config=True, vad_enabled=True)
+    await workflow.initialize(_stage_config())
+    workflow.audio_processor_interface = _FakeInterface()
+
+    captured = {}
+
+    async def fake_pipeline(input_data, context, conversation_context, trace_context=None,
+                            skip_wake_word=False, skip_asr=False):
+        captured["input"] = input_data
+        return IntentResult(text=f"processed: {input_data}", confidence=0.9)
+
+    workflow._process_pipeline = fake_pipeline
+
+    context = RequestContext(source="test", skip_wake_word=True, session_id="s1")
+
     results = []
-    result_count = 0
-    
-    async for result in workflow.process_audio_stream(
-        generate_test_audio_stream(test_sequence), 
-        context
-    ):
+    async for result in workflow.process_audio_stream(_audio_stream([("speech_like", 2)]), context):
         results.append(result)
-        result_count += 1
-        print(f"    VAD result #{result_count}: {result.text[:50]}...")
-        
-        # Limit results to avoid infinite loops in testing
-        if result_count >= 3:
-            break
-    
-    # Verify results
-    assert len(results) > 0, "Should get results from VAD processing"
-    print(f"  ✅ VAD processing produced {len(results)} results")
-    
-    # Check VAD metrics
-    if workflow.audio_processor_interface:
-        metrics = workflow.audio_processor_interface.get_metrics()
-        print(f"  📊 VAD Metrics: chunks={metrics.total_chunks_processed}, "
-              f"segments={metrics.voice_segments_detected}, "
-              f"avg_time={metrics.average_processing_time_ms:.2f}ms")
-        
-        assert metrics.total_chunks_processed > 0, "Should process audio chunks"
-    
-    print("✓ Workflow VAD-enabled test passed\n")
+
+    assert len(results) == 1
+    assert isinstance(results[0], IntentResult)
+    # The ASR transcription from the segment is what fed the pipeline.
+    assert captured["input"] == "test recognition result"
+    assert results[0].text == "processed: test recognition result"
 
 
-async def test_workflow_vad_required():
-    """Test that workflow requires VAD processing (no legacy mode)"""
-    print("Testing workflow VAD requirement...")
-    
-    # Create workflow with missing VAD config
-    workflow = create_test_workflow(enable_vad=False)
-    
-    # Create workflow configuration without VAD
-    workflow_config = UnifiedVoiceAssistantWorkflowConfig(
-        voice_trigger_enabled=True,
-        asr_enabled=True,
-        nlu_enabled=True,
-        intent_execution_enabled=True
-    )
-    
-    # Should fail to initialize without VAD
-    try:
-        await workflow.initialize(workflow_config)
-        assert False, "Should have failed to initialize without VAD"
-    except Exception as e:
-        print(f"  ✅ Failed as expected: {e}")
-        assert "VAD" in str(e), "Error should mention VAD requirement"
-    
-    print("✓ Workflow VAD requirement test passed\n")
+async def test_process_audio_stream_without_interface_yields_error_result():
+    """Off-path: a workflow with no audio processor interface yields a failed IntentResult, not a crash."""
+    workflow = _workflow(with_config=True, vad_enabled=True)
+    # Mark initialized so process_audio_stream does not re-run initialize(), and force the
+    # missing-interface branch.
+    workflow.initialized = True
+    workflow.context_manager = _MockContextManager()
+    workflow.audio_processor_interface = None
+    workflow.audio_negotiator = None
 
+    context = RequestContext(source="test", skip_wake_word=True, session_id="s2")
 
-async def test_mode_switching():
-    """Test switching between wake word modes"""
-    print("Testing mode switching (with/without wake word)...")
-    
-    # Create workflow with VAD enabled
-    workflow = create_test_workflow(enable_vad=True)
-    
-    workflow_config = UnifiedVoiceAssistantWorkflowConfig(
-        enable_vad_processing=True,
-        voice_trigger_enabled=True,
-        asr_enabled=True,
-        nlu_enabled=True,
-        intent_execution_enabled=True
-    )
-    
-    await workflow.initialize(workflow_config)
-    
-    # Test Mode A: Wake word detection (skip_wake_word=False)
-    print("  Testing Mode A: Wake word detection")
-    context_mode_a = RequestContext(
-        source="test_microphone",
-        skip_wake_word=False,  # Mode A
-        session_id="test_session_a"
-    )
-    
-    test_sequence_short = [("speech_like", 3), ("silence", 2)]
-    
-    results_mode_a = []
-    async for result in workflow.process_audio_stream(
-        generate_test_audio_stream(test_sequence_short), 
-        context_mode_a
-    ):
-        results_mode_a.append(result)
-        if len(results_mode_a) >= 1:  # Limit for testing
-            break
-    
-    print(f"    Mode A produced {len(results_mode_a)} results")
-    
-    # Test Mode B: Direct ASR (skip_wake_word=True)  
-    print("  Testing Mode B: Direct ASR")
-    context_mode_b = RequestContext(
-        source="test_microphone",
-        skip_wake_word=True,  # Mode B
-        session_id="test_session_b"
-    )
-    
-    results_mode_b = []
-    async for result in workflow.process_audio_stream(
-        generate_test_audio_stream(test_sequence_short), 
-        context_mode_b
-    ):
-        results_mode_b.append(result)
-        if len(results_mode_b) >= 1:  # Limit for testing
-            break
-    
-    print(f"    Mode B produced {len(results_mode_b)} results")
-    
-    # Both modes should work with VAD
-    print(f"  ✅ Mode A results: {len(results_mode_a)}")
-    print(f"  ✅ Mode B results: {len(results_mode_b)}")
-    
-    print("✓ Mode switching test passed\n")
-
-
-async def test_configuration_validation():
-    """Test VAD configuration validation"""
-    print("Testing VAD configuration validation...")
-    
-    # Test valid configuration
-    valid_config = UnifiedVoiceAssistantWorkflowConfig(
-        enable_vad_processing=True,
-        voice_trigger_enabled=True,
-        asr_enabled=True
-    )
-    
-    assert valid_config.enable_vad_processing == True
-    print("  ✅ Valid VAD configuration accepted")
-    
-    # Test default configuration (VAD disabled)
-    default_config = UnifiedVoiceAssistantWorkflowConfig()
-    assert default_config.enable_vad_processing == False
-    print("  ✅ Default configuration has VAD disabled")
-    
-    print("✓ Configuration validation test passed\n")
-
-
-async def test_vad_now_required():
-    """Test that VAD is now required (no backward compatibility for non-VAD)"""
-    print("Testing VAD requirement (no backward compatibility)...")
-    
-    # Create workflow that requires VAD
-    workflow = create_test_workflow(enable_vad=True)
-    
-    # Use proper VAD-enabled configuration
-    workflow_config = UnifiedVoiceAssistantWorkflowConfig(
-        enable_vad_processing=True,  # Now required
-        voice_trigger_enabled=True,
-        asr_enabled=True,
-        nlu_enabled=True,
-        intent_execution_enabled=True
-    )
-    
-    # Should initialize with VAD
-    await workflow.initialize(workflow_config)
-    
-    # Should process audio using VAD pipeline
-    test_sequence = [("speech_like", 3)]
-    context = RequestContext(source="test", skip_wake_word=True, session_id="test")
-    
     results = []
-    async for result in workflow.process_audio_stream(
-        generate_test_audio_stream(test_sequence), 
-        context
-    ):
+    async for result in workflow.process_audio_stream(_audio_stream([("silence", 1)]), context):
         results.append(result)
-        if len(results) >= 1:
-            break
-    
-    assert len(results) > 0, "VAD processing should work"
-    print(f"  ✅ VAD processing works: {len(results)} results")
-    
-    # Verify VAD is enabled and working
-    assert workflow.audio_processor_interface is not None
-    print("  ✅ VAD is enabled and required")
-    
-    print("✓ VAD requirement test passed\n")
+
+    assert len(results) == 1
+    assert results[0].success is False
+    assert results[0].error
 
 
-async def test_error_handling():
-    """Test error handling in VAD workflow integration"""
-    print("Testing error handling...")
-    
-    # Test workflow with VAD enabled but missing configuration
-    workflow = UnifiedVoiceAssistantWorkflow()
-    workflow.components = {
-        'nlu': MockComponent('nlu'),
-        'intent_orchestrator': MockIntentOrchestrator(),
-        'context_manager': MockContextManager()
-    }
-    
-    # Missing VAD config
-    workflow.config = None
-    
-    workflow_config = UnifiedVoiceAssistantWorkflowConfig(
-        enable_vad_processing=True  # Enabled but no config
-    )
-    
-    # Should handle missing config gracefully
-    await workflow.initialize(workflow_config)
-    
-    # Should fall back to disabled VAD
-    assert workflow._vad_processing_enabled == False
-    print("  ✅ Missing VAD config handled gracefully")
-    
-    print("✓ Error handling test passed\n")
+# --------------------------------------------------------------------------- config model defaults
 
 
-async def run_all_phase3_tests():
-    """Run all Phase 3 workflow integration tests"""
-    print("=" * 60)
-    print("VOICE ACTIVITY DETECTION (VAD) - PHASE 3 WORKFLOW INTEGRATION TESTS")
-    print("=" * 60)
-    print()
-    
-    try:
-        # Test VAD-enabled workflow
-        await test_workflow_vad_enabled()
-        
-        # Test legacy workflow (VAD disabled)
-        await test_workflow_vad_required()
-        
-        # Test mode switching
-        await test_mode_switching()
-        
-        # Test configuration
-        await test_configuration_validation()
-        
-        # Test backward compatibility
-        await test_vad_now_required()
-        
-        # Test error handling
-        await test_error_handling()
-        
-        print("=" * 60)
-        print("✅ ALL VAD PHASE 3 TESTS PASSED!")
-        print("=" * 60)
-        print()
-        print("Phase 3 workflow integration is ready for:")
-        print("- Non-breaking VAD integration with existing workflows")
-        print("- Conditional VAD processing with configuration flag")
-        print("- Side-by-side processing (VAD + legacy)")
-        print("- Preserved existing behavior and compatibility")
-        print("- Extensive logging for performance comparison")
-        print("- Mode-specific processing in both VAD and legacy modes")
-        print()
-        print("✅ VAD system successfully integrated with workflow!")
-        print("Next steps: Proceed to Phase 4 (Configuration & Testing)")
-        
-    except Exception as e:
-        print("=" * 60)
-        print(f"❌ VAD PHASE 3 TEST FAILED: {e}")
-        print("=" * 60)
-        raise
+def test_workflow_config_defaults_enable_vad_and_stages():
+    """UnifiedVoiceAssistantWorkflowConfig defaults: VAD + every pipeline stage on."""
+    default = UnifiedVoiceAssistantWorkflowConfig()
 
+    # enable_vad_processing default flipped to True after the VAD-required refactor.
+    assert default.enable_vad_processing is True
+    assert default.voice_trigger_enabled is True
+    assert default.asr_enabled is True
+    assert default.nlu_enabled is True
+    assert default.intent_execution_enabled is True
 
-def main():
-    """Main test function"""
-    # Set up logging
-    logging.basicConfig(
-        level=logging.INFO,
-        format='%(levelname)s - %(message)s'
-    )
-    
-    # Run tests
-    asyncio.run(run_all_phase3_tests())
-
-
-if __name__ == "__main__":
-    main()
+    # Explicit overrides are honoured.
+    custom = UnifiedVoiceAssistantWorkflowConfig(asr_enabled=False)
+    assert custom.asr_enabled is False

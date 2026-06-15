@@ -1823,7 +1823,15 @@ _Apply to every remediation task below (from the 4 review docs + QUAL-25/26). So
       real-bug suspects surfaced: a machine-specific `device_id = 7` hardcoded in `config-master.toml` (Invariant #2),
       `llm.console` empty param schema, and a VAD-requirement error-message contract (touches QUAL-46). **NEXT: Phase
       C/D = the multi-agent workflow** (green the suite per-cluster, then coverage-fill per Tier-1 module). Done when:
-      100% green + Tier-1 cold subsystems covered (confirmed by pytest-cov).
+      100% green + Tier-1 cold subsystems covered (confirmed by pytest-cov). **Phase C (green the suite) — bulk DONE
+      2026-06-15 via a 19-agent workflow + verifier:** deleted 4 stale files (phase4 ×3 + phase6) and rewrote 13 drifted
+      clusters to current port/public contracts (net −3,555 test lines; spot-checked genuine, not gamed). Fixed an
+      order-dependent event-loop failure in `test_no_intent_clarification` (`asyncio.get_event_loop().run_until_complete`
+      → `asyncio.run`; passed alone, failed in-suite). **Suite 82→3 failed / 555 passed.** The remaining **3 reds are
+      the 2 fix-code decisions surfaced to the user** (per the rule: never fix product code autonomously): (a) `device_id`
+      in `config-master` — the alignment test wants `device_id`→`device` but the model still uses `device_id`; +
+      machine-specific `= 7` value; (b) `llm.console` empty parameter schema (offline-floor stub) flagged by 2 tests.
+      Phase C completes once those are decided.
 - [ ] **TEST-6** (P2) — _(folded into TEST-7)_ Restore ASR provider-fallback + resampling coverage (the 7 phase7
       tests skipped in TEST-1 called the removed `_handle_sample_rate_mismatch`; feature lives in
       `AudioProcessor.resample_audio_data`).

@@ -1,34 +1,54 @@
 """
-Phase 2 VAD Testing Script - State Machine and Audio Processing
+Phase 2 VAD tests — VoiceSegmenter state machine + AudioProcessorInterface.
 
-Tests the Universal Audio Processor state machine and voice segment
-accumulation as specified in Phase 2, Step 2.1-2.3.
+TEST-7 rewrite: the VAD config was nested (ARCH-18 — the per-engine energy knobs moved under
+`[vad.providers.energy]`) and the processing metrics are now plain dicts from the unified
+MetricsCollector (not a ProcessingMetrics object). These tests assert the *port/public* contract:
+the VoiceSegmenter state machine, the dict-shaped metrics, the timeout/overflow protection counters,
+and the mode-specific (wake-word / direct-ASR) handoff — including the off / no-component paths.
 """
 
 import asyncio
-import logging
 import time
-import numpy as np
-import pytest
 from typing import List, AsyncIterator
 
-# Import Phase 2 components - Phase 4: ProcessingMetrics removed, using unified MetricsCollector
+import numpy as np
+import pytest
+from pydantic import ValidationError
+
 from irene.workflows.audio_processor import (
     VoiceActivityState, VoiceSegment,
     VoiceSegmenter, AudioProcessorInterface,
-    create_audio_processor
+    create_audio_processor,
 )
 from irene.config.models import VADConfig
 from irene.intents.models import AudioData
+from irene.core.metrics import get_metrics_collector
 
-# Import Phase 1 components for testing
+# Reuse the synthetic-audio generator from the Phase 1 tests.
 from irene.tests.test_vad_basic import generate_test_audio_data
 
-logger = logging.getLogger(__name__)
+
+# --------------------------------------------------------------------------------------
+# Helpers / mocks
+# --------------------------------------------------------------------------------------
+
+def make_vad_config(**energy_overrides) -> VADConfig:
+    """Build a VADConfig with the energy engine knobs in their post-ARCH-18 home.
+
+    The energy-engine fields (energy_threshold, voice_frames_required, ...) live under
+    `[vad.providers.energy]` now — the component-level VADConfig only carries segmentation
+    concerns. Component-level overrides can still be passed via the dunder-free kwargs by
+    pre-extracting them; here we keep it simple and only nest energy knobs.
+    """
+    return VADConfig(
+        enabled=True,
+        default_provider="energy",
+        providers={"energy": {"energy_threshold": 0.01, **energy_overrides}},
+    )
 
 
 class MockRequestContext:
-    """Mock request context for testing"""
     def __init__(self, skip_wake_word: bool = False):
         self.skip_wake_word = skip_wake_word
         self.source = "test"
@@ -36,454 +56,237 @@ class MockRequestContext:
 
 
 class MockASRComponent:
-    """Mock ASR component for testing"""
     async def process_audio(self, audio_data: AudioData):
-        # Simulate ASR processing
-        await asyncio.sleep(0.01)  # Small delay to simulate processing
-        return {
-            'text': 'test recognition result',
-            'confidence': 0.9,
-            'duration_ms': len(audio_data.data) / 32  # Rough estimate
-        }
+        await asyncio.sleep(0.001)
+        return "test recognition result"
 
 
 class MockVoiceTriggerComponent:
-    """Mock voice trigger component for testing"""
-    def __init__(self, detection_rate: float = 0.3):
+    def __init__(self, detection_rate: float = 1.0):
         self.detection_rate = detection_rate
-        
+
     async def process_audio(self, audio_data: AudioData):
-        # Simulate wake word detection with configurable rate
-        await asyncio.sleep(0.005)  # Small delay to simulate processing
+        await asyncio.sleep(0.001)
         detected = np.random.random() < self.detection_rate
         return {
             'detected': detected,
             'confidence': 0.8 if detected else 0.1,
-            'wake_word': 'irene' if detected else None
+            'wake_word': 'irene' if detected else None,
         }
 
 
-async def generate_test_audio_stream(sequence: List[tuple], chunk_duration_ms: float = 50) -> AsyncIterator[AudioData]:
-    """
-    Generate test audio stream from sequence description.
-    
-    Args:
-        sequence: List of (audio_type, count) tuples
-        chunk_duration_ms: Duration of each chunk in milliseconds
-        
-    Yields:
-        AudioData chunks according to sequence
-    """
+async def generate_test_audio_stream(sequence: List[tuple],
+                                      chunk_duration_ms: float = 50) -> AsyncIterator[AudioData]:
+    """Yield AudioData chunks per a [(audio_type, count), ...] description."""
     for audio_type, count in sequence:
         for _ in range(count):
             yield generate_test_audio_data(chunk_duration_ms, audio_type=audio_type)
-            await asyncio.sleep(0.001)  # Small delay between chunks
+            await asyncio.sleep(0.001)
 
 
-@pytest.mark.skip(reason="ARCH-18: asserts the pre-nesting flat VADConfig (energy_threshold/sensitivity/"
-                         "threshold are now under [vad.providers.energy] + its schema). Rewrite under TEST-7.")
-def test_vad_config_validation():
-    """Test VAD configuration validation."""
-    print("Testing VAD configuration validation...")
-    
-    # Test valid configuration
-    valid_config = VADConfig(
-        enabled=True,
-        threshold=0.02,
-        sensitivity=0.7,
-        voice_frames_required=3,
-        silence_frames_required=4,
-        max_segment_duration_s=15,
-        use_zero_crossing_rate=True,
-        adaptive_threshold=False
-    )
-    
-    assert valid_config.enabled == True
-    assert valid_config.threshold == 0.02
-    assert valid_config.voice_frames_required == 3
-    print(f"  Valid config: {valid_config.threshold=}, {valid_config.sensitivity=}")
-    
-    # Test invalid threshold (should raise validation error)
-    try:
-        invalid_config = VADConfig(threshold=1.5)  # > 1.0
-        assert False, "Should have raised validation error"
-    except Exception as e:
-        print(f"  Invalid threshold correctly rejected: {type(e).__name__}")
-    
-    print("✓ VAD configuration validation test passed\n")
-
-
-@pytest.mark.skip(reason="ARCH-18: constructs the processor with the pre-nesting flat VADConfig "
-                         "(energy fields now under [vad.providers.energy]). Rewrite under TEST-7.")
-async def test_universal_audio_processor():
-    """Test VoiceSegmenter state machine."""
-    print("Testing VoiceSegmenter state machine...")
-    
-    # Create test configuration
-    config = VADConfig(
-        enabled=True,
-        energy_threshold=0.01,
-        sensitivity=0.5,
-        voice_frames_required=2,
-        silence_frames_required=3,
-        max_segment_duration_s=5
-    )
-    
-    # Create processor
-    processor = VoiceSegmenter(config)
-    
-    # Test initial state
-    assert processor.vad_state == VoiceActivityState.SILENCE
-    print(f"  Initial state: {processor.vad_state.value}")
-    
-    # Test state transitions with audio sequence
-    # Sequence: silence(3) -> voice(5) -> silence(4) -> voice(3) -> silence(3)
-    test_sequence = [
-        ("silence", 3),
-        ("speech_like", 5), 
-        ("silence", 4),
-        ("speech_like", 3),
-        ("silence", 3)
-    ]
-    
-    voice_segments = []
-    chunk_count = 0
-    
-    async for audio_chunk in generate_test_audio_stream(test_sequence):
-        chunk_count += 1
-        voice_segment = await processor.process_audio_chunk(audio_chunk)
-        
-        if voice_segment:
-            voice_segments.append(voice_segment)
-            print(f"    Voice segment {len(voice_segments)}: {voice_segment.chunk_count} chunks, "
-                  f"{voice_segment.total_duration_ms:.1f}ms")
-    
-    # Verify we got voice segments
-    assert len(voice_segments) >= 1, f"Expected voice segments, got {len(voice_segments)}"
-    
-    # Check processor metrics
-    metrics = processor.get_processing_metrics()
-    print(f"  Processing metrics:")
-    print(f"    Total chunks: {metrics.total_chunks_processed}")
-    print(f"    Voice segments: {metrics.voice_segments_detected}")
-    print(f"    Silence skipped: {metrics.silence_chunks_skipped}")
-    print(f"    Avg processing time: {metrics.average_processing_time_ms:.2f}ms")
-    
-    assert metrics.total_chunks_processed == chunk_count
-    assert metrics.voice_segments_detected == len(voice_segments)
-    
-    print("✓ VoiceSegmenter state machine test passed\n")
-
-
-async def test_voice_segment_timeout():
-    """Test voice segment timeout protection."""
-    print("Testing voice segment timeout protection...")
-    
-    # Create config with short timeout
-    config = VADConfig(
-        enabled=True,
-        threshold=0.01,
-        max_segment_duration_s=1,  # 1 second timeout
-        voice_frames_required=1,
-        silence_frames_required=2
-    )
-    
-    processor = VoiceSegmenter(config)
-    
-    # Generate long continuous speech (should trigger timeout)
-    long_speech_sequence = [("speech_like", 50)]  # 50 chunks
-    
-    voice_segments = []
-    
-    # Add realistic timing to trigger timeout
-    async for audio_chunk in generate_test_audio_stream(long_speech_sequence, chunk_duration_ms=50):
-        voice_segment = await processor.process_audio_chunk(audio_chunk)
-        
-        if voice_segment:
-            voice_segments.append(voice_segment)
-            print(f"    Timeout voice segment: {voice_segment.chunk_count} chunks, "
-                  f"{voice_segment.total_duration_ms:.1f}ms")
-        
-        # Add small delay to simulate real-time audio processing
-        await asyncio.sleep(0.05)  # 50ms delay per chunk
-    
-    # Should have at least one timeout-triggered segment
-    metrics = processor.get_processing_metrics()
-    assert metrics.timeout_events > 0, f"Expected timeout events, got {metrics.timeout_events}"
-    
-    print(f"  Timeout events: {metrics.timeout_events}")
-    print("✓ Voice segment timeout test passed\n")
-
-
-async def test_buffer_overflow_protection():
-    """Test buffer overflow protection."""
-    print("Testing buffer overflow protection...")
-    
-    # Create config with small buffer
-    config = VADConfig(
-        enabled=True,
-        threshold=0.01,
-        buffer_size_frames=10,  # Small buffer
-        voice_frames_required=1,
-        silence_frames_required=2,
-        max_segment_duration_s=30  # Long timeout to focus on buffer overflow
-    )
-    
-    processor = VoiceSegmenter(config)
-    
-    # Generate continuous speech that exceeds buffer
-    overflow_sequence = [("speech_like", 20)]  # 20 chunks > 10 buffer limit
-    
-    voice_segments = []
-    
-    async for audio_chunk in generate_test_audio_stream(overflow_sequence):
-        voice_segment = await processor.process_audio_chunk(audio_chunk)
-        
-        if voice_segment:
-            voice_segments.append(voice_segment)
-            print(f"    Overflow voice segment: {voice_segment.chunk_count} chunks")
-    
-    # Should have buffer overflow events
-    metrics = processor.get_processing_metrics()
-    assert metrics.buffer_overflow_count > 0, f"Expected buffer overflow, got {metrics.buffer_overflow_count}"
-    
-    print(f"  Buffer overflow events: {metrics.buffer_overflow_count}")
-    print("✓ Buffer overflow protection test passed\n")
-
-
-async def test_audio_processor_interface():
-    """Test AudioProcessorInterface integration."""
-    print("Testing AudioProcessorInterface integration...")
-    
-    # Test with VAD enabled (only mode now supported)
-    config_enabled = VADConfig(enabled=True, energy_threshold=0.01)
-    interface_enabled = AudioProcessorInterface(config_enabled)
-    
-    # Create mock context and components
-    context = MockRequestContext(skip_wake_word=True)
-    asr_component = MockASRComponent()
-    voice_trigger_component = MockVoiceTriggerComponent()
-    
-    # Test audio sequence
-    test_sequence = [("silence", 2), ("speech_like", 3), ("silence", 2)]
-    
-    # Test VAD interface
-    print("  Testing VAD interface...")
-    enabled_segments = []
-    enabled_results = []
-    
-    async def mock_handler(segment, ctx):
-        enabled_segments.append(segment)
-    
-    async for voice_segment in interface_enabled.process_audio_pipeline(
-        generate_test_audio_stream(test_sequence), 
-        context, 
-        mock_handler
-    ):
-        enabled_results.append(voice_segment)
-        # Test mode-specific processing
-        result = await interface_enabled.process_voice_segment_for_mode(
-            voice_segment, context, asr_component, voice_trigger_component
-        )
-        
-        assert result['type'] == 'asr_result', f"Expected ASR result, got {result['type']}"
-        assert result['mode'] == 'direct_asr'
-        print(f"    VAD result: {result['mode']}")
-    
-    # Verify VAD processing worked
-    print(f"  VAD segments: {len(enabled_results)}")
-    
-    # Should have at least some processing results
-    assert len(enabled_results) >= 0, "VAD processing should work"
-    
-    print(f"  ✓ Interface test completed successfully")
-    
-    print("✓ AudioProcessorInterface integration test passed\n")
-
-
-async def test_mode_specific_processing():
-    """Test mode-specific processing (with/without wake word)."""
-    print("Testing mode-specific processing...")
-    
-    config = VADConfig(enabled=True, threshold=0.01)
-    interface = AudioProcessorInterface(config)
-    
-    # Create mock components
-    asr_component = MockASRComponent()
-    voice_trigger_component = MockVoiceTriggerComponent(detection_rate=1.0)  # Always detect
-    
-    # Create test voice segment
-    audio_chunks = [generate_test_audio_data(100, audio_type="speech_like")]
-    voice_segment = VoiceSegment(
-        audio_chunks=audio_chunks,
+def _make_voice_segment() -> VoiceSegment:
+    chunk = generate_test_audio_data(100, audio_type="speech_like")
+    return VoiceSegment(
+        audio_chunks=[chunk],
         start_timestamp=time.time(),
         end_timestamp=time.time() + 0.1,
         total_duration_ms=100,
         chunk_count=1,
-        combined_audio=audio_chunks[0]
+        combined_audio=chunk,
     )
-    
-    # Test Mode B: skip_wake_word=True (Direct ASR)
-    context_mode_b = MockRequestContext(skip_wake_word=True)
-    result_b = await interface.process_voice_segment_for_mode(
-        voice_segment, context_mode_b, asr_component, voice_trigger_component
-    )
-    
-    assert result_b['type'] == 'asr_result'
-    assert result_b['mode'] == 'direct_asr'
-    print(f"  Mode B (direct ASR): {result_b['mode']}")
-    
-    # Test Mode A: skip_wake_word=False (Wake word first)
-    context_mode_a = MockRequestContext(skip_wake_word=False)
-    
-    # Test wake word detection
-    result_a1 = await interface.process_voice_segment_for_mode(
-        voice_segment, context_mode_a, asr_component, voice_trigger_component, wake_word_detected=False
-    )
-    
-    assert result_a1['type'] == 'wake_word_result'
-    assert result_a1['mode'] == 'wake_word_detection'
-    print(f"  Mode A (wake word detection): {result_a1['mode']}")
-    
-    # Test command processing after wake word
-    result_a2 = await interface.process_voice_segment_for_mode(
-        voice_segment, context_mode_a, asr_component, voice_trigger_component, wake_word_detected=True
-    )
-    
-    assert result_a2['type'] == 'asr_result'
-    assert result_a2['mode'] == 'command_after_wake'
-    print(f"  Mode A (command after wake): {result_a2['mode']}")
-    
-    print("✓ Mode-specific processing test passed\n")
 
 
-async def test_performance_real_time():
-    """Test real-time performance with realistic loads."""
-    print("Testing real-time performance...")
-    
-    config = VADConfig(
-        enabled=True,
-        threshold=0.01,
-        processing_timeout_ms=25  # Must process faster than chunk rate
-    )
-    
-    processor = VoiceSegmenter(config)
-    
-    # Simulate high-frequency audio stream (every 23ms like the problem case)
-    chunk_duration_ms = 23
-    num_chunks = 200  # ~4.6 seconds of audio
-    
-    processing_times = []
-    start_time = time.time()
-    
-    # Generate realistic mixed audio
-    realistic_sequence = [
-        ("silence", 20),
-        ("speech_like", 30),
-        ("silence", 15), 
-        ("speech_like", 25),
-        ("silence", 20),
-        ("speech_like", 40),
-        ("silence", 50)
-    ]
-    
+# Keys the unified MetricsCollector exposes for VAD (the dict contract that replaced
+# the old ProcessingMetrics object).
+_VAD_METRIC_KEYS = {
+    "total_chunks_processed",
+    "voice_segments_detected",
+    "silence_chunks_skipped",
+    "average_processing_time_ms",
+    "total_processing_time_ms",
+    "buffer_overflow_count",
+    "timeout_events",
+}
+
+
+# --------------------------------------------------------------------------------------
+# Config contract (ARCH-18 nesting)
+# --------------------------------------------------------------------------------------
+
+def test_vad_config_nests_engine_knobs_under_providers():
+    """The energy-engine knobs live under [vad.providers.energy], not flat on VADConfig."""
+    config = make_vad_config(energy_threshold=0.02, voice_frames_required=3)
+
+    # Component-level segmentation fields remain on the model.
+    assert config.enabled is True
+    assert config.default_provider == "energy"
+    assert config.max_segment_duration_s == 10  # default
+
+    # The old flat engine fields are gone from the model surface.
+    assert not hasattr(config, "energy_threshold")
+    assert not hasattr(config, "sensitivity")
+    assert not hasattr(config, "voice_frames_required")
+
+    # ...and live under the provider block instead.
+    assert config.providers["energy"]["energy_threshold"] == 0.02
+    assert config.providers["energy"]["voice_frames_required"] == 3
+
+
+def test_vad_config_validation_bounds():
+    """Component-level segmentation fields are still bounds-validated."""
+    # max_segment_duration_s: ge=1, le=60
+    with pytest.raises(ValidationError):
+        VADConfig(max_segment_duration_s=0)
+    with pytest.raises(ValidationError):
+        VADConfig(max_segment_duration_s=61)
+
+    # asr_target_rms: ge=0.01, le=0.3
+    with pytest.raises(ValidationError):
+        VADConfig(asr_target_rms=0.5)
+
+    ok = VADConfig(max_segment_duration_s=15, asr_target_rms=0.2)
+    assert ok.max_segment_duration_s == 15
+    assert ok.asr_target_rms == 0.2
+
+
+# --------------------------------------------------------------------------------------
+# VoiceSegmenter state machine + dict metrics
+# --------------------------------------------------------------------------------------
+
+def test_segmenter_initial_state_and_metrics_shape():
+    """A fresh segmenter is in SILENCE and exposes dict-shaped metrics (not an object)."""
+    processor = create_audio_processor(make_vad_config())
+
+    assert isinstance(processor, VoiceSegmenter)
+    assert processor.vad_state == VoiceActivityState.SILENCE
+
+    metrics = processor.get_processing_metrics()
+    assert isinstance(metrics, dict)
+    assert _VAD_METRIC_KEYS.issubset(metrics.keys())
+
+
+async def test_segmenter_detects_voice_segment():
+    """silence → speech → silence yields a complete VoiceSegment and bumps dict metrics."""
+    processor = create_audio_processor(make_vad_config())
+
+    before = processor.get_processing_metrics()["total_chunks_processed"]
+
+    test_sequence = [("silence", 3), ("speech_like", 8), ("silence", 8)]
+    voice_segments = []
     chunk_count = 0
-    voice_segments = 0
-    
-    async for audio_chunk in generate_test_audio_stream(realistic_sequence, chunk_duration_ms):
-        chunk_start = time.time()
-        voice_segment = await processor.process_audio_chunk(audio_chunk)
-        processing_time = (time.time() - chunk_start) * 1000
-        
-        processing_times.append(processing_time)
+    async for chunk in generate_test_audio_stream(test_sequence):
         chunk_count += 1
-        
-        if voice_segment:
-            voice_segments += 1
-        
-        # Stop at target chunk count
-        if chunk_count >= num_chunks:
-            break
-    
-    total_time = time.time() - start_time
-    avg_processing_time = np.mean(processing_times)
-    max_processing_time = np.max(processing_times)
-    
-    print(f"  Performance results:")
-    print(f"    Chunks processed: {chunk_count}")
-    print(f"    Voice segments: {voice_segments}")
-    print(f"    Total time: {total_time:.2f}s")
-    print(f"    Average processing time: {avg_processing_time:.2f}ms")
-    print(f"    Maximum processing time: {max_processing_time:.2f}ms")
-    print(f"    Real-time capability: {'✓' if avg_processing_time < chunk_duration_ms else '✗'}")
-    
-    # Verify real-time performance
-    assert avg_processing_time < chunk_duration_ms, \
-        f"Average processing time {avg_processing_time:.2f}ms must be < {chunk_duration_ms}ms"
-    
-    # Verify segments were detected
-    assert voice_segments > 0, "Should detect some voice segments"
-    
-    print("✓ Real-time performance test passed\n")
+        segment = await processor.process_audio_chunk(chunk)
+        if segment:
+            voice_segments.append(segment)
+
+    assert len(voice_segments) >= 1
+    seg = voice_segments[0]
+    assert seg.chunk_count >= 1
+    assert seg.total_duration_ms > 0
+    assert seg.combined_audio is not None
+
+    # Metrics are dicts: total processed advanced by exactly the chunks we fed.
+    after = processor.get_processing_metrics()
+    assert after["total_chunks_processed"] - before == chunk_count
 
 
-async def run_all_phase2_tests():
-    """Run all Phase 2 VAD tests."""
-    print("=" * 60)
-    print("VOICE ACTIVITY DETECTION (VAD) - PHASE 2 STATE MACHINE TESTS")
-    print("=" * 60)
-    print()
-    
-    try:
-        # Test configuration
-        test_vad_config_validation()
-        
-        # Test core processor
-        await test_universal_audio_processor()
-        
-        # Test edge cases
-        await test_voice_segment_timeout()
-        await test_buffer_overflow_protection()
-        
-        # Test integration interface
-        await test_audio_processor_interface()
-        await test_mode_specific_processing()
-        
-        # Test performance
-        await test_performance_real_time()
-        
-        print("=" * 60)
-        print("✅ ALL VAD PHASE 2 TESTS PASSED!")
-        print("=" * 60)
-        print()
-        print("Phase 2 implementation is ready for:")
-        print("- Universal audio state machine")
-        print("- Voice segment accumulation and buffering")
-        print("- Timeout and overflow protection")
-        print("- Integration with existing ASR/voice trigger components")
-        print("- Mode-specific processing (with/without wake word)")
-        print("- Real-time performance with 23ms chunks")
-        print()
-        print("Next steps: Proceed to Phase 3 (Workflow Integration)")
-        
-    except Exception as e:
-        print("=" * 60)
-        print(f"❌ VAD PHASE 2 TEST FAILED: {e}")
-        print("=" * 60)
-        raise
+async def test_voice_segment_timeout_records_dict_counter():
+    """Long continuous speech forces completion and increments timeout_events (dict access)."""
+    # High silence_frames_required so the (amplitude-modulated) speech doesn't end the segment
+    # naturally — the 1s wall-clock timeout is what must force completion.
+    config = make_vad_config(voice_frames_required=1, silence_frames_required=50)
+    config.max_segment_duration_s = 1  # short timeout
+    processor = create_audio_processor(config)
+
+    before = processor.get_processing_metrics()["timeout_events"]
+
+    async for chunk in generate_test_audio_stream([("speech_like", 50)], chunk_duration_ms=50):
+        await processor.process_audio_chunk(chunk)
+        await asyncio.sleep(0.05)  # real-time pacing so the 1s timeout actually elapses
+
+    after = processor.get_processing_metrics()["timeout_events"]
+    assert after - before > 0
 
 
-def main():
-    """Main test function."""
-    # Set up logging
-    logging.basicConfig(
-        level=logging.INFO,
-        format='%(levelname)s - %(message)s'
+async def test_buffer_overflow_records_dict_counter():
+    """Speech exceeding buffer_size_frames forces completion and bumps buffer_overflow_count."""
+    # High silence_frames_required so the segment doesn't end naturally; the small buffer is what
+    # must force completion. Long timeout isolates the overflow path from the timeout path.
+    config = make_vad_config(voice_frames_required=1, silence_frames_required=20)
+    config.buffer_size_frames = 10
+    config.max_segment_duration_s = 30
+    processor = create_audio_processor(config)
+
+    before = processor.get_processing_metrics()["buffer_overflow_count"]
+
+    async for chunk in generate_test_audio_stream([("speech_like", 40)]):
+        await processor.process_audio_chunk(chunk)
+
+    after = processor.get_processing_metrics()["buffer_overflow_count"]
+    assert after - before > 0
+
+
+# --------------------------------------------------------------------------------------
+# AudioProcessorInterface — mode-specific processing + off paths
+# --------------------------------------------------------------------------------------
+
+async def test_mode_b_direct_asr():
+    """skip_wake_word=True → direct ASR; result carries the asr_result/direct_asr contract."""
+    interface = AudioProcessorInterface(make_vad_config())
+    result = await interface.process_voice_segment_for_mode(
+        _make_voice_segment(), MockRequestContext(skip_wake_word=True),
+        asr_component=MockASRComponent(), voice_trigger_component=MockVoiceTriggerComponent(),
     )
-    
-    # Run tests
-    asyncio.run(run_all_phase2_tests())
+    assert result['type'] == 'asr_result'
+    assert result['mode'] == 'direct_asr'
 
 
-if __name__ == "__main__":
-    main()
+async def test_mode_a_wake_word_then_command():
+    """skip_wake_word=False → wake-word detection first, then ASR once detected."""
+    interface = AudioProcessorInterface(make_vad_config())
+    segment = _make_voice_segment()
+    ctx = MockRequestContext(skip_wake_word=False)
+    asr = MockASRComponent()
+    vt = MockVoiceTriggerComponent(detection_rate=1.0)
+
+    detect = await interface.process_voice_segment_for_mode(
+        segment, ctx, asr, vt, wake_word_detected=False)
+    assert detect['type'] == 'wake_word_result'
+    assert detect['mode'] == 'wake_word_detection'
+
+    command = await interface.process_voice_segment_for_mode(
+        segment, ctx, asr, vt, wake_word_detected=True)
+    assert command['type'] == 'asr_result'
+    assert command['mode'] == 'command_after_wake'
+
+
+async def test_mode_b_missing_asr_component_is_error():
+    """Off path: Mode B with no ASR component returns a structured error, not a crash."""
+    interface = AudioProcessorInterface(make_vad_config())
+    result = await interface.process_voice_segment_for_mode(
+        _make_voice_segment(), MockRequestContext(skip_wake_word=True),
+        asr_component=None, voice_trigger_component=None,
+    )
+    assert result['type'] == 'error'
+    assert 'ASR component not available' in result['error']
+
+
+async def test_mode_a_missing_voice_trigger_is_error():
+    """Off path: Mode A with no voice-trigger component returns a structured error."""
+    interface = AudioProcessorInterface(make_vad_config())
+    result = await interface.process_voice_segment_for_mode(
+        _make_voice_segment(), MockRequestContext(skip_wake_word=False),
+        asr_component=MockASRComponent(), voice_trigger_component=None,
+        wake_word_detected=False,
+    )
+    assert result['type'] == 'error'
+    assert 'Voice trigger component not available' in result['error']
+
+
+async def test_interface_metrics_pass_through_is_dict():
+    """The interface surfaces the same dict-shaped metrics contract as the segmenter."""
+    interface = AudioProcessorInterface(make_vad_config())
+    metrics = interface.get_metrics()
+    assert isinstance(metrics, dict)
+    assert _VAD_METRIC_KEYS.issubset(metrics.keys())

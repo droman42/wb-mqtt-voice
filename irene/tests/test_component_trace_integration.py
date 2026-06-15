@@ -33,24 +33,40 @@ class TestComponentTraceIntegration(unittest.IsolatedAsyncioTestCase):
         )
     
     async def test_text_processor_component_trace(self):
-        """Test TextProcessorComponent with trace context"""
+        """TextProcessorComponent.process records a 'text_processing' stage when a provider is wired."""
         component = TextProcessorComponent()
-        component.providers = {}  # No providers for test
-        
+        # A normalizer provider: process() records a stage only on the provider path (QUAL-13).
+        provider = MagicMock()
+        provider.process_pipeline = AsyncMock(return_value="test text")
+        provider.normalizers_for_stage = MagicMock(return_value=["runorm"])
+        component.providers = {"test": provider}
+        component.default_provider = "test"
+
         # Test with trace context
         result = await component.process("test text", self.conversation_context, self.trace_context)
-        
+
         # Verify the result is correct
         self.assertEqual(result, "test text")
-        
-        # Verify trace was recorded
+
+        # Verify trace was recorded against the current record_stage contract
         self.assertEqual(len(self.trace_context.stages), 1)
         stage = self.trace_context.stages[0]
         self.assertEqual(stage["stage"], "text_processing")
         self.assertEqual(stage["input"], "test text")
         self.assertEqual(stage["output"], "test text")
-        self.assertIn("component_name", stage["metadata"])
         self.assertEqual(stage["metadata"]["component_name"], "TextProcessorComponent")
+        self.assertEqual(stage["metadata"]["stage"], "asr_output")
+        self.assertEqual(stage["metadata"]["normalizers_applied"], ["runorm"])
+
+    async def test_text_processor_no_provider_records_nothing(self):
+        """Off path: with no providers, process() is a pass-through and records no stage."""
+        component = TextProcessorComponent()
+        component.providers = {}  # No providers -> early pass-through
+
+        result = await component.process("test text", self.conversation_context, self.trace_context)
+
+        self.assertEqual(result, "test text")
+        self.assertEqual(len(self.trace_context.stages), 0)
     
     async def test_nlu_component_trace(self):
         """Test NLUComponent with trace context"""
@@ -265,7 +281,10 @@ class TestComponentTraceIntegration(unittest.IsolatedAsyncioTestCase):
         self.assertIn("component_name", stage["metadata"])
         self.assertEqual(stage["metadata"]["component_name"], "LLMComponent")
         self.assertEqual(stage["metadata"]["task"], "improve")
-        self.assertTrue(stage["metadata"]["enhancement_success"])
+        # Current enhancement metadata (QUAL-15): the fallback chain + change flag, not a success bool.
+        self.assertEqual(stage["metadata"]["input_text_length"], len("test input text"))
+        self.assertIn("provider_chain", stage["metadata"])
+        self.assertTrue(stage["metadata"]["text_changed"])
     
     async def test_llm_component_generate_response_trace(self):
         """Test LLMComponent generate_response method with trace context"""
@@ -297,7 +316,9 @@ class TestComponentTraceIntegration(unittest.IsolatedAsyncioTestCase):
         self.assertIn("component_name", stage["metadata"])
         self.assertEqual(stage["metadata"]["component_name"], "LLMComponent")
         self.assertEqual(stage["metadata"]["message_count"], 2)
-        self.assertTrue(stage["metadata"]["generation_success"])
+        # Current conversation metadata (QUAL-15): the provider chain, not a success bool.
+        self.assertIn("provider_chain", stage["metadata"])
+        self.assertEqual(stage["metadata"]["preferred_provider"], "test_provider")
     
     async def test_zero_overhead_when_disabled(self):
         """Test that components have zero overhead when trace is disabled"""
