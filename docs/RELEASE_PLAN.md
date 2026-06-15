@@ -1831,7 +1831,14 @@ _Apply to every remediation task below (from the 4 review docs + QUAL-25/26). So
       the 2 fix-code decisions surfaced to the user** (per the rule: never fix product code autonomously): (a) `device_id`
       in `config-master` — the alignment test wants `device_id`→`device` but the model still uses `device_id`; +
       machine-specific `= 7` value; (b) `llm.console` empty parameter schema (offline-floor stub) flagged by 2 tests.
-      Phase C completes once those are decided.
+      **Phase C COMPLETE 2026-06-15 — suite 100% GREEN (558 passed / 0 failed / 7 skipped, from 82 failed).** User
+      decided both fix-code questions as test/config fixes (no product-schema change): (a) `device_id` is the live
+      `MicrophoneInputConfig` field (the `→device` rename was never done) → dropped from the alignment test's
+      deprecated-names list + cleaned the machine-specific `device_id = 7` to the `None` default in `config-master`;
+      (b) `llm.console` is a *registered* offline-floor stub (entry-point exists) with no runtime params by design →
+      exempted declared stubs in the schema test (like text-processors) + rewrote the stale phantom test (console is no
+      longer unregistered; uses a genuinely-unregistered name to keep phantom-detection covered). **NEXT: Phase D**
+      (risk-ranked coverage fill via the workflow).
 - [ ] **TEST-6** (P2) — _(folded into TEST-7)_ Restore ASR provider-fallback + resampling coverage (the 7 phase7
       tests skipped in TEST-1 called the removed `_handle_sample_rate_mismatch`; feature lives in
       `AudioProcessor.resample_audio_data`).

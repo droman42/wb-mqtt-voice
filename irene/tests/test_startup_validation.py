@@ -2,27 +2,34 @@
 
 Fast, offline, deterministic — drives `validate_provider_configuration` with
 synthetic config dicts (no boot). Relies on the real registered entry-points
-in the installed venv (llm: openai/vsegpt/anthropic; nlu: hybrid_keyword_matcher/
-spacy_nlu; tts: console/...).
+in the installed venv (llm: console/openai/deepseek/anthropic; nlu:
+hybrid_keyword_matcher/spacy_nlu; tts: console/...).
 """
 
 from irene.core.startup_validation import validate_provider_configuration
 
 
-def test_flags_phantom_llm_console():
-    """The `console` LLM provider is configured but unregistered (QUAL-14/15)."""
+def test_flags_phantom_llm_provider():
+    """A configured-but-unregistered LLM provider is flagged; registered ones are not.
+
+    NOTE: `llm.console` USED to be the phantom example (QUAL-14/15) but is now a registered
+    offline-floor stub entry-point, so it must NOT be flagged — we use a genuinely-unregistered
+    name to keep the phantom-detection path under test.
+    """
     cfg = {
         "llm": {
             "enabled": True,
             "default_provider": "openai",
-            "fallback_providers": ["console"],
-            "providers": {"openai": {"enabled": True}, "console": {"enabled": True}},
+            "fallback_providers": ["ghost_provider", "console"],
+            "providers": {"openai": {"enabled": True}, "ghost_provider": {"enabled": True},
+                          "console": {"enabled": True}},
         }
     }
     issues = validate_provider_configuration(cfg)
-    assert any("provider 'console'" in i and i.startswith("llm.") for i in issues), issues
-    # a real provider must NOT be flagged (note: it still appears in the "available: [...]" list)
+    assert any("provider 'ghost_provider'" in i and i.startswith("llm.") for i in issues), issues
+    # registered providers must NOT be flagged (console is now a real offline-floor stub)
     assert not any("provider 'openai'" in i for i in issues), issues
+    assert not any("provider 'console'" in i for i in issues), issues
 
 
 def test_all_good_names_no_issues():

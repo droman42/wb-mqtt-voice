@@ -96,9 +96,11 @@ class TestMasterConfigFieldAlignment:
         with open(master_config_path, "rb") as f:
             config_content = f.read().decode('utf-8')
         
-        # List of deprecated field names that should not appear
+        # List of deprecated field names that should not appear.
+        # NOTE: `device_id` is NOT deprecated — it is the live field name on MicrophoneInputConfig
+        # (the planned audio-alignment rename to `device` was never implemented). Audio *providers*
+        # using `device_id` are checked separately in test_audio_providers_use_device.
         deprecated_fields = [
-            "device_id",      # Should be 'device'
             "default_model",  # Should be 'model'
         ]
         

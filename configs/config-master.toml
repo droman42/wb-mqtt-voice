@@ -66,8 +66,8 @@ default_input = "microphone"       # Default input: "microphone", "web", "cli"
 # Microphone Input Configuration
 [inputs.microphone_config]
 enabled = true                      # Enable microphone input processing
-device_id = 7                       # Audio device ID (ThinkPad USB-C Dock Audio: 44100 Hz, 1 channel)
-sample_rate = 44100                # Audio sample rate: matches device 7 native rate
+# device_id =                       # Optional input device index; omit/None = system default device
+sample_rate = 44100                # Capture sample rate (negotiated down to canonical 16 kHz for the pipeline)
 channels = 1                       # Audio channels: 1 (mono) - matches device 7
 chunk_size = 4096                  # Audio buffer chunk size for stable processing
 buffer_queue_size = 50             # Audio buffer queue size for handling processing delays

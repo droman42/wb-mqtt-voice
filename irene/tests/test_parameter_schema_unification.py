@@ -103,8 +103,11 @@ class TestParameterSchemaUnification:
                     "has_fields": len(schema) > 0
                 }
                 
-                # Text processing providers may have empty schemas (no runtime parameters)
-                if component_type != "text_processor":
+                # An empty schema is the honest contract for providers with NO runtime-tunable
+                # parameters: text-processors, and declared offline-floor stubs like `llm.console`
+                # (a deterministic, dependency-free fallback whose only per-call input is `language`).
+                STUB_PROVIDERS = {("llm", "console")}
+                if component_type != "text_processor" and (component_type, provider_name) not in STUB_PROVIDERS:
                     assert len(schema) > 0, f"Empty parameter schema for {component_type}.{provider_name}"
         
         # Log results for debugging

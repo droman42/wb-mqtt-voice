@@ -32,6 +32,23 @@ newest entries near the top of each dated section.
   (`trace_context` 76%, `trace_input` 89%), new wiring is thin (`replay_trace`/`voice_runner` 34%). Suite still at its
   baseline (82 failed / 472 passed / 15 skipped — the ±1 is a coverage-perturbed timing benchmark, not a regression).
   Next: Phase B triage + risk-ranked worklist, then the workflow.
+- **TEST-7 Phase C — suite to 100% green (82 → 0 failed).** Ran a 19-agent workflow + verifier per the locked plan
+  (delete stale / rewrite drifted to current contracts / SURFACE-never-fix product code). Deleted 4 stale pre-refactor
+  files (phase4 ×3 + phase6, built on the removed `ContextualCommandPerformanceManager`) and rewrote 13 drifted
+  clusters to current port/public contracts (NLU `_recognition_provider` cascade, `Intent` signature, VAD metrics
+  dict-vs-object + `energy_threshold` relocation, spaCy MagicMock, the ARCH-19 `record_stage` trace contract, …);
+  net −3,555 test lines; spot-checked two rewrites as genuine (assert real behavior incl. off-paths), not gamed.
+  Fixed an order-dependent failure myself: `test_no_intent_clarification` used `asyncio.get_event_loop().run_until_complete`
+  (passed alone, failed in-suite once another async test closed the loop) → `asyncio.run`. That left **3 reds = 2
+  fix-code questions**, surfaced to the user with options per the standing rule (never fix product code autonomously);
+  the user chose test/config fixes for both: (a) `device_id` is the live `MicrophoneInputConfig` field name (the
+  planned `→device` alignment was never implemented) — removed it from the alignment test's deprecated list and cleaned
+  the machine-specific `device_id = 7` to the `None` default in `config-master.toml` (Invariant #2); (b) `llm.console`
+  is a *registered* offline-floor stub with no runtime params by design (entry-point at pyproject:262) — exempted
+  declared stubs in `test_parameter_schema_unification` (mirroring the existing text-processor carve-out) and rewrote
+  the stale `test_flags_phantom_llm_console` (console is no longer unregistered; switched to a genuinely-unregistered
+  name so phantom-detection stays covered). **Suite now 558 passed / 0 failed / 7 skipped; 9/9 import contracts;
+  config-master loads.** No product code changed in the whole phase. Next: Phase D (risk-ranked coverage fill).
 - **TEST-7 Phase B — triage worklist + risk-ranked coverage (`docs/review/test7_triage.md`).** Captured one-line
   tracebacks for all 82 failures and clustered them by root-cause signature → verdicts: **~28 delete, ~50 rewrite,
   3 fix-code.** Deletes are the pre-refactor "phase" scaffolding (the 21-strong phase4 contextual cluster — all 16
