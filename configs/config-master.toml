@@ -309,6 +309,7 @@ api_key = "${DEEPSEEK_API_KEY:-}"    # API key from environment variable
 base_url = "https://api.deepseek.com"  # DeepSeek API base URL
 model = "deepseek-chat"            # deepseek-chat (V3) | deepseek-reasoner (R1)
 max_tokens = 8000                   # Maximum response tokens
+context_window = 64000            # Input context window (tokens); default = the model capability (QUAL-52)
 temperature = 0.3                  # Creativity level
 timeout = 30                       # Per-call timeout (s)
 
@@ -319,6 +320,7 @@ api_key = "${OPENAI_API_KEY:-}"      # API key from environment variable
 base_url = "https://api.openai.com/v1"  # API base URL
 model = "gpt-4o"                   # Model: "gpt-3.5-turbo", "gpt-4o", "gpt-4o-mini"
 max_tokens = 16384                   # Maximum response tokens
+context_window = 128000            # Input context window (tokens); default = the model capability (QUAL-52)
 temperature = 0.3                  # Creativity level (0.0-2.0)
 target_language = "English"       # Target language for translation
 top_p = 1.0                       # Nucleus sampling parameter
@@ -332,6 +334,7 @@ api_key = "${ANTHROPIC_API_KEY:-}"   # API key from environment variable
 base_url = "https://api.anthropic.com"  # API base URL
 model = "claude-haiku-4-5-20251001"  # Model variant (e.g. claude-haiku-4-5-20251001, claude-sonnet-4-6, claude-opus-4-8)
 max_tokens = 8192                   # Maximum response tokens
+context_window = 200000            # Input context window (tokens); default = the model capability (QUAL-52)
 temperature = 0.3                  # Creativity level (0.0-1.0)
 
 # Console LLM Provider — the offline FLOOR (QUAL-15). Deterministic, no network, always available;

@@ -73,20 +73,30 @@ def estimate_tokens(text: str) -> int:
     return len(text.encode("utf-8")) // 4 + 1
 
 
-def input_budget(model: str, reserved_output: int, margin: float = 0.9) -> int:
-    """Max input tokens that still leave room for `reserved_output` in `model`'s context window,
+def context_window_for(model: str, override: Optional[int] = None) -> int:
+    """The input context-window (tokens) for `model`: the config `override` if set, else the model's
+    documented capability. Lets a deployment pin the budget for a custom/unknown model."""
+    if override and override > 0:
+        return int(override)
+    return capabilities_for(model).context_window
+
+
+def input_budget(context_window: int, reserved_output: int, margin: float = 0.9) -> int:
+    """Max input tokens that still leave room for `reserved_output` within `context_window`,
     keeping a `margin` of headroom for the estimate's slack."""
-    usable = int(capabilities_for(model).context_window * margin)
+    usable = int(context_window * margin)
     return max(0, usable - reserved_output)
 
 
 def fit_messages(messages: List[Dict[str, str]], model: str, reserved_output: int,
-                 margin: float = 0.9) -> List[Dict[str, str]]:
-    """Trim oldest non-system messages so the estimated input fits `model`'s context budget (leaving
-    room for `reserved_output`). **System messages and the final message are always kept.** Raises if
-    the kept set still overflows — that means the prompt itself is too big and must be scoped upstream
-    (e.g. the QUAL-50 catalog reduced to the relevant rooms/capabilities), not blindly truncated."""
-    budget = input_budget(model, reserved_output, margin)
+                 margin: float = 0.9, context_window: Optional[int] = None) -> List[Dict[str, str]]:
+    """Trim oldest non-system messages so the estimated input fits the model's context budget (leaving
+    room for `reserved_output`). `context_window` overrides the model's documented window (config).
+    **System messages and the final message are always kept.** Raises if the kept set still overflows —
+    that means the prompt itself is too big and must be scoped upstream (e.g. the QUAL-50 catalog reduced
+    to the relevant rooms/capabilities), not blindly truncated."""
+    cw = context_window_for(model, context_window)
+    budget = input_budget(cw, reserved_output, margin)
 
     def total(msgs: List[Dict[str, str]]) -> int:
         return sum(estimate_tokens(m.get("content", "")) for m in msgs)

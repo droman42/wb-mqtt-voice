@@ -54,6 +54,7 @@ class OpenAILLMProvider(LLMProvider):
         self.base_url = config.get("base_url", "https://api.openai.com/v1")
         self.default_model = config.get("default_model", "gpt-4o-mini")
         self.max_tokens = config.get("max_tokens")  # None -> model max_output (QUAL-52)
+        self.context_window = config.get("context_window")  # None -> model capability (QUAL-52)
         self.temperature = config.get("temperature", 0.3)
         self.timeout = config.get("timeout", 30)  # per-call timeout (s) — never hang offline
     
@@ -159,7 +160,7 @@ class OpenAILLMProvider(LLMProvider):
         model = kwargs.get("model") or self.default_model  # Handle None model parameter
         max_tokens = output_budget(model, kwargs.get("max_tokens", self.max_tokens))
         temperature = kwargs.get("temperature", self.temperature)
-        messages = fit_messages(messages, model, max_tokens)  # QUAL-52: input within context window
+        messages = fit_messages(messages, model, max_tokens, context_window=self.context_window)  # QUAL-52: input within context window
         
         try:
             from openai import AsyncOpenAI  # type: ignore

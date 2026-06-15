@@ -2,7 +2,9 @@
 
 import pytest
 
-from irene.utils.llm_capabilities import estimate_tokens, input_budget, fit_messages
+from irene.utils.llm_capabilities import (
+    estimate_tokens, input_budget, fit_messages, context_window_for,
+)
 
 
 def test_estimate_tokens_is_byte_based_and_conservative_for_cyrillic():
@@ -14,8 +16,14 @@ def test_estimate_tokens_is_byte_based_and_conservative_for_cyrillic():
 
 
 def test_input_budget_reserves_room_for_output():
-    # deepseek context 64000, margin 0.9 → 57600 usable, minus the reserved output.
-    assert input_budget("deepseek-chat", 8000) == int(64_000 * 0.9) - 8000
+    # context 64000, margin 0.9 → 57600 usable, minus the reserved output.
+    assert input_budget(64_000, 8000) == int(64_000 * 0.9) - 8000
+
+
+def test_context_window_from_registry_or_config_override():
+    assert context_window_for("deepseek-chat") == 64_000          # from the model registry
+    assert context_window_for("deepseek-chat", 100_000) == 100_000  # config override wins (custom model)
+    assert context_window_for("some-unknown-model") == 8_192       # conservative fallback
 
 
 def test_fit_messages_passthrough_when_within_budget():

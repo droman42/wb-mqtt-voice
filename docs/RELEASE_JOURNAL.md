@@ -12,6 +12,12 @@ newest entries near the top of each dated section.
 ## Action journal
 
 ### 2026-06-15
+- **QUAL-52 PR2 follow-up — `context_window` in config (you flagged: only the output side was defined).** PR1 put the
+  output budget (`max_tokens` → model max) into config but the input `context_window` lived only in the code registry.
+  Added `context_window` to the LLM provider config + schemas (deepseek 64000 / gpt-4o 128000 / claude 200000) and a
+  `context_window_for(model, override)` resolver; the providers pass it to `fit_messages`, so the budget is now fully
+  config-defined (input + output), defaulting from the registry but overridable for custom models. Suite 982 green,
+  pyright 0, contracts 9/9, config-ui builds (Inv #4).
 - **QUAL-52 PR2 — budget-aware prompting (dependency-free).** Added `estimate_tokens` (**utf-8 bytes/4** — accurate for
   English, conservative for Cyrillic, no tiktoken so the path stays armv7-safe), `input_budget` (context_window × 0.9 −
   reserved_output), and `fit_messages` (trim oldest non-system turns to fit; **always keep system + the final message**;

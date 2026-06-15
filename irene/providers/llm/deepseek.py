@@ -37,6 +37,7 @@ class DeepSeekLLMProvider(LLMProvider):
         self.base_url = config.get("base_url", "https://api.deepseek.com")
         self.default_model = config.get("default_model") or config.get("model") or "deepseek-chat"
         self.max_tokens = config.get("max_tokens")  # None → the model's real max_output (QUAL-52)
+        self.context_window = config.get("context_window")  # None -> model capability (QUAL-52)
         self.temperature = config.get("temperature", 0.3)
         self.timeout = config.get("timeout", 30)  # per-call timeout (s) — never hang offline
 
@@ -83,7 +84,7 @@ class DeepSeekLLMProvider(LLMProvider):
         from openai.types.chat import ChatCompletionMessageParam
         model = kwargs.get("model") or self.default_model
         max_out = output_budget(model, kwargs.get("max_tokens", self.max_tokens))
-        messages = fit_messages(messages, model, max_out)  # QUAL-52: keep input within the context window
+        messages = fit_messages(messages, model, max_out, context_window=self.context_window)  # QUAL-52: keep input within the context window
         client = self._client()
         response = await client.chat.completions.create(
             model=model,
