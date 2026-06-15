@@ -1798,13 +1798,27 @@ _Apply to every remediation task below (from the 4 review docs + QUAL-25/26). So
       (`IntentResult.error_type`, `SpaCyNLUProvider.model_name`, `IntentRegistry._handlers`,
       `IntentComponent.get_system_status`), phase4 contextual-command + assertions. Value already banked:
       **QUAL-21**, **QUAL-22**, text_processor trace fix.
-- [ ] **TEST-7** (P1) — **Rewrite the test suite against the stabilized architecture.** GATED by: ARCH-1..5
-      (structure settled + import-linter) **and** the code reviews (QUAL-8/10/12/14) landing. Replace the
-      pre-refactor suite (which the TEST-1/2 pass kept *running* but not green) with tests written to the hexagon:
-      ports/adapters seams, the unified workflow, and real fixtures (e.g. the localization-asset loader pattern
-      from `test_context_aware_nlu`). Absorbs the coverage goals below (TEST-3/4/5/6) and decides, per failing
-      cluster left by TEST-2, rewrite-vs-delete. Done when: suite is green (or green-modulo-documented-xfail) and
-      coverage is understood/trusted.
+- [~] **TEST-7** (P1) — **DOING 2026-06-15. Gate lifted** (ARCH-1..5 ✓ + QUAL-8/10/12/14 ✓ all `[x]`). Rewrite the
+      test suite against the stabilized architecture; absorbs TEST-2 (the paused suite) + the coverage goals
+      TEST-3/4/5/6/8. **Approach LOCKED with user 2026-06-15 (6 decisions):** (1) **same method as the release-plan
+      new-code** — contract-level unit tests at the ports/seams (`object.__new__`/`SimpleNamespace`, test the
+      off-paths, co-located), smoke (`test_smoke_e2e`) as the e2e backstop; (2) **100% green** (no xfail tail);
+      (3) **delete** stale tests outright; (4) **all clusters in one sweep** (incl. the new-code wiring gaps —
+      `replay_trace`/`voice_runner`/trace wiring); (5) **Phases A+B solo, then a multi-agent workflow** for the bulk
+      rewrite/coverage (C/D); (6) **`pytest-cov` + closing the coverage gap is MANDATORY** (measurement is part of DoD).
+      Triage rule per failing test: behavior gone → delete; behavior live but asserts a drifted internal → rewrite to
+      the port/public contract; test right, code wrong → fix the code (TEST-1/2 banked QUAL-21/22 this way). **Phase A
+      DONE 2026-06-15:** added `pytest-cov` + `pysqlite3-binary` (the runtime CPython 3.11.4 is built without stdlib
+      `_sqlite3`, which coverage needs — mirrored wb-mqtt-bridge's pysqlite3 alias via a committed `sitecustomize.py`
+      + `scripts/install_sqlite_shim.sh`; pinned `.python-version` 3.11.4 locally to stop a 3.12 drift). **Baseline
+      coverage = 45.6% lines (17,546/38,488), 265 modules.** Confirmed the thesis: the request hot-path is the cold
+      zone (`workflow_manager` 20%, `core/components` 20%, `context` 25%, `asr_component` 25%, `nlu_component` 38%,
+      `orchestrator` 41%, `voice_assistant` 48%), while new pure-logic is well-covered (`trace_context` 76%,
+      `trace_input` 89%) but new wiring is thin (`replay_trace` 34%, `voice_runner` 34%). Suite baseline restored at
+      82 failed / 472 passed / 15 skipped (the ±1 is a coverage-perturbed timing benchmark). **NEXT: Phase B** —
+      triage the ~6 failure clusters into a delete/rewrite/fix worklist + risk-rank the cold spine for coverage, then
+      run the workflow for C/D. Done when: 100% green + the Tier-1 cold subsystems covered (risk-based, confirmed by
+      pytest-cov).
 - [ ] **TEST-6** (P2) — _(folded into TEST-7)_ Restore ASR provider-fallback + resampling coverage (the 7 phase7
       tests skipped in TEST-1 called the removed `_handle_sample_rate_mismatch`; feature lives in
       `AudioProcessor.resample_audio_data`).

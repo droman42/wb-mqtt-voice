@@ -169,6 +169,11 @@ text-multilingual = [
 dev = [
     "pytest>=7.0.0",
     "pytest-asyncio>=0.21.0",
+    "pytest-cov>=5.0.0",  # TEST-7: coverage measurement is a mandatory part of the suite rewrite
+    # The runtime CPython here is built WITHOUT the stdlib `_sqlite3` extension, which coverage.py
+    # requires. Mirror wb-mqtt-bridge: ship pysqlite3-binary and alias it onto `sqlite3` (see the
+    # root conftest.py). Self-contained — bundles its own SQLite, no system dependency.
+    "pysqlite3-binary>=0.5.0",
     "black>=22.0.0",
     "isort>=5.0.0",
     "flake8>=4.0.0",

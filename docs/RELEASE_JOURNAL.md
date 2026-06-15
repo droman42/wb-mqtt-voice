@@ -12,6 +12,26 @@ newest entries near the top of each dated section.
 ## Action journal
 
 ### 2026-06-15
+- **TEST-7 kicked off — gate lifted, approach locked, Phase A (coverage tooling + baseline) done.** The TEST-7 gate
+  (ARCH-1..5 + QUAL-8/10/12/14) is fully `[x]`, so the suite rewrite is unblocked. Locked the approach with the user
+  (6 decisions — see the ledger): same contract-level method as the release-plan new code, 100% green, delete stale
+  outright, all clusters in one sweep (incl. the new-code wiring gaps), Phases A+B solo then a multi-agent workflow,
+  and **pytest-cov + closing the gap is mandatory**. **Phase A:** hit an environment wall — the runtime CPython
+  (3.11.4 at /usr/local/bin, shared with wb-mqtt-bridge) is built WITHOUT the stdlib `_sqlite3` extension, which
+  `coverage.py` requires. Investigated the sister project (user's steer): it ships `pysqlite3-binary` and aliases
+  `sys.modules['sqlite3'] = pysqlite3` via a hand-placed `sitecustomize.py` in site-packages. Mirrored it but made it
+  reproducible — committed `sitecustomize.py` (source of truth) + `scripts/install_sqlite_shim.sh` (copies it into the
+  venv's site-packages, where the interpreter auto-imports it at startup, before coverage's plugin-load `import
+  sqlite3`). A root conftest was tried first and rejected — coverage imports sqlite3 too early for it. Along the way
+  the venv had drifted to py3.12 (from a `--python 3.12` probe); restored it to 3.11.4 via the system interpreter,
+  pinned `.python-version` (gitignored, local-only) to prevent re-drift, and re-synced `--all-extras` (CI's setup) to
+  restore spacy/nlu/audio so the full suite collects. Added `pytest-cov` + `pysqlite3-binary` to the `dev` extra
+  (uv.lock +187, additions only — no re-pins). **Baseline measured: 45.6% line coverage (17,546/38,488 across 265
+  modules).** The number confirms the thesis — the request hot-path is the cold zone (`workflow_manager` 20%,
+  `core/components` 20%, `context` 25%, `nlu_component` 38%, `orchestrator` 41%), new pure-logic is well-covered
+  (`trace_context` 76%, `trace_input` 89%), new wiring is thin (`replay_trace`/`voice_runner` 34%). Suite still at its
+  baseline (82 failed / 472 passed / 15 skipped — the ±1 is a coverage-perturbed timing benchmark, not a regression).
+  Next: Phase B triage + risk-ranked worklist, then the workflow.
 - **QUAL-47 (final sweep item) — retired the dead `test_vad_sibilant_fix.py` debug script + its orphaned config.**
   Verified-then-deleted: `tools/test_vad_sibilant_fix.py` was **already broken** — it imported
   `UniversalAudioProcessor` from `workflows.audio_processor`, a class renamed to `VoiceSegmenter` in the ARCH-18
