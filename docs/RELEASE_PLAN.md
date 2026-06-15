@@ -922,9 +922,10 @@ See `docs/review/phase1_architecture_map.md` §5.
       container beside `wb-mqtt-bridge` + `wb-mqtt-ui` — three-container budget ≈ 410–570 MB of 712. **Thesis (revises ARCH-9
       for armv7 only — torch stays on 64-bit):**
       drop torch from the default/armv7 build by (T1) folding **Whisper → sherpa-onnx** (`from_whisper`, same weights,
-      parity; 64-bit-focused — Whisper is barred from WB7 by disk+RAM, vosk-small stays the armv7 ASR), and (T2) a **new
-      `piper` TTS provider** via sherpa `OfflineTts`/VITS (`ru_RU` voices, **direct** on armv7 + **+RUAccent** on 64-bit only —
-      RUAccent/vosk_tts hit the armv7 standalone-onnxruntime wheel wall). **Key finding:** no torch-free Silero TTS exists or
+      parity; 64-bit-focused — Whisper is barred from WB7 by disk+RAM, vosk-small stays the armv7 ASR), and (T2) **two Piper
+      TTS providers** via sherpa `OfflineTts`/VITS (`ru_RU` voices): base **`piper`** (espeak-ng, all envs incl. armv7 — the
+      WB7 TTS) + **`piper_ruaccent`** which **subclasses `piper`** and adds RUAccent stress preprocessing, **x86_64/aarch64
+      only** (RUAccent needs the standalone onnxruntime wheel — armv7 ORT wall; same wall blocks vosk_tts). **Key finding:** no torch-free Silero TTS exists or
       can exist (Silero refuses ONNX export — issue #283; undisclosed Tacotron-lineage; sherpa has no loader) → Piper is the
       replacement, accepting weaker espeak-ng Russian stress (RUAccent closes the gap on 64-bit). (T3) add `armv7l` to the
       provider platform taxonomy + extend CI `dependency_validator --platforms` so any armv7 profile enabling a torch provider

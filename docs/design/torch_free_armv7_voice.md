@@ -76,7 +76,8 @@ sherpa/openWakeWord paths "NO torch").
 | `elevenlabs` | httpx (cloud) | ✅* | needs internet + key, not offline |
 | `vosk_tts` | onnxruntime + 746 MB model | ❌ | no armv7 ORT wheel **and** OOM/disk — aarch64/x86 only |
 | `silero_v3/v4` | torch | ❌ | excluded |
-| **`piper` (new)** | sherpa-onnx runtime | ✅ | recommended offline quality option |
+| **`piper` (new)** | sherpa-onnx runtime | ✅ | base provider — all envs incl. armv7; the WB7 TTS |
+| **`piper_ruaccent` (new)** | `piper` + `ruaccent` (onnxruntime + transformers) | ❌ armv7 | subclasses `piper`, adds RU stress; **x86_64/aarch64 only** (ORT wall) |
 
 ---
 
@@ -137,7 +138,10 @@ is the **64-bit** win (small/medium fit there).
 
 1. **Whisper → sherpa-onnx** as a model option behind the existing `sherpa_onnx` provider. 64-bit-focused. **Agreed.**
 2. **Silero stays torch**, supported on 64-bit installs; **excluded from armv7** by packaging + a validated profile.
-3. **New `piper` TTS provider** via sherpa-onnx `OfflineTts`: **direct** (armv7 + 64-bit) and **+RUAccent** (64-bit only).
+3. **Two Piper TTS providers** via sherpa-onnx `OfflineTts` (not one provider with an optional stage):
+   (a) **`piper`** — plain VITS + espeak-ng phonemization, **all environments incl. armv7** (the WB7 TTS);
+   (b) **`piper_ruaccent`** — **subclasses `piper`**, injects RUAccent stress/ё preprocessing before synth, overriding
+   **only** the text-prep hook; **`x86_64`/`aarch64` only** (RUAccent needs the standalone onnxruntime wheel → armv7 ORT wall).
 4. **armv7 role = satellite-*server* (NOT standalone).** The ESP32 satellites own mic + VAD + voice-trigger + playback;
    WB7's Irene is the back half — ASR/NLU/intent/TTS, `skip_wake_word=True`, **no** server VAD, mic, speaker, or
    `config-ui`. It evolves today's headless `embedded-armv7.toml` (which returns text only) by turning **TTS synthesis
@@ -148,7 +152,12 @@ is the **64-bit** win (small/medium fit there).
 
 - **T1** Whisper-in-sherpa: extend `sherpa_onnx` ASR to load Whisper int8 models (config `model_type`), retire torch
   from `whisper.py` path (or keep `whisper` provider as a 64-bit alias). Verify Russian parity.
-- **T2** New `piper` TTS provider (sherpa `OfflineTts`/VITS); `ru_RU` voice asset; direct + optional RUAccent stage.
+- **T2** **Two** Piper TTS providers (sherpa `OfflineTts`/VITS) + a `ru_RU` voice asset:
+  - **`PiperTTSProvider`** (entry point `piper`) — base; espeak-ng phonemization; `get_platform_support()` = all incl.
+    `armv7l`; deps = the already-shipped sherpa-onnx runtime. This is the WB7 TTS.
+  - **`PiperRuAccentTTSProvider(PiperTTSProvider)`** (entry point `piper_ruaccent`) — overrides **only** the text-prep
+    hook to run RUAccent (stress `+`/ё) before the inherited synth; adds the `ruaccent` dep; `get_platform_support()` =
+    `x86_64`/`aarch64` **only** (armv7 ORT wall). Model load / synth / streaming all inherited from the base.
 - **T3** Platform taxonomy + validation: add `armv7l` to provider `get_platform_support()` taxonomy; extend the CI
   `dependency_validator --platforms` to include armv7 so **any armv7 profile enabling a torch provider fails the build**;
   evolve the `embedded-armv7` profile from headless-ASR-satellite → **ASR+TTS satellite-server** (TTS synthesis on +
@@ -165,3 +174,8 @@ is the **64-bit** win (small/medium fit there).
 Completing T1+T2 (drop torch from the default/armv7 build) is the real resolution for the deferred **torch ×4** and
 **transformers ×1** alerts (and the protobuf/sentencepiece weight) — far cleaner than risky major bumps. Until then
 those alerts stay deferred (low/medium, only reachable via the opt-in ML extras).
+
+**Caveat on transformers:** the new `piper_ruaccent` provider's `ruaccent` dep pulls `transformers` back in (torch-free,
+np-tokenization only) on 64-bit — so `ruaccent` *replaces* `runorm` as the reason transformers exists. The transformers
+alert is **fully** cleared only if `ruaccent` is kept out of the default-CI extra set; the **armv7/default build stays
+transformers-free regardless** (it uses plain `piper`).
