@@ -12,6 +12,13 @@ newest entries near the top of each dated section.
 ## Action journal
 
 ### 2026-06-15
+- **ARCH-24 T3 PR2 — the armv7 build gate (T3 tooling COMPLETE).** `IreneBuildAnalyzer.validate_architecture(config,
+  arch)` reuses the enabled-provider analysis + `get_supported_architectures()` to flag a profile enabling an
+  arch-incapable provider; new `--arch` CLI flag exits nonzero on failure. Wired into `backend-health.yml`
+  (`build_analyzer --config embedded-armv7 --arch armv7l`) — a torch/onnxruntime provider in the WB7 image now fails CI.
+  Verified: embedded-armv7 passes; config-master fails on armv7l (whisper fallback) and passes on x86_64. `test_arch_gate.py`
+  (3). Suite 964 green, pyright 0, contracts 9/9, YAML valid. T3 mechanical work done (taxonomy + gate); the
+  embedded-armv7→satellite-server profile *content* is the BUILD-3 config session, now guarded by the gate.
 - **ARCH-24 T3 PR1 — architecture-support taxonomy.** User chose the explicit-arch-method approach (over markers/hybrid).
   New `EntryPointMetadata.get_supported_architectures()` (default `[x86_64, aarch64, armv7l]`); 8 armv7-incapable providers
   override to `["x86_64","aarch64"]`: silero_v3/v4 + whisper (torch — no armv7 wheel), vosk_tts + piper_ruaccent +

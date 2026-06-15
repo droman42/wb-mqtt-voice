@@ -70,6 +70,11 @@ jobs:
       - name: Provider dependency resolution
         run: uv run python -m irene.tools.dependency_validator --validate-all --platforms linux.ubuntu,linux.alpine
 
+      # ARCH-24 T3: the armv7 satellite profile must not enable a torch / standalone-onnxruntime provider
+      # (no armv7 wheel). Fails the build if it does — keeps the WB7 image torch-free.
+      - name: Architecture gate (armv7 profile is torch-free)
+        run: uv run python -m irene.tools.build_analyzer --config configs/embedded-armv7.toml --arch armv7l
+
       # Full test suite — hard gate (enabled 2026-06-15: TEST-7 greened the suite, 888 passed / 0 failed).
       - name: Tests
         run: uv run python -m pytest irene/tests/ -p no:cacheprovider

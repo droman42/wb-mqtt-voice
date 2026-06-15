@@ -455,7 +455,36 @@ class IreneBuildAnalyzer:
         except Exception as e:
             logger.error(f"Failed to load provider metadata for {namespace}.{provider_name}: {e}")
             return None
-    
+
+    def validate_architecture(self, config_path: str, arch: str) -> List[str]:
+        """ARCH-24 T3 gate: enabled providers in a profile that can't run on `arch`.
+
+        Reuses the standard enabled-provider analysis, then checks each provider's
+        `get_supported_architectures()`. Returns a list of human-readable errors (empty = OK), so an
+        armv7 image can't be built with a torch / standalone-onnxruntime provider.
+        """
+        requirements = self.analyze_runtime_requirements(config_path)
+        errors: List[str] = []
+        for namespace, providers in requirements.enabled_providers.items():
+            if not namespace.startswith("irene.providers."):
+                continue  # components/workflows aren't arch-gated here
+            component = namespace.rsplit(".", 1)[-1]
+            for provider_name in providers:
+                provider_class = self._get_provider_metadata(namespace, provider_name)
+                if provider_class is None:
+                    continue  # unresolved provider is a separate validation concern
+                try:
+                    archs = provider_class.get_supported_architectures()
+                except Exception as e:  # pragma: no cover - defensive
+                    errors.append(f"{component}.{provider_name}: get_supported_architectures() raised: {e}")
+                    continue
+                if arch not in archs:
+                    errors.append(
+                        f"{component} provider '{provider_name}' does not support '{arch}' (supports {archs}) "
+                        f"— remove it from this profile or pick an {arch}-capable provider"
+                    )
+        return errors
+
     def _analyze_providers(self, config: Dict[str, Any], requirements: BuildRequirements):
         """
         Analyze enabled providers from configuration.
@@ -974,11 +1003,17 @@ Examples:
         help="Analyze but don't generate actual commands"
     )
     parser.add_argument(
-        "--verbose", 
+        "--verbose",
         action="store_true",
         help="Enable verbose logging"
     )
-    
+    parser.add_argument(
+        "--arch",
+        choices=["x86_64", "aarch64", "armv7l"],
+        help="Target CPU architecture (ARCH-24 T3): with --config, FAIL if a profile enables a provider "
+             "that does not support this arch (e.g. a torch/onnxruntime provider on armv7l)."
+    )
+
     args = parser.parse_args()
     
     # Setup logging
@@ -1040,7 +1075,18 @@ Examples:
         
         if not args.config:
             parser.error("--config is required unless using --list-profiles or --validate-all-profiles")
-        
+
+        # ARCH-24 T3 gate: fail the build if a profile enables a provider the target arch can't run.
+        if args.arch:
+            arch_errors = analyzer.validate_architecture(args.config, args.arch)
+            if arch_errors:
+                print(f"❌ Architecture gate FAILED for '{args.config}' on {args.arch}:")
+                for err in arch_errors:
+                    print(f"   - {err}")
+                return 1
+            print(f"✅ Architecture gate passed: '{args.config}' is {args.arch}-compatible")
+            return 0
+
         # Analyze specific configuration
         requirements = analyzer.analyze_runtime_requirements(args.config)
         validation = analyzer.validate_build_profile(requirements)

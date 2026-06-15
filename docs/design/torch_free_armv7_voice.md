@@ -233,8 +233,13 @@ verification; standalone needs nothing new.
     `EntryPointMetadata.get_supported_architectures()` (default `[x86_64, aarch64, armv7l]`); 8 armv7-incapable providers
     override to `["x86_64","aarch64"]` — silero_v3/v4 + whisper (torch), vosk_tts + piper_ruaccent + openwakeword
     (standalone onnxruntime), microwakeword + microvad (pymicro). PEP 508 markers stay as the install-time guard.
-    `test_arch_support.py` (13). **PR2** = the gate (`build_analyzer --arch`: an armv7 profile enabling an
-    armv7-unsupported provider fails the build) + CI wiring. **PR3** = the satellite-server profile skeletons.
+    `test_arch_support.py` (13). **PR2 (the gate) — DONE 2026-06-15:** `IreneBuildAnalyzer.validate_architecture(config,
+    arch)` reuses the enabled-provider analysis + `get_supported_architectures()`; new `--arch` CLI flag exits nonzero on
+    failure. Wired into `backend-health.yml` (`build_analyzer --config embedded-armv7 --arch armv7l`) → a torch/onnxruntime
+    provider in the WB7 image **fails CI**. Verified: embedded-armv7 passes, config-master fails on armv7l (whisper
+    fallback) / passes on x86_64. `test_arch_gate.py` (3). **T3 tooling COMPLETE** (taxonomy + gate). The embedded-armv7 →
+    satellite-server profile **content** (TTS on, the piper voice, thresholds) is authored in the **BUILD-3 config session**,
+    where the gate now guards it.
 - **T4 (packaging) → BUILD-3:** **three Docker images, split by architecture** (canonical matrix = **§5**):
   `Dockerfile.x86_64`→**standalone** (torch: Whisper + Silero v4), **NEW `Dockerfile.aarch64`**→**WB8/Pi satellite**
   (sherpa: Whisper-small + Piper+RUAccent), `Dockerfile.armv7`→**WB7 satellite** (sherpa: vosk-small + Piper-direct).
