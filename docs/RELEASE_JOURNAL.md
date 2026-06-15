@@ -32,6 +32,21 @@ newest entries near the top of each dated section.
   (`trace_context` 76%, `trace_input` 89%), new wiring is thin (`replay_trace`/`voice_runner` 34%). Suite still at its
   baseline (82 failed / 472 passed / 15 skipped — the ±1 is a coverage-perturbed timing benchmark, not a regression).
   Next: Phase B triage + risk-ranked worklist, then the workflow.
+- **TEST-3 DONE — fire-and-forget lifecycle coverage.** The action store (`ClientRegistry`, 76%) + the happy
+  launch→complete path were already covered by `test_action_store.py`; the gap was the `IntentHandler` F&F machinery
+  (`handlers/base.py` 45%). Added `test_fire_and_forget_coverage.py` (11 hermetic tests — minimal concrete handler via
+  `object.__new__`, a fresh `ClientRegistry` patched into `get_client_registry`, `asyncio.run`) covering the
+  previously-untested branches: launch registers in the store; completion reaps + records success; **error** → failure
+  history (`error`/`failed_actions`); **cancel** → recorded "cancelled"; **launch-failure** (store raises) → failed
+  metadata with `failed_at_startup`; the positive-timeout monitor is registered then popped+cancelled on completion;
+  `cleanup_timeout_tasks` cancels+clears; metrics `record_action_start`/`record_action_completion`; notification
+  scheduled only when the action is session-owned; and the handler-level `cancel_action` (true/false) + `get_active_actions`.
+  Reconciliation (Invariant #8): the `fire_and_forget_review.md` findings describe the PRE-remediation broken lifecycle —
+  QUAL-9/QUAL-28 rebuilt it on the physical-identity-scoped store, so tests target the current working code, not the old
+  bugs. `handlers/base.py` 45%→52%; overall 52.3%→52.6%; no product bugs surfaced. Suite green at **901 passed** (plain
+  pytest). _Note: one pre-existing timing test (`test_zero_overhead_when_disabled`) is flaky under `--cov` (coverage
+  instrumentation breaks its "zero overhead" assertion) — not a CI concern (the gate is plain pytest), flagged for a
+  possible skip-under-coverage follow-up._
 - **CI Tests gate red on a second real bug (PortAudio/OSError) — surfaced + fixed (user-approved).** With pyright
   green, the newly-enabled Tests gate ran and failed on the GitHub runner (Python 3.11.15) — 3 `test_voice_runner_coverage`
   tests raised `OSError: PortAudio library not found`. Root cause = a **real robustness bug in QUAL-46's voice_runner**:

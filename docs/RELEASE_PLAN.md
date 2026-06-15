@@ -1859,11 +1859,15 @@ _Apply to every remediation task below (from the 4 review docs + QUAL-25/26). So
       (`asr_component.py` 46%; the new test file 98%). Individual ASR providers' model-loading internals stay uncovered
       (smoke/model territory) — out of TEST-6's fallback+resampling scope. _Original:_ Restore ASR provider-fallback +
       resampling coverage (the 7 phase7 tests skipped in TEST-1 called the removed `_handle_sample_rate_mismatch`).
-- [ ] **TEST-3** [FAF] (P2) — _(coverage goal for TEST-7)_ Fire-and-forget lifecycle coverage (launch → completion
-      → error → cleanup → context propagation). Scope after QUAL-8. **PARTIAL after TEST-7 Phase D** — the F&F *launch*
-      seam is covered (`handlers/base` 45% incl. the generic `action_launched`; `workflow_manager` save-trace helpers),
-      but the full *lifecycle* (completion/error/cleanup of the action store, deferred-result context propagation) is
-      not yet exercised. Residual coverage task — kept open.
+- [x] **TEST-3** [FAF] (P2) — **DONE 2026-06-15.** Fire-and-forget lifecycle coverage. The store + happy launch→complete
+      path were already covered (`test_action_store.py`, `client_registry` 76%); added `test_fire_and_forget_coverage.py`
+      (11 tests) for the previously-uncovered `IntentHandler` F&F machinery: launch-registers, completion-reaps-and-records-
+      success, **error** → failure history, **cancel** → "cancelled", **launch-failure** → failed metadata, timeout-monitor
+      register+reap, `cleanup_timeout_tasks`, metrics start/completion, notification scheduling (owned vs no-session), and
+      the handler `cancel_action`/`get_active_actions`. **`handlers/base.py` 45%→52%** (and the whole F&F lifecycle
+      launch→complete→error→cancel→cleanup is now exercised). Hermetic (object.__new__ handler, fresh patched
+      ClientRegistry, asyncio.run). No product bugs surfaced. The deferred-result *delivery routing* through the
+      OutputManager (ARCH-15) stays integration/smoke-level. Suite green (901 passed, plain pytest).
 - [ ] **TEST-4** [PEX] (P1) — _(coverage goal for TEST-7)_ Parameter-extraction coverage (user-flagged as key):
       the 8 ParameterTypes, the 4 entity resolvers, pattern matching; rebuild around `test_parameter_schema_unification`/
       `test_context_aware_nlu`/`test_cascading_nlu`/`test_web_api_parameter_schemas`. **PARTIAL after TEST-7 Phase C/D** —
