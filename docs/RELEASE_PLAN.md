@@ -105,6 +105,7 @@ Living findings behind the tasks (Invariant #5). `[x]` = exists; others are prod
 | `docs/design/streaming_tts.md` (DRAFT 2026-06-14) | producer twin of ARCH-20 — streaming TTS synthesis + output-seam delivery unification: `synthesize_to_stream` port + base simulation/native overrides, remote `AudioSink` OutputPort, collapse the 3 fragmented playout paths, retire PR-4's parse_wav bridge | ARCH-21 |
 | `docs/design/esp32_satellite.md` (DRAFT 2026-06-14) | **consolidated** ESP32 voice-satellite design — supersedes `ws_esp32_transport.md`, folds `esp32_wakeword_review.md` + `onnx §10/11` + ARCH-21; D-1..D-18 (device shape, wire protocol in+reply, micro stack, models/push, identity/multi-room, provisioning/CSR/OTA); backend plan §12 | ARCH-22 |
 | `config-ui/docs/donation_editor_ux.md` | human-friendly donations editor design | UI-1/2/3 |
+| `docs/review/test7_triage.md` (2026-06-15) | TEST-7 Phase-B worklist — 82-failure triage (delete/rewrite/fix) + risk-ranked coverage tiers + fix-code suspects | TEST-7 ✓ |
 
 ---
 
