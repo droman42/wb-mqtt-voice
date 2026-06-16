@@ -21,6 +21,7 @@ from typing import Optional, List
 from ..config.models import CoreConfig
 from ..core.session_manager import SessionManager
 from .base import BaseRunner, RunnerConfig
+from .web_server import WebServerMixin
 
 
 logger = logging.getLogger(__name__)
@@ -55,49 +56,47 @@ def list_audio_devices():
     print_audio_devices()
 
 
-class VoiceRunner(BaseRunner):
+class VoiceRunner(WebServerMixin, BaseRunner):
     """
-    Voice Runner - the full voice-assistant pipeline from a local microphone.
+    Voice Runner - the full voice-assistant pipeline from a local microphone, **plus the web API**.
 
-    This runner ALWAYS uses microphone input only, regardless of config file settings.
-    It overrides any input configuration to ensure only microphone input is enabled.
-
-    Everything else is **config-driven**: the ASR engine is `[asr] default_provider` (no hardcoded
-    model), wake word runs if `voice_trigger` is configured, and VAD segments the stream. The runner
-    validates the config is coherent for a microphone pipeline and delegates to the component system.
-    Now using BaseRunner for unified patterns.
+    Microphone is the primary input; the FastAPI server (WebServerMixin) runs alongside it so the
+    standalone also exposes REST/WS (config-ui, control, the reply channel). Everything else is
+    **config-driven**: the ASR engine is `[asr] default_provider` (no hardcoded model), wake word runs
+    if `voice_trigger` is configured, and VAD segments the stream.
     """
 
     def __init__(self):
         runner_config = RunnerConfig(
             name="Voice",
-            description="Voice assistant mode — microphone input, config-driven ASR",
+            description="Voice assistant mode — microphone input + web API, config-driven ASR",
             requires_config_file=True,
             supports_interactive=False,
             required_dependencies=["sounddevice"]
         )
         super().__init__(runner_config)
-    
+        self._init_web_server_state()
+
     def _add_runner_arguments(self, parser: argparse.ArgumentParser) -> None:
-        """Add VOSK-specific command line arguments"""
-        # Utility options
+        """Voice utility option + the shared web-server args (the standalone serves web too)."""
         parser.add_argument(
             "--list-devices",
             action="store_true",
             help="List available audio devices and exit"
         )
+        self._add_web_server_arguments(parser)
     
     def _get_usage_examples(self) -> str:
         """Get usage examples for the voice runner"""
         return """
 Examples:
-  %(prog)s                           # Use configuration from config.toml (microphone input only)
-  %(prog)s --config my-config.toml   # Use specific configuration file (microphone input only)
+  %(prog)s                           # Microphone pipeline + web API (host/port from config or 6000)
+  %(prog)s --config my-config.toml   # Use a specific configuration file
+  %(prog)s --host 0.0.0.0 --port 6000 # Bind the web API explicitly
   %(prog)s --list-devices            # List available audio devices
-  %(prog)s --check-deps              # Check microphone-capture dependency
 
-Note: the voice runner always uses microphone input only, regardless of config file settings.
-The ASR engine is whatever [asr] default_provider selects — there is no hardcoded model.
+Note: microphone is the primary input; the web API (REST/WS) runs alongside it. The ASR engine is
+whatever [asr] default_provider selects — there is no hardcoded model.
         """
 
     async def _check_dependencies(self, args: argparse.Namespace) -> bool:
@@ -124,15 +123,18 @@ The ASR engine is whatever [asr] default_provider selects — there is no hardco
         return None
     
     async def _modify_config_for_runner(self, config: CoreConfig, args: argparse.Namespace) -> CoreConfig:
-        """Force the microphone-only input + ensure the voice stack is on (model-agnostic)."""
-        # The voice runner ALWAYS forces microphone-only input, overriding the config file.
+        """Force microphone input + ensure the voice stack is on, and ALSO enable the web API so the
+        standalone serves REST/WS alongside the mic (model-agnostic)."""
+        # Microphone is the primary input; web is enabled too (the server runs alongside).
         config.inputs.microphone = True
-        config.inputs.web = False
+        config.inputs.web = True
         config.inputs.cli = False
         config.inputs.default_input = "microphone"
 
-        # Enable microphone system capability
+        # Enable microphone system capability + the web API service
         config.system.microphone_enabled = True
+        config.system.web_api_enabled = True
+        self._resolve_web_port(config, args)
 
         # Ensure the voice stack components are on (the ASR *provider* stays config-driven).
         config.components.asr = True            # speech recognition (engine = [asr] default_provider)
@@ -229,12 +231,19 @@ preload_models = true
         # Start the audio workflow (with intelligent wake-word handling)
         await self._start_voice_audio_workflow()
 
+        # Build the web API alongside the mic pipeline (degrade to mic-only if fastapi/uvicorn absent).
+        try:
+            await self._setup_web_server(args)
+        except Exception as e:
+            logger.warning(f"⚠️ Web API unavailable, running microphone-only: {e}")
+            self.app = None
+
         if not args.quiet:
             asr_provider = getattr(getattr(self.core, "config", None), "asr", None)
             provider_name = getattr(asr_provider, "default_provider", "?") if asr_provider else "?"
-            print(f"🎤 Voice assistant active (microphone input only, ASR = {provider_name})")
+            web = f" + web API on {args.host}:{args.port}" if self.app else ""
+            print(f"🎤 Voice assistant active (microphone, ASR = {provider_name}){web}")
             print(f"   Microphone → VAD → [wake word] → ASR → Intent processing")
-            print("💻 Input mode: Microphone only (other inputs disabled)")
             print("   Press Ctrl+C to stop")
             print("=" * 60)
 
@@ -312,14 +321,15 @@ preload_models = true
             raise
 
     async def _execute_runner_logic(self, args: argparse.Namespace) -> int:
-        """Execute voice runner logic"""
+        """Run the web server (blocks, keeping the process alive) while the mic workflow — already
+        started in _post_core_setup — runs in the background on the same loop. With no web server
+        (deps absent), fall back to an idle loop driven purely by the mic pipeline."""
         try:
-            # The audio workflow is already running in _start_voice_audio_workflow()
-            # Just keep the system running while processing audio
+            if self.app:
+                return await self._start_server(args)
             while self.core and self.core.is_running:
                 await asyncio.sleep(1.0)
             return 0
-
         except KeyboardInterrupt:
             if not args.quiet:
                 print("\n\n🛑 Voice assistant stopped")

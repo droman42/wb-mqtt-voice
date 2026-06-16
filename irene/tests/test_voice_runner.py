@@ -33,11 +33,12 @@ def _config(*, asr_provider="whisper", providers=None, asr_enabled=True, compone
 
 
 class TestModifyConfig(unittest.TestCase):
-    def test_forces_mic_only_and_voice_stack_incl_vad(self):
+    def test_forces_mic_primary_plus_web_and_voice_stack_incl_vad(self):
         cfg = _config()
         out = asyncio.run(_runner()._modify_config_for_runner(cfg, SimpleNamespace()))
         self.assertTrue(out.inputs.microphone)
-        self.assertFalse(out.inputs.web)
+        self.assertTrue(out.inputs.web)          # the standalone serves the web API alongside the mic
+        self.assertTrue(out.system.web_api_enabled)
         self.assertFalse(out.inputs.cli)
         self.assertEqual(out.inputs.default_input, "microphone")
         self.assertTrue(out.system.microphone_enabled)

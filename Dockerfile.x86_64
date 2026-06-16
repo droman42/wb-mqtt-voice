@@ -95,7 +95,6 @@ ENV IRENE_CONFIG_FILE=/app/runtime-config.toml
 ENV IRENE_ASSETS_ROOT=/app/assets
 ENV PYTHONPATH=/app PYTHONUNBUFFERED=1
 
-# Standalone: voice_runner = the local mic pipeline (needs `--device /dev/snd` at run time).
-# (The web API alongside the mic — `--host`/`--port` — lands with the voice_runner web change.)
-CMD ["python", "-m", "irene.runners.voice_runner"]
+# Standalone: voice_runner = local mic pipeline + the web API (needs `--device /dev/snd` at run time).
+CMD ["python", "-m", "irene.runners.voice_runner", "--host", "0.0.0.0", "--port", "6000"]
 EXPOSE 6000
