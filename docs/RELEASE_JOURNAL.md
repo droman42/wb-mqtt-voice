@@ -12,6 +12,16 @@ newest entries near the top of each dated section.
 ## Action journal
 
 ### 2026-06-16
+- **ARCH-10 closed (implementation); WB7/WB8 hardware bring-up split out as ARCH-25.** With the streaming-endpoint
+  sliver landed, ARCH-10's software scope is 100% complete (all PR slices, the VAD seam, the ESP32 streaming endpoint —
+  all green). The only thing it still carried was the WB7/WB8 **on-device re-validation**, which ARCH-10 was also the
+  named convergence point for (ARCH-24/BUILD-3, QUAL-19/20 all defer their hardware verification "to ARCH-10
+  completion"). Rather than hold the whole INFER implementation open behind a hardware pass — or close it and orphan
+  that obligation — split the hardware work into a dedicated **ARCH-25** (`[release]`, satellite hardware bring-up:
+  boot, ASR RTF/latency, on-device streaming-endpoint validation, TTS reply, aarch64 wake-word) and repointed every
+  "stays with ARCH-10" reference (ARCH-23 T4, the ARCH-24 + BUILD-3 closures, QUAL-19, QUAL-20) at it. ARCH-10 is now
+  `[x]`; ARCH-25 gates Definition-of-release item #1. Net: the inference-layer *implementation* reads as done; the
+  hardware obligation has an explicit, accurately-named home instead of hiding inside a `[~]`.
 - **ARCH-10 — ESP32 server-authoritative streaming-endpoint built + seam-tested (device-validation hardware-gated).**
   Wired the no-VAD `/ws/audio` path so the ASR *model* marks end-of-utterance (sherpa `OnlineRecognizer`), for the
   always-on / background-noise / TV case where the device can't endpoint. The ASR port gained a typed

@@ -347,7 +347,9 @@ See `docs/review/phase1_architecture_map.md` §5.
       win); **wake-word consolidation** (sherpa KWS vs openWakeWord/microWakeWord — intersects **QUAL-19/20
       [ESP32]**); config model + Invariant #4; dependency/image + armv7 impact of the sherpa-onnx wheel.
       Intersects ASR/TTS providers, ASSET (model zoo/format), ARCH-4 (ports). → `docs/design/onnx_inference_layer.md`.
-- [~] **ARCH-10** [INFER] (P-TBD) — Implement per ARCH-9, sliced PR-1..5 (design §12). **PR-1/2/3/4 DONE 2026-06-04**
+- [x] **ARCH-10** [INFER] — **DONE (implementation) 2026-06-16.** All PR slices + the ESP32 streaming-endpoint are
+      code-complete; the WB7/WB8 **on-device re-validation** this task used to carry is now its own item, **ARCH-25**
+      (satellite hardware bring-up). Implement per ARCH-9, sliced PR-1..5 (design §12). **PR-1/2/3/4 DONE 2026-06-04**
       (`6e1a88a`, `b373633`, `4902438`, `b5dd978`): (PR-1/2/3) `sherpa_onnx` ASR provider alongside vosk/whisper —
       **three families on one runtime via `model_type`**: `vosk-transducer` (`from_transducer`) + `whisper`
       (`from_whisper`, no joiner) + `vosk-streaming` (`OnlineRecognizer`, real incremental `transcribe_stream` w/ endpoint
@@ -374,7 +376,7 @@ See `docs/review/phase1_architecture_map.md` §5.
       `get_platform_dependencies` is a runtime safety net, owned really by the audio-I/O providers.) Wheel
       matrix verified: sherpa works on armv7/x86_64/aarch64/win/macos; pymicro-wakeword on all but armv7;
       pymicro-vad on Linux x86_64/aarch64 only (extras now carry honest markers). WB7 hardware re-validation
-      deferred to ARCH-10 completion (user).
+      → **ARCH-25** (satellite hardware bring-up; user/hardware-gated).
       Build/Docker corrections = BUILD-5/3.
       **★ OWNS the ESP32 streaming-endpoint (ARCH-22 #3 / D-6, deferred here 2026-06-14) — BUILT + seam-tested 2026-06-16,
       device-validation hardware-gated:** a **new no-VAD streaming path** for `/ws/audio` that feeds the configured ASR's
@@ -389,7 +391,7 @@ See `docs/review/phase1_architecture_map.md` §5.
       Intent → Response, same tail as the batch path; ASR just runs at the edge instead of inside the workflow). No
       wire-contract break — `{"type":"end"}` still honored as a hard finalize; non-streaming ASR falls through to the batch
       floor. 4 seam tests (fake streaming ASR) green; suite 1007, pyright 0, 9/9 contracts. **Remaining:** real endpoint
-      RTF/latency validation on the WB7 (the deferred hardware re-val). _Note:_ in streaming mode ASR runs at the adapter,
+      RTF/latency validation on the WB7 → **ARCH-25**. _Note:_ in streaming mode ASR runs at the adapter,
       so the request traces as a **text** input — no per-provider ASR-stage trace for these utterances (matters to QUAL-53).
       The accumulate-until-`end` + batch-ASR path in `/ws/audio` stays the permanent floor. See `esp32_satellite.md`
       §4.4/§12.
@@ -849,8 +851,8 @@ See `docs/review/phase1_architecture_map.md` §5.
       ledger items): T1 WS transport+wire protocol (ARCH-6 input ✓ + QUAL-45 end-of-utterance + ARCH-21 reply-to-device
       device-half + capability declaration); T2 on-device audio I/O + **hardware selection** (mic, speaker+amp) + the absent
       playback path; T3 microWakeWord+microVAD "micro" stack (QUAL-19/20 — same `.tflite` artifact device+server); T4
-      inference + models (ARCH-9/10 WB7-satellite-vs-standalone split, model storage/format/**push**, close ARCH-10 ESP32
-      piece + WB7 re-validation); T5 identity + multi-room (ARCH-6/QUAL-28); T6 provisioning + lifecycle [**T-A**: WiFi, certs/
+      inference + models (ARCH-9/10 WB7-satellite-vs-standalone split, model storage/format/**push**; ARCH-10 ESP32
+      streaming piece done, WB7 re-validation → ARCH-25); T5 identity + multi-room (ARCH-6/QUAL-28); T6 provisioning + lifecycle [**T-A**: WiFi, certs/
       mTLS, OTA config-preserving, model push]; T7 backend cross-cutting [**T-B** voice-confirmation of actuation, depends
       ARCH-8; + device-half resolver ownership note → ARCH-7/QUAL-35, not re-opened here]. **Closes/absorbs on completion:**
       QUAL-45 (input+output protocol), ARCH-21 reply-channel device-half handoff, the ESP32 pieces of ARCH-6/ARCH-9/ARCH-10.
@@ -887,7 +889,7 @@ See `docs/review/phase1_architecture_map.md` §5.
       (the three baked target configs — `embedded-armv7` / `embedded-aarch64` / `standalone-x86_64`), **T5** (the shared
       `inference_policy` / `torch_model_cache` sherpa helpers, with tests). The three images build green on GHCR
       (packaging = **BUILD-3**). **Sole remainder = on-device verification (RU parity + A53/A7 RTF + boot), hardware-gated
-      — owned by ARCH-10's WB7/WB8 hardware re-validation and the Definition-of-release gate, NOT open engineering scope.**
+      — owned by ARCH-25's WB7/WB8 hardware re-validation and the Definition-of-release gate, NOT open engineering scope.**
       _Original analysis below._ **Torch-free inference & the armv7 voice stack.** Research/analysis
       session **DONE 2026-06-15** (no code); deliverable **`docs/design/torch_free_armv7_voice.md`** + the real WB7 ground
       truth (SSH'd 192.168.110.250: Cortex-A7 quad armv7l, 1 GB RAM — **~712 MB available after SprutHub was stopped+disabled
@@ -917,6 +919,18 @@ See `docs/review/phase1_architecture_map.md` §5.
       glibc 2.31/Cortex-A7 and exposes both `OfflineRecognizer` and `OfflineTts`/`OfflineTtsVitsModelConfig` (Piper) — the
       one-engine premise holds. Completing T1+T2 is the clean resolution for the deferred **torch ×4 / transformers ×1**
       Dependabot alerts (commits 05aa763/4e05a38) — no risky major bumps. **No code until scheduled + green-lit.**
+- [ ] **ARCH-25** [INFER][HW] (P-TBD) `[release]` — **Satellite hardware bring-up — WB7 (armv7) + WB8.5 (aarch64)
+      on-device re-validation.** The single convergence point for the hardware-gated verification the software tasks defer
+      here (split out of **ARCH-10** 2026-06-16, now implementation-complete). Deploy the `embedded-armv7` /
+      `embedded-aarch64` images (**BUILD-3**) on the real boxes and confirm the satellite stack boots and serves
+      end-to-end: **(1)** container boots, web API on :6000, baked config + mounted assets-root resolve; **(2)** sherpa-onnx
+      ASR runs at acceptable **RTF/latency** on the A7/A53 (vosk-small on WB7, whisper-small on WB8.5) with RU parity;
+      **(3)** the **ESP32 server-authoritative streaming endpoint** (ARCH-10, built + seam-tested) validates on device —
+      real `OnlineRecognizer` endpoint RTF/latency over `/ws/audio` `mode:"streaming"`; **(4)** Piper / `piper_ruaccent`
+      TTS synthesis + the SPEECH reply rides back to the ESP32 over the reply channel; **(5)** wake-word/microVAD `.tflite`
+      coverage on aarch64 (QUAL-19/20). Absorbs the boot / on-device remainders that **ARCH-24** + **BUILD-3** point here,
+      and gates **Definition-of-release item #1**. User/hardware-gated — no CI surrogate. Refs:
+      `torch_free_armv7_voice.md`, `esp32_satellite.md` §4.4/§12, BUILD-3, ARCH-10.
 
 ### Code Quality & Review (QUAL)
 - [x] **QUAL-1** — Phase-0 static baseline (ruff/pyright/vulture/validators/import-graph). → `docs/review/phase0_static_baseline.md` (6e39886)
@@ -1283,7 +1297,7 @@ See `docs/review/phase1_architecture_map.md` §5.
       TODO11 closed; **(8)** real runtime tests (microWakeWord detect/alias/silence, WakeWordSpec parse + schema-items,
       microVAD seam). User docs updated: `voice-trigger.md` (rewrite), `vad.md` (microvad), `howto-new-model.md` (VAD
       seam). **Build-time verify (open):** the `pymicro-*` wheels import + detect on x86 here; confirm
-      `libtensorflowlite_c` coverage on aarch64 at the BUILD-3 image stage. WB7 hw re-val stays with ARCH-10. _Original
+      `libtensorflowlite_c` coverage on aarch64 at the BUILD-3 image stage. WB7 hw re-val stays with ARCH-25. _Original
       spec below._ **Act on QUAL-19 — wake-word + microVAD rebuild (redefined 2026-06-09;
       subsumes ARCH-10 PR-5).** 64-bit-only (armv7 wakes on-device). Per `esp32_wakeword_review.md` "Agreed plan":
       **(1)** backend `microwakeword` = thin wrapper over **`pymicro-wakeword`** (delete the np.random `_extract_features`
@@ -1297,7 +1311,7 @@ See `docs/review/phase1_architecture_map.md` §5.
       (no server wake provider; on-device); cut in-repo training refs + reconcile ESP32 docs; **(7)** assets =
       deployment-supplied custom models (optional `from_builtin` English dev quick-start), close TODO11; **(8)** tests
       (builtin-model detection + `from_config` custom smoke + microVAD seam). **Verify at build:** `libtensorflowlite_c`
-      wheel platform coverage (x86_64/aarch64). WB7 hw re-val stays with ARCH-10 completion.
+      wheel platform coverage (x86_64/aarch64). WB7 hw re-val stays with ARCH-25.
 - [x] **QUAL-21** (P1) — **Prod bug (`ComponentConfig` field drift) — RESOLVED BY REMOVAL. DONE 2026-06-03.** The
       `irene-settings` Gradio runner (`settings_runner.py`, 462 LOC) constructed `ComponentConfig(audio_output=…,
       microphone=…, web_api=…)` — fields that no longer exist (mic/web moved to `config.inputs.*` /
@@ -2080,7 +2094,7 @@ _Apply to every remediation task below (from the 4 review docs + QUAL-25/26). So
       configs baked, the whole `assets/` tree externalized as the mounted assets-root, all runners serve the web API
       alongside their primary input (shared `WebServerMixin`, entrypoint dropped), spaCy model wheels trimmed per profile,
       and the user-facing `docs/guides/build-docker.md` rewritten (Invariant #10). **Sole remainder — container boots on
-      real hardware — IS the Definition-of-release item #1 gate (ARCH-10-owned WB7/WB8 re-validation), tracked there, not
+      real hardware — IS the Definition-of-release item #1 gate (ARCH-25-owned WB7/WB8 re-validation), tracked there, not
       as open BUILD-3 scope.** _Original scope below._ **SCOPE EXPANDED 2026-06-15 — now the packaging thread of ARCH-24** (the architecture has settled,
       so image contents are decidable). **Three image targets, each = one role + one config + one manually-triggerable
       (`workflow_dispatch`) buildx→GHCR workflow** (mirroring the bridge's `v<date>-<sha>`+`latest` tagging):
