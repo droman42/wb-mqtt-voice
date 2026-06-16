@@ -1,0 +1,356 @@
+# ============================================================
+# IRENE — WB8.5 / Pi (aarch64) SATELLITE-SERVER  (ARCH-24 / BUILD-3)
+# ============================================================
+# Same role as the WB7 (armv7) satellite — the BACK HALF of the pipeline (ASR → NLU → intent → TTS);
+# the ESP32 owns mic capture, VAD, wake-word and playback. Difference: aarch64 has 4 GB and no ORT
+# wall, so it runs the BIGGER torch-free models the WB7 can't fit:
+#   ASR = sherpa_onnx + whisper-small  (vs WB7's vosk-small)
+#   TTS = piper_ruaccent (RUAccent Russian stress)  (vs WB7's plain piper)
+#   NLU = keyword → spaCy(small) → llm  (spaCy has 64-bit wheels; the WB7 cannot run it)
+# torch *could* run on aarch64 (wheels exist) but is DELIBERATELY excluded (footprint + A53 latency) —
+# this stays the torch-free sherpa stack, just with bigger models. Canonical matrix: §5 of
+# docs/design/torch_free_armv7_voice.md.
+#
+# Baked default config for the aarch64 image. WB8.5 = Allwinner T507, quad Cortex-A53 @ 1.5 GHz, 4 GB.
+#
+# BUILD-TIME LEAN-DOWN (once stable / traces no longer needed): set components.monitoring = false and
+# components.nlu_analysis = false (and drop their sections) to reclaim RAM.
+
+name = "Irene"
+version = "15.0.0"
+debug = false
+log_level = "INFO"
+
+language = "ru"
+max_concurrent_commands = 10
+command_timeout_seconds = 30.0
+context_timeout_minutes = 30
+
+# ============================================================
+# SYSTEM CAPABILITIES
+# ============================================================
+[system]
+microphone_enabled = false      # ESP32 captures + gates audio (no server VAD)
+audio_playback_enabled = false  # no local speaker — TTS reply rides the output seam
+web_api_enabled = true
+web_port = 8000
+metrics_enabled = false
+metrics_port = 9090
+
+# ============================================================
+# INPUT SOURCES
+# ============================================================
+[inputs]
+microphone = false
+web = true
+cli = false
+default_input = "web"
+
+[inputs.web_config]
+enabled = true
+websocket_enabled = true
+rest_api_enabled = true
+
+# ============================================================
+# COMPONENT ENABLEMENT
+# ============================================================
+[components]
+asr = true                      # sherpa_onnx (whisper-small)
+nlu = true                      # keyword → spaCy → llm cascade
+intent_system = true
+tts = true                      # piper_ruaccent
+llm = true                      # NLU classifier fallback + conversation (deepseek)
+text_processor = true
+audio = false                   # no local speaker — TTS reply rides the output seam
+voice_trigger = false           # ESP32 owns wake-word
+configuration = true
+monitoring = true               # kept for traces (see build-time lean-down)
+nlu_analysis = true             # kept for traces (see build-time lean-down)
+
+# ============================================================
+# ASR — sherpa-onnx + Whisper-small (4 GB fits it; the WB7 cannot)
+# ============================================================
+[asr]
+enabled = true
+default_provider = "sherpa_onnx"
+fallback_providers = []
+
+[asr.providers.sherpa_onnx]
+enabled = true
+model = "whisper-small"            # multilingual Whisper int8 pack (T1) — better RU than vosk-small
+model_type = "whisper"
+default_language = "ru"
+sample_rate = 16000
+num_threads = 4                    # all 4 A53 cores — whisper-small is heavy; best RTF on this SoC
+decoding_method = "greedy_search"
+preload_models = true              # pay the graph-init at boot, off the first-utterance path
+
+# ============================================================
+# TTS — Piper + RUAccent (Russian stress); plain piper fallback
+# ============================================================
+[tts]
+enabled = true
+default_provider = "piper_ruaccent"
+fallback_providers = ["piper", "console"]   # degrade to plain Piper (no accent), then console
+
+[tts.providers.piper_ruaccent]
+enabled = true
+voice = "irina"                    # ru_RU female (best)
+speaker_id = 0
+speed = 1.0
+num_threads = 0                    # 0 = auto → min(4,cpu) on 64-bit
+preload_models = true
+omograph_model_size = "turbo"      # RUAccent homograph model: "turbo" (fast) | "tiny" | "big"
+use_dictionary = true              # RUAccent stress dictionary
+
+[tts.providers.piper]
+enabled = true                     # fallback: plain Piper (espeak-ng stress, no RUAccent)
+voice = "irina"
+speaker_id = 0
+speed = 1.0
+num_threads = 0
+preload_models = false             # fallback only — don't pay its boot cost unless used
+
+[tts.providers.console]
+enabled = true                     # last-resort text output
+color = "blue"
+style = "console"
+format = "txt"
+
+# ============================================================
+# AUDIO — DISABLED (no local speaker). TTS reply rides the output seam.
+# ============================================================
+[audio]
+enabled = false
+
+# ============================================================
+# LLM — deepseek (NLU classifier fallback + conversation); console floor
+# Requires DEEPSEEK_API_KEY at runtime; degrades gracefully offline.
+# ============================================================
+[llm]
+enabled = true
+default_provider = "deepseek"
+fallback_providers = ["console"]
+
+[llm.providers.deepseek]
+enabled = true
+api_key = "${DEEPSEEK_API_KEY:-}"
+base_url = "https://api.deepseek.com"
+model = "deepseek-chat"
+max_tokens = 8000
+context_window = 64000
+timeout = 30
+
+[llm.providers.console]
+enabled = true
+
+# ============================================================
+# VOICE TRIGGER — off (ESP32 wakes on-device)
+# ============================================================
+[voice_trigger]
+enabled = false
+confidence_threshold = 0.8
+buffer_seconds = 1.0
+timeout_seconds = 5.0
+
+# ============================================================
+# VAD — off (no local mic; the ESP32 delivers bounded utterances)
+# ============================================================
+[vad]
+enabled = false
+default_provider = "energy"
+
+# ============================================================
+# NLU — keyword → spaCy(small) → llm cascade
+# ============================================================
+[nlu]
+enabled = true
+default_provider = "hybrid_keyword_matcher"
+confidence_threshold = 0.7
+fallback_intent = "conversation.general"
+provider_cascade_order = ["hybrid_keyword_matcher", "spacy_nlu", "llm"]
+max_cascade_attempts = 4
+cascade_timeout_ms = 200
+cache_recognition_results = false
+cache_ttl_seconds = 300
+auto_detect_language = true
+language_detection_confidence_threshold = 0.8
+persist_language_preference = true
+
+[nlu.providers.hybrid_keyword_matcher]
+enabled = true
+confidence_threshold = 0.7
+fuzzy_enabled = true
+fuzzy_threshold = 0.8
+pattern_confidence = 0.9
+case_sensitive = false
+normalize_unicode = true
+cache_fuzzy_results = true
+max_fuzzy_keywords_per_intent = 50
+min_pattern_length = 2
+
+[nlu.providers.spacy_nlu]
+enabled = true                     # 64-bit deterministic tier (the WB7 can't run this)
+confidence_threshold = 0.7
+entity_types = ["PERSON", "ORG", "GPE", "DATE", "TIME", "MONEY", "QUANTITY"]
+
+[nlu.providers.spacy_nlu.language_preferences]
+ru = ["ru_core_news_sm"]           # SMALL model only — keeps the image/RAM footprint down
+en = ["en_core_web_sm"]
+
+[nlu.providers.llm]
+enabled = true                     # last-resort classifier for genuine fuzz (QUAL-50/51)
+confidence_threshold = 0.7
+max_phrases_per_intent = 3
+
+# ============================================================
+# TEXT PROCESSING
+# ============================================================
+[text_processor]
+enabled = true
+stages = ["asr_output", "tts_input", "command_input", "general"]
+
+# ============================================================
+# INTENT SYSTEM (essential)
+# ============================================================
+[intent_system]
+enabled = true
+confidence_threshold = 0.7
+fallback_intent = "conversation.general"
+
+[intent_system.handlers]
+enabled = ["conversation", "greetings", "timer", "datetime", "system", "text_enhancement_handler"]
+disabled = []
+auto_discover = true
+discovery_paths = ["irene.intents.handlers"]
+
+[intent_system.handlers.asset_validation]
+strict_mode = true
+validate_method_existence = true
+validate_spacy_patterns = false
+validate_json_schema = true
+
+[intent_system.handlers.conversation]
+session_timeout = 1800
+max_sessions = 50
+max_context_length = 10
+default_conversation_confidence = 0.6
+
+[intent_system.handlers.timer]
+min_seconds = 1
+max_seconds = 86400
+
+[intent_system.handlers.datetime]
+timezone = ""
+date_format = "%Y-%m-%d"
+time_format = "%H:%M:%S"
+
+[intent_system.handlers.greetings]
+personalized = true
+context_aware = true
+
+[intent_system.handlers.system]
+allow_shutdown = false
+allow_restart = false
+info_detail_level = "basic"
+
+# ============================================================
+# MONITORING — kept for traces (disable at build time once stable; see header)
+# ============================================================
+[monitoring]
+enabled = true
+metrics_enabled = true
+dashboard_enabled = false
+notifications_enabled = false
+debug_tools_enabled = true
+memory_management_enabled = true
+notifications_default_channel = "log"
+metrics_monitoring_interval = 300
+metrics_retention_hours = 24
+memory_cleanup_interval = 1800
+memory_aggressive_cleanup = false
+debug_auto_inspect_failures = true
+debug_max_history = 1000
+analytics_dashboard_enabled = false
+
+# ============================================================
+# NLU ANALYSIS — kept for traces (disable at build time once stable; see header)
+# ============================================================
+[nlu_analysis]
+enabled = true
+
+[nlu_analysis.conflict_detector]
+blocker_threshold = 0.8
+warning_threshold = 0.6
+info_threshold = 0.4
+
+[nlu_analysis.scope_analyzer]
+cross_domain_threshold = 0.7
+breadth_threshold = 0.8
+
+[nlu_analysis.report_generator]
+max_suggestions_per_conflict = 5
+include_technical_details = true
+
+[nlu_analysis.hybrid_analyzer]
+fuzzy_threshold = 0.8
+pattern_confidence = 0.9
+detect_keyword_collisions = true
+detect_pattern_explosion = true
+detect_performance_issues = true
+
+[nlu_analysis.performance]
+max_analysis_time_ms = 5000.0
+max_concurrent_analyses = 3
+enable_caching = true
+cache_ttl_seconds = 300
+
+[nlu_analysis.languages]
+supported_languages = ["ru", "en"]
+language_detection_threshold = 0.8
+
+# ============================================================
+# WORKFLOWS — unified voice assistant (back-half stages only)
+# ============================================================
+[workflows]
+enabled = ["unified_voice_assistant"]
+default = "unified_voice_assistant"
+
+[workflows.unified_voice_assistant]
+voice_trigger_enabled = false
+asr_enabled = true
+text_processing_enabled = true
+nlu_enabled = true
+intent_execution_enabled = true
+llm_enabled = true
+tts_enabled = true
+audio_enabled = false
+monitoring_enabled = true
+sample_rate = 16000
+channels = 1
+validate_audio_compatibility = true
+enable_vad_processing = false
+default_source = "voice"
+default_language = "ru"
+session_timeout_minutes = 30
+
+[workflows.unified_voice_assistant.audio_validation]
+enabled = true
+fatal_on_conflicts = true
+auto_resolve_defaults = true
+log_resolution_details = true
+
+# ============================================================
+# TRACE — per-request traces (ARCH-19). OFF by default. Enable for QUAL-53
+# (analysing why utterances fall through to the LLM tier), or via --trace.
+# ============================================================
+[trace]
+enabled = false
+capture_level = "utterance"
+
+# ============================================================
+# ASSET MANAGEMENT
+# ============================================================
+[assets]
+auto_create_dirs = true
+cleanup_on_startup = false

@@ -12,6 +12,14 @@ newest entries near the top of each dated section.
 ## Action journal
 
 ### 2026-06-16
+- **ARCH-24 T4 / BUILD-3 — aarch64 (WB8.5/Pi satellite) config built.** New `configs/embedded-aarch64.toml`: same
+  back-half satellite role as armv7, but 4 GB + no ORT wall lets it run the bigger torch-free models — ASR =
+  `sherpa_onnx` + **whisper-small** (`model_type=whisper`, num_threads=4 per the user — heavy model on the A53), TTS =
+  **`piper_ruaccent`** (irina; RUAccent Russian stress) with plain `piper` + console fallback, NLU = keyword →
+  **spaCy(small: ru_core_news_sm)** → llm (the 64-bit deterministic tier the WB7 can't have, per the user) → llm. audio
+  off, VAD/voice_trigger off, monitoring/nlu_analysis kept (traces), `[trace]` toggle present (off). torch deliberately
+  excluded (footprint + A53 latency). Validates; arch gate passes (aarch64-compatible, 16 modules / 14 py deps); all 13
+  configs green. **BUILD-3 next: standalone config**, then the shared Dockerfile-design session + per-image workflows.
 - **ARCH-24 T4 / BUILD-3 — armv7 (WB7 satellite) config built; CoreConfig TTS↔Audio rule relaxed.** Resumed the
   armv7 config session (unblocked by QUAL-50/51). Rewrote the stale `configs/embedded-armv7.toml` as the back-half
   satellite stack from the deployment matrix: ASR = `sherpa_onnx` + vosk-small (whisper-small barred by WB7 RAM; Kaldi
