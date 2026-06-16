@@ -18,12 +18,14 @@ FROM --platform=$BUILDPLATFORM python:3.11-slim-bullseye AS analyzer
 WORKDIR /build-analyzer
 RUN apt-get -o Acquire::Retries=3 update && \
     apt-get -o Acquire::Retries=3 install -y --no-install-recommends python3-pip && \
-    rm -rf /var/lib/apt/lists/* && pip install jsonschema
+    rm -rf /var/lib/apt/lists/*
 COPY irene/ irene/
 COPY configs/ configs/
 COPY assets/ assets/
-COPY pyproject.toml pyproject.toml
+COPY pyproject.toml README.md ./
 COPY docker/derive_build_reqs.py derive_build_reqs.py
+# Install the project's BASE deps so `import irene` works for the analyzer (providers lazy-import the heavy deps).
+RUN pip install --no-cache-dir ".[web-api]"
 ARG CONFIG_PROFILE=embedded-aarch64
 RUN python -m irene.tools.build_analyzer --config configs/${CONFIG_PROFILE}.toml \
         --platform linux.ubuntu --json > /tmp/build-requirements.json && \
