@@ -78,7 +78,7 @@ RUN if [ -s /tmp/runtime-packages.txt ]; then \
 COPY --from=builder /opt/venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
-COPY --from=analyzer configs/${CONFIG_PROFILE}.toml /app/runtime-config.toml
+COPY --from=analyzer /build-analyzer/configs/${CONFIG_PROFILE}.toml /app/runtime-config.toml
 
 RUN find /opt/venv -name '__pycache__' -type d -prune -exec rm -rf {} + 2>/dev/null || true && \
     find /opt/venv -name '*.pyc' -delete 2>/dev/null || true && \

@@ -79,6 +79,8 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
             CONFIG_PROFILE=${{ steps.t.outputs.profile }}
+          cache-from: type=gha,scope=${{ inputs.target }}
+          cache-to: type=gha,mode=max,scope=${{ inputs.target }}
 
       - name: Build assets archive
         run: tar -czf "irene-assets-${{ github.sha }}.tar.gz" assets/
