@@ -593,7 +593,7 @@ class MonitoringComponent(Component, WebAPIPlugin):
         """Python dependencies for monitoring component"""
         return [
             "fastapi>=0.100.0",
-            "uvicorn[standard]>=0.20.0",
+            "uvicorn>=0.20.0",
             "pydantic>=2.0.0"
         ]
     

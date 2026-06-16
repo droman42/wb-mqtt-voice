@@ -631,7 +631,7 @@ class AudioComponent(Component, AudioPlugin, WebAPIPlugin, AudioPort):
         """Audio component needs web API functionality"""
         return [
             "fastapi>=0.100.0", 
-            "uvicorn[standard]>=0.20.0",
+            "uvicorn>=0.20.0",
             "python-multipart>=0.0.6"  # Required for file upload endpoints
         ]
     

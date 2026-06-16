@@ -115,7 +115,9 @@ voice-trigger = [
 # Web API components
 web-api = [
     "fastapi>=0.100.0",
-    "uvicorn[standard]>=0.20.0",
+    # plain uvicorn: [standard] pulls uvloop/httptools/watchfiles (C/Rust) with no armv7 wheels →
+    # source builds that hang/fail under QEMU. WS still works via the `websockets` dep below.
+    "uvicorn>=0.20.0",
     "websockets>=11.0.0",
     "python-multipart>=0.0.6",  # Required for file uploads in Audio/ASR endpoints
 ]

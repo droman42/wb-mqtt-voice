@@ -680,7 +680,7 @@ class ASRComponent(Component, ASRPlugin, WebAPIPlugin, ASRPort):
         """ASR component needs web API functionality"""
         return [
             "fastapi>=0.100.0", 
-            "uvicorn[standard]>=0.20.0", 
+            "uvicorn>=0.20.0", 
             "websockets>=11.0.0",
             "python-multipart>=0.0.6"  # Required for file upload endpoints
         ]

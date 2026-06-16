@@ -844,7 +844,7 @@ class TTSComponent(Component, TTSPlugin, WebAPIPlugin, TTSPort):
     @classmethod
     def get_python_dependencies(cls) -> List[str]:
         """TTS component needs web API functionality"""
-        return ["fastapi>=0.100.0", "uvicorn[standard]>=0.20.0"]
+        return ["fastapi>=0.100.0", "uvicorn>=0.20.0"]
     
     # Config interface methods (Phase 3 - Configuration Architecture Cleanup)
     @classmethod

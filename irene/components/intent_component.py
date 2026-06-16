@@ -2253,7 +2253,7 @@ class IntentComponent(Component, WebAPIPlugin):
     @classmethod
     def get_python_dependencies(cls) -> List[str]:
         """Intent component needs web API functionality"""
-        return ["fastapi>=0.100.0", "uvicorn[standard]>=0.20.0"]
+        return ["fastapi>=0.100.0", "uvicorn>=0.20.0"]
         
     @classmethod
     def get_platform_dependencies(cls) -> Dict[str, List[str]]:

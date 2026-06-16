@@ -250,4 +250,4 @@ class WebInput(InputPort):
     @classmethod
     def get_python_dependencies(cls) -> List[str]:
         """Web input needs web framework and WebSocket support"""
-        return ["fastapi>=0.100.0", "uvicorn[standard]>=0.20.0", "websockets>=11.0.0"] 
+        return ["fastapi>=0.100.0", "uvicorn>=0.20.0", "websockets>=11.0.0"] 
