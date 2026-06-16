@@ -12,6 +12,13 @@ newest entries near the top of each dated section.
 ## Action journal
 
 ### 2026-06-16
+- **ARCH-24 + BUILD-3 closed.** With the images green, the docs rewritten, and a re-check of every tranche — T1/T2
+  providers, T3 armv7 torch-ban CI gate, T4 the three baked configs, T5 the `inference_policy`/`torch_model_cache`
+  sherpa helpers (all present with tests) — both items are engineering-complete. The only outstanding work is
+  on-hardware boot / on-device verification (WB7 armv7, WB8.5 aarch64), which is hardware-gated and already owned
+  downstream by ARCH-10's WB7/WB8 re-validation and the Definition-of-release gate (BUILD-3 "Gates Definition-of-release
+  item #1"). Holding the two dev tasks open for it duplicated that tracking and understated the engineering state, so
+  both are marked `[x]` with the hardware remainder pointed at where it lives.
 - **ARCH-24 / BUILD-3 — user-facing Docker guide rewritten (Invariant #10).** Rewrote
   `docs/guides/build-docker.md` to match the shipped reality: the three published images (`wb-mqtt-voice-{standalone,
   aarch64,armv7}` on GHCR) with their role/architecture table, the standalone-vs-satellite split (standalone drives

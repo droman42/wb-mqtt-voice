@@ -1014,7 +1014,14 @@ See `docs/review/phase1_architecture_map.md` §5.
       device admin UI + CSR submission (D-16/D-17, against Plane-B `nginx/`); config-preserving OTA (D-18). Likely a separate
       firmware repo eventually (per `esp32_wakeword_review.md` quarantine). Substantial standalone C++ effort; tracked here so
       it's not an orphan finding. Depends on hardware selection finalised (mic/speaker parts) + the Plane-B controller deploy.
-- [ ] **ARCH-24** [ASR][TTS][IO] (P-TBD) `[deferred]` — **Torch-free inference & the armv7 voice stack.** Research/analysis
+- [x] **ARCH-24** [ASR][TTS][IO] — **DONE 2026-06-16.** All five tranches code-complete: **T1** (Whisper→sherpa via the
+      `model_type` discriminator + whisper-small pack), **T2** (`piper` + `piper_ruaccent` TTS providers), **T3** (armv7
+      torch-ban CI gate, `backend-health.yml`; provider platform taxonomy + `dependency_validator --platforms`), **T4**
+      (the three baked target configs — `embedded-armv7` / `embedded-aarch64` / `standalone-x86_64`), **T5** (the shared
+      `inference_policy` / `torch_model_cache` sherpa helpers, with tests). The three images build green on GHCR
+      (packaging = **BUILD-3**). **Sole remainder = on-device verification (RU parity + A53/A7 RTF + boot), hardware-gated
+      — owned by ARCH-10's WB7/WB8 hardware re-validation and the Definition-of-release gate, NOT open engineering scope.**
+      _Original analysis below._ **Torch-free inference & the armv7 voice stack.** Research/analysis
       session **DONE 2026-06-15** (no code); deliverable **`docs/design/torch_free_armv7_voice.md`** + the real WB7 ground
       truth (SSH'd 192.168.110.250: Cortex-A7 quad armv7l, 1 GB RAM — **~712 MB available after SprutHub was stopped+disabled
       2026-06-15** (was ~367 MB; SprutHub's JVM held ~352 MB) + 256 MB swap; disk on **`/mnt/data` 2.3 GB free** (not the
@@ -2058,7 +2065,13 @@ _Apply to every remediation task below (from the 4 review docs + QUAL-25/26). So
       pytest (until the TEST- items resolve), black/isort (until the tree is formatted). **Known honest-red
       (accepted):** `config_validator_cli` fails on 3 stale fixtures — tracked as **BUILD-6**. Done together with
       **BUILD-4** (frontend).
-- [ ] **BUILD-3** (P2) — **SCOPE EXPANDED 2026-06-15 — now the packaging thread of ARCH-24** (the architecture has settled,
+- [x] **BUILD-3** (P2) — **DONE 2026-06-16.** All three images build green on GHCR
+      (`ghcr.io/droman42/wb-mqtt-voice-{standalone,aarch64,armv7}`) via the per-target `workflow_dispatch` workflow:
+      configs baked, the whole `assets/` tree externalized as the mounted assets-root, all runners serve the web API
+      alongside their primary input (shared `WebServerMixin`, entrypoint dropped), spaCy model wheels trimmed per profile,
+      and the user-facing `docs/guides/build-docker.md` rewritten (Invariant #10). **Sole remainder — container boots on
+      real hardware — IS the Definition-of-release item #1 gate (ARCH-10-owned WB7/WB8 re-validation), tracked there, not
+      as open BUILD-3 scope.** _Original scope below._ **SCOPE EXPANDED 2026-06-15 — now the packaging thread of ARCH-24** (the architecture has settled,
       so image contents are decidable). **Three image targets, each = one role + one config + one manually-triggerable
       (`workflow_dispatch`) buildx→GHCR workflow** (mirroring the bridge's `v<date>-<sha>`+`latest` tagging):
       **Split by ARCHITECTURE (canonical matrix: `docs/design/torch_free_armv7_voice.md` §5); torch contained to ONE image:**
