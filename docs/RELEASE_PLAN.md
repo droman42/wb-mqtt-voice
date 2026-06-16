@@ -2101,9 +2101,10 @@ _Apply to every remediation task below (from the 4 review docs + QUAL-25/26). So
       `COPY --from` resolves at stage root; uv ignores pip.conf → `UV_EXTRA_INDEX_URL=piwheels` + `UV_INDEX_STRATEGY=
       unsafe-best-match` on ARM; dropped `uvicorn[standard]` (uvloop/httptools/watchfiles compile from source, need Rust)
       → plain `uvicorn`; spaCy `name @ URL` specs go one-per-line via `uv pip install -r` (unquoted `$(cat)` shell-splits
-      the embedded spaces). **REMAINING (release-phase tail): on-hardware boot verification** (WB7 armv7 / WB8.5 aarch64)
-      and the **user-facing `docs/guides/build-docker.md` rewrite** (deferred per Invariant #10 — docs after the ledger
-      task). _Original deferred note below._ **DEFERRED to the release phase
+      the embedded spaces). **User-facing docs (Invariant #10) DONE 2026-06-16** — rewrote `docs/guides/build-docker.md`
+      for the published-image (GHCR pull) flow, the three target roles, baked config + mounted assets-root, the
+      satellite-vs-standalone run commands, and local-build instructions. **REMAINING (release-phase tail, hardware-gated):
+      on-hardware boot verification** (WB7 armv7 / WB8.5 aarch64). _Original deferred note below._ **DEFERRED to the release phase
       (decided 2026-06-01): Docker builds are an end-stage
       task**, after the architecture/code work settles (image contents, extras, and armv7 viability all depend on
       the post-refactor shape — incl. QUAL-19/20 [ESP32] and ARCH-9/10 [INFER] for the sherpa-onnx/runtime

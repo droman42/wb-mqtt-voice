@@ -12,6 +12,15 @@ newest entries near the top of each dated section.
 ## Action journal
 
 ### 2026-06-16
+- **ARCH-24 / BUILD-3 — user-facing Docker guide rewritten (Invariant #10).** Rewrote
+  `docs/guides/build-docker.md` to match the shipped reality: the three published images (`wb-mqtt-voice-{standalone,
+  aarch64,armv7}` on GHCR) with their role/architecture table, the standalone-vs-satellite split (standalone drives
+  `/dev/snd`; satellites are web-only), the baked-config + mounted-assets-root contract, `docker run`/compose recipes
+  against the published tags, and a local-build section (context = repo root, `docker/Dockerfile.*`, `CONFIG_PROFILE`).
+  Dropped the stale two-Dockerfile / port-8000 / `minimal|api-only|voice` content and all internal references
+  (task IDs, review-doc links, status banners) per the user-facing-prose rule. README + `build-system.md` cross-links
+  checked — both generic and still accurate, no diagram to regenerate. This closes the documentation tail of the
+  ARCH-24/BUILD-3 packaging work; only on-hardware boot verification (WB7/WB8.5) remains.
 - **BUILD-3 — all three images build green on GHCR; spaCy model wheels trimmed config-aware.** Closed out the
   Dockerfile-design + per-image-workflow steps. The three Dockerfiles were realigned to the wb-mqtt-bridge 3-stage
   shape (analyzer → builder building into `/opt/venv` via `uv` → lean runtime that `COPY --from=builder`s the venv),
