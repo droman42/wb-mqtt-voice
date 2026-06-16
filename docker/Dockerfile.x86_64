@@ -12,7 +12,7 @@
 # Override the baked config with: -e IRENE_CONFIG_FILE=/cfg/my.toml -v ./my.toml:/cfg/my.toml
 #
 # Usage:
-#   docker build -f Dockerfile.x86_64 --build-arg CONFIG_PROFILE=standalone-x86_64 -t irene:standalone .
+#   docker build -f docker/Dockerfile.x86_64 --build-arg CONFIG_PROFILE=standalone-x86_64 -t irene:standalone .
 
 # ============================================================
 # STAGE 1: BUILD ANALYZER — derive the deps for the config profile

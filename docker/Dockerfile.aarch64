@@ -1,52 +1,45 @@
 # ============================================================
-# IRENE VOICE ASSISTANT - ARMv7 EMBEDDED DOCKER BUILD
+# IRENE VOICE ASSISTANT - aarch64 EMBEDDED DOCKER BUILD
 # ============================================================
-# Debian (glibc), NOT Alpine (musl): sherpa-onnx ships a glibc-only armv7 wheel and pip has no armv7
-# onnxruntime wheel (ARCH-9), so musl cannot run the ONNX ASR path. The build analyzer installs only
-# what the config profile needs. Follows the wb-mqtt-bridge pattern: a self-contained /opt/venv copied
-# whole into the runtime, PiWheels for prebuilt ARM wheels, and a LEAN cleanup pass.
+# Debian build for Wirenboard 8.5 / Raspberry Pi (aarch64) satellite-servers. Same back-half role as
+# armv7, but 4 GB + no ORT wall let it run the bigger torch-free models (Whisper-small + Piper+RUAccent
+# + spaCy). torch is deliberately NOT used (footprint + A53 latency). Follows the wb-mqtt-bridge pattern
+# (self-contained /opt/venv, PiWheels, LEAN). Assets + models are mounted at IRENE_ASSETS_ROOT.
 #
-# Assets (donations/prompts/templates) and ML models are NOT baked — they are mounted at runtime under
-# IRENE_ASSETS_ROOT (=/app/assets). Ship them via the `irene-assets-*.tar.gz` archive (built in the
-# workflow) extracted into the mount.
-#
-# NOTE: build/boot verified under BUILD-3 on real hardware (buildx + linux/arm/v7).
+# NOTE: build/boot verified under BUILD-3 on real hardware (buildx + linux/arm64).
 #
 # Usage:
-#   docker buildx build --platform linux/arm/v7 -f Dockerfile.armv7 --build-arg CONFIG_PROFILE=embedded-armv7 .
+#   docker buildx build --platform linux/arm64 -f docker/Dockerfile.aarch64 --build-arg CONFIG_PROFILE=embedded-aarch64 .
 
 # ============================================================
-# STAGE 1: BUILD ANALYZER — derive the deps for the config profile (runs on the BUILD host)
+# STAGE 1: BUILD ANALYZER (runs on the BUILD host)
 # ============================================================
 FROM --platform=$BUILDPLATFORM python:3.11-slim-bullseye AS analyzer
 WORKDIR /build-analyzer
 RUN apt-get -o Acquire::Retries=3 update && \
     apt-get -o Acquire::Retries=3 install -y --no-install-recommends python3-pip && \
     rm -rf /var/lib/apt/lists/*
-# The analyzer needs the tool, the configs, the handlers + assets (intent JSON validation).
 COPY irene/ irene/
 COPY configs/ configs/
 COPY assets/ assets/
 COPY pyproject.toml README.md ./
 COPY docker/derive_build_reqs.py derive_build_reqs.py
-# Install the project's BASE deps (pydantic, pyyaml, …) so `import irene` works for the analyzer. The
-# heavy provider deps (torch/sherpa/onnx/…) are NOT installed here — providers lazy-import them.
+# Install the project's BASE deps so `import irene` works for the analyzer (providers lazy-import the heavy deps).
 RUN pip install --no-cache-dir ".[web-api]"
-ARG CONFIG_PROFILE=embedded-armv7
+ARG CONFIG_PROFILE=embedded-aarch64
 RUN python -m irene.tools.build_analyzer --config configs/${CONFIG_PROFILE}.toml \
         --platform linux.ubuntu --json > /tmp/build-requirements.json && \
     python derive_build_reqs.py /tmp/build-requirements.json --platform linux.ubuntu --out /tmp
 
 # ============================================================
-# STAGE 2: BUILDER — build a self-contained /opt/venv (arm32v7)
+# STAGE 2: BUILDER — self-contained /opt/venv (arm64v8)
 # ============================================================
-FROM arm32v7/python:3.11-slim-bullseye AS builder
+FROM arm64v8/python:3.11-slim-bullseye AS builder
 WORKDIR /build
 COPY --from=analyzer /tmp/system-packages.txt /tmp/system-packages.txt
 COPY --from=analyzer /tmp/pip-target.txt /tmp/pip-target.txt
 COPY --from=analyzer /tmp/pip-specs.txt /tmp/pip-specs.txt
 
-# Build tools + PiWheels (prebuilt armv7 wheels for packages PyPI doesn't ship for arm)
 RUN apt-get -o Acquire::Retries=3 update && \
     apt-get -o Acquire::Retries=3 install -y --no-install-recommends build-essential python3-dev && \
     rm -rf /var/lib/apt/lists/*
@@ -56,33 +49,29 @@ RUN pip install uv
 ENV UV_EXTRA_INDEX_URL=https://www.piwheels.org/simple
 ENV UV_INDEX_STRATEGY=unsafe-best-match
 
-# Build-time system deps (if the analyzer flagged any)
 RUN if [ -s /tmp/system-packages.txt ]; then \
         apt-get -o Acquire::Retries=3 update && \
         apt-get -o Acquire::Retries=3 install -y --no-install-recommends $(cat /tmp/system-packages.txt) && \
         rm -rf /var/lib/apt/lists/*; \
     fi
 
-# Project source for `uv pip install .`
 COPY pyproject.toml uv.lock README.md ./
 COPY irene/ irene/
 
-# Self-contained venv: install the project + its config-selected extras + any loose specs into /opt/venv
 RUN uv venv /opt/venv && . /opt/venv/bin/activate && \
     UV_COMPILE_BYTECODE=1 uv pip install $(cat /tmp/pip-target.txt) -r /tmp/pip-specs.txt
 
 # ============================================================
-# STAGE 3: RUNTIME — minimal armv7 image
+# STAGE 3: RUNTIME — minimal aarch64 image
 # ============================================================
-FROM arm32v7/python:3.11-slim-bullseye AS runtime
+FROM arm64v8/python:3.11-slim-bullseye AS runtime
 LABEL maintainer="Irene Voice Assistant Team"
-LABEL description="Irene Voice Assistant - ARMv7 Embedded Runtime (Debian)"
-ARG CONFIG_PROFILE=embedded-armv7
+LABEL description="Irene Voice Assistant - aarch64 Embedded Runtime (Debian)"
+ARG CONFIG_PROFILE=embedded-aarch64
 LABEL config.profile="${CONFIG_PROFILE}"
-LABEL platform="linux/arm/v7"
+LABEL platform="linux/arm64"
 WORKDIR /app
 
-# Runtime system deps (the analyzer's apt set — e.g. libasound2 safety net)
 COPY --from=analyzer /tmp/runtime-packages.txt /tmp/runtime-packages.txt
 RUN if [ -s /tmp/runtime-packages.txt ]; then \
         apt-get -o Acquire::Retries=3 update && \
@@ -90,37 +79,26 @@ RUN if [ -s /tmp/runtime-packages.txt ]; then \
         rm -rf /var/lib/apt/lists/*; \
     fi && rm -f /tmp/runtime-packages.txt
 
-# The self-contained venv (has irene + all deps) — the bridge pattern
 COPY --from=builder /opt/venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
-# Baked default config (CONFIG_PROFILE). assets/ + models are NOT baked — mounted at IRENE_ASSETS_ROOT.
 COPY --from=analyzer /build-analyzer/configs/${CONFIG_PROFILE}.toml /app/runtime-config.toml
 
-# LEAN: strip tests/docs/build artifacts from the venv (Wirenboard footprint)
 RUN find /opt/venv -name '__pycache__' -type d -prune -exec rm -rf {} + 2>/dev/null || true && \
     find /opt/venv -name '*.pyc' -delete 2>/dev/null || true && \
     find /opt/venv -path '*/site-packages/*/tests' -type d -prune -exec rm -rf {} + 2>/dev/null || true && \
-    find /opt/venv -path '*/site-packages/*/test' -type d -prune -exec rm -rf {} + 2>/dev/null || true && \
-    find /opt/venv -name '*.dist-info' -prune -exec sh -c 'rm -rf "$1"/RECORD.bak' _ {} \; 2>/dev/null || true
+    find /opt/venv -path '*/site-packages/*/test' -type d -prune -exec rm -rf {} + 2>/dev/null || true
 
-# Non-root user; the mounted assets root must be writable for model downloads
 RUN useradd -m -u 1000 irene && mkdir -p /app/assets && chown -R irene:irene /app
 USER irene
 
 HEALTHCHECK --interval=60s --timeout=5s --start-period=10s --retries=2 \
     CMD python -c "import irene; print('ok')" || exit 1
 
-# Config comes from $IRENE_CONFIG_FILE (baked default; override with -e IRENE_CONFIG_FILE=/path + a mount).
-# Assets + models are mounted at IRENE_ASSETS_ROOT (donations/prompts/templates from the archive; models
-# download here on first boot). No entrypoint script — the runner reads the env directly.
 ENV IRENE_CONFIG_FILE=/app/runtime-config.toml
 ENV IRENE_ASSETS_ROOT=/app/assets
 ENV PYTHONPATH=/app PYTHONUNBUFFERED=1 PYTHONOPTIMIZE=2
 ENV MALLOC_TRIM_THRESHOLD_=100000 MALLOC_TOP_PAD_=65536
 
-# Satellite server: the back-half (ASR→NLU→intent→TTS) over the WS transport for the ESP32.
 CMD ["python", "-O", "-m", "irene.runners.webapi_runner", "--host", "0.0.0.0", "--port", "6000"]
-
-# Web API / ESP32 transport port (8000 is taken by wb-mqtt-bridge)
 EXPOSE 6000

@@ -31,17 +31,17 @@ jobs:
         run: |
           case "${{ inputs.target }}" in
             armv7)
-              echo "file=Dockerfile.armv7"            >> "$GITHUB_OUTPUT"
+              echo "file=docker/Dockerfile.armv7"            >> "$GITHUB_OUTPUT"
               echo "platform=linux/arm/v7"            >> "$GITHUB_OUTPUT"
               echo "profile=embedded-armv7"           >> "$GITHUB_OUTPUT"
               echo "image=wb-mqtt-voice-armv7"        >> "$GITHUB_OUTPUT" ;;
             aarch64)
-              echo "file=Dockerfile.aarch64"          >> "$GITHUB_OUTPUT"
+              echo "file=docker/Dockerfile.aarch64"          >> "$GITHUB_OUTPUT"
               echo "platform=linux/arm64"             >> "$GITHUB_OUTPUT"
               echo "profile=embedded-aarch64"         >> "$GITHUB_OUTPUT"
               echo "image=wb-mqtt-voice-aarch64"      >> "$GITHUB_OUTPUT" ;;
             standalone)
-              echo "file=Dockerfile.x86_64"           >> "$GITHUB_OUTPUT"
+              echo "file=docker/Dockerfile.x86_64"           >> "$GITHUB_OUTPUT"
               echo "platform=linux/amd64"             >> "$GITHUB_OUTPUT"
               echo "profile=standalone-x86_64"        >> "$GITHUB_OUTPUT"
               echo "image=wb-mqtt-voice-standalone"   >> "$GITHUB_OUTPUT" ;;
