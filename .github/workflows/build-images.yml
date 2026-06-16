@@ -1,0 +1,91 @@
+name: Build Irene Image (per target)
+
+# Manual, per-target image builds → GHCR. Pick one platform at a time (armv7 → aarch64 → standalone).
+# Mirrors the wb-mqtt-bridge tagging (latest + sha-<short> + v<date>-<sha>). Also publishes the
+# arch-independent assets archive (donations/prompts/templates) as a build artifact — operators extract
+# it into the IRENE_ASSETS_ROOT mount (models download alongside on first boot).
+#
+#   gh workflow run "Build Irene Image (per target)" -f target=armv7
+
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: Target platform
+        type: choice
+        options: [armv7, aarch64, standalone]
+        default: armv7
+
+jobs:
+  build:
+    name: Build ${{ inputs.target }} image
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve target
+        id: t
+        run: |
+          case "${{ inputs.target }}" in
+            armv7)
+              echo "file=Dockerfile.armv7"            >> "$GITHUB_OUTPUT"
+              echo "platform=linux/arm/v7"            >> "$GITHUB_OUTPUT"
+              echo "profile=embedded-armv7"           >> "$GITHUB_OUTPUT"
+              echo "image=wb-mqtt-voice-armv7"        >> "$GITHUB_OUTPUT" ;;
+            aarch64)
+              echo "file=Dockerfile.aarch64"          >> "$GITHUB_OUTPUT"
+              echo "platform=linux/arm64"             >> "$GITHUB_OUTPUT"
+              echo "profile=embedded-aarch64"         >> "$GITHUB_OUTPUT"
+              echo "image=wb-mqtt-voice-aarch64"      >> "$GITHUB_OUTPUT" ;;
+            standalone)
+              echo "file=Dockerfile.x86_64"           >> "$GITHUB_OUTPUT"
+              echo "platform=linux/amd64"             >> "$GITHUB_OUTPUT"
+              echo "profile=standalone-x86_64"        >> "$GITHUB_OUTPUT"
+              echo "image=wb-mqtt-voice-standalone"   >> "$GITHUB_OUTPUT" ;;
+            *) echo "unknown target ${{ inputs.target }}" >&2; exit 1 ;;
+          esac
+
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Compute image tags
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/${{ steps.t.outputs.image }}
+          tags: |
+            type=raw,value=latest
+            type=sha,format=short
+            type=raw,value=v{{date 'YYYYMMDD'}}-{{sha}}
+
+      - name: Build + push image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ steps.t.outputs.file }}
+          platforms: ${{ steps.t.outputs.platform }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            CONFIG_PROFILE=${{ steps.t.outputs.profile }}
+
+      - name: Build assets archive
+        run: tar -czf "irene-assets-${{ github.sha }}.tar.gz" assets/
+
+      - name: Upload assets archive
+        uses: actions/upload-artifact@v4
+        with:
+          name: irene-assets-${{ inputs.target }}
+          path: irene-assets-*.tar.gz
+          if-no-files-found: error
