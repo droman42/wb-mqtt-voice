@@ -277,149 +277,6 @@ See `docs/review/phase1_architecture_map.md` §5.
       "typed accessor IS the replacement" swap — atomic, no broken window); **(c)** the `room_context` resolve-or-clarify
       policy (with QUAL-30). QUAL-11 left the seam clean (resolvers degrade gracefully; duplicate device path unified;
       `_resolution_failed` markers). Pairs with **QUAL-35** (T2/T3 NLU for the complex device commands MQTT needs).
-- [x] **QUAL-45** [WS][ESP32] (P2) `[deferred]` — **DONE (design) 2026-06-14 — SUBSUMED BY ARCH-22.** The ESP32
-      audio-streaming protocol (end-of-utterance + on-device VAD/wake contract) is now fully specified in
-      **`docs/design/esp32_satellite.md`** — wire protocol §4 (`{"type":"end"}` device hint + server-authoritative ASR
-      endpointing, D-5/D-6), the on-device microWakeWord+microVAD contract (D-9/D-10), and the single-mic/no-server-VAD
-      split (D-11). The *firmware* implementation of the end-of-utterance signaling rides the **tracked firmware rewrite**
-      (esp32_satellite.md §14), not this task. _Original below._ **ESP32 audio-streaming protocol: end-of-utterance signal
-      + on-device VAD/wake contract.** Filed from the ARCH-18 endpoint reconciliation (2026-06-10). The **server already** consumes a
-      `{"type":"end"}` control frame on `/ws/audio` to bound an utterance (one session = one utterance = one ASR;
-      `webapi_router.py:824-835`) and ARCH-18 makes that path skip server VAD+wake (they run on-device). **Device-side TODO
-      (ESP32 review):** define + implement the firmware's end-of-utterance signaling (emit `{"type":"end"}` at on-device
-      VAD silence; **default = end of WS session** if a firmware doesn't send it), plus the on-device VAD/wake contract the
-      server now assumes. Doc: `docs/review/esp32_wakeword_review.md` + `docs/design/ws_esp32_transport.md`.
-- [x] **QUAL-46** [IO] (P2) `[deferred]` — **DONE 2026-06-15.** Generalize the vosk runner into a config-driven
-      **voice runner** (follows ARCH-15's "runners-as-presets — config, not code"). The old `VoskRunner` was a full
-      end-to-end mic pipeline (mic → VAD → [wake] → ASR → NLU → intent → TTS) but **artificially gated to vosk** by
-      two checks — an `import vosk` dependency probe and a validation rule forcing `asr.default_provider == "vosk"` —
-      while the actual processing path was already provider-agnostic (delegates to the ASR component). **Removed both
-      gates:** the runner now requires only `sounddevice` (its real dep — mic capture) and validates *any* configured
-      + enabled ASR provider (vosk/whisper/sherpa_onnx/google_cloud); ASR-provider deps are the component system's
-      concern (`irene-dependency-validate`). **Renamed** `vosk_runner.py`→`voice_runner.py`, `VoskRunner`→`VoiceRunner`,
-      `run_vosk`→`run_voice`, entry points `irene-vosk`→`irene-voice` + the `irene.runners` discovery entry + the
-      `runners/__init__` exports (clean rename, no alias — pre-release). **Fixed the latent VAD inconsistency:** the mic
-      pipeline structurally requires VAD (the workflow raises if it's off) yet the runner forced asr/audio/nlu/etc but
-      not vad — now it forces `vad.enabled=True` too, so a VAD-off config fails clearly in the runner, not deep in
-      workflow init. (`voice_trigger` stays config-driven — the runner auto-skips the wake word when it's absent.)
-      Docs: new "Voice (microphone)" section in `QUICKSTART.md` (config-driven ASR, both invocation forms, `--trace`).
-      New `test_voice_runner.py` (8 tests: provider-agnostic validation + the force-rules incl. VAD). 9/9 import
-      contracts; runner/vad suites net-zero (4 pre-existing TEST-2 failures). Invariant #4 N/A (no config schema/endpoint
-      change — purely a runner gate + rename). _Note: the v13-era `tools/migrate_runners.py` still maps the old name as
-      a v13→v14 migration target; left untouched (obsolete, like `config_migrator` — flagged separately → QUAL-47)._
-- [x] **QUAL-47** [WS] (P2) `[deferred]` — **DONE 2026-06-15.** Retire the obsolete one-time migration tools (the
-      QUAL-46 follow-up). On v15.0.0, both target long-past versions and neither is imported by runtime code:
-      **`irene/tools/config_migrator.py`** (v13→v14 config migration; entry point `irene-config-migrate`) and
-      **`tools/migrate_runners.py`** (legacy `runva_*.py`→v13 runners — already broken by the QUAL-46 rename, since it
-      referenced `vosk_runner`/`VoskRunner`/`run_vosk`). Deleted both + removed the `irene-config-migrate`
-      `[project.scripts]` entry. No tests/code referenced them (only two `docs/archive/*` historical mentions, left as
-      record). Package re-syncs clean; 9/9 import contracts. **Sweep extended 2026-06-15** — retired two more
-      standalone (un-imported, non-entry-point) migrators verified spent/obsolete: **`tools/migrate_to_universal_plugins.py`**
-      (old plugin→provider config migration; only refs were two `docs/archive/*` guides) and
-      **`scripts/migrate_donations_v11.py`** (QUAL-29 donation v1.0→v1.1 — **QUAL-29 is `[x]` and the assets are already
-      v1.1**: 13 `contract.json` + per-lang files, so the one-time migration is applied/spent). Surfaced a related
-      finding kept OUT of scope → **QUAL-48**: `irene/config/migration.py` is *live* v13→v14 runtime auto-migration.
-      **Also retired 2026-06-15** the dead one-off VAD debug script **`tools/test_vad_sibilant_fix.py`** (already broken —
-      it imported `UniversalAudioProcessor`, renamed to `VoiceSegmenter` in ARCH-18, so it `ImportError`ed; not an entry
-      point, not imported) + its orphaned companion **`configs/vad-sibilant-fix.toml`** (referenced only by that script).
-      The sibilant fix itself is long shipped (`docs/archive/VAD_SIBILANT_FIX.md`, left as record).
-- [x] **QUAL-48** [DFLOW] (P2) `[deferred]` — **DONE 2026-06-15 (decision: remove).** Removed the v13→v14 runtime
-      config-migration path — the last v13/v14 relic after QUAL-47 retired the standalone migrators. `irene/config/migration.py`
-      (637 lines: `V13ToV14Migrator`/`migrate_config`/`ConfigurationCompatibilityChecker`/`create_migration_backup`) was
-      wired into `config/manager.py:_dict_to_config`, guarded by `requires_migration(data)` so it only fired for a
-      **v13-format** config — which never occurs on v15.0.0. Deleted the module; dropped the import + the guard block in
-      `manager.py` (the normal env-resolve → `model_validate` path is unchanged); removed the import + 5 `__all__` entries
-      from `config/__init__.py`. A v13 config now fails plainly at pydantic validation instead of silently morphing —
-      correct for v15 (v13 is unsupported). No test depended on auto-migration (verified net-zero vs baseline); all shipped
-      configs (config-master/minimal/api-only) load clean; re-exports intact; 9/9 import contracts. Invariant #4 N/A.
-- [x] **QUAL-49** [INFER] (P2) `[deferred]` — **DONE 2026-06-15.** Silero TTS model-id routing fix (surfaced from the
-      ARCH-24 asset-routing analysis; relates to **ARCH-24 T5** — done early). `silero_v3`/`silero_v4` were the **only**
-      providers that bypassed the AssetManager model-id router: they placed the model at `<dir>/<config:model_file>` with a
-      **shared default** (`v3_ru.pt`/`v4_ru.pt`), so two v3 languages — v3_ru/en/de/es all share the `silero/` dir — that
-      both left `model_file` at the default resolved to the **same file** (latent collision), inconsistent with the
-      sherpa/whisper/vosk `get_model_path(provider, model_id)` convention. **Fix:** route the path via
-      `get_model_path("silero_v{3,4}", model_id)` (→ `silero/<id>.pt` / `silero_v4/<id>.pt`, distinct per model_id); derive
-      `model_url` from the selected model_id's descriptor (legacy torch.hub-fallback safety); route the download through the
-      real provider name (`download_model("silero_v4", model_id)`, not the non-existent `"silero"` fallback that silently
-      failed into the legacy path + a copy hack). Explicit `model_file` still honored as an override (back-compat). New
-      `test_silero_routing.py` (4 tests incl. the anti-collision property). **Invariant #4 N/A** (TTS provider config is
-      free-form `Dict[str,Any]`, `models.py:191` — not schema/config-ui-typed). Gates: suite 935 green, pyright 0, contracts 9/9.
-- [x] **QUAL-50** [NLU][LLM] (P2) — **LLM NLU classifier as a cascade fallback provider** (decided 2026-06-15 in the
-      ARCH-24 T4 armv7 config session). New `LLMNLUProvider(NLUProvider)`: when the deterministic providers (keyword +
-      spaCy-on-64-bit) don't recognize an utterance, ask the **LLM to classify** it into a known intent **and extract its
-      parameters** (intent taxonomy sourced from the donation/bridge catalog) — recovering fuzzy *commands* the keyword
-      matcher misses. Slots into `provider_cascade_order` **after** keyword/spaCy (last NLU resort, before the
-      `conversation.general` fallback). **Deliberately revises the QUAL-15/16 "NLU is LLM-free" stance — but only as a
-      last-resort fallback**: the deterministic path stays primary and offline still works (keyword → conversation
-      templates). Needs `[llm]` enabled with a provider (cloud = HTTP, so armv7-viable, but adds online dependency + latency
-      for fuzzy commands). Full provider integration (the PR2 lesson): `LLMNLUProviderSchema` registered +
-      `[nlu.providers.llm]` config-master block + `get_supported_architectures()`. **Gates the ARCH-24 T4 armv7 config**
-      (which wants keyword→llm NLU — providers-before-configs). When low-confidence/missing-param: hand to the conversation
-      handler's CLARIFYING multi-turn (already in place — `conversation.py` `ConversationState.CLARIFYING` + QUAL-37
-      targeted clarification; verify it elicits a **missing required parameter**, not just domain-level specificity).
-      **Design (confirmed 2026-06-15; corrected 2026-06-16):** the provider returns a **plain `Intent`**
-      {name, entities, confidence, raw_text} via `recognize_with_parameters` — **identical to keyword/spaCy, no special
-      output** (the earlier "rich structured JSON object" plan was wrong; see QUAL-52 below). It does what every NLU provider
-      does: **classify** (LLM picks one intent name from the donation taxonomy, or abstain → `None`) + **extract params**
-      (`extract_parameters`), then returns the Intent. **Catalog grounding is NOT the LLM's job** — the shared
-      `ContextualEntityResolver` (run by `ContextAwareNLUProcessor` downstream, for *every* provider) canonicalizes entities
-      against the live catalog/context. So the LLM emits **raw entity spans** ("kitchen", "lamp"), not canonical IDs — the
-      shared resolver grounds them. The classification call is a **plain text** `chat_completion` (no
-      `LLMPort.generate_structured`, no structured-output capability). **Confidence is DERIVED, written to the standard
-      `Intent.confidence`:** (i) intent ∈ donation set [hard gate], (ii) fraction of **required params that resolve** against
-      catalog/context [the real signal], (iii) an **evidence span** the LLM must quote [anti-hallucination]; LLM
-      self-report/logprobs are a weak prior only. **Commands** accept only if intent-valid + evidence + ALL required params
-      resolved (missing → CLARIFYING; unresolvable / no-evidence → abstain); **queries** accept on intent-valid + evidence.
-      **DEPENDS ON QUAL-52** (the reworked, budget-aware LLM component — *not* its structured output, which was reverted).
-      **Built 2026-06-16:** `irene/providers/nlu/llm.py` `LLMNLUProvider` — `_initialize_from_donations` builds the
-      taxonomy + `parameter_specs` from the same donations; `recognize_with_parameters` makes one deterministic
-      `LLMPort.generate_response` call, parses locally, and returns a plain `Intent` or `None`. Abstains on
-      no-LLM / offline / unparseable / intent∉donations / evidence-not-in-text; else confidence = `0.7 + 0.25 × required-coverage`
-      (a missing required param still clears the threshold → the handler's QUAL-30 `_clarify` asks — verified at
-      `handlers/base.py:285,302`). Injection mirrors the conversation handler: `set_llm_component(LLMPort)`, soft-injected by
-      `NLUComponent.post_initialize_coordination` via `core.component_manager.get_component('llm')` (no hard dep → no-LLM
-      builds still start). `LLMNLUProviderSchema` registered + `[nlu.providers.llm]` (enabled=false, opt-in) + pyproject
-      entry-point; default cascade unchanged. Arch = all (cloud HTTP is armv7-safe). Tests `test_llm_nlu.py` (13). Gates:
-      suite 995 green, pyright 0, contracts 9/9 (provider→`intents.ports` is ARCH-4-legal), config-ui type-checks (Inv #4).
-      **Unblocks ARCH-24 T4** (armv7 config can now use `keyword→llm`). Prompt wording is a first cut → **QUAL-51**.
-- [x] **QUAL-52** [LLM] (P2) — **LLM component rework: real token budgets + budget-aware prompting** (surfaced 2026-06-15;
-      **prerequisite for QUAL-50**; DONE 2026-06-16). Today's LLM handling used arbitrary/meaningless config knobs and was
-      **token-budget-blind**. Reworked `llm_component` + providers (deepseek/openai/anthropic) + the LLM config schema:
-      **(1) PR1 ✓** real **per-model token budgets** (`llm_capabilities` registry: context window + max output from actual
-      model capabilities, dropping the arbitrary 150). **(2) PR2 ✓** **budget-aware prompting** — `estimate_tokens`
-      (utf-8 bytes/4, dependency-free), `fit_messages` trims oldest/keeps system+final to fit the input budget;
-      `context_window` exposed in config. **(3) PR3 ✗ REVERTED (2026-06-16):** first-class structured/JSON output
-      (`generate_structured` + `response_format`) was built on a **wrong premise** — that the QUAL-50 NLU classifier returns
-      a bespoke structured object. It does not: an NLU provider returns a **plain `Intent`**, param extraction is the
-      provider's `extract_parameters` step, and catalog grounding is the **shared** `ContextualEntityResolver` downstream. So
-      the classifier needs only a plain text call — no generic JSON-dict capability on the component (commit `beb08e3`).
-      **(4) PR4 ✓** **dropped the unneeded fine-tuning** — `temperature` removed from schemas/config/providers (+ dead
-      `top_p`/`frequency_penalty`/`presence_penalty`); providers now use a fixed deterministic `0.0`. **Invariant #4:**
-      config-ui has no typed temperature field (free-form params dict) → nothing to sync, openapi unchanged. (QUAL-15/16
-      console-LLM fallback / `fallback_providers` — left as-is; not in scope here.)
-- [x] **QUAL-51** [NLU][LLM] (P2) — **Prompt-tightening session for QUAL-50** (DONE 2026-06-16; interactive scope agreed
-      with the user). Tightened the inline classifier system prompt: conservative "abstain when unsure" framing, an explicit
-      JSON output contract + anti-hallucination (verbatim evidence), and the taxonomy + few-shot **filtered to the utterance
-      language** (by script). Few-shot = hand-written **abstain** exemplars per language (the key last-resort lesson) +
-      **auto-sourced positives** from each intent's donation `examples`. Kept the prompt **inline** (per the user's call) —
-      it's *dynamically assembled* from donations (taxonomy + examples), so it isn't a static authored asset like the
-      `assets/prompts/*` task prompts; `docs/guides/prompting.md` updated to document this one generated exception (Inv #10).
-      Decisions: instructions **English-only** (LLMs follow them cross-lingually; taxonomy/utterance carry the language),
-      classifier keys off the **input** language (`context.language`), not the system default. Tuned the
-      `missing_parameter` clarification template (en+ru) — warmer, invites the answer. **Validation:** new live harness
-      `scripts/eval_llm_nlu.py` + bilingual fixture `scripts/eval_llm_nlu_cases.yaml` (24 cases, real 54-intent taxonomy,
-      DeepSeek via `.env`) — **24/24** after two fixture corrections (clear/fuzzy/missing-param/abstain/ambiguous all clean).
-      Offline prompt-logic tests in `test_llm_nlu.py` (now 18). Gates: suite green, pyright 0, contracts 9/9. The
-      keyword-matcher-feedback half is **not** automatable here → split out as **QUAL-53**.
-- [ ] **QUAL-53** [NLU] (P3) `[deferred]` — **Trace-driven improvement of the cheap NLU tiers** (split from QUAL-51,
-      2026-06-16). When an utterance falls through to the LLM classifier, that's a signal the cheap deterministic tiers
-      (keyword matcher, spaCy) *should* have caught it. Build an **offline analysis process, integrated with trace
-      playback**, that examines such fall-throughs and proposes concrete fixes — donation phrases/patterns, spaCy config,
-      keyword/fuzzy thresholds — so the cheap layers catch more and the LLM is reserved for genuine fuzz. **Prerequisite
-      (real gap found 2026-06-16):** the NLU cascade trace currently records only the **final** result
-      (`nlu_component.py` `record_stage("nlu_cascade")`), not each provider's attempt/confidence — so it can't yet explain
-      *why* a fall-through happened. First enrich the cascade trace to record per-provider attempts (which tried, each
-      one's confidence, why it abstained), then build the analyzer over recorded traces. Needs real usage data → deferred.
 - [x] **ARCH-7** [MQTT] — **✓ DONE 2026-06-06** (design session; deliverable `docs/design/mqtt_integration.md`, and the
       cross-project bridge contract AGREED with the user in the bridge session — `wb-mqtt-bridge/docs/
       voice_integration_contract_draft.md`, status AGREED 2026-06-06). **Approach REDEFINED (Invariant #8(d), approved):**
@@ -1651,23 +1508,6 @@ _Apply to every remediation task below (from the 4 review docs + QUAL-25/26). So
       on the conversation session + `ConversationState = awaiting-clarification` + a pipeline pre-check that fills the
       slot from the next turn and completes the original intent (symmetric to the F&F `contextual` check, but transient).
       Expires with the Q2 idle window. Follow-up to QUAL-30.
-- [ ] **QUAL-44** `[deferred]` [DFLOW] (P2, enhancement; split from QUAL-31) — **Answer-vs-new-command arbitration on a
-      clarifying turn.** QUAL-31's resume pre-check (`workflows/voice_assistant.py` `_process_pipeline`, the
-      `take_pending_clarification` branch) **unconditionally** treats the turn that follows a clarification as the answer:
-      it prepends the original utterance and re-runs NLU on the combined text. That is the intended flow ("answer with
-      just the missing value"), but if the user instead **abandons the clarification and barks a new command** ("какая
-      погода?" after being asked a timer duration), the combine yields a garbled utterance ("поставь таймер какая
-      погода?") that can misroute or no-op. Today this is bounded only by one-shot consumption (the bad turn clears the
-      marker) + idle-window expiry — acceptable for the P2 feature, but not robust. **Scope:** add deterministic
-      arbitration before combining — e.g. run NLU on the **bare answer first**; if it independently recognizes as a
-      **confident, non-fallback** intent (a real, different command), drop the pending clarification and process the
-      answer **fresh**; otherwise (bare fragment / low-confidence / fallback) treat it as the slot answer and combine as
-      today. **Trade-off to settle:** an extra NLU pass on clarifying turns only (cheap, rare) vs. a lighter
-      confidence/phrase heuristic; also decide whether a brand-new command should *cancel* the pending intent silently or
-      acknowledge the abandonment. Pairs with QUAL-31 (this is its known limitation) and the F&F `contextual` resolution
-      (same "is this turn about the prior context or a fresh request?" question). Done when a new-command answer routes
-      to the new command (not the garbled combine) with a regression test, and the legitimate slot-answer path stays
-      green. Refs: QUAL-31, QUAL-30, Q7.
 - [x] **QUAL-32** `[release]` [QUAL] (P2) — **DONE 2026-06-08** (outcome at end of item). **Purge `TYPE_CHECKING` import guards repo-wide (Invariant #9).** _ARCH-15
       PR-9.2 note: the new I/O modules (`core/interfaces/output.py`, `core/event_bus.py`, `core/observe.py`,
       `outputs/*`) were authored TYPE_CHECKING-free (direct imports, per the PR-3 user directive), so they add **nothing**
@@ -1785,6 +1625,17 @@ _Apply to every remediation task below (from the 4 review docs + QUAL-25/26). So
       no-stomp; suite at baseline parity (0 regressions). **Carve-out → QUAL-38:** processing-language defaults (number-spelling
       utils / silero TTS / ASR / text-processor) + inline bilingual handler messages (`== 'ru'` branches) are a distinct
       concern, filed separately. Refs: `RELEASE_JOURNAL.md` 2026-06-03, QUAL-16.
+- [x] **QUAL-37** `[deferred]` [DFLOW] (P2) — **Targeted no-intent clarification (enhancement; split from QUAL-30).
+      DONE 2026-06-03.** The online (LLM) path already consumed `_fallback_context.likely_domain` (via
+      `_build_fallback_context_prompt`, QUAL-16); the gap was the **offline** path. **Delivered:** `_handle_fallback_
+      without_llm` now reads `likely_domain` and, when it matches a known domain, emits a **deterministic, localized,
+      offline** targeted clarification ("Возможно, вы хотели поставить таймер?" / "Did you want to set a timer?") via a
+      new `fallback_targeted` template + a `fallback_domain_labels` map (domain→friendly action phrase) in
+      `assets/localization/conversation/{ru,en}.yaml`; falls through to the generic responder when there's no guess /
+      unknown domain. Metadata now carries `targeted`/`likely_domain`. **Verified:** new `test_no_intent_clarification.py`
+      (5) covers targeted ru/en, generic fall-through, unknown-domain fall-through, determinism + offline; 0 net suite
+      regressions. **Ledger fix:** removed a corrupted duplicate QUAL-37 header that had orphaned QUAL-36's old body
+      (collateral from the QUAL-36 done-edit). Refs: QUAL-30, QUAL-16, Q7.
 - [x] **QUAL-38** `[deferred]` [DFLOW][I18N] (P2) — **Processing-language threading + inline-bilingual purge (carved from
       QUAL-36). DONE 2026-06-03.** **Key correction:** the processing language is the **audio-MODEL/deployment** language
       (which number-spelling/transcription rules to apply), NOT the session language — spelling numbers in the session
@@ -1820,33 +1671,6 @@ _Apply to every remediation task below (from the 4 review docs + QUAL-25/26). So
       `/transcribe`, monitoring `/contextual-commands`(+`/performance`), nlu_analysis `/capabilities`/`/statistics`,
       `/system/status` (config-ui doesn't consume it — Overview uses `/intents/status`). Verified: models accept the real
       GET/PUT shapes incl. passthrough extras, suite 85=85 (0 net regression). (Found 2026-06-04.)
-- [x] **QUAL-43** [DVALIDATE] (P2) — **DONE 2026-06-06.** Removed the donation v1.0 dead validation code and
-      **repointed the build analyzer at the v1.1 schemas** (user-directed mid-task). **Removed:** the dead v1.0
-      schema-validation chain in `IntentAssetLoader` (`load_donation_on_demand` / `_load_and_validate_donation` /
-      `_validate_json_schema` / `validate_donation_data` — 0 callers; the *v1.1* `_validate_donation_schema` stays);
-      `irene/tools/intent_validator.py` + its `irene-intent-validate` script + `assets/v1.0.json`; the orphaned
-      `CrossLanguageValidator.sync_parameters_across_languages` (+ its dead confidence/lang-detect helpers and the
-      `TranslationSuggestions` dataclass); the rule-based `suggest_translations` method + the
-      `POST /donations/{h}/suggest-translations` endpoint; the dead schemas `SyncParameters{Request,Response}`,
-      `SuggestTranslations{Request,Response}`, `TranslationSuggestionsSchema`, `MissingPhraseInfo`. **Build analyzer
-      rewritten:** `_validate_intent_json_files` now validates each enabled handler's `assets/donations/<h>/contract.json`
-      (against `donation_contract_v1.1.json`) + its `<lang>.json` phrasing (against `donation_language_v1.1.json`) via
-      `jsonschema` — the old path pointed at the non-existent v1.0 monolithic `<h>.json`, so it would have emitted false
-      "file not found" build errors. Verified the real handlers validate clean + a missing contract is flagged.
-      **Regenerated** the committed `openapi.json` (109→108 paths; suggest-translations gone) + the frontend types.
-      Gates: pyright 0, import-contracts 9/9, dep-validator 55/55, backend suite 84=baseline, `cd config-ui && npm run
-      check && npm run build` pass. _Original scope:_
-      **Remove donation v1.0 dead validation code (split from UI-5 scope decision, 2026-06-06).**
-      The v1.1 split (QUAL-29) + the new wiring validator (QUAL-42) left v1.0-era validation as dead weight: **(1)**
-      `IntentAssetLoader._validate_json_schema()` validating against `assets/v1.0.json` (reachable only via the legacy
-      `_load_and_validate_donation` / unused `validate_donation_data` paths); **(2)** `irene/tools/intent_validator.py`
-      (standalone CLI validating v1.0.json, not wired into the loader/API); **(3)** `assets/v1.0.json` itself; **(4)** the
-      orphaned `CrossLanguageValidator.sync_parameters_across_languages()` no-op + its now-unused
-      `POST /donations/{h}/sync-parameters`-era plumbing; **(5)** the rule-based `suggest_translations()` + its
-      `POST /donations/{h}/suggest-translations` endpoint, **once UI-5 stops calling it** (superseded by QUAL-42's LLM
-      `translate`). **Sequencing:** do AFTER UI-5 lands (so removing the suggest-translations endpoint doesn't break the
-      old UI mid-flight). Verify no remaining importers; gates: pyright 0, import-contracts 9/9, dep-validator 55/55,
-      suite ≤baseline. Found during the donation-validation investigation + UI-5 scoping.
 - [x] **QUAL-40** `[release]` (P2) — **DONE 2026-06-07.** Generated-TOML section headers no longer dropped. **Was:**
       `ConfigManager._generate_provider_sections` / `_generate_normalizer_sections` (`config/manager.py`) built a
       per-iteration `section = "[base_path.<name>]"` header but **never appended it to `sections`**; the closing
@@ -1898,17 +1722,193 @@ _Apply to every remediation task below (from the 4 review docs + QUAL-25/26). So
       import-contracts 9/9, dep-validator 55/55, suite 84=baseline (+7 passing). _Decision logged:_ LLM translation
       validation is **on-demand (endpoint), not per-boot** — avoids per-startup token cost/fragility; structural wiring
       validation is the always-on startup part. Refs: `parameter_extraction_review.md`, donation-validation investigation.
-- [x] **QUAL-37** `[deferred]` [DFLOW] (P2) — **Targeted no-intent clarification (enhancement; split from QUAL-30).
-      DONE 2026-06-03.** The online (LLM) path already consumed `_fallback_context.likely_domain` (via
-      `_build_fallback_context_prompt`, QUAL-16); the gap was the **offline** path. **Delivered:** `_handle_fallback_
-      without_llm` now reads `likely_domain` and, when it matches a known domain, emits a **deterministic, localized,
-      offline** targeted clarification ("Возможно, вы хотели поставить таймер?" / "Did you want to set a timer?") via a
-      new `fallback_targeted` template + a `fallback_domain_labels` map (domain→friendly action phrase) in
-      `assets/localization/conversation/{ru,en}.yaml`; falls through to the generic responder when there's no guess /
-      unknown domain. Metadata now carries `targeted`/`likely_domain`. **Verified:** new `test_no_intent_clarification.py`
-      (5) covers targeted ru/en, generic fall-through, unknown-domain fall-through, determinism + offline; 0 net suite
-      regressions. **Ledger fix:** removed a corrupted duplicate QUAL-37 header that had orphaned QUAL-36's old body
-      (collateral from the QUAL-36 done-edit). Refs: QUAL-30, QUAL-16, Q7.
+- [x] **QUAL-43** [DVALIDATE] (P2) — **DONE 2026-06-06.** Removed the donation v1.0 dead validation code and
+      **repointed the build analyzer at the v1.1 schemas** (user-directed mid-task). **Removed:** the dead v1.0
+      schema-validation chain in `IntentAssetLoader` (`load_donation_on_demand` / `_load_and_validate_donation` /
+      `_validate_json_schema` / `validate_donation_data` — 0 callers; the *v1.1* `_validate_donation_schema` stays);
+      `irene/tools/intent_validator.py` + its `irene-intent-validate` script + `assets/v1.0.json`; the orphaned
+      `CrossLanguageValidator.sync_parameters_across_languages` (+ its dead confidence/lang-detect helpers and the
+      `TranslationSuggestions` dataclass); the rule-based `suggest_translations` method + the
+      `POST /donations/{h}/suggest-translations` endpoint; the dead schemas `SyncParameters{Request,Response}`,
+      `SuggestTranslations{Request,Response}`, `TranslationSuggestionsSchema`, `MissingPhraseInfo`. **Build analyzer
+      rewritten:** `_validate_intent_json_files` now validates each enabled handler's `assets/donations/<h>/contract.json`
+      (against `donation_contract_v1.1.json`) + its `<lang>.json` phrasing (against `donation_language_v1.1.json`) via
+      `jsonschema` — the old path pointed at the non-existent v1.0 monolithic `<h>.json`, so it would have emitted false
+      "file not found" build errors. Verified the real handlers validate clean + a missing contract is flagged.
+      **Regenerated** the committed `openapi.json` (109→108 paths; suggest-translations gone) + the frontend types.
+      Gates: pyright 0, import-contracts 9/9, dep-validator 55/55, backend suite 84=baseline, `cd config-ui && npm run
+      check && npm run build` pass. _Original scope:_
+      **Remove donation v1.0 dead validation code (split from UI-5 scope decision, 2026-06-06).**
+      The v1.1 split (QUAL-29) + the new wiring validator (QUAL-42) left v1.0-era validation as dead weight: **(1)**
+      `IntentAssetLoader._validate_json_schema()` validating against `assets/v1.0.json` (reachable only via the legacy
+      `_load_and_validate_donation` / unused `validate_donation_data` paths); **(2)** `irene/tools/intent_validator.py`
+      (standalone CLI validating v1.0.json, not wired into the loader/API); **(3)** `assets/v1.0.json` itself; **(4)** the
+      orphaned `CrossLanguageValidator.sync_parameters_across_languages()` no-op + its now-unused
+      `POST /donations/{h}/sync-parameters`-era plumbing; **(5)** the rule-based `suggest_translations()` + its
+      `POST /donations/{h}/suggest-translations` endpoint, **once UI-5 stops calling it** (superseded by QUAL-42's LLM
+      `translate`). **Sequencing:** do AFTER UI-5 lands (so removing the suggest-translations endpoint doesn't break the
+      old UI mid-flight). Verify no remaining importers; gates: pyright 0, import-contracts 9/9, dep-validator 55/55,
+      suite ≤baseline. Found during the donation-validation investigation + UI-5 scoping.
+- [ ] **QUAL-44** `[deferred]` [DFLOW] (P2, enhancement; split from QUAL-31) — **Answer-vs-new-command arbitration on a
+      clarifying turn.** QUAL-31's resume pre-check (`workflows/voice_assistant.py` `_process_pipeline`, the
+      `take_pending_clarification` branch) **unconditionally** treats the turn that follows a clarification as the answer:
+      it prepends the original utterance and re-runs NLU on the combined text. That is the intended flow ("answer with
+      just the missing value"), but if the user instead **abandons the clarification and barks a new command** ("какая
+      погода?" after being asked a timer duration), the combine yields a garbled utterance ("поставь таймер какая
+      погода?") that can misroute or no-op. Today this is bounded only by one-shot consumption (the bad turn clears the
+      marker) + idle-window expiry — acceptable for the P2 feature, but not robust. **Scope:** add deterministic
+      arbitration before combining — e.g. run NLU on the **bare answer first**; if it independently recognizes as a
+      **confident, non-fallback** intent (a real, different command), drop the pending clarification and process the
+      answer **fresh**; otherwise (bare fragment / low-confidence / fallback) treat it as the slot answer and combine as
+      today. **Trade-off to settle:** an extra NLU pass on clarifying turns only (cheap, rare) vs. a lighter
+      confidence/phrase heuristic; also decide whether a brand-new command should *cancel* the pending intent silently or
+      acknowledge the abandonment. Pairs with QUAL-31 (this is its known limitation) and the F&F `contextual` resolution
+      (same "is this turn about the prior context or a fresh request?" question). Done when a new-command answer routes
+      to the new command (not the garbled combine) with a regression test, and the legitimate slot-answer path stays
+      green. Refs: QUAL-31, QUAL-30, Q7.
+- [x] **QUAL-45** [WS][ESP32] (P2) `[deferred]` — **DONE (design) 2026-06-14 — SUBSUMED BY ARCH-22.** The ESP32
+      audio-streaming protocol (end-of-utterance + on-device VAD/wake contract) is now fully specified in
+      **`docs/design/esp32_satellite.md`** — wire protocol §4 (`{"type":"end"}` device hint + server-authoritative ASR
+      endpointing, D-5/D-6), the on-device microWakeWord+microVAD contract (D-9/D-10), and the single-mic/no-server-VAD
+      split (D-11). The *firmware* implementation of the end-of-utterance signaling rides the **tracked firmware rewrite**
+      (esp32_satellite.md §14), not this task. _Original below._ **ESP32 audio-streaming protocol: end-of-utterance signal
+      + on-device VAD/wake contract.** Filed from the ARCH-18 endpoint reconciliation (2026-06-10). The **server already** consumes a
+      `{"type":"end"}` control frame on `/ws/audio` to bound an utterance (one session = one utterance = one ASR;
+      `webapi_router.py:824-835`) and ARCH-18 makes that path skip server VAD+wake (they run on-device). **Device-side TODO
+      (ESP32 review):** define + implement the firmware's end-of-utterance signaling (emit `{"type":"end"}` at on-device
+      VAD silence; **default = end of WS session** if a firmware doesn't send it), plus the on-device VAD/wake contract the
+      server now assumes. Doc: `docs/review/esp32_wakeword_review.md` + `docs/design/ws_esp32_transport.md`.
+- [x] **QUAL-46** [IO] (P2) `[deferred]` — **DONE 2026-06-15.** Generalize the vosk runner into a config-driven
+      **voice runner** (follows ARCH-15's "runners-as-presets — config, not code"). The old `VoskRunner` was a full
+      end-to-end mic pipeline (mic → VAD → [wake] → ASR → NLU → intent → TTS) but **artificially gated to vosk** by
+      two checks — an `import vosk` dependency probe and a validation rule forcing `asr.default_provider == "vosk"` —
+      while the actual processing path was already provider-agnostic (delegates to the ASR component). **Removed both
+      gates:** the runner now requires only `sounddevice` (its real dep — mic capture) and validates *any* configured
+      + enabled ASR provider (vosk/whisper/sherpa_onnx/google_cloud); ASR-provider deps are the component system's
+      concern (`irene-dependency-validate`). **Renamed** `vosk_runner.py`→`voice_runner.py`, `VoskRunner`→`VoiceRunner`,
+      `run_vosk`→`run_voice`, entry points `irene-vosk`→`irene-voice` + the `irene.runners` discovery entry + the
+      `runners/__init__` exports (clean rename, no alias — pre-release). **Fixed the latent VAD inconsistency:** the mic
+      pipeline structurally requires VAD (the workflow raises if it's off) yet the runner forced asr/audio/nlu/etc but
+      not vad — now it forces `vad.enabled=True` too, so a VAD-off config fails clearly in the runner, not deep in
+      workflow init. (`voice_trigger` stays config-driven — the runner auto-skips the wake word when it's absent.)
+      Docs: new "Voice (microphone)" section in `QUICKSTART.md` (config-driven ASR, both invocation forms, `--trace`).
+      New `test_voice_runner.py` (8 tests: provider-agnostic validation + the force-rules incl. VAD). 9/9 import
+      contracts; runner/vad suites net-zero (4 pre-existing TEST-2 failures). Invariant #4 N/A (no config schema/endpoint
+      change — purely a runner gate + rename). _Note: the v13-era `tools/migrate_runners.py` still maps the old name as
+      a v13→v14 migration target; left untouched (obsolete, like `config_migrator` — flagged separately → QUAL-47)._
+- [x] **QUAL-47** [WS] (P2) `[deferred]` — **DONE 2026-06-15.** Retire the obsolete one-time migration tools (the
+      QUAL-46 follow-up). On v15.0.0, both target long-past versions and neither is imported by runtime code:
+      **`irene/tools/config_migrator.py`** (v13→v14 config migration; entry point `irene-config-migrate`) and
+      **`tools/migrate_runners.py`** (legacy `runva_*.py`→v13 runners — already broken by the QUAL-46 rename, since it
+      referenced `vosk_runner`/`VoskRunner`/`run_vosk`). Deleted both + removed the `irene-config-migrate`
+      `[project.scripts]` entry. No tests/code referenced them (only two `docs/archive/*` historical mentions, left as
+      record). Package re-syncs clean; 9/9 import contracts. **Sweep extended 2026-06-15** — retired two more
+      standalone (un-imported, non-entry-point) migrators verified spent/obsolete: **`tools/migrate_to_universal_plugins.py`**
+      (old plugin→provider config migration; only refs were two `docs/archive/*` guides) and
+      **`scripts/migrate_donations_v11.py`** (QUAL-29 donation v1.0→v1.1 — **QUAL-29 is `[x]` and the assets are already
+      v1.1**: 13 `contract.json` + per-lang files, so the one-time migration is applied/spent). Surfaced a related
+      finding kept OUT of scope → **QUAL-48**: `irene/config/migration.py` is *live* v13→v14 runtime auto-migration.
+      **Also retired 2026-06-15** the dead one-off VAD debug script **`tools/test_vad_sibilant_fix.py`** (already broken —
+      it imported `UniversalAudioProcessor`, renamed to `VoiceSegmenter` in ARCH-18, so it `ImportError`ed; not an entry
+      point, not imported) + its orphaned companion **`configs/vad-sibilant-fix.toml`** (referenced only by that script).
+      The sibilant fix itself is long shipped (`docs/archive/VAD_SIBILANT_FIX.md`, left as record).
+- [x] **QUAL-48** [DFLOW] (P2) `[deferred]` — **DONE 2026-06-15 (decision: remove).** Removed the v13→v14 runtime
+      config-migration path — the last v13/v14 relic after QUAL-47 retired the standalone migrators. `irene/config/migration.py`
+      (637 lines: `V13ToV14Migrator`/`migrate_config`/`ConfigurationCompatibilityChecker`/`create_migration_backup`) was
+      wired into `config/manager.py:_dict_to_config`, guarded by `requires_migration(data)` so it only fired for a
+      **v13-format** config — which never occurs on v15.0.0. Deleted the module; dropped the import + the guard block in
+      `manager.py` (the normal env-resolve → `model_validate` path is unchanged); removed the import + 5 `__all__` entries
+      from `config/__init__.py`. A v13 config now fails plainly at pydantic validation instead of silently morphing —
+      correct for v15 (v13 is unsupported). No test depended on auto-migration (verified net-zero vs baseline); all shipped
+      configs (config-master/minimal/api-only) load clean; re-exports intact; 9/9 import contracts. Invariant #4 N/A.
+- [x] **QUAL-49** [INFER] (P2) `[deferred]` — **DONE 2026-06-15.** Silero TTS model-id routing fix (surfaced from the
+      ARCH-24 asset-routing analysis; relates to **ARCH-24 T5** — done early). `silero_v3`/`silero_v4` were the **only**
+      providers that bypassed the AssetManager model-id router: they placed the model at `<dir>/<config:model_file>` with a
+      **shared default** (`v3_ru.pt`/`v4_ru.pt`), so two v3 languages — v3_ru/en/de/es all share the `silero/` dir — that
+      both left `model_file` at the default resolved to the **same file** (latent collision), inconsistent with the
+      sherpa/whisper/vosk `get_model_path(provider, model_id)` convention. **Fix:** route the path via
+      `get_model_path("silero_v{3,4}", model_id)` (→ `silero/<id>.pt` / `silero_v4/<id>.pt`, distinct per model_id); derive
+      `model_url` from the selected model_id's descriptor (legacy torch.hub-fallback safety); route the download through the
+      real provider name (`download_model("silero_v4", model_id)`, not the non-existent `"silero"` fallback that silently
+      failed into the legacy path + a copy hack). Explicit `model_file` still honored as an override (back-compat). New
+      `test_silero_routing.py` (4 tests incl. the anti-collision property). **Invariant #4 N/A** (TTS provider config is
+      free-form `Dict[str,Any]`, `models.py:191` — not schema/config-ui-typed). Gates: suite 935 green, pyright 0, contracts 9/9.
+- [x] **QUAL-50** [NLU][LLM] (P2) — **LLM NLU classifier as a cascade fallback provider** (decided 2026-06-15 in the
+      ARCH-24 T4 armv7 config session). New `LLMNLUProvider(NLUProvider)`: when the deterministic providers (keyword +
+      spaCy-on-64-bit) don't recognize an utterance, ask the **LLM to classify** it into a known intent **and extract its
+      parameters** (intent taxonomy sourced from the donation/bridge catalog) — recovering fuzzy *commands* the keyword
+      matcher misses. Slots into `provider_cascade_order` **after** keyword/spaCy (last NLU resort, before the
+      `conversation.general` fallback). **Deliberately revises the QUAL-15/16 "NLU is LLM-free" stance — but only as a
+      last-resort fallback**: the deterministic path stays primary and offline still works (keyword → conversation
+      templates). Needs `[llm]` enabled with a provider (cloud = HTTP, so armv7-viable, but adds online dependency + latency
+      for fuzzy commands). Full provider integration (the PR2 lesson): `LLMNLUProviderSchema` registered +
+      `[nlu.providers.llm]` config-master block + `get_supported_architectures()`. **Gates the ARCH-24 T4 armv7 config**
+      (which wants keyword→llm NLU — providers-before-configs). When low-confidence/missing-param: hand to the conversation
+      handler's CLARIFYING multi-turn (already in place — `conversation.py` `ConversationState.CLARIFYING` + QUAL-37
+      targeted clarification; verify it elicits a **missing required parameter**, not just domain-level specificity).
+      **Design (confirmed 2026-06-15; corrected 2026-06-16):** the provider returns a **plain `Intent`**
+      {name, entities, confidence, raw_text} via `recognize_with_parameters` — **identical to keyword/spaCy, no special
+      output** (the earlier "rich structured JSON object" plan was wrong; see QUAL-52 below). It does what every NLU provider
+      does: **classify** (LLM picks one intent name from the donation taxonomy, or abstain → `None`) + **extract params**
+      (`extract_parameters`), then returns the Intent. **Catalog grounding is NOT the LLM's job** — the shared
+      `ContextualEntityResolver` (run by `ContextAwareNLUProcessor` downstream, for *every* provider) canonicalizes entities
+      against the live catalog/context. So the LLM emits **raw entity spans** ("kitchen", "lamp"), not canonical IDs — the
+      shared resolver grounds them. The classification call is a **plain text** `chat_completion` (no
+      `LLMPort.generate_structured`, no structured-output capability). **Confidence is DERIVED, written to the standard
+      `Intent.confidence`:** (i) intent ∈ donation set [hard gate], (ii) fraction of **required params that resolve** against
+      catalog/context [the real signal], (iii) an **evidence span** the LLM must quote [anti-hallucination]; LLM
+      self-report/logprobs are a weak prior only. **Commands** accept only if intent-valid + evidence + ALL required params
+      resolved (missing → CLARIFYING; unresolvable / no-evidence → abstain); **queries** accept on intent-valid + evidence.
+      **DEPENDS ON QUAL-52** (the reworked, budget-aware LLM component — *not* its structured output, which was reverted).
+      **Built 2026-06-16:** `irene/providers/nlu/llm.py` `LLMNLUProvider` — `_initialize_from_donations` builds the
+      taxonomy + `parameter_specs` from the same donations; `recognize_with_parameters` makes one deterministic
+      `LLMPort.generate_response` call, parses locally, and returns a plain `Intent` or `None`. Abstains on
+      no-LLM / offline / unparseable / intent∉donations / evidence-not-in-text; else confidence = `0.7 + 0.25 × required-coverage`
+      (a missing required param still clears the threshold → the handler's QUAL-30 `_clarify` asks — verified at
+      `handlers/base.py:285,302`). Injection mirrors the conversation handler: `set_llm_component(LLMPort)`, soft-injected by
+      `NLUComponent.post_initialize_coordination` via `core.component_manager.get_component('llm')` (no hard dep → no-LLM
+      builds still start). `LLMNLUProviderSchema` registered + `[nlu.providers.llm]` (enabled=false, opt-in) + pyproject
+      entry-point; default cascade unchanged. Arch = all (cloud HTTP is armv7-safe). Tests `test_llm_nlu.py` (13). Gates:
+      suite 995 green, pyright 0, contracts 9/9 (provider→`intents.ports` is ARCH-4-legal), config-ui type-checks (Inv #4).
+      **Unblocks ARCH-24 T4** (armv7 config can now use `keyword→llm`). Prompt wording is a first cut → **QUAL-51**.
+- [x] **QUAL-51** [NLU][LLM] (P2) — **Prompt-tightening session for QUAL-50** (DONE 2026-06-16; interactive scope agreed
+      with the user). Tightened the inline classifier system prompt: conservative "abstain when unsure" framing, an explicit
+      JSON output contract + anti-hallucination (verbatim evidence), and the taxonomy + few-shot **filtered to the utterance
+      language** (by script). Few-shot = hand-written **abstain** exemplars per language (the key last-resort lesson) +
+      **auto-sourced positives** from each intent's donation `examples`. Kept the prompt **inline** (per the user's call) —
+      it's *dynamically assembled* from donations (taxonomy + examples), so it isn't a static authored asset like the
+      `assets/prompts/*` task prompts; `docs/guides/prompting.md` updated to document this one generated exception (Inv #10).
+      Decisions: instructions **English-only** (LLMs follow them cross-lingually; taxonomy/utterance carry the language),
+      classifier keys off the **input** language (`context.language`), not the system default. Tuned the
+      `missing_parameter` clarification template (en+ru) — warmer, invites the answer. **Validation:** new live harness
+      `scripts/eval_llm_nlu.py` + bilingual fixture `scripts/eval_llm_nlu_cases.yaml` (24 cases, real 54-intent taxonomy,
+      DeepSeek via `.env`) — **24/24** after two fixture corrections (clear/fuzzy/missing-param/abstain/ambiguous all clean).
+      Offline prompt-logic tests in `test_llm_nlu.py` (now 18). Gates: suite green, pyright 0, contracts 9/9. The
+      keyword-matcher-feedback half is **not** automatable here → split out as **QUAL-53**.
+- [x] **QUAL-52** [LLM] (P2) — **LLM component rework: real token budgets + budget-aware prompting** (surfaced 2026-06-15;
+      **prerequisite for QUAL-50**; DONE 2026-06-16). Today's LLM handling used arbitrary/meaningless config knobs and was
+      **token-budget-blind**. Reworked `llm_component` + providers (deepseek/openai/anthropic) + the LLM config schema:
+      **(1) PR1 ✓** real **per-model token budgets** (`llm_capabilities` registry: context window + max output from actual
+      model capabilities, dropping the arbitrary 150). **(2) PR2 ✓** **budget-aware prompting** — `estimate_tokens`
+      (utf-8 bytes/4, dependency-free), `fit_messages` trims oldest/keeps system+final to fit the input budget;
+      `context_window` exposed in config. **(3) PR3 ✗ REVERTED (2026-06-16):** first-class structured/JSON output
+      (`generate_structured` + `response_format`) was built on a **wrong premise** — that the QUAL-50 NLU classifier returns
+      a bespoke structured object. It does not: an NLU provider returns a **plain `Intent`**, param extraction is the
+      provider's `extract_parameters` step, and catalog grounding is the **shared** `ContextualEntityResolver` downstream. So
+      the classifier needs only a plain text call — no generic JSON-dict capability on the component (commit `beb08e3`).
+      **(4) PR4 ✓** **dropped the unneeded fine-tuning** — `temperature` removed from schemas/config/providers (+ dead
+      `top_p`/`frequency_penalty`/`presence_penalty`); providers now use a fixed deterministic `0.0`. **Invariant #4:**
+      config-ui has no typed temperature field (free-form params dict) → nothing to sync, openapi unchanged. (QUAL-15/16
+      console-LLM fallback / `fallback_providers` — left as-is; not in scope here.)
+- [ ] **QUAL-53** [NLU] (P3) `[deferred]` — **Trace-driven improvement of the cheap NLU tiers** (split from QUAL-51,
+      2026-06-16). When an utterance falls through to the LLM classifier, that's a signal the cheap deterministic tiers
+      (keyword matcher, spaCy) *should* have caught it. Build an **offline analysis process, integrated with trace
+      playback**, that examines such fall-throughs and proposes concrete fixes — donation phrases/patterns, spaCy config,
+      keyword/fuzzy thresholds — so the cheap layers catch more and the LLM is reserved for genuine fuzz. **Prerequisite
+      (real gap found 2026-06-16):** the NLU cascade trace currently records only the **final** result
+      (`nlu_component.py` `record_stage("nlu_cascade")`), not each provider's attempt/confidence — so it can't yet explain
+      *why* a fall-through happened. First enrich the cascade trace to record per-provider attempts (which tried, each
+      one's confidence, why it abstained), then build the analyzer over recorded traces. Needs real usage data → deferred.
 
 ### Tests (TEST)
 > **Strategy (decided 2026-06-01): do NOT keep repairing the existing suite.** Most tests were written against
@@ -1942,6 +1942,42 @@ _Apply to every remediation task below (from the 4 review docs + QUAL-25/26). So
       (`IntentResult.error_type`, `SpaCyNLUProvider.model_name`, `IntentRegistry._handlers`,
       `IntentComponent.get_system_status`), phase4 contextual-command + assertions. Value already banked:
       **QUAL-21**, **QUAL-22**, text_processor trace fix.
+- [x] **TEST-3** [FAF] (P2) — **DONE 2026-06-15.** Fire-and-forget lifecycle coverage. The store + happy launch→complete
+      path were already covered (`test_action_store.py`, `client_registry` 76%); added `test_fire_and_forget_coverage.py`
+      (11 tests) for the previously-uncovered `IntentHandler` F&F machinery: launch-registers, completion-reaps-and-records-
+      success, **error** → failure history, **cancel** → "cancelled", **launch-failure** → failed metadata, timeout-monitor
+      register+reap, `cleanup_timeout_tasks`, metrics start/completion, notification scheduling (owned vs no-session), and
+      the handler `cancel_action`/`get_active_actions`. **`handlers/base.py` 45%→52%** (and the whole F&F lifecycle
+      launch→complete→error→cancel→cleanup is now exercised). Hermetic (object.__new__ handler, fresh patched
+      ClientRegistry, asyncio.run). No product bugs surfaced. The deferred-result *delivery routing* through the
+      OutputManager (ARCH-15) stays integration/smoke-level. Suite green (901 passed, plain pytest).
+- [x] **TEST-4** [PEX] (P1) — **DONE 2026-06-15.** Parameter-extraction coverage. Its named scope is now covered:
+      **the 8 ParameterTypes** via `HybridKeywordMatcher._extract_by_type` (INTEGER/FLOAT/BOOLEAN/CHOICE/DURATION/STRING
+      branches + DATETIME/ENTITY fallthrough) + `_convert_and_validate_parameter`/`validate_config`
+      (`test_param_extraction_coverage.py`), and **the 4 entity resolvers** Temporal/Quantity (pure parsers, full) +
+      Device/Location (graceful degradation with no asset loader — verifies the QUAL-11 P0 #4 fix; the review's old
+      fatal-crash is gone) (`test_entity_resolver_coverage.py`). 18 tests; `hybrid_keyword_matcher` 0%→19%,
+      `entity_resolver` 62%→79%, `donations` 87%→89%. No product bugs surfaced. The remaining ~80% of
+      `hybrid_keyword_matcher` (the donation-driven keyword/fuzzy `recognize()` pipeline) needs loaded donations + spaCy
+      and is integration/smoke-level — out of TEST-4's "8 ParameterTypes / 4 resolvers / pattern-matching" unit scope;
+      `spacy_provider` (21%) is mostly the review-confirmed dead Matcher/EntityRuler code (not worth chasing).
+- [x] **TEST-5** [TXTPROC] (P2) — **DONE 2026-06-15.** Text-processor / normalizer coverage. The provider
+      (`UnifiedTextProcessor`) was already covered by `test_text_processing.py`; added `test_text_normalizers_coverage.py`
+      (11 tests) for the actual normalizers + the component's live methods: **NumberNormalizer** (ru digit→words,
+      no-number passthrough, empty), **PrepareNormalizer** (pure-Cyrillic fast passthrough / Latin→Cyrillic transcription /
+      inline number processing / `changeLatin=skip`), **RunormNormalizer** missing-dependency degradation (no model
+      download), and `TextProcessorComponent.process` no-provider passthrough + `convert_numbers_to_words`. **`text_normalizers.py`
+      25%→58%**; `text_processor_component` 29%→30%. Reconciliation (Invariant #8): the `text_processing_review.md`
+      "process() hardcodes the general stage" finding was fixed by **QUAL-13** (`process(..., stage="asr_output")` routes
+      by stage now). No product bugs surfaced. The remaining component % is the review-confirmed **dead** stage routing +
+      the broken text-processing WebAPI (a known QUAL-12 finding) + `RunormNormalizer`'s model path (offline hazard) —
+      deliberately not chased.
+- [x] **TEST-6** (P2) — **DONE 2026-06-15 (TEST-7 Phase C/D).** ASR provider-fallback + resampling coverage restored:
+      the `test_phase7_performance` resampling-latency tests were rewritten to `AudioProcessor.resample_audio_data`
+      (`audio_processor.py` 71%), and the ASR provider-selection/fallback surface is covered by `test_asr_component_coverage`
+      (`asr_component.py` 46%; the new test file 98%). Individual ASR providers' model-loading internals stay uncovered
+      (smoke/model territory) — out of TEST-6's fallback+resampling scope. _Original:_ Restore ASR provider-fallback +
+      resampling coverage (the 7 phase7 tests skipped in TEST-1 called the removed `_handle_sample_rate_mismatch`).
 - [x] **TEST-7** (P1) — **DONE 2026-06-15 — suite rewritten + 100% green; coverage 45.6%→52.3%; full-suite pytest is
       now a hard CI gate (`backend-health.yml`).** Residual deep-pipeline coverage (`workflow_manager` 29%, `context`
       31%) accepted as integration/smoke-level (user-approved). Phases A–D below. Gate lifted** (ARCH-1..5 ✓ + QUAL-8/10/12/14 ✓ all `[x]`). Rewrite the
@@ -1995,42 +2031,6 @@ _Apply to every remediation task below (from the 4 review docs + QUAL-25/26). So
       Phase-C `no_intent_clarification` fix). **Suite 100% green (888 passed / 0 failed / 7 skipped); 9/9 contracts; no
       product code changed.** Optional follow-up: a deep-path round for `workflow_manager`/`context` (or accept as
       integration-level).
-- [x] **TEST-6** (P2) — **DONE 2026-06-15 (TEST-7 Phase C/D).** ASR provider-fallback + resampling coverage restored:
-      the `test_phase7_performance` resampling-latency tests were rewritten to `AudioProcessor.resample_audio_data`
-      (`audio_processor.py` 71%), and the ASR provider-selection/fallback surface is covered by `test_asr_component_coverage`
-      (`asr_component.py` 46%; the new test file 98%). Individual ASR providers' model-loading internals stay uncovered
-      (smoke/model territory) — out of TEST-6's fallback+resampling scope. _Original:_ Restore ASR provider-fallback +
-      resampling coverage (the 7 phase7 tests skipped in TEST-1 called the removed `_handle_sample_rate_mismatch`).
-- [x] **TEST-3** [FAF] (P2) — **DONE 2026-06-15.** Fire-and-forget lifecycle coverage. The store + happy launch→complete
-      path were already covered (`test_action_store.py`, `client_registry` 76%); added `test_fire_and_forget_coverage.py`
-      (11 tests) for the previously-uncovered `IntentHandler` F&F machinery: launch-registers, completion-reaps-and-records-
-      success, **error** → failure history, **cancel** → "cancelled", **launch-failure** → failed metadata, timeout-monitor
-      register+reap, `cleanup_timeout_tasks`, metrics start/completion, notification scheduling (owned vs no-session), and
-      the handler `cancel_action`/`get_active_actions`. **`handlers/base.py` 45%→52%** (and the whole F&F lifecycle
-      launch→complete→error→cancel→cleanup is now exercised). Hermetic (object.__new__ handler, fresh patched
-      ClientRegistry, asyncio.run). No product bugs surfaced. The deferred-result *delivery routing* through the
-      OutputManager (ARCH-15) stays integration/smoke-level. Suite green (901 passed, plain pytest).
-- [x] **TEST-4** [PEX] (P1) — **DONE 2026-06-15.** Parameter-extraction coverage. Its named scope is now covered:
-      **the 8 ParameterTypes** via `HybridKeywordMatcher._extract_by_type` (INTEGER/FLOAT/BOOLEAN/CHOICE/DURATION/STRING
-      branches + DATETIME/ENTITY fallthrough) + `_convert_and_validate_parameter`/`validate_config`
-      (`test_param_extraction_coverage.py`), and **the 4 entity resolvers** Temporal/Quantity (pure parsers, full) +
-      Device/Location (graceful degradation with no asset loader — verifies the QUAL-11 P0 #4 fix; the review's old
-      fatal-crash is gone) (`test_entity_resolver_coverage.py`). 18 tests; `hybrid_keyword_matcher` 0%→19%,
-      `entity_resolver` 62%→79%, `donations` 87%→89%. No product bugs surfaced. The remaining ~80% of
-      `hybrid_keyword_matcher` (the donation-driven keyword/fuzzy `recognize()` pipeline) needs loaded donations + spaCy
-      and is integration/smoke-level — out of TEST-4's "8 ParameterTypes / 4 resolvers / pattern-matching" unit scope;
-      `spacy_provider` (21%) is mostly the review-confirmed dead Matcher/EntityRuler code (not worth chasing).
-- [x] **TEST-5** [TXTPROC] (P2) — **DONE 2026-06-15.** Text-processor / normalizer coverage. The provider
-      (`UnifiedTextProcessor`) was already covered by `test_text_processing.py`; added `test_text_normalizers_coverage.py`
-      (11 tests) for the actual normalizers + the component's live methods: **NumberNormalizer** (ru digit→words,
-      no-number passthrough, empty), **PrepareNormalizer** (pure-Cyrillic fast passthrough / Latin→Cyrillic transcription /
-      inline number processing / `changeLatin=skip`), **RunormNormalizer** missing-dependency degradation (no model
-      download), and `TextProcessorComponent.process` no-provider passthrough + `convert_numbers_to_words`. **`text_normalizers.py`
-      25%→58%**; `text_processor_component` 29%→30%. Reconciliation (Invariant #8): the `text_processing_review.md`
-      "process() hardcodes the general stage" finding was fixed by **QUAL-13** (`process(..., stage="asr_output")` routes
-      by stage now). No product bugs surfaced. The remaining component % is the review-confirmed **dead** stage routing +
-      the broken text-processing WebAPI (a known QUAL-12 finding) + `RunormNormalizer`'s model path (offline hazard) —
-      deliberately not chased.
 - [x] **TEST-8** [PORTS] (P1) — **DONE 2026-06-15 (TEST-7 Phase D).** All 5 capability handlers now covered through
       their injected ports + the graceful-degradation-when-absent path (the QUAL-24 bug class): `text_enhancement` 99%,
       `speech_recognition` 97%, `translation` 97%, `audio_playback` 80%, `voice_synthesis` 65% (the residual is the
@@ -2127,27 +2127,6 @@ _Apply to every remediation task below (from the 4 review docs + QUAL-25/26). So
 - [x] **BUILD-4** (P1) — DONE 2026-06-08: new **`frontend-health.yml`** workflow (push/PR on `config-ui/**`) runs the
       config-ui gates as hard checks — `npm ci`, `npm run check` (type-check + strict ESLint + orphans), `npm run build`,
       `npm run test` (vitest: 40 tests). All green today; satisfies the Invariant-#4 ongoing config-ui gate.
-- [x] **BUILD-6** `[release]` [QUAL] (P2) — **DONE 2026-06-09.** All 12 configs now validate; `config_validator_cli
-      --config-dir configs/ --ci-mode` is green → backend-health Gate 5 goes green. Each failure was a *required*
-      provider-schema field (no default) missing from the fixture: **(1)** `vad-production.toml` — added the required
-      `api_key = "${ELEVENLABS_API_KEY}"` to its active `tts.elevenlabs` default and `api_key = "${OPENAI_API_KEY}"` to
-      its active `llm.openai` default (mirroring the canonical `config-master.toml` placeholder style); **(2)**
-      `vosk-test.toml` — added the schema-required `credentials_path`/`project_id` to the *disabled* `asr.google_cloud`
-      block (the validator schema-checks declared providers even when `enabled = false`, exactly as it does for the
-      kept-but-disabled `whisper` block, which passed only because all its fields default); **(3)** `vad-testing.toml` —
-      the `CoreConfig` `extra_forbidden` error was a top-level `[testing]` section (4 ad-hoc VAD scenario sub-tables)
-      that **nothing in the codebase reads** (no `CoreConfig.testing` field, no consumer in `irene/`) — removed as dead
-      config. No schema/contract touched → no config-ui impact (Invariant #4 N/A). Verified: 12/12 valid,
-      `build_analyzer --validate-all-profiles` ✓, `dependency_validator` 55/55 ✓ both platforms, suite 83=83 FAILED (0
-      net regression — the failing VAD tests are pre-existing TEST-7 staleness, unrelated to the removed section: their
-      `scenario_a/b` are *generated audio* fixtures, not the `[testing]` block). _Original task below._ **Fix the 3
-      config fixtures that fail `config_validator_cli`** (the
-      backend-health Gate 5 honest-red, surfaced 2026-06-08): `vad-production.toml` (invalid `elevenlabs` tts + `openai`
-      llm provider configs — the `elevenlabs` block was a minimal BUILD-5 placeholder that needs the real schema fields),
-      `vad-testing.toml` (a `CoreConfig`-level validation error), `vosk-test.toml` (invalid `google_cloud` asr config).
-      `build_analyzer --validate-all-profiles` already passes (the providers exist); this is the deeper provider-config
-      *schema* validation. Done when `config_validator_cli --config-dir configs/ --ci-mode` is green (backend CI goes
-      green).
 - [x] **BUILD-5** (P2) — **DONE 2026-06-08** (outcome summary at the end of this item). **Verify conditional/profile-driven
       build analysis (`build_analyzer`) still works vs the
       pre-pause (~Sep 2025) baseline.** The revival churned everything the analyzer reads — entry-points, providers,
@@ -2186,6 +2165,27 @@ _Apply to every remediation task below (from the 4 review docs + QUAL-25/26). So
       apk→apt, reads the `linux.ubuntu` apt set the analyzer already emits — `libasound2` + the `asr-onnx` extra resolve).
       9/9 import contracts kept; full suite 83 failed = baseline (no net regression). Image **build/boot** stays BUILD-3
       (release phase; armv7 on hardware). Optional golden per-profile regression test deferred to TEST-7.
+- [x] **BUILD-6** `[release]` [QUAL] (P2) — **DONE 2026-06-09.** All 12 configs now validate; `config_validator_cli
+      --config-dir configs/ --ci-mode` is green → backend-health Gate 5 goes green. Each failure was a *required*
+      provider-schema field (no default) missing from the fixture: **(1)** `vad-production.toml` — added the required
+      `api_key = "${ELEVENLABS_API_KEY}"` to its active `tts.elevenlabs` default and `api_key = "${OPENAI_API_KEY}"` to
+      its active `llm.openai` default (mirroring the canonical `config-master.toml` placeholder style); **(2)**
+      `vosk-test.toml` — added the schema-required `credentials_path`/`project_id` to the *disabled* `asr.google_cloud`
+      block (the validator schema-checks declared providers even when `enabled = false`, exactly as it does for the
+      kept-but-disabled `whisper` block, which passed only because all its fields default); **(3)** `vad-testing.toml` —
+      the `CoreConfig` `extra_forbidden` error was a top-level `[testing]` section (4 ad-hoc VAD scenario sub-tables)
+      that **nothing in the codebase reads** (no `CoreConfig.testing` field, no consumer in `irene/`) — removed as dead
+      config. No schema/contract touched → no config-ui impact (Invariant #4 N/A). Verified: 12/12 valid,
+      `build_analyzer --validate-all-profiles` ✓, `dependency_validator` 55/55 ✓ both platforms, suite 83=83 FAILED (0
+      net regression — the failing VAD tests are pre-existing TEST-7 staleness, unrelated to the removed section: their
+      `scenario_a/b` are *generated audio* fixtures, not the `[testing]` block). _Original task below._ **Fix the 3
+      config fixtures that fail `config_validator_cli`** (the
+      backend-health Gate 5 honest-red, surfaced 2026-06-08): `vad-production.toml` (invalid `elevenlabs` tts + `openai`
+      llm provider configs — the `elevenlabs` block was a minimal BUILD-5 placeholder that needs the real schema fields),
+      `vad-testing.toml` (a `CoreConfig`-level validation error), `vosk-test.toml` (invalid `google_cloud` asr config).
+      `build_analyzer --validate-all-profiles` already passes (the providers exist); this is the deeper provider-config
+      *schema* validation. Done when `config_validator_cli --config-dir configs/ --ci-mode` is green (backend CI goes
+      green).
 
 ### Models & Assets (ASSET)
 - [x] **ASSET-1** — Refresh stale model IDs (Anthropic→Claude 4.x, Whisper large-v3, ElevenLabs multilingual_v2, spaCy 3.8, gpt-4→gpt-4o-mini). → fc85306
@@ -2235,13 +2235,13 @@ _Apply to every remediation task below (from the 4 review docs + QUAL-25/26). So
       two-part model (language-neutral `contract.json` + per-language `<lang>.json`), with full field reference
       from `donation_contract_v1.1.json` (method/param schema, type + entity_type enums) and the cross-language
       validation rule. Old single-file/v1.0 body + drift banner replaced.
+- [x] **DOC-6** (P2) — Archived stale historical-plan docs (`config_schemas`, `language_support`,
+      `configuration_guide`, `PIPELINE_IMPLEMENTATION`, `irene_current`) → `docs/archive/`.
 - [x] **DOC-7** [PEX] (P1) — DONE 2026-06-08: the parameter-extraction reference is covered across the new
       canonical set rather than one file — `guides/DONATION_FILE_SPECIFICATION.md` (the `ParameterSpec` schema +
       the ParameterType and entity_type enums), `architecture/intents.md` (extraction patterns, `get_param`,
       handler consumption of `intent.entities`), and `architecture/nlu.md` (token/slot pattern format). Closed as
       covered; the standalone `PARAMETER_EXTRACTION_GUIDE.md` was not needed.
-- [x] **DOC-6** (P2) — Archived stale historical-plan docs (`config_schemas`, `language_support`,
-      `configuration_guide`, `PIPELINE_IMPLEMENTATION`, `irene_current`) → `docs/archive/`.
 - [ ] **DOC-8** (P1) — **Data & context-models map** → `docs/guides/DATA_MODELS.md`. **Downstream of QUAL-25
       [DFLOW]** (re-categorized 2026-06-02): this is the *write-up* that distills the dataflow **review** into a
       concise developer reference; the investigation/findings now live in QUAL-25 → `docs/review/dataflow_review.md`.
