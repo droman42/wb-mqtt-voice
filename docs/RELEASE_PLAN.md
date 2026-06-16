@@ -2078,7 +2078,10 @@ _Apply to every remediation task below (from the 4 review docs + QUAL-25/26). So
       2026-06-15) → (1–3, interactive) config per target → (4, interactive) Dockerfile design (baked-in vs mounted:
       models/config/assets/logs volumes, ports, `/dev/snd`, entrypoint, extras) → (5) per-image workflow.** Carries forward
       the BUILD-5 Dockerfile fixes (armv7 Debian base, `intent_validator`
-      removal) for real build/boot verification on hardware. _Original deferred note below._ **DEFERRED to the release phase
+      removal) for real build/boot verification on hardware. **Progress 2026-06-16:** step-1 **armv7 config done**
+      (`configs/embedded-armv7.toml` redone — back-half satellite: sherpa+vosk-small / piper-irina / keyword→llm NLU /
+      audio off; relaxed the `CoreConfig` TTS↔Audio rule for headless TTS — see journal). **Next: aarch64 + standalone
+      config sessions**, then Dockerfiles + per-image workflows. _Original deferred note below._ **DEFERRED to the release phase
       (decided 2026-06-01): Docker builds are an end-stage
       task**, after the architecture/code work settles (image contents, extras, and armv7 viability all depend on
       the post-refactor shape — incl. QUAL-19/20 [ESP32] and ARCH-9/10 [INFER] for the sherpa-onnx/runtime

@@ -155,14 +155,15 @@ class ConfigValidator:
         """Validate component configuration consistency"""
         components = config.components
         
-        # Check component dependencies
-        if components.tts and not components.audio:
+        # Check component dependencies. TTS without local Audio is only a problem when local playback
+        # hardware is declared — a headless satellite delivers TTS over the output seam.
+        if components.tts and not components.audio and config.system.audio_playback_enabled:
             self._add_result(
                 ValidationLevel.WARNING,
                 "component_dependencies",
                 "TTS component is enabled but Audio component is disabled",
                 component="tts",
-                suggestion="Enable Audio component for TTS output, or use console TTS provider"
+                suggestion="Enable Audio component for local TTS output, or set system.audio_playback_enabled=false"
             )
         
         if components.voice_trigger and not (components.asr and config.inputs.microphone):

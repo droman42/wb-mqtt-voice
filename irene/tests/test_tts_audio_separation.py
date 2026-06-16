@@ -32,21 +32,27 @@ from irene.providers.audio.base import AudioProvider
 class TestConfigurationValidation:
     """Test configuration validation for TTS-Audio dependency checks"""
     
-    def test_tts_without_audio_raises_validation_error(self):
-        """Test that TTS enabled without Audio component raises ValidationError"""
+    def test_tts_without_audio_raises_when_local_playback_declared(self):
+        """TTS without Audio raises ONLY when local playback hardware is declared."""
         config_data = {
-            "components": {
-                "tts": True,
-                "audio": False
-            }
+            "system": {"audio_playback_enabled": True},
+            "components": {"tts": True, "audio": False},
         }
-        
+
         with pytest.raises(ValueError) as exc_info:
             CoreConfig(**config_data)
-        
-        # Verify the error message is about TTS requiring Audio
-        error_msg = str(exc_info.value)
-        assert "TTS component requires Audio component" in error_msg
+
+        assert "TTS component requires Audio component" in str(exc_info.value)
+
+    def test_tts_without_audio_ok_for_headless_satellite(self):
+        """A headless satellite (no local playback) may run TTS without the Audio component —
+        the reply is delivered over the output seam (RemoteAudioOutput)."""
+        config_data = {
+            "system": {"audio_playback_enabled": False},
+            "components": {"tts": True, "audio": False},
+        }
+        cfg = CoreConfig(**config_data)  # must not raise
+        assert cfg.components.tts and not cfg.components.audio
     
     def test_audio_without_tts_is_valid(self):
         """Test that Audio without TTS is valid (audio-only use cases)"""

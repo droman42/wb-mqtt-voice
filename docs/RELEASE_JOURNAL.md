@@ -12,6 +12,20 @@ newest entries near the top of each dated section.
 ## Action journal
 
 ### 2026-06-16
+- **ARCH-24 T4 / BUILD-3 — armv7 (WB7 satellite) config built; CoreConfig TTS↔Audio rule relaxed.** Resumed the
+  armv7 config session (unblocked by QUAL-50/51). Rewrote the stale `configs/embedded-armv7.toml` as the back-half
+  satellite stack from the deployment matrix: ASR = `sherpa_onnx` + vosk-small (whisper-small barred by WB7 RAM; Kaldi
+  vosk has no armv7 wheel), TTS = `piper` direct voice **irina**, NLU = `hybrid_keyword_matcher` → **`llm`** cascade (no
+  spaCy — no armv7 wheel), LLM = deepseek (NLU fallback + conversation) with console floor. Decisions (with the user):
+  ASR `num_threads=2` (leave 2 A7 cores for the co-hosted wb-mqtt-bridge/ui); keep monitoring + nlu_analysis ON for now
+  (traces) with a documented build-time lean-down; **audio component DISABLED** (no speaker — the workflow no-ops local
+  playout, and the TTS reply rides the output seam / RemoteAudioOutput, finalized in the ESP32 transport work). Added a
+  documented `[trace]` toggle (off; for QUAL-53). VAD/voice_trigger off (ESP32 owns them). **Surfaced + relaxed** the
+  `CoreConfig` "TTS requires Audio" cross-validator (`models.py`): it predated the output seam: now it requires Audio
+  only when `system.audio_playback_enabled` is true — a headless satellite may run TTS without local Audio. Parallel CLI
+  warning conditioned the same way; `test_tts_audio_separation` updated (raise-when-local + ok-for-headless); `audio.md`
+  reconciled (Inv #10). All 12 configs validate; suite 1001 green, pyright 0, contracts 9/9. **BUILD-3 next:** aarch64 +
+  standalone config sessions, then the Dockerfiles + per-image workflows.
 - **QUAL-51 — classifier prompt tightened + live-validated; QUAL-53 split out.** Interactive requirements session first
   (scope, prompt-language strategy, validation approach, few-shot source). Reworked the inline classifier prompt:
   conservative abstain-when-unsure framing, explicit JSON contract + verbatim-evidence anti-hallucination, and the

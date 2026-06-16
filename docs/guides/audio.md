@@ -46,8 +46,10 @@ playback_mode = "file"           # "file" = play the synthesized WAV; "stream" =
 ```
 
 `components.audio = true` turns the component on; `[audio]` picks the provider and a fallback (`console` is
-the safe fallback everywhere). Note **TTS requires Audio** — enabling `[tts]` without `[audio]` is rejected
-at startup.
+the safe fallback everywhere). **If you've declared local playback** (`system.audio_playback_enabled = true`),
+enabling `[tts]` without `[audio]` is rejected at startup — TTS would have nowhere to play. A **headless box
+with no speaker** (`audio_playback_enabled = false`, e.g. a satellite that streams its reply back to a remote
+device) may run TTS with the Audio component off.
 
 `playback_mode` chooses how a TTS reply reaches the speaker: `file` synthesizes to a temp WAV and hands the
 file to the provider; `stream` conforms the audio **down to the sink** (below) and streams the raw PCM through

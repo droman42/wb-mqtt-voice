@@ -1304,9 +1304,13 @@ class CoreConfig(BaseSettings):
     @model_validator(mode='after')
     def validate_system_dependencies(self):
         """Validate cross-component dependencies"""
-        # TTS requires Audio component
-        if self.components.tts and not self.components.audio:
-            raise ValueError("TTS component requires Audio component. Either disable TTS or enable Audio component.")
+        # TTS requires the Audio component ONLY when local playback hardware is declared. A headless
+        # satellite (system.audio_playback_enabled = false) delivers TTS over the output seam
+        # (RemoteAudioOutput / reply channel), not the local audio component, so it runs TTS without it.
+        if self.components.tts and not self.components.audio and self.system.audio_playback_enabled:
+            raise ValueError("TTS component requires Audio component when system.audio_playback_enabled "
+                             "is true. Either enable Audio, disable TTS, or set audio_playback_enabled "
+                             "= false (headless / remote-output deployments deliver TTS via the output seam).")
         
         # Microphone hardware requires microphone input
         if self.system.microphone_enabled and not self.inputs.microphone:
