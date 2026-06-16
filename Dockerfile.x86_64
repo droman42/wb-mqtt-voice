@@ -1,211 +1,101 @@
 # ============================================================
-# IRENE VOICE ASSISTANT - x86_64 MULTI-PLATFORM DOCKER BUILD
+# IRENE VOICE ASSISTANT - x86_64 STANDALONE DOCKER BUILD
 # ============================================================
-# Ubuntu desktop/server optimized build with runtime configuration analysis
-# Supports all configuration profiles with selective dependency installation
-# 
+# The lone non-satellite target: a full local voice runner (mic→VAD→wake→ASR→NLU→TTS→playback) on the
+# one torch image. Follows the wb-mqtt-bridge pattern (self-contained /opt/venv copied whole + LEAN).
+# Assets (donations/prompts/templates) + ML models are NOT baked — mounted at IRENE_ASSETS_ROOT
+# (=/app/assets); ship them via the `irene-assets-*.tar.gz` archive.
+#
+# The standalone runs voice_runner (local mic + the web API), so it needs host audio at run time:
+#   docker run --device /dev/snd -e IRENE_CONFIG_FILE=/app/runtime-config.toml \
+#     -v ./assets:/app/assets -p 6000:6000 irene:standalone
+# Override the baked config with: -e IRENE_CONFIG_FILE=/cfg/my.toml -v ./my.toml:/cfg/my.toml
+#
 # Usage:
-#   docker build -f Dockerfile.x86_64 --build-arg CONFIG_PROFILE=minimal .
-#   docker build -f Dockerfile.x86_64 --build-arg CONFIG_PROFILE=voice .
-#   docker build -f Dockerfile.x86_64 --build-arg CONFIG_PROFILE=full .
+#   docker build -f Dockerfile.x86_64 --build-arg CONFIG_PROFILE=standalone-x86_64 -t irene:standalone .
 
 # ============================================================
-# STAGE 1: BUILD ANALYZER - Runtime Configuration Analysis
+# STAGE 1: BUILD ANALYZER — derive the deps for the config profile
 # ============================================================
-FROM python:3.11-slim as analyzer
-
+FROM python:3.11-slim AS analyzer
 WORKDIR /build-analyzer
-
-# Install minimal dependencies for build analysis
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    python3-tomli \
-    python3-pip \
-    && rm -rf /var/lib/apt/lists/* \
-    && pip install jsonschema
-
-# Copy build analyzer tool and configuration profiles
-COPY irene/tools/ irene/tools/
-COPY irene/utils/loader.py irene/utils/loader.py
-COPY irene/utils/__init__.py irene/utils/__init__.py
-COPY irene/__init__.py irene/__init__.py
-COPY configs/ configs/
-COPY pyproject.toml pyproject.toml
-
-# Copy intent handlers and JSON configurations for validation
-COPY irene/intents/handlers/ irene/intents/handlers/
-COPY assets/ assets/
-
-# Build argument for configuration profile selection
-ARG CONFIG_PROFILE=minimal
-ENV CONFIG_PROFILE=${CONFIG_PROFILE}
-
-# Runtime analysis of selected configuration profile
-RUN echo "🔍 Analyzing configuration profile: ${CONFIG_PROFILE}" && \
-    python -m irene.tools.build_analyzer \
-    --config configs/${CONFIG_PROFILE}.toml \
-    --platform linux.ubuntu \
-    --json > /tmp/build-requirements.json && \
-    echo "📋 Build requirements generated successfully"
-
-# Validate intent JSON configurations if intents are enabled
-RUN echo "🔍 Validating intent JSON configurations..." && \
-    python -c "
-import json
-import sys
-try:
-    with open('/tmp/build-requirements.json', 'r') as f:
-        data = json.load(f)
-    intent_files = data.get('intent_json_files', [])
-    if intent_files:
-        print(f'Found {len(intent_files)} intent JSON files (validated at runtime by the cross-language validator)')
-    else:
-        print('📋 No intent handlers enabled, skipping JSON validation')
-except Exception as e:
-    print(f'⚠️ Intent validation check failed: {e}', file=sys.stderr)
-    # Continue build - validation issues will be caught later
-" && echo "📋 Intent validation completed"
-
-# Extract system dependencies for next stage
-RUN python -c "
-import json
-with open('/tmp/build-requirements.json', 'r') as f:
-    data = json.load(f)
-    
-# Write Ubuntu system packages
-with open('/tmp/system-packages.txt', 'w') as f:
-    packages = data.get('system_packages', {}).get('linux.ubuntu', [])
-    if packages:
-        f.write(' '.join(packages))
-    else:
-        f.write('')
-
-# Write Python dependencies  
-with open('/tmp/python-deps.txt', 'w') as f:
-    deps = data.get('python_dependencies', [])
-    if deps:
-        f.write(' '.join(deps))
-    else:
-        f.write('')
-
-# Write enabled modules for selective copying
-with open('/tmp/python-modules.txt', 'w') as f:
-    modules = data.get('python_modules', [])
-    f.write('\n'.join(modules))
-
-print(f'📦 System packages: {len(data.get(\"system_packages\", []))}')
-print(f'🐍 Python deps: {len(data.get(\"python_dependencies\", []))}')
-print(f'📋 Modules: {len(data.get(\"python_modules\", []))}')
-"
-
-# ============================================================
-# STAGE 2: DEPENDENCY BUILDER - Install Dependencies
-# ============================================================
-FROM python:3.11-slim as builder
-
-WORKDIR /app
-
-# Copy system dependency list from analyzer
-COPY --from=analyzer /tmp/system-packages.txt /tmp/system-packages.txt
-COPY --from=analyzer /tmp/python-deps.txt /tmp/python-deps.txt
-COPY --from=analyzer /tmp/build-requirements.json /tmp/build-requirements.json
-
-# Install UV package manager
-RUN pip install uv
-
-# Install system dependencies (only if packages are specified)
-RUN if [ -s /tmp/system-packages.txt ]; then \
-        echo "🔧 Installing system dependencies..." && \
-        apt-get update && \
-        apt-get install -y --no-install-recommends $(cat /tmp/system-packages.txt) && \
-        apt-get clean && \
-        rm -rf /var/lib/apt/lists/*; \
-    else \
-        echo "📦 No system dependencies required for this profile"; \
-    fi
-
-# Copy project files for dependency resolution
-COPY pyproject.toml uv.lock ./
-
-# Install Python dependencies with UV (only if dependencies are specified)
-RUN if [ -s /tmp/python-deps.txt ]; then \
-        echo "🐍 Installing Python dependencies with UV..." && \
-        python -c "
-import json
-with open('/tmp/build-requirements.json', 'r') as f:
-    data = json.load(f)
-    deps = data.get('python_dependencies', [])
-    if deps:
-        print('UV install command: uv sync --extra ' + ' --extra '.join(deps))
-" && \
-        uv sync $(python -c "
-import json
-with open('/tmp/build-requirements.json', 'r') as f:
-    data = json.load(f)
-    deps = data.get('python_dependencies', [])
-    if deps:
-        print('--extra ' + ' --extra '.join(deps))
-"); \
-    else \
-        echo "🐍 Installing base dependencies only..." && \
-        uv sync; \
-    fi
-
-# ============================================================
-# STAGE 3: RUNTIME - Minimal Runtime Image
-# ============================================================
-FROM python:3.11-slim as runtime
-
-# Metadata
-LABEL maintainer="Irene Voice Assistant Team"
-LABEL description="Irene Voice Assistant - x86_64 Runtime"
-ARG CONFIG_PROFILE=minimal
-LABEL config.profile="${CONFIG_PROFILE}"
-
-WORKDIR /app
-
-# Copy analysis results for runtime reference
-COPY --from=analyzer /tmp/build-requirements.json /app/build-requirements.json
-COPY --from=analyzer /tmp/python-modules.txt /app/python-modules.txt
-
-# Copy system dependencies (only if they exist)
-COPY --from=builder /tmp/system-packages.txt /tmp/system-packages.txt
-RUN if [ -s /tmp/system-packages.txt ]; then \
-        echo "🔧 Installing runtime system dependencies..." && \
-        apt-get update && \
-        apt-get install -y --no-install-recommends $(cat /tmp/system-packages.txt) && \
-        apt-get clean && \
-        rm -rf /var/lib/apt/lists/*; \
-    fi && rm /tmp/system-packages.txt
-
-# Copy Python environment from builder
-COPY --from=builder /root/.local /root/.local
-ENV PATH="/root/.local/bin:$PATH"
-
-# Copy application code (selective copying based on enabled modules)
+RUN apt-get update && apt-get install -y --no-install-recommends python3-pip && \
+    rm -rf /var/lib/apt/lists/* && pip install jsonschema
 COPY irene/ irene/
 COPY configs/ configs/
-
-# Copy assets for intent JSON validation at runtime
 COPY assets/ assets/
+COPY pyproject.toml pyproject.toml
+COPY docker/derive_build_reqs.py derive_build_reqs.py
+ARG CONFIG_PROFILE=standalone-x86_64
+RUN python -m irene.tools.build_analyzer --config configs/${CONFIG_PROFILE}.toml \
+        --platform linux.ubuntu --json > /tmp/build-requirements.json && \
+    python derive_build_reqs.py /tmp/build-requirements.json --platform linux.ubuntu --out /tmp
 
-# Copy specific configuration profile for runtime
+# ============================================================
+# STAGE 2: BUILDER — self-contained /opt/venv
+# ============================================================
+FROM python:3.11-slim AS builder
+WORKDIR /build
+COPY --from=analyzer /tmp/system-packages.txt /tmp/system-packages.txt
+COPY --from=analyzer /tmp/pip-target.txt /tmp/pip-target.txt
+COPY --from=analyzer /tmp/pip-specs.txt /tmp/pip-specs.txt
+
+RUN apt-get update && apt-get install -y --no-install-recommends build-essential python3-dev && \
+    rm -rf /var/lib/apt/lists/*
+RUN pip install uv
+
+RUN if [ -s /tmp/system-packages.txt ]; then \
+        apt-get update && \
+        apt-get install -y --no-install-recommends $(cat /tmp/system-packages.txt) && \
+        rm -rf /var/lib/apt/lists/*; \
+    fi
+
+COPY pyproject.toml uv.lock README.md ./
+COPY irene/ irene/
+
+RUN uv venv /opt/venv && . /opt/venv/bin/activate && \
+    UV_COMPILE_BYTECODE=1 uv pip install $(cat /tmp/pip-target.txt) $(cat /tmp/pip-specs.txt)
+
+# ============================================================
+# STAGE 3: RUNTIME — minimal image
+# ============================================================
+FROM python:3.11-slim AS runtime
+LABEL maintainer="Irene Voice Assistant Team"
+LABEL description="Irene Voice Assistant - x86_64 Standalone Runtime"
+ARG CONFIG_PROFILE=standalone-x86_64
+LABEL config.profile="${CONFIG_PROFILE}"
+WORKDIR /app
+
+COPY --from=analyzer /tmp/runtime-packages.txt /tmp/runtime-packages.txt
+RUN if [ -s /tmp/runtime-packages.txt ]; then \
+        apt-get update && \
+        apt-get install -y --no-install-recommends $(cat /tmp/runtime-packages.txt) && \
+        rm -rf /var/lib/apt/lists/*; \
+    fi && rm -f /tmp/runtime-packages.txt
+
+COPY --from=builder /opt/venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
 COPY --from=analyzer configs/${CONFIG_PROFILE}.toml /app/runtime-config.toml
 
-# Create non-root user for security
-RUN useradd -m -u 1000 irene && \
-    chown -R irene:irene /app
+RUN find /opt/venv -name '__pycache__' -type d -prune -exec rm -rf {} + 2>/dev/null || true && \
+    find /opt/venv -name '*.pyc' -delete 2>/dev/null || true && \
+    find /opt/venv -path '*/site-packages/*/tests' -type d -prune -exec rm -rf {} + 2>/dev/null || true && \
+    find /opt/venv -path '*/site-packages/*/test' -type d -prune -exec rm -rf {} + 2>/dev/null || true
+
+RUN useradd -m -u 1000 irene && mkdir -p /app/assets && chown -R irene:irene /app
 USER irene
 
-# Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD python -c "import irene; print('✅ Irene is healthy')" || exit 1
+    CMD python -c "import irene; print('ok')" || exit 1
 
-# Runtime configuration
+# Config from $IRENE_CONFIG_FILE (baked default; override with -e + a mount). Assets + models mounted at
+# IRENE_ASSETS_ROOT. No entrypoint — the runner reads the env directly.
 ENV IRENE_CONFIG_FILE=/app/runtime-config.toml
-ENV PYTHONPATH=/app
+ENV IRENE_ASSETS_ROOT=/app/assets
+ENV PYTHONPATH=/app PYTHONUNBUFFERED=1
 
-# Default command (can be overridden)
-CMD ["python", "-m", "irene.runners.webapi_runner", "--config", "/app/runtime-config.toml", "--host", "0.0.0.0", "--port", "6000"]
-
-# Expose web API port
-EXPOSE 6000 
+# Standalone: voice_runner = the local mic pipeline (needs `--device /dev/snd` at run time).
+# (The web API alongside the mic — `--host`/`--port` — lands with the voice_runner web change.)
+CMD ["python", "-m", "irene.runners.voice_runner"]
+EXPOSE 6000

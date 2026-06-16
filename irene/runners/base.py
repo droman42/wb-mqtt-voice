@@ -8,6 +8,7 @@ patterns shared across CLI, WebAPI, and VOSK runners.
 import asyncio
 import argparse
 import logging
+import os
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Optional, Dict, Any, List
@@ -151,8 +152,10 @@ class BaseRunner(ABC):
         parser.add_argument(
             "--config", "-c",
             type=Path,
-            default=Path("config.toml"),
-            help="Configuration file path (default: config.toml)"
+            # Default from $IRENE_CONFIG_FILE so containers point at the baked config (or a mounted
+            # override) with no entrypoint script; falls back to ./config.toml for a bare invocation.
+            default=Path(os.getenv("IRENE_CONFIG_FILE", "config.toml")),
+            help="Configuration file path (default: $IRENE_CONFIG_FILE or config.toml)"
         )
         
         # Logging options
