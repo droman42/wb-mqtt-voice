@@ -12,6 +12,16 @@ newest entries near the top of each dated section.
 ## Action journal
 
 ### 2026-06-21
+- **Whole-codebase review filed → `docs/review/codebase_review_2026-06-21.md`.** 7 parallel finder passes
+  (subsystem + cross-cutting dead-code/duplication/doc-claim specialists) over `irene/` + `docker/` + `pyproject.toml`
+  + `docs/guides/`. 47 findings with stable IDs: 16 correctness (CR-A), 13 dead/zombie (CR-B), 13 duplication (CR-C),
+  5 stale user-facing doc claims (CR-D). Top items verified against source by hand. **Headline (CR-A1, P0):** the
+  shipped x86_64 standalone image's web API never starts — `voice_runner._post_core_setup` `await`s the infinite mic
+  loop (`:232`) instead of `create_task`, so `_setup_web_server` never runs (CI green only because the test stubs the
+  method). Also: ASR never reconciles `default_provider` to a loaded provider (CR-A2); `audio_playback` "play" is a
+  shipped simulation (CR-A5); `nlu_analysis` endpoints always report "healthy" via stub loaders (CR-A6). Cross-refs
+  recorded (CR-B1→BUILD-7, CR-C1/2/4/D1-4→BUILD-7, CR-C9→ARCH-25, CR-A12→QUAL-15, CR-A16→QUAL-30). **Unaddressed —
+  to be triaged/fixed one-by-one or in groups later.** Doc registered in the RELEASE_PLAN review-doc table.
 - **Docker images de-bloated (CPU-only torch) + finished the BUILD-5-deferred `get_python_dependencies()` extra-names
   migration (BUILD-7).** The standalone (torch) image was ~6.44 GB. An audit (docker-export of all 3 *published* images)
   proved **no model assets are baked** — `/app/assets` is an empty mount, 0 model files in any image; the satellites are

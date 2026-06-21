@@ -1,0 +1,240 @@
+# Whole-codebase review (2026-06-21)
+
+**Status:** findings filed, unaddressed. **Backs:** general health pass (post-BUILD-7); individual items cross-ref
+their owning task below. **Scope:** entire `irene/` tree + `docker/` + `pyproject.toml` + `docs/guides/`. **Method:**
+7 parallel finder passes (subsystem deep-reads + cross-cutting dead-code / duplication / doc-claim specialists);
+the highest-severity correctness items (CR-A1, A2, A4, A7) were re-verified against source by hand.
+
+**Emphasis (as requested):** dead/unused code, logic/data duplication, and verification of user-facing doc claims —
+plus any correctness bugs surfaced along the way. These are to be addressed one-by-one or in groups later.
+
+**Confidence:** _Confirmed_ = read the code, bug is constructible. _Likely_ = strong finder evidence, not hand-re-verified.
+_Plausible_ = realistic but depends on a reachable runtime state / framework behavior.
+
+---
+
+## Triage summary
+
+| ID | Sev | Conf. | One-liner | Owner / ref |
+|----|-----|-------|-----------|-------------|
+| **CR-A1** | **P0** | Confirmed | `voice_runner` `await`s the infinite mic loop → standalone web API never starts | standalone runtime; **not** covered by BUILD-3 (used `webapi_runner`) |
+| CR-A2 | P1 | Confirmed | ASR never reconciles `default_provider` to a loaded provider → ASR hard-fails | new |
+| CR-A3 | P1 | Likely | `ASRComponent.initialize` swallows exceptions but stays `initialized=True` | new (compounds CR-A2) |
+| CR-A4 | P1 | Likely | `tts/vosk` `is_available` probes wrong asset namespace → dead on first run | new |
+| CR-A5 | P2 | Confirmed | `audio_playback` "play" is a shipped simulation (commented-out call + 10% dice fail) | new |
+| CR-A6 | P2 | Confirmed | `nlu_analysis` context loaders are stubs → endpoints always "healthy/no conflicts" | new |
+| CR-A7 | P2 | Likely | `process_text_input` drops the trace when the workflow raises (audio path doesn't) | tracing |
+| CR-A8 | P2 | Likely | `elevenlabs.synthesize_to_file` swallows error, writes no file | new |
+| CR-A9 | P3 | Plausible | Over-broad substring trace redaction nukes `session_id`/`keyword`/`author` | tracing |
+| CR-A10 | P3 | Plausible | `asr/base.audio_contract` reads a voice-trigger method name → rates always `[16000]` | new |
+| CR-A11 | P3 | Plausible | `voice_synthesis._handle_speak_text` AttributeError on `text:null` entity | new |
+| CR-A12 | P3 | Plausible | `silero_v3.is_available` does a blocking `requests.head` in async | QUAL-15 (same anti-pattern) |
+| CR-A13 | P3 | Plausible | `silero_v4._download_model` hardcodes the RU URL, ignores `model_id` | ASSET-2 |
+| CR-A14 | P3 | Likely | monitoring `uptime` always ~0 (`_start_time` never assigned) | new |
+| CR-A15 | P2 | Plausible | asset-loader save/load: `assets_root / domain / language` unsanitized (path traversal) | new (security) |
+| CR-A16 | P3 | Plausible | self-routing handlers' broad `except Exception` can swallow `ParameterExtractionError` | QUAL-30 boundary |
+| CR-B1..13 | — | Confirmed | dead/zombie code (see §B) | CR-B1 → BUILD-7 |
+| CR-C1..13 | — | Confirmed | duplication / drift risk (see §C) | CR-C1/2/4 → BUILD-7, CR-C9 → ARCH-25 |
+| CR-D1..5 | — | Confirmed | stale user-facing doc claims (see §D) | BUILD-7 / Invariant #10 |
+
+---
+
+## A. Correctness bugs
+
+### CR-A1 — [P0, Confirmed] `voice_runner` blocks before the web server starts
+`irene/runners/voice_runner.py:232`. `_post_core_setup` does `await self._start_voice_audio_workflow()`, whose body
+ends in `async for result in process_audio_stream(...)` (`:306`) — an infinite loop over the live mic. The `await`
+never returns, so `_setup_web_server` (`:236`) never runs, `self.app` stays `None`, and `_execute_runner_logic` →
+`_start_server` (`:329`) never binds port 6000. The method's own docstring (`:324`) says the workflow "runs in the
+background on the same loop" → the intent was `asyncio.create_task(...)`, not `await`.
+**Impact:** the shipped x86_64 standalone image (`Dockerfile.x86_64` CMD = `voice_runner --port 6000`, EXPOSE 6000)
+boots the mic pipeline but **never serves REST / WS / config-UI**. CI is green only because
+`test_voice_runner_coverage.py:246` stubs `_start_voice_audio_workflow` with `AsyncMock`. Not covered by BUILD-3
+hardware verification, which used `webapi_runner` (aarch64/armv7).
+
+### CR-A2 — [P1, Confirmed] ASR never reconciles `default_provider` to a loaded provider
+`irene/components/asr_component.py:155-167`. Sets `self.default_provider` from config (default `"vosk"`) and only logs
+whether `providers` is empty. Missing the reconciliation every sibling has — `tts_component.py:161-163`,
+`audio_component.py:192`, `voice_trigger_component.py:217`: `if default not in providers and providers: default =
+list(providers)[0]`.
+**Impact:** config `default_provider="vosk"`; vosk fails (missing model) but whisper loads → every `process_audio`
+hits `if provider_name not in self.providers: raise ValueError` (`:202`) and `/transcribe` 404s (`:278`). ASR fully
+dead despite a healthy provider. (LLM `llm_component.py:160` has the same gap but is masked by its console fallback;
+ASR has no mask.)
+
+### CR-A3 — [P1, Likely] `ASRComponent.initialize` swallows all exceptions yet stays `initialized=True`
+`irene/components/asr_component.py:93-173`. Whole body under `try/except Exception` that only logs (`:172`), but
+`super().initialize()` (`:95`) already set `initialized=True`. A mid-init failure → component reports healthy with
+`providers=={}`; defeats the ComponentManager's degrade-on-raise path (`core/components.py:204-212`). Compounds CR-A2.
+
+### CR-A4 — [P1, Likely] `tts/vosk.is_available` probes the wrong asset namespace
+`irene/providers/tts/vosk.py:90`. `get_model_info("vosk","tts")` — every other call uses `("vosk_tts","ru_multi")`
+(`:181,:186`, registered under `vosk_tts`). The pair matches nothing → `None`.
+**Impact:** on a clean install the model isn't downloaded, `model_path.exists()` is False, fallback returns `None` →
+`is_available()` False → component drops `vosk_tts` and **never triggers the download**. Permanently dead on first run.
+
+### CR-A5 — [P2, Confirmed] `audio_playback` "play" action is a shipped simulation
+`irene/intents/handlers/audio_playback_handler.py:314-347`. Real `audio_component.play_file(...)` is commented out
+(`:339`); body sleeps 0.5s then `random.random()<0.1` raises a fake load failure. Handler is live (in entry-points).
+**Impact:** "включи музыку" → optimistic "starting playback" reply, plays nothing, ~10% of calls report a spurious
+failure from the dice roll.
+
+### CR-A6 — [P2, Confirmed] `nlu_analysis` context loaders are permanent stubs
+`irene/components/nlu_analysis_component.py:520-530`. `_get_context_units()` / `_get_all_intent_units()` both
+`return []` ("simplified implementation"). So conflicts always `[]`, batch `total_intents=0`, health always `1.0`.
+**Impact:** every NLU-analysis endpoint (`/analyze/donation`, `/analysis/batch`, `/conflicts/{handler}`, `/health`)
+reports "healthy / no conflicts" regardless of reality.
+
+### CR-A7 — [P2, Likely] `process_text_input` loses the trace when the workflow raises
+`irene/core/workflow_manager.py:444-492`. The text path has no try/except and `_save_trace_if_enabled` (`:490`) is
+after the `with trace_scope` block; `process_audio_input` (`:576`) records an error stage and saves. With tracing on,
+a text-path exception → trace never written, no error stage. The "save every request" guarantee is violated for text.
+
+### CR-A8 — [P2, Likely] `elevenlabs.synthesize_to_file` swallows the error, writes no file
+`irene/providers/tts/elevenlabs.py:104-121`. Catches + logs, **no `raise`** (silero/vosk/piper all raise). Returns
+normally without creating `output_path` → caller reads a non-existent WAV; fallback chain never engages.
+
+### CR-A9 — [P3, Plausible] Over-broad trace redaction
+`irene/core/trace_context.py:412-426`. `sensitive_keys` includes short tokens `'key'`,`'session'`,`'auth'`,`'cert'`,
+matched by substring → `session_id`, `keyword`/`matched_keys`, `author` get `[REDACTED]`. Non-secret diagnostic data
+destroyed in every exported trace.
+
+### CR-A10 — [P3, Plausible] `asr/base.audio_contract` reads a non-existent method
+`irene/providers/asr/base.py:191`. `getattr(self, "get_supported_sample_rates", None)` is the *voice_trigger*
+convention; ASR providers define `get_preferred_sample_rates` (`whisper:259`, `vosk:402`, `sherpa_onnx:294`,
+`google_cloud:251`). Branch never fires → contract always `rates=[16000]`, discarding declared preferences.
+
+### CR-A11 — [P3, Plausible] `voice_synthesis._handle_speak_text` crashes on null text entity
+`irene/intents/handlers/voice_synthesis_handler.py:164-166`. `entities.get("text", raw_text).strip()` — the default
+only applies when the key is absent; `entities["text"] = None` → `.strip()` throws `AttributeError`. Sibling
+`_handle_speak_with_voice` (`:98`) uses the correct `get_param(... default=None) or parsed_text`.
+
+### CR-A12 — [P3, Plausible] `silero_v3.is_available` blocks on a network probe
+`irene/providers/tts/silero_v3.py:150-155`. Synchronous `requests.head(self.model_url, timeout=5)` inside an async
+method — the anti-pattern QUAL-15 removed from the OpenAI provider. `silero_v4.is_available` (`:91`) is local-only.
+Blocks the loop up to 5s and marks v3 unavailable whenever offline (even with torch installed).
+
+### CR-A13 — [P3, Plausible] `silero_v4._download_model` hardcodes the RU URL
+`irene/providers/tts/silero_v4.py:285-294`. `model_url = "https://models.silero.ai/.../v4_ru.pt"` ignores
+`self.model_url`/`model_id` (v3 `:306` uses `self.model_url`). Latent today (v4 is RU-only per ASSET-2) but the legacy
+path fetches RU for any `model_id`. Both v3/v4 `_load_model_async` log `get_model_info("silero","v3_ru"/"v4_ru")`
+regardless of the selected model.
+
+### CR-A14 — [P3, Likely] monitoring `uptime` always ~0
+`irene/components/monitoring_component.py:242`. `_start_time` is never assigned, so reported uptime is ~0.
+
+### CR-A15 — [P2, Plausible] Path-traversal gap in asset-loader save/load helpers
+`irene/core/intent_asset_loader.py` — `save_localization_for_domain` (`:1043`), `get_localization_for_domain_editing`
+(`:1021`), `save/get_language_phrasing` (`:657,:671`), `save_prompt_for_language` (`:954`), etc. build
+`assets_root / "localization" / domain / f"{language}.yaml"` and `mkdir(parents=True)` + write, with no validation of
+`domain`/`language`. These are FastAPI path params (`intent_component.py:1855` `/localizations/{domain}/{language}`).
+**Impact:** arbitrary read/**write** outside `assets_root` if a traversal value reaches the helper. HTTP-exploitability
+is limited (Starlette single-segment `{param}` doesn't capture `/`, and normalizes `..`), but the helpers have no
+defensive clamp and are also callable internally. Clamp each component to one path segment / verify the resolved path
+is under `assets_root`. (Fix once via the shared helper proposed in CR-C10.)
+
+### CR-A16 — [P3, Plausible] Self-routing handlers' broad `except` can swallow `ParameterExtractionError`
+Self-routing handlers (`conversation`, `datetime`, `greetings`, `system`, `timer`) wrap `execute()` in
+`except Exception`, which would swallow `ParameterExtractionError` and defeat the QUAL-30 clarification boundary if any
+of their `get_param` calls ever drops its caller-supplied default.
+
+---
+
+## B. Dead / zombie code
+
+- **CR-B1** — `irene/components/base.py:219,376` `is_dependencies_available()` + `Component.start()`. Dead
+  (ComponentManager uses `initialize()` at `core/components.py:204`; zero `.start()` callers) **and** broken since
+  BUILD-7 (`__import__("web-api")`). _Ref: already flagged in **BUILD-7**._
+- **CR-B2** — `irene/core/workflow_manager.py`: ~250 lines dead — `set_input_manager` (`:414`, 0 callers →
+  `input_manager` always `None`); the `_start_audio_workflow`→`_run_workflow`→`_get_input_source` cluster (`:719+`);
+  `switch_workflow` (`:815`), `hot_reload_workflow` (`:847`), `optimize_component_sharing` (`:969`),
+  `get_workflow_dependencies` (`:927`), `get_startup_performance_metrics` (`:1007`). (`_get_audio_stream`,
+  `monitor_model_loading_progress`, `update_workflow_readiness` are live — keep.)
+- **CR-B3** — `irene/core/components.py:321` `_attempt_fallback_initialization` always `return False` (stub). The whole
+  `fallback_mapping` subsystem logs "Attempting fallback… would be initialized here" while doing nothing.
+- **CR-B4** — `irene/core/client_registry.py`: `register_esp32_node` (`:212`), `get_devices_by_type` (`:335`),
+  `cleanup_expired_clients` (`:393`), `get_registry_stats` (`:415`) — 0 non-test callers.
+- **CR-B5** — `irene/core/debug_tools.py:172,180` `create_test_action` / `execute_test_action` — 0 callers.
+- **CR-B6** — `irene/core/analytics_dashboard.py:152,218` `get_performance_report` / `export_metrics_json` — 0 callers.
+- **CR-B7** — `irene/core/metrics.py`: `update_vad_cache_sizes` (`:560`), `get_component_metrics` (`:643`),
+  `update_session_activity` (`:775`), `generate_analytics_report` (`:971`), `record_resampling_operation` (`:994`) —
+  0 callers; the ingestion ones are never fed → silently-empty metrics.
+- **CR-B8** — `irene/runners/cli.py:374-407` `_print_interactive_help/_status` are byte-for-byte dead duplicates of
+  `irene/runners/base.py:435-467` (both 0 callers — help/status became intents). Also `runners/base.py:471,491`
+  `check_component_dependencies` / `print_dependency_status` — 0 callers.
+- **CR-B9** — `docker/derive_build_reqs.py:98` writes `python-modules.txt`; no Dockerfile `COPY`s it. Dead build output.
+- **CR-B10** — `pyproject.toml:180` empty `config-writing` extra (`# tomli-w moved to core`), still pulled by `all` /
+  `api` / `headless` umbrellas. Vestigial.
+- **CR-B11** — `irene/examples/*.py` (6 demo modules) — not imported, not entry-points, `__all__ = []`. Orphaned.
+- **CR-B12** — Porcupine voice-trigger: config block + schema exist, **no implementation** (ledger-confirmed zombie).
+- **CR-B13** — Misc: `voice_synthesis_handler._parse_and_speak_with_voice` (`:360`),
+  `conversation._get_context_coordination_summary` (`:1022`), `silero_v3.py:310` duplicate unreachable `raise`.
+
+---
+
+## C. Duplication / drift risk
+
+- **CR-C1** — spaCy model `@`-URL specs in **3 places**: `pyproject.toml:172-177` (`nlu` extra),
+  `spacy_provider.py:1202` (`get_asset_config`), `spacy_provider.py:1224` (`get_python_dependencies`). A version bump
+  must hit all three or dev `uv sync` and the Docker image install different model versions. _Ref: **BUILD-7**._
+- **CR-C2** — pip-spec parser written **3×** with divergent operator sets: `derive_build_reqs.py:79` (regex + `@`-split)
+  vs `dependency_validator.py:453` **and** `:475` (hand-rolled `>=`/`==`/`[`/` @ ` ladder, twice in one method).
+  Disagree on `<`,`~=`,`!=`,markers → validator "passes CI" while build buckets the same spec differently.
+  _Ref: **BUILD-7 / BUILD-5**._
+- **CR-C3** — Cyrillic detection (`Ѐ-ӿ`) re-implemented in 5+ files: `spacy_provider.py:76`,
+  `hybrid_keyword_matcher.py:349`, `nlu/llm.py:264`, `nlu_component.py:172`, `analysis/hybrid_analyzer.py:571,589`.
+  Three NLU providers in one cascade can disagree on language if anyone tweaks the range. Extract one `utils` helper.
+- **CR-C4** — base-dep re-listings with inconsistent floors: `numpy` base `<2` vs extras `>=1.21.0`; `aiohttp` base
+  `>=3.12.15` vs `wake-onnx`/`wake-tflite` `>=3.8.0`. (In-code pattern already prefers "don't re-list base deps" — see
+  the `# base dependency` comments — so the extras are inconsistent with the intended convention.) _Ref: **BUILD-7**._
+- **CR-C5** — `spacy_provider._initialize_spacy` (`:110`) vs `_initialize_spacy_with_assets` (`:165`): ~75 near-identical
+  lines; `recognize()` re-init and `is_available()` each pick a different one → a fix can land on only some paths.
+- **CR-C6** — `silero_v3.py` vs `silero_v4.py`: ~80% shared body, **shared `torch_model_cache` key** → device/cache
+  changes must mirror; source of the CR-A8/A12/A13-class divergence. Candidate `SileroTTSBase`.
+- **CR-C7** — cloud-LLM providers (openai/deepseek/anthropic) duplicate `_GENERIC_SYSTEM_FALLBACK`/`_LLM_TEMPERATURE`
+  (byte-identical), `_get_default_credentials`, `get_supported_tasks`, credential-load idiom, import-probe
+  `is_available`. Belongs in `LLMProvider`.
+- **CR-C8** — component web scaffolding copy-paste: `_metrics_push_*` (`asr_component.py:702` ≡
+  `voice_trigger_component.py:565`, byte-identical), `is_api_available` (×3: nlu/text_processor/monitoring),
+  `/configure` POST (×7), `/providers` (×6). Candidate `MetricsPushMixin` + shared `_apply_provider_config`.
+- **CR-C9** — `["linux.ubuntu","linux.alpine","macos","windows"]` `get_platform_support()` literal hardcoded in ~25
+  files (handlers/inputs/workflows/components) + `dependency_validator.py:678` (`argparse choices`) +
+  `build_analyzer.py:122,134` (allow-list) + a test assertion. `core/metadata.py:134` is the would-be canonical source
+  but isn't reused. _Ref: **ARCH-25** (adding an armv7/WB platform would touch all of them)._
+- **CR-C10** — `_get_asset_handler_name` defined verbatim in `intent_asset_loader.py:606` and
+  `cross_language_validator.py:170`; the inverse `[:-8]` inlined 3× (`:762,:852,:1008`); `assets_root / "donations"|…`
+  path construction repeated in ~20 methods with no shared helper. (Fixing CR-A15 once depends on this helper existing.)
+- **CR-C11** — handler `can_handle` / `_get_template` / `_error_result` copy-pasted across 13 handlers and **already
+  drifted** (`datetime`/`timer` added an extra short-circuit). Candidate base-class defaults.
+- **CR-C12** — the "iterate components, filter `isinstance(.., WebAPIPlugin)`" walk reimplemented 3× with different
+  guarding: `web_server.py:161`, `webapi_router.py:37` and `:1094`.
+- **CR-C13** — `intent_asset_loader._validate_method_existence` (`:1501`) duplicates `contract_validator.py:142`
+  (both default-on) → **every handler module is `importlib.import_module`-ed twice at boot** for one logical check.
+
+---
+
+## D. Stale user-facing doc claims
+
+> Doc-claims pass verified ~50 concrete claims across `docs/guides/`; almost all are accurate. The stale ones cluster
+> on the BUILD-7 `get_python_dependencies` contract change (Invariant #10: user-facing docs are part of "done").
+
+- **CR-D1** — `docs/guides/howto-new-model.md:24-25` teaches `get_python_dependencies` returning a **raw spec**
+  (`["my-asr-lib>=1.0"]`); the real contract is extra-**names** (`whisper.py:224` → `["advanced-asr"]`). The guide's own
+  step 2 then defines an extra the step-1 code never references → a new-provider author produces a provider whose extra
+  is never installed. _Highest-impact doc bug._ _Ref: **BUILD-7**._
+- **CR-D2** — `docs/guides/build-system.md:9` — "`get_python_dependencies` (the pip packages)" — wrong contract. _Ref:
+  **BUILD-7**._
+- **CR-D3** — `docs/guides/howto-new-intent.md:73` — comment "add libs here if the handler needs any" invites the same
+  raw-spec mistake.
+- **CR-D4** — `pyproject.toml` `[tool.uv.index]` comment says "image: ~6.4 GB → ~2.5 GB"; confirmed actual is
+  **3.16 GB** (BUILD-7 ledger has the right number). Self-inflicted; correct alongside the docs.
+- **CR-D5** — `irene/runners/web_server.py:230` `_web_banner` still advertises `/asr/stream, /asr/binary` as the ESP32
+  path; those endpoints were deleted (transport is now `/ws/audio`).
+
+---
+
+## Cross-checks that came back clean
+
+No lingering `intent_validator` refs (py/Dockerfile/toml); every `irene/utils/*` module has importers; every provider
+module is registered in `[project.entry-points]`; the 3 Dockerfiles are internally consistent post cpu-torch-two-step
+removal; deepseek correctly uses its own `base_url`/`DEEPSEEK_API_KEY` (no leakage from the shared OpenAI client).
