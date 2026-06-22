@@ -12,6 +12,14 @@ newest entries near the top of each dated section.
 ## Action journal
 
 ### 2026-06-22
+- **Asset-loader path-traversal hardening (review CR-A15, security) — `docs/review/codebase_review_2026-06-21.md`.**
+  User-supplied `handler_name` / `domain` / `language` flowed unsanitized into `assets_root / … / <segment>` reads AND
+  writes in `intent_asset_loader.py` (some via FastAPI path params). Added `_safe_path_segment()` (single traversal-safe
+  segment only — no separators, `..`, leading dot, absolute, or NUL) and applied it everywhere: `handler_name` via the
+  single choke point `_get_asset_handler_name` (covers all handler-derived paths), `domain`/`language` at the top of the
+  10 editing/save/reload methods. Fail-closed (raises `ValueError` or returns the method's failure sentinel — both block
+  the escape). New `test_asset_path_traversal.py` asserts nothing escapes the root and valid inputs still work. Gates:
+  suite 1031 passed / 0 failed, pyright 0, import-linter 9/9. Review tracker + this ledger updated.
 - **Tracing pair fixed (review CR-A7/A9) — `docs/review/codebase_review_2026-06-21.md`.** **CR-A7:**
   `workflow_manager.process_text_input` lost the trace when the workflow raised (no try/except; `_save_trace_if_enabled`
   sat after the `trace_scope` block) — observability gone exactly when a bug fired. Now mirrors `process_audio_input`:

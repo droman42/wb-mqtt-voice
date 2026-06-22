@@ -11,6 +11,7 @@ with unified error handling, validation, and caching.
 import json
 import logging
 import asyncio
+import re
 import yaml
 from pathlib import Path
 from typing import Dict, List, Optional, Any
@@ -22,6 +23,24 @@ from .donations import (
 from .contract_validator import ContractValidationReport
 
 logger = logging.getLogger(__name__)
+
+
+# CR-A15: user-supplied path components (handler_name, domain, language) flow into
+# `assets_root / … / <segment> / …` reads AND writes, some via FastAPI path params. Validate each is a
+# single, traversal-safe path segment so it can never escape assets_root (e.g. "../../etc"). A single
+# segment with no separator / "../" / absolute / NUL cannot traverse, so segment validation is sufficient.
+_SAFE_SEGMENT_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
+
+
+def _safe_path_segment(value: str, field: str) -> str:
+    """Return `value` if it's a single traversal-safe path segment, else raise ValueError (fail closed)."""
+    s = str(value)
+    if ".." in s or not _SAFE_SEGMENT_RE.match(s):
+        raise ValueError(
+            f"Invalid {field} '{value}': must be a single path segment "
+            f"(letters, digits, '.', '_', '-'; no separators, '..', or leading dot)"
+        )
+    return s
 
 
 def _should_skip_directory(dir_name: str) -> bool:
@@ -604,7 +623,9 @@ class IntentAssetLoader:
         return assembled
     
     def _get_asset_handler_name(self, handler_name: str) -> str:
-        """Map handler file name to asset directory name"""
+        """Map handler file name to asset directory name. Validates the input is a safe path segment
+        (CR-A15) — this is the single choke point for every handler-derived asset path."""
+        handler_name = _safe_path_segment(handler_name, "handler_name")
         # Handler files ending with _handler already have the suffix
         if handler_name.endswith("_handler"):
             return handler_name
@@ -654,6 +675,7 @@ class IntentAssetLoader:
         """Return the raw per-language phrasing file (phrases/lemmas/patterns/examples + per-param
         description/extraction_patterns/aliases/default_value/choice_surfaces), or None if absent."""
         asset = self._get_asset_handler_name(handler_name)
+        language = _safe_path_segment(language, "language")  # CR-A15
         lang_file = self.assets_root / "donations" / asset / f"{language}.json"
         if not lang_file.exists():
             return None
@@ -668,6 +690,7 @@ class IntentAssetLoader:
         backup_created = False
         try:
             asset = self._get_asset_handler_name(handler_name)
+            language = _safe_path_segment(language, "language")  # CR-A15
             lang_dir = self.assets_root / "donations" / asset
             lang_dir.mkdir(parents=True, exist_ok=True)
             lang_file = lang_dir / f"{language}.json"
@@ -775,6 +798,7 @@ class IntentAssetLoader:
     def get_template_for_language_editing(self, handler_name: str, language: str) -> Optional[Dict[str, Any]]:
         """Get language-specific template data for editing purposes"""
         asset_handler_name = self._get_asset_handler_name(handler_name)
+        language = _safe_path_segment(language, "language")  # CR-A15
         lang_file = self.assets_root / "templates" / asset_handler_name / f"{language}.yaml"
         
         if lang_file.exists():
@@ -795,6 +819,7 @@ class IntentAssetLoader:
         """
         backup_created = False
         asset_handler_name = self._get_asset_handler_name(handler_name)
+        language = _safe_path_segment(language, "language")  # CR-A15
         lang_dir = self.assets_root / "templates" / asset_handler_name
         lang_dir.mkdir(parents=True, exist_ok=True)
         
@@ -931,6 +956,7 @@ class IntentAssetLoader:
     def get_prompt_for_language_editing(self, handler_name: str, language: str) -> Optional[Dict[str, Any]]:
         """Get language-specific prompt data for editing purposes"""
         asset_handler_name = self._get_asset_handler_name(handler_name)
+        language = _safe_path_segment(language, "language")  # CR-A15
         lang_file = self.assets_root / "prompts" / asset_handler_name / f"{language}.yaml"
         
         if lang_file.exists():
@@ -951,6 +977,7 @@ class IntentAssetLoader:
         """
         backup_created = False
         asset_handler_name = self._get_asset_handler_name(handler_name)
+        language = _safe_path_segment(language, "language")  # CR-A15
         lang_dir = self.assets_root / "prompts" / asset_handler_name
         lang_dir.mkdir(parents=True, exist_ok=True)
         
@@ -1020,6 +1047,8 @@ class IntentAssetLoader:
     
     def get_localization_for_domain_editing(self, domain: str, language: str) -> Optional[Dict[str, Any]]:
         """Get language-specific localization data for editing"""
+        domain = _safe_path_segment(domain, "domain")  # CR-A15
+        language = _safe_path_segment(language, "language")  # CR-A15
         domain_dir = self.assets_root / "localization" / domain
         lang_file = domain_dir / f"{language}.yaml"
         
@@ -1040,6 +1069,8 @@ class IntentAssetLoader:
             tuple: (save_success, backup_created)
         """
         backup_created = False
+        domain = _safe_path_segment(domain, "domain")  # CR-A15
+        language = _safe_path_segment(language, "language")  # CR-A15
         domain_dir = self.assets_root / "localization" / domain
         domain_dir.mkdir(parents=True, exist_ok=True)
         
@@ -1066,6 +1097,7 @@ class IntentAssetLoader:
         """Reload localization data for a domain"""
         try:
             # For localizations, we reload the specific domain's files
+            domain = _safe_path_segment(domain, "domain")  # CR-A15
             domain_dir = self.assets_root / "localization" / domain
             if domain_dir.exists():
                 merged_localization = {}
@@ -1090,6 +1122,7 @@ class IntentAssetLoader:
     
     def get_available_localization_languages_for_domain(self, domain: str) -> List[str]:
         """Get list of available localization language files for domain"""
+        domain = _safe_path_segment(domain, "domain")  # CR-A15
         lang_dir = self.assets_root / "localization" / domain
         
         if not lang_dir.exists():

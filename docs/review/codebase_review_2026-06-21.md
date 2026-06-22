@@ -1,7 +1,7 @@
 # Whole-codebase review (2026-06-21)
 
 **Status:** findings filed; **resolved 2026-06-22:** CR-A1 group (A1/A2/A3/A14/B2/D5) + BUILD-7 doc/dup cluster (C1/C2/C4/D1–D4) + dead-code
-sweep (all CR-B except B4 KEPT) + provider-base dedup (C6/C7, C8 partial) + standalone correctness (A4/A8) + silero cleanups (A12/A13) + tracing pair (A7/A9) — see Resolution log. Remainder open. **Backs:** general health pass (post-BUILD-7); individual items
+sweep (all CR-B except B4 KEPT) + provider-base dedup (C6/C7, C8 partial) + standalone correctness (A4/A8) + silero cleanups (A12/A13) + tracing pair (A7/A9) + path-traversal hardening (A15) — see Resolution log. Remainder open. **Backs:** general health pass (post-BUILD-7); individual items
 cross-ref
 their owning task below. **Scope:** entire `irene/` tree + `docker/` + `pyproject.toml` + `docs/guides/`. **Method:**
 7 parallel finder passes (subsystem deep-reads + cross-cutting dead-code / duplication / doc-claim specialists);
@@ -33,7 +33,7 @@ _Plausible_ = realistic but depends on a reachable runtime state / framework beh
 | CR-A12 | P3 | ✅ FIXED | `silero_v3.is_available` does a blocking `requests.head` in async | QUAL-15 (same anti-pattern) |
 | CR-A13 | P3 | ✅ FIXED | `silero_v4._download_model` hardcodes the RU URL, ignores `model_id` | ASSET-2 |
 | CR-A14 | P3 | ✅ FIXED | monitoring `uptime` always ~0 (`_start_time` never assigned) | new |
-| CR-A15 | P2 | Plausible | asset-loader save/load: `assets_root / domain / language` unsanitized (path traversal) | new (security) |
+| CR-A15 | P2 | ✅ FIXED | asset-loader save/load: `assets_root / domain / language` unsanitized (path traversal) | new (security) |
 | CR-A16 | P3 | Plausible | self-routing handlers' broad `except Exception` can swallow `ParameterExtractionError` | QUAL-30 boundary |
 | CR-B1..13 | — | ✅ swept | dead/zombie code (see §B) | FIXED 2026-06-22 (CR-B4 KEPT — ARCH-22/25; B12 was QUAL-20) |
 | CR-C1..13 | — | C1/2/4/6/7 ✅, C8◐ | duplication / drift risk (see §C) | C1/C2/C4/C6/C7 + C8(partial) FIXED 2026-06-22; CR-C9 → ARCH-25 |
@@ -43,6 +43,14 @@ _Plausible_ = realistic but depends on a reachable runtime state / framework beh
 
 ## Resolution log
 
+- **2026-06-22 — Asset-loader path traversal (CR-A15, security).** User-supplied `handler_name` / `domain` /
+  `language` flow into `assets_root / … / <segment> / …` reads AND writes in `intent_asset_loader.py` (some via FastAPI
+  path params). Added `_safe_path_segment()` (single segment only — no separators, `..`, leading dot, absolute, or NUL;
+  raises `ValueError`) and applied it at every entry: `handler_name` is validated in the single choke point
+  `_get_asset_handler_name` (covers all handler-derived paths), and `domain`/`language` are validated at the top of the
+  10 editing/save/reload methods. Fail-closed (a method raises `ValueError` or returns its failure sentinel; both block
+  traversal). New `test_asset_path_traversal.py` asserts the security invariant (nothing escapes the root) plus valid
+  inputs still work. Gates: suite 1031 passed / 0 failed, pyright 0, import-linter 9/9.
 - **2026-06-22 — Tracing pair (CR-A7 / CR-A9).** **CR-A7:** `workflow_manager.process_text_input` now mirrors the
   audio path — wraps the workflow call in try/except that records a `workflow_manager_text_error` stage and calls
   `_save_trace_if_enabled` before re-raising. Previously a text-path exception unwound past the save, so the trace and
@@ -212,7 +220,7 @@ regardless of the selected model.
 ### CR-A14 — [P3, ✅ FIXED 2026-06-22] monitoring `uptime` always ~0
 `irene/components/monitoring_component.py:242`. `_start_time` is never assigned, so reported uptime is ~0.
 
-### CR-A15 — [P2, Plausible] Path-traversal gap in asset-loader save/load helpers
+### CR-A15 — [P2, ✅ FIXED 2026-06-22] Path-traversal gap in asset-loader save/load helpers
 `irene/core/intent_asset_loader.py` — `save_localization_for_domain` (`:1043`), `get_localization_for_domain_editing`
 (`:1021`), `save/get_language_phrasing` (`:657,:671`), `save_prompt_for_language` (`:954`), etc. build
 `assets_root / "localization" / domain / f"{language}.yaml"` and `mkdir(parents=True)` + write, with no validation of
