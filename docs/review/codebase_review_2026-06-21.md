@@ -1,7 +1,7 @@
 # Whole-codebase review (2026-06-21)
 
-**Status:** findings filed; **resolved 2026-06-22:** CR-A1 group (A1/A2/A3/A14/B2/D5) + BUILD-7 doc/dup cluster
-(C1/C2/C4/D1–D4) — see Resolution log. Remainder open. **Backs:** general health pass (post-BUILD-7); individual items
+**Status:** findings filed; **resolved 2026-06-22:** CR-A1 group (A1/A2/A3/A14/B2/D5) + BUILD-7 doc/dup cluster (C1/C2/C4/D1–D4) + dead-code
+sweep (all CR-B except B4 KEPT) — see Resolution log. Remainder open. **Backs:** general health pass (post-BUILD-7); individual items
 cross-ref
 their owning task below. **Scope:** entire `irene/` tree + `docker/` + `pyproject.toml` + `docs/guides/`. **Method:**
 7 parallel finder passes (subsystem deep-reads + cross-cutting dead-code / duplication / doc-claim specialists);
@@ -35,7 +35,7 @@ _Plausible_ = realistic but depends on a reachable runtime state / framework beh
 | CR-A14 | P3 | ✅ FIXED | monitoring `uptime` always ~0 (`_start_time` never assigned) | new |
 | CR-A15 | P2 | Plausible | asset-loader save/load: `assets_root / domain / language` unsanitized (path traversal) | new (security) |
 | CR-A16 | P3 | Plausible | self-routing handlers' broad `except Exception` can swallow `ParameterExtractionError` | QUAL-30 boundary |
-| CR-B1..13 | — | Confirmed | dead/zombie code (see §B) | CR-B1 → BUILD-7 |
+| CR-B1..13 | — | ✅ swept | dead/zombie code (see §B) | FIXED 2026-06-22 (CR-B4 KEPT — ARCH-22/25; B12 was QUAL-20) |
 | CR-C1..13 | — | C1/C2/C4 ✅ | duplication / drift risk (see §C) | C1/C2/C4 FIXED 2026-06-22; CR-C9 → ARCH-25 |
 | CR-D1..5 | — | D1-D4 ✅ | stale user-facing doc claims (see §D) | D1–D4 FIXED 2026-06-22; D5 done in CR-A1 group |
 
@@ -43,6 +43,23 @@ _Plausible_ = realistic but depends on a reachable runtime state / framework beh
 
 ## Resolution log
 
+- **2026-06-22 — Dead-code sweep (CR-B).** Deleted (all verified 0 callers; suite/pyright/import-linter re-run green):
+  **CR-B1** `Component.start` + `is_dependencies_available` (`components/base.py`); **CR-B2** remainder — `switch_workflow`,
+  `hot_reload_workflow`, `get_workflow_dependencies`, `optimize_component_sharing`, `get_startup_performance_metrics`
+  (`workflow_manager.py`; the audio-start subset went with the CR-A1 group); **CR-B5** `create_test_action` /
+  `execute_test_action` (`debug_tools.py`); **CR-B6** `get_performance_report` / `export_metrics_json`
+  (`analytics_dashboard.py`); **CR-B7** five dead reporting helpers (`metrics.py`); **CR-B8** `_print_interactive_help`/
+  `_print_interactive_status` (both `cli.py` + `base.py` copies) + `check_component_dependencies` /
+  `print_dependency_status` (`runners/base.py`); **CR-B13** `_parse_and_speak_with_voice`,
+  `_get_context_coordination_summary`, and the duplicate unreachable `raise` in `silero_v3.py`. **CR-B3** —
+  `_attempt_fallback_initialization` (a no-op stub that always returned False) removed and `_handle_component_failure`
+  collapsed to its real behavior (record → log → warn dependents). **CR-B9** — dropped the unused `python-modules.txt`
+  build output from `derive_build_reqs.py`. **CR-B10** — removed the empty `config-writing` extra + its 3 umbrella
+  references (`headless` is now an explicit base-only profile). **CR-B11** — deleted `irene/examples/` (6 orphaned demo
+  modules). **CR-B12** — already resolved (QUAL-20 cut Porcupine; only a test comment remained). **CR-B4 — KEPT, NOT
+  deleted:** the `client_registry` ESP32 methods are *not* dead — `register_esp32_node` is called by
+  `test_phase1_integration.py` and the methods are documented in the current `docs/architecture/client-registry.md`
+  (ESP32 fleet = ARCH-22/25). `uv.lock` regenerated. Gates: suite 1013 passed / 0 failed, pyright 0, import-linter 9/9.
 - **2026-06-22 — BUILD-7 doc/dup cluster.** **CR-C1:** spaCy model `@`-URL wheel specs collapsed to one module
   constant `_SPACY_MODEL_SPECS` in `spacy_provider.py`, referenced by both `get_python_dependencies()` and
   `get_asset_config()` (was 2 in-code copies + the pyproject `nlu` mirror → 1 in-code + the mirror, cross-ref
@@ -172,32 +189,32 @@ of their `get_param` calls ever drops its caller-supplied default.
 
 ## B. Dead / zombie code
 
-- **CR-B1** — `irene/components/base.py:219,376` `is_dependencies_available()` + `Component.start()`. Dead
+- **CR-B1** — ✅ **FIXED 2026-06-22**. `irene/components/base.py:219,376` `is_dependencies_available()` + `Component.start()`. Dead
   (ComponentManager uses `initialize()` at `core/components.py:204`; zero `.start()` callers) **and** broken since
   BUILD-7 (`__import__("web-api")`). _Ref: already flagged in **BUILD-7**._
-- **CR-B2** — ✅ **FIXED 2026-06-22** (audio-start subset). `irene/core/workflow_manager.py`: ~250 lines dead — `set_input_manager` (`:414`, 0 callers →
+- **CR-B2** — ✅ **FIXED 2026-06-22** (audio-start subset in CR-A1 group; remainder in the dead-code sweep). `irene/core/workflow_manager.py`: ~250 lines dead — `set_input_manager` (`:414`, 0 callers →
   `input_manager` always `None`); the `_start_audio_workflow`→`_run_workflow`→`_get_input_source` cluster (`:719+`);
   `switch_workflow` (`:815`), `hot_reload_workflow` (`:847`), `optimize_component_sharing` (`:969`),
   `get_workflow_dependencies` (`:927`), `get_startup_performance_metrics` (`:1007`). (`_get_audio_stream`,
   `monitor_model_loading_progress`, `update_workflow_readiness` are live — keep.)
-- **CR-B3** — `irene/core/components.py:321` `_attempt_fallback_initialization` always `return False` (stub). The whole
+- **CR-B3** — ✅ **FIXED 2026-06-22**. `irene/core/components.py:321` `_attempt_fallback_initialization` always `return False` (stub). The whole
   `fallback_mapping` subsystem logs "Attempting fallback… would be initialized here" while doing nothing.
-- **CR-B4** — `irene/core/client_registry.py`: `register_esp32_node` (`:212`), `get_devices_by_type` (`:335`),
+- **CR-B4** — ⏸ **KEPT (not dead)** — tested + current arch doc (ARCH-22/25). `irene/core/client_registry.py`: `register_esp32_node` (`:212`), `get_devices_by_type` (`:335`),
   `cleanup_expired_clients` (`:393`), `get_registry_stats` (`:415`) — 0 non-test callers.
-- **CR-B5** — `irene/core/debug_tools.py:172,180` `create_test_action` / `execute_test_action` — 0 callers.
-- **CR-B6** — `irene/core/analytics_dashboard.py:152,218` `get_performance_report` / `export_metrics_json` — 0 callers.
-- **CR-B7** — `irene/core/metrics.py`: `update_vad_cache_sizes` (`:560`), `get_component_metrics` (`:643`),
+- **CR-B5** — ✅ **FIXED 2026-06-22**. `irene/core/debug_tools.py:172,180` `create_test_action` / `execute_test_action` — 0 callers.
+- **CR-B6** — ✅ **FIXED 2026-06-22**. `irene/core/analytics_dashboard.py:152,218` `get_performance_report` / `export_metrics_json` — 0 callers.
+- **CR-B7** — ✅ **FIXED 2026-06-22**. `irene/core/metrics.py`: `update_vad_cache_sizes` (`:560`), `get_component_metrics` (`:643`),
   `update_session_activity` (`:775`), `generate_analytics_report` (`:971`), `record_resampling_operation` (`:994`) —
   0 callers; the ingestion ones are never fed → silently-empty metrics.
-- **CR-B8** — `irene/runners/cli.py:374-407` `_print_interactive_help/_status` are byte-for-byte dead duplicates of
+- **CR-B8** — ✅ **FIXED 2026-06-22**. `irene/runners/cli.py:374-407` `_print_interactive_help/_status` are byte-for-byte dead duplicates of
   `irene/runners/base.py:435-467` (both 0 callers — help/status became intents). Also `runners/base.py:471,491`
   `check_component_dependencies` / `print_dependency_status` — 0 callers.
-- **CR-B9** — `docker/derive_build_reqs.py:98` writes `python-modules.txt`; no Dockerfile `COPY`s it. Dead build output.
-- **CR-B10** — `pyproject.toml:180` empty `config-writing` extra (`# tomli-w moved to core`), still pulled by `all` /
+- **CR-B9** — ✅ **FIXED 2026-06-22**. `docker/derive_build_reqs.py:98` writes `python-modules.txt`; no Dockerfile `COPY`s it. Dead build output.
+- **CR-B10** — ✅ **FIXED 2026-06-22**. `pyproject.toml:180` empty `config-writing` extra (`# tomli-w moved to core`), still pulled by `all` /
   `api` / `headless` umbrellas. Vestigial.
-- **CR-B11** — `irene/examples/*.py` (6 demo modules) — not imported, not entry-points, `__all__ = []`. Orphaned.
-- **CR-B12** — Porcupine voice-trigger: config block + schema exist, **no implementation** (ledger-confirmed zombie).
-- **CR-B13** — Misc: `voice_synthesis_handler._parse_and_speak_with_voice` (`:360`),
+- **CR-B11** — ✅ **FIXED 2026-06-22**. `irene/examples/*.py` (6 demo modules) — not imported, not entry-points, `__all__ = []`. Orphaned.
+- **CR-B12** — ✅ **ALREADY DONE** (QUAL-20). Porcupine voice-trigger: config block + schema exist, **no implementation** (ledger-confirmed zombie).
+- **CR-B13** — ✅ **FIXED 2026-06-22**. Misc: `voice_synthesis_handler._parse_and_speak_with_voice` (`:360`),
   `conversation._get_context_coordination_summary` (`:1022`), `silero_v3.py:310` duplicate unreachable `raise`.
 
 ---

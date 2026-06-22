@@ -1019,21 +1019,6 @@ class ConversationIntentHandler(IntentHandler):
 
         return self._context_label("context_wrapper", context.language, parts=' | '.join(parts)) if parts else ""
 
-    def _get_context_coordination_summary(self, context: UnifiedConversationContext, domain: Optional[str] = None) -> Dict[str, Any]:
-        """Diagnostic context summary (QUAL-28: direct accessors, no ContextLayer)."""
-        return {
-            "domain": domain,
-            "active_threads": context.get_active_threads(),
-            "conversation_state": context.get_conversation_state().value,
-            "present": {
-                "session": bool(context.room_name or context.client_id),
-                "action": bool(context.active_actions),
-                "thread": bool(context.get_thread_summary(domain).get("message_count")) if domain else False,
-                "intent": bool(context.conversation_history),
-            }
-        }
-
-    
     async def cleanup(self) -> None:
         """Clean up conversation sessions - now handled by ContextManager"""
         # Session cleanup is now handled by the ContextManager for UnifiedConversationContext

@@ -297,54 +297,22 @@ class ComponentManager(ComponentControlRegistryPort):
                 logger.warning(f"Service dependency '{service_name}' not available for '{component.name}'")
     
     async def _handle_component_failure(self, component_name: str, error: Exception, initialization_order: List[str]) -> None:
-        """Handle component failure with advanced graceful degradation"""
+        """Handle component failure: record it, log it, and warn about affected dependents."""
         self._failed_components[component_name] = error
-        
-        # Check if we can use fallback components
-        fallback_found = await self._attempt_fallback_initialization(component_name, error)
-        
-        if not fallback_found:
-            logger.error(f"❌ Component '{component_name}' failed to initialize: {error}")
-            
-            # Check if this failure affects dependent components
-            dependent_components = [comp for comp in initialization_order 
-                                 if comp not in self._components and comp not in self._failed_components]
-            
-            affected_dependents = []
-            for dep_comp_name in dependent_components:
-                if component_name in self._get_component_dependencies_for(dep_comp_name):
-                    affected_dependents.append(dep_comp_name)
-            
-            if affected_dependents:
-                logger.warning(f"Component '{component_name}' failure may affect: {affected_dependents}")
-    
-    async def _attempt_fallback_initialization(self, component_name: str, original_error: Exception) -> bool:
-        """Attempt to initialize fallback or alternative components"""
-        # Define fallback mappings for critical components
-        fallback_mapping = {
-            'tts': ['console_tts', 'fallback_tts'],
-            'audio': ['console_audio', 'fallback_audio'],
-            'asr': ['fallback_asr'],
-            'llm': ['console_llm', 'fallback_llm']
-        }
-        
-        fallbacks = fallback_mapping.get(component_name, [])
-        
-        for fallback_name in fallbacks:
-            try:
-                # Try to initialize fallback component
-                available_components = self.get_available_components()
-                if fallback_name in available_components:
-                    logger.info(f"Attempting fallback '{fallback_name}' for failed component '{component_name}'")
-                    # This would need to be implemented based on available fallback components
-                    # For now, just log the attempt
-                    logger.info(f"Fallback component '{fallback_name}' would be initialized here")
-                    return False  # Return True when actually implemented
-            except Exception as e:
-                logger.debug(f"Fallback '{fallback_name}' also failed: {e}")
-        
-        return False
-    
+        logger.error(f"❌ Component '{component_name}' failed to initialize: {error}")
+
+        # Check if this failure affects dependent components
+        dependent_components = [comp for comp in initialization_order
+                             if comp not in self._components and comp not in self._failed_components]
+
+        affected_dependents = []
+        for dep_comp_name in dependent_components:
+            if component_name in self._get_component_dependencies_for(dep_comp_name):
+                affected_dependents.append(dep_comp_name)
+
+        if affected_dependents:
+            logger.warning(f"Component '{component_name}' failure may affect: {affected_dependents}")
+
     def _get_component_dependencies_for(self, component_name: str) -> List[str]:
         """Get component dependencies for a given component name"""
         try:

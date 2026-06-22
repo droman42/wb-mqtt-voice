@@ -216,18 +216,6 @@ class Component(ComponentPort):
             return next(iter(self.providers.values()))
         return None
     
-    def is_dependencies_available(self) -> bool:
-        """Check if component Python dependencies are available (ComponentManager method)"""
-        dependencies = self.get_python_dependencies()
-        try:
-            for dependency in dependencies:
-                # Extract module name from dependency specification
-                module_name = dependency.split('>=')[0].split('<=')[0].split('==')[0].split('>')[0].split('<')[0].split('~=')[0].split('[')[0].strip()
-                __import__(module_name)
-            return True
-        except ImportError:
-            return False
-    
     async def is_available(self) -> bool:
         """
         Check if the component is available and functioning.
@@ -373,21 +361,6 @@ class Component(ComponentPort):
         """Return dict of required service dependencies {name: expected_type}"""
         return {}  # Default: no service dependencies
     
-    async def start(self, core) -> bool:
-        """Start the component with error handling (used by ComponentManager)"""
-        if not self.is_dependencies_available():
-            self.logger.warning(f"Component {self.name} Python dependencies not available")
-            return False
-            
-        try:
-            await self.initialize(core)
-            self.initialized = True
-            self.logger.info(f"Component {self.name} started successfully")
-            return True
-        except Exception as e:
-            self.logger.error(f"Failed to start component {self.name}: {e}")
-            return False
-
     async def stop(self) -> None:
         """Stop the component with cleanup (used by ComponentManager)"""
         if not self.initialized:

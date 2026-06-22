@@ -357,50 +357,6 @@ class VoiceSynthesisIntentHandler(IntentHandler):
             success=False
         )
         
-    async def _parse_and_speak_with_voice(self, tts_component, command: str, language: str) -> tuple[bool, str]:
-        """Parse voice synthesis command and execute speech"""
-        parts = command.lower().split()
-        
-        if "скажи" in parts and "голосом" in parts:
-            try:
-                speak_idx = parts.index("скажи")
-                voice_idx = parts.index("голосом")
-                
-                # Extract text between "скажи" and "голосом"
-                text_parts = parts[speak_idx + 1:voice_idx]
-                text = " ".join(text_parts)
-                
-                # Extract voice/provider after "голосом"
-                if voice_idx + 1 < len(parts):
-                    voice_name = parts[voice_idx + 1]
-                    
-                    # Get voice name mappings from localization
-                    mappings = self._get_provider_mappings(language)
-                    voice_mappings = mappings.get("voice_names", {})
-                    
-                    if voice_name in voice_mappings:
-                        voice_config = voice_mappings[voice_name]
-                        provider = voice_config.get("provider")
-                        params = voice_config.get("params", {})
-                        if provider in tts_component.providers:
-                            await tts_component.speak(text, provider=provider, **params)
-                            return True, self._get_template("spoke_with_voice", language, text=text, voice_name=voice_name)
-                        else:
-                            return False, self._get_template("voice_not_available", language, voice_name=voice_name)
-                    else:
-                        # Use default provider
-                        await tts_component.speak(text)
-                        return True, self._get_template("spoke_default_voice", language, text=text)
-                else:
-                    # No voice specified, use default
-                    await tts_component.speak(text)
-                    return True, self._get_template("spoke_text", language, text=text)
-
-            except Exception as e:
-                return False, self._get_template("command_processing_error", language, error=e)
-
-        return False, self._get_template("command_not_recognized", language)
-    
     def _parse_tts_provider_name(self, command: str) -> str:
         """Extract TTS provider name from command"""
         command_lower = command.lower()

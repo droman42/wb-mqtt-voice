@@ -557,12 +557,6 @@ class MetricsCollector:
         if total_cache_operations > 0:
             self._vad_metrics["cache_hit_rate"] = self._vad_metrics["cache_hits"] / total_cache_operations
     
-    def update_vad_cache_sizes(self, energy_cache_size: int, zcr_cache_size: int, array_cache_size: int) -> None:
-        """Update VAD cache size metrics"""
-        self._vad_metrics["energy_cache_size"] = energy_cache_size
-        self._vad_metrics["zcr_cache_size"] = zcr_cache_size
-        self._vad_metrics["array_cache_size"] = array_cache_size
-    
     def get_vad_metrics(self) -> Dict[str, Any]:
         """Get comprehensive VAD metrics"""
         return self._vad_metrics.copy()
@@ -639,14 +633,6 @@ class MetricsCollector:
         if not hasattr(domain_metrics, 'component_metrics'):
             domain_metrics.component_metrics = {}
         domain_metrics.component_metrics = metrics
-    
-    def get_component_metrics(self, component_name: str) -> Dict[str, Any]:
-        """Get metrics for a specific component"""
-        domain = f"component_{component_name}"
-        if domain in self._domain_metrics:
-            domain_metrics = self._domain_metrics[domain]
-            return getattr(domain_metrics, 'component_metrics', {})
-        return {}
     
     def get_all_component_metrics(self) -> Dict[str, Dict[str, Any]]:
         """Get metrics for all components"""
@@ -772,25 +758,6 @@ class MetricsCollector:
         """Record cleanup of expired conversation sessions"""
         self.logger.debug(f"Cleaned up {expired_count} expired session(s)")
 
-    def update_session_activity(self, session_id: str, intent_name: str, success: bool) -> None:
-        """Update session activity with intent usage"""
-        domain = f"session_{session_id}"
-        
-        if domain in self._domain_metrics and self._domain_metrics[domain].session_metrics:
-            session_metrics = self._domain_metrics[domain].session_metrics
-            session_metrics['last_activity'] = time.time()
-            session_metrics['intent_count'] += 1
-            
-            if success:
-                session_metrics['successful_intents'] += 1
-            else:
-                session_metrics['failed_intents'] += 1
-            
-            # Track domain usage (extract from intent name if follows pattern)
-            if "_" in intent_name:
-                domain_name = intent_name.split("_")[0]
-                session_metrics['domains_used'].add(domain_name)
-    
     def get_intent_analytics(self) -> Dict[str, Any]:
         """Get comprehensive intent analytics"""
         intent_domains = {domain: metrics for domain, metrics in self._domain_metrics.items() 
@@ -968,60 +935,7 @@ class MetricsCollector:
         total = successful + failed
         return successful / total if total > 0 else 0.0
     
-    def generate_analytics_report(self) -> Dict[str, Any]:
-        """Generate comprehensive analytics report matching AnalyticsManager format"""
-        intent_analytics = self.get_intent_analytics()
-        session_analytics = self.get_session_analytics()
-        system_metrics = self.get_system_metrics()
-        
-        return {
-            "timestamp": time.time(),
-            "report_type": "comprehensive_analytics",
-            "intents": intent_analytics,
-            "sessions": session_analytics,
-            "system": {
-                "uptime_seconds": system_metrics.get("uptime_seconds", 0),
-                "total_requests": system_metrics.get("total_actions_started", 0),
-                "total_intents_processed": intent_analytics["overview"]["total_intents_processed"],
-                "total_execution_errors": system_metrics.get("total_actions_failed", 0),
-                "average_processing_time": system_metrics.get("average_completion_time", 0.0),
-                "requests_per_minute": 0.0,  # Calculated in original, simplified here
-                "error_rate": system_metrics.get("total_actions_failed", 0) / max(1, system_metrics.get("total_actions_completed", 1))
-            }
-        }
-    
     # Component-specific metrics methods (Phase 1 complete integration)
-    def record_resampling_operation(self, component_name: str, duration_ms: float, success: bool = True) -> None:
-        """Record a resampling operation for a component"""
-        domain = f"component_{component_name}_resampling"
-        
-        if domain not in self._domain_metrics:
-            self._domain_metrics[domain] = DomainMetrics(domain=domain)
-        
-        # Track as an action for consistency with fire-and-forget pattern
-        if success:
-            self.record_action_start(domain, "resampling", component_name)
-            self.record_action_completion(domain, "resampling", success=True)
-        else:
-            self.record_action_start(domain, "resampling", component_name)
-            self.record_action_completion(domain, "resampling", success=False, error="resampling_failed")
-        
-        # Store resampling-specific metrics
-        if not self._domain_metrics[domain].resampling_metrics:
-            self._domain_metrics[domain].resampling_metrics = {
-                'total_operations': 0,
-                'total_time_ms': 0.0,
-                'failures': 0,
-                'average_time_ms': 0.0
-            }
-        
-        resampling = self._domain_metrics[domain].resampling_metrics
-        resampling['total_operations'] += 1
-        resampling['total_time_ms'] += duration_ms
-        if not success:
-            resampling['failures'] += 1
-        resampling['average_time_ms'] = resampling['total_time_ms'] / resampling['total_operations']
-    
     def record_detection_operation(self, component_name: str, success: bool, wake_word: Optional[str] = None) -> None:
         """Record a detection operation for voice trigger components"""
         domain = f"component_{component_name}_detection"

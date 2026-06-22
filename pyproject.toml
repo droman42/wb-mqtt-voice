@@ -174,11 +174,6 @@ nlu = [
     "en_core_web_sm @ https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl"
 ]
 
-# Configuration management
-config-writing = [
-    # tomli-w moved to core dependencies
-]
-
 # Text processing and multilingual support.
 # Number→words normalization uses ovos-number-parser (the maintained OpenVoiceOS successor of the
 # abandoned MycroftAI lingua-franca — QUAL-13/ASSET-3, 2026-06-03). Pure-Python (no armv7 wheel
@@ -233,18 +228,16 @@ dev = [
 # Convenience groups - Fixed: Re-enabled with proper dependencies
 # Full voice assistant
 voice = [
-    "irene-voice-assistant[audio-input,tts,audio-output,voice-trigger,nlu,web-api,text-multilingual,config-writing]"
+    "irene-voice-assistant[audio-input,tts,audio-output,voice-trigger,nlu,web-api,text-multilingual]"
 ]
 
 # API server only
 api = [
-    "irene-voice-assistant[web-api,config-writing]"
+    "irene-voice-assistant[web-api]"
 ]
 
-# Headless mode (text processing only)
-headless = [
-    "irene-voice-assistant[config-writing]"
-]
+# Headless mode (text processing only) — base deps only (config-writing folded into core; CR-B10).
+headless = []
 
 # All optional components - Fixed: Re-enabled
 all = [

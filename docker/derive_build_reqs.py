@@ -8,7 +8,7 @@ inline multiline Python (which the Dockerfile parser cannot handle).
 Usage:  python derive_build_reqs.py <build-requirements.json>  [--platform linux.ubuntu]  [--out /tmp]
                                     [--config configs/<profile>.toml]
 Writes (into --out, default /tmp): system-packages.txt, runtime-packages.txt, pip-target.txt,
-pip-specs.txt, python-modules.txt. --config trims spaCy models to the tier the profile loads.
+pip-specs.txt. --config trims spaCy models to the tier the profile loads.
 """
 import argparse
 import json
@@ -67,7 +67,6 @@ def main() -> None:
 
     pkgs = data.get("system_packages", {}).get(args.platform, [])
     deps = data.get("python_dependencies", [])
-    modules = data.get("python_modules", [])
 
     extra_names = [d for d in deps if _EXTRA_NAME.match(d)]
     pip_specs = [d for d in deps if not _EXTRA_NAME.match(d)]
@@ -95,13 +94,11 @@ def main() -> None:
     # (e.g. spaCy models `name @ https://…whl`) whose internal spaces an unquoted shell `$(cat …)`
     # would split into broken args.
     (out / "pip-specs.txt").write_text("\n".join(pip_specs) + ("\n" if pip_specs else ""))
-    (out / "python-modules.txt").write_text("\n".join(modules))
 
     print(f"📦 apt packages ({len(pkgs)}): {pkgs}")
     print(f"📦 runtime apt ({len(runtime_pkgs)}): {runtime_pkgs}")
     print(f"🐍 install target: {target}")
     print(f"🐍 pip specs ({len(pip_specs)}): {pip_specs}")
-    print(f"📋 modules: {len(modules)}")
 
 
 if __name__ == "__main__":

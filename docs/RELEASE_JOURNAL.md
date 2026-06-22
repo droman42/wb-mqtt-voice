@@ -12,6 +12,17 @@ newest entries near the top of each dated section.
 ## Action journal
 
 ### 2026-06-22
+- **Dead-code sweep (review CR-B) — `docs/review/codebase_review_2026-06-21.md`.** Removed 22 verified-dead methods +
+  a no-op fallback stub + an orphaned example package, across `irene/core/` (debug_tools, analytics_dashboard, metrics,
+  workflow_manager, components), `irene/components/base.py` (the dead `Component.start`/`is_dependencies_available`
+  path), `irene/runners/` (cli + base interactive-help/status + dependency-status helpers), two intent handlers, and
+  `silero_v3` (duplicate `raise`). **CR-B3:** `_attempt_fallback_initialization` (always returned False) deleted and
+  `_handle_component_failure` collapsed to its real behavior. **CR-B9/B10/B11:** dropped the unused `python-modules.txt`
+  build output, the empty `config-writing` extra (+ 3 umbrella refs; `headless` now base-only), and the orphaned
+  `irene/examples/` (6 demos). **CR-B12** was already done (QUAL-20 cut Porcupine). **CR-B4 KEPT — not dead:** the
+  `client_registry` ESP32 methods are tested (`test_phase1_integration.py`) + documented in the current
+  `docs/architecture/client-registry.md` (ESP32 fleet, ARCH-22/25). `uv.lock` regenerated. Gates: suite 1013 passed / 0
+  failed, pyright 0, import-linter 9/9. Review tracker + this ledger updated.
 - **BUILD-7 doc/dup review cluster fixed (CR-C1/C2/C4, CR-D1–D4) — `docs/review/codebase_review_2026-06-21.md`.**
   Dedup: **CR-C1** collapsed the spaCy model `@`-URL wheel specs to one `_SPACY_MODEL_SPECS` constant in
   `spacy_provider.py` (referenced by both `get_python_dependencies` and `get_asset_config`); **CR-C2** replaced the two

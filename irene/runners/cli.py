@@ -370,41 +370,6 @@ Note: CLI runner always uses CLI input only, regardless of config file settings.
         
         # Interactive mode
         return await self._run_interactive_loop(args, "irene> ")
-    
-    def _print_interactive_help(self) -> None:
-        """Print help for CLI interactive mode"""
-        print("\n📖 Available Commands:")
-        print("-" * 30)
-        print("help, h          - Show this help message")
-        print("status           - Show component status")
-        print("quit, exit, q    - Exit the application")
-        print("hello            - Test greeting command")
-        print("time             - Show current time")
-        print("timer <seconds>  - Set a timer")
-        print()
-    
-    def _print_interactive_status(self) -> None:
-        """Print system status in CLI interactive mode"""
-        print("\n📊 System Status:")
-        print("-" * 20)
-
-        if not self.core:
-            print("🔧 Core: Stopped")
-            return
-
-        # Core status
-        print(f"🔧 Core: {'Running' if self.core._running else 'Stopped'}")
-        
-        # Component status
-        component_info = self.core.component_manager.get_component_info()
-        for name, info in component_info.items():
-            status_icon = "✅" if info.initialized else "❌"
-            print(f"{status_icon} {name.capitalize()}: {'Active' if info.initialized else 'Inactive'}")
-        
-        # Deployment profile
-        profile = self.core.component_manager.get_deployment_profile()
-        print(f"🚀 Deployment profile: {profile}")
-        print()
 
 
 def run_cli() -> int:

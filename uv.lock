@@ -1622,15 +1622,14 @@ requires-dist = [
     { name = "irene-voice-assistant", extras = ["advanced-asr", "asr-onnx", "cloud-asr", "llm", "voice"], marker = "extra == 'all'" },
     { name = "irene-voice-assistant", extras = ["advanced-asr", "audio-input", "cloud-asr"], marker = "extra == 'audio-input-complete'" },
     { name = "irene-voice-assistant", extras = ["asr-vosk", "audio-sounddevice"], marker = "extra == 'audio-input'" },
-    { name = "irene-voice-assistant", extras = ["audio-input", "audio-output", "config-writing", "nlu", "text-multilingual", "tts", "voice-trigger", "web-api"], marker = "extra == 'voice'" },
+    { name = "irene-voice-assistant", extras = ["audio-input", "audio-output", "nlu", "text-multilingual", "tts", "voice-trigger", "web-api"], marker = "extra == 'voice'" },
     { name = "irene-voice-assistant", extras = ["audio-input", "cloud-asr"], marker = "extra == 'audio-input-enhanced'" },
     { name = "irene-voice-assistant", extras = ["audio-miniaudio", "audio-sounddevice"], marker = "extra == 'audio-output'" },
-    { name = "irene-voice-assistant", extras = ["config-writing"], marker = "extra == 'headless'" },
-    { name = "irene-voice-assistant", extras = ["config-writing", "web-api"], marker = "extra == 'api'" },
     { name = "irene-voice-assistant", extras = ["llm-anthropic", "llm-openai"], marker = "extra == 'llm'" },
     { name = "irene-voice-assistant", extras = ["nlu-spacy"], marker = "extra == 'nlu'" },
     { name = "irene-voice-assistant", extras = ["tts-elevenlabs", "tts-pyttsx", "tts-silero", "tts-vosk"], marker = "extra == 'tts'" },
     { name = "irene-voice-assistant", extras = ["wake-onnx", "wake-tflite"], marker = "extra == 'voice-trigger'" },
+    { name = "irene-voice-assistant", extras = ["web-api"], marker = "extra == 'api'" },
     { name = "isort", marker = "extra == 'dev'", specifier = ">=5.0.0" },
     { name = "jsonschema", specifier = ">=4.25.0" },
     { name = "librosa", marker = "extra == 'audio-output'", specifier = ">=0.10.0" },
@@ -1685,7 +1684,7 @@ requires-dist = [
     { name = "vosk-tts", marker = "extra == 'tts-vosk'", specifier = ">=0.3.0" },
     { name = "websockets", marker = "extra == 'web-api'", specifier = ">=11.0.0" },
 ]
-provides-extras = ["asr-vosk", "audio-sounddevice", "audio-input", "advanced-asr", "asr-onnx", "audio-input-enhanced", "audio-input-complete", "tts-silero", "tts-pyttsx", "tts-elevenlabs", "tts-vosk", "tts", "audio-miniaudio", "audio-output", "wake-onnx", "wake-tflite", "vad-tflite", "voice-trigger", "web-api", "cloud-asr", "llm-openai", "llm-anthropic", "llm", "nlu-spacy", "nlu", "config-writing", "text-multilingual", "tts-ruaccent", "dev", "voice", "api", "headless", "all"]
+provides-extras = ["asr-vosk", "audio-sounddevice", "audio-input", "advanced-asr", "asr-onnx", "audio-input-enhanced", "audio-input-complete", "tts-silero", "tts-pyttsx", "tts-elevenlabs", "tts-vosk", "tts", "audio-miniaudio", "audio-output", "wake-onnx", "wake-tflite", "vad-tflite", "voice-trigger", "web-api", "cloud-asr", "llm-openai", "llm-anthropic", "llm", "nlu-spacy", "nlu", "text-multilingual", "tts-ruaccent", "dev", "voice", "api", "headless", "all"]
 
 [[package]]
 name = "isort"

@@ -308,8 +308,7 @@ class SileroV3TTSProvider(TTSProvider):
         except Exception as e:
             logger.error(f"Failed to download Silero v3 model: {e}")
             raise
-            raise
-            
+
     def _load_model(self, model_path: Path) -> None:
         """Load model from file (called from thread)"""
         if not self._torch:

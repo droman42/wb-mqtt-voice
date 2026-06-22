@@ -169,68 +169,6 @@ class ActionDebugger:
                 error_details={"error": str(e), "traceback": traceback.format_exc()}
             )
     
-    def create_test_action(self, config: TestActionConfig) -> str:
-        """Create a test action configuration"""
-        test_id = f"test_{config.domain}_{config.action_name}_{int(time.time())}"
-        self._test_actions[test_id] = config
-        
-        self.logger.info(f"Created test action: {test_id}")
-        return test_id
-    
-    async def execute_test_action(self, test_id: str, session_id: str) -> Dict[str, Any]:
-        """Execute a test action for debugging purposes"""
-        if test_id not in self._test_actions:
-            return {"error": f"Test action {test_id} not found"}
-        
-        config = self._test_actions[test_id]
-
-        # Record test execution start (bound before try so it is available in except)
-        start_time = time.time()
-
-        try:
-            # Create a mock action function
-            async def mock_action():
-                # Simulate work
-                await asyncio.sleep(config.duration)
-                
-                # Simulate failure based on probability
-                import random
-                if random.random() > config.success_probability:
-                    raise RuntimeError(config.error_message or "Simulated test failure")
-                
-                return f"Test action {config.action_name} completed successfully"
-
-            # Execute with timeout if specified
-            if config.timeout:
-                result = await asyncio.wait_for(mock_action(), timeout=config.timeout)
-            else:
-                result = await mock_action()
-            
-            duration = time.time() - start_time
-            
-            return {
-                "success": True,
-                "result": result,
-                "duration": duration,
-                "test_config": config.__dict__
-            }
-            
-        except asyncio.TimeoutError:
-            return {
-                "success": False,
-                "error": "Test action timed out",
-                "duration": config.timeout,
-                "test_config": config.__dict__
-            }
-        except Exception as e:
-            duration = time.time() - start_time
-            return {
-                "success": False,
-                "error": str(e),
-                "duration": duration,
-                "test_config": config.__dict__
-            }
-    
     def get_debugging_status(self) -> Dict[str, Any]:
         """Get current debugging system status"""
         return {
