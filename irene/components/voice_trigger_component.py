@@ -11,7 +11,7 @@ import time
 from typing import Dict, Any, List, Optional, Type
 
 from pydantic import BaseModel
-from .base import Component
+from .base import Component, MetricsPushMixin
 from ..core.interfaces.webapi import WebAPIPlugin
 from ..core.interfaces.voice_trigger import VoiceTriggerPlugin
 from ..core.trace_context import TraceContext
@@ -26,7 +26,7 @@ from ..utils.loader import DependencyChecker, safe_import, dynamic_loader
 logger = logging.getLogger(__name__)
 
 
-class VoiceTriggerComponent(Component, VoiceTriggerPlugin, WebAPIPlugin):
+class VoiceTriggerComponent(MetricsPushMixin, Component, VoiceTriggerPlugin, WebAPIPlugin):
     """Voice trigger detection component - uses audio_helpers.py for audio management"""
     
     def __init__(self):
@@ -47,9 +47,12 @@ class VoiceTriggerComponent(Component, VoiceTriggerPlugin, WebAPIPlugin):
         
         # Phase 1: Runtime monitoring now handled by unified metrics collector
         
-        # Phase 1: Unified metrics integration
+        # Phase 1: Unified metrics integration (loop provided by MetricsPushMixin)
         self._metrics_push_task: Optional[asyncio.Task] = None
         self._metrics_push_interval = 60.0  # seconds
+        self._metrics_component_key = "voice_trigger"
+        self._metrics_task_label = "Voice trigger component"
+        self._metrics_loop_label = "voice trigger"
 
         # Resolved voice-trigger config dict (QUAL-4c: the hexagon refactor removed `self.core`,
         # so the authoritative config is captured here at init instead of reaching back into core).
@@ -561,46 +564,8 @@ class VoiceTriggerComponent(Component, VoiceTriggerPlugin, WebAPIPlugin):
         pydantic = safe_import('pydantic')
         return fastapi is not None and pydantic is not None
 
-    # Phase 1: Unified metrics integration methods
-    def _start_metrics_push_task(self) -> None:
-        """Start the periodic metrics push task"""
-        if self._metrics_push_task is None:
-            self._metrics_push_task = asyncio.create_task(self._metrics_push_loop())
-            logger.debug("Voice trigger component metrics push task started")
-    
-    async def _stop_metrics_push_task(self) -> None:
-        """Stop the periodic metrics push task"""
-        if self._metrics_push_task:
-            self._metrics_push_task.cancel()
-            try:
-                await self._metrics_push_task
-            except asyncio.CancelledError:
-                pass
-            self._metrics_push_task = None
-            logger.debug("Voice trigger component metrics push task stopped")
-    
-    async def _metrics_push_loop(self) -> None:
-        """Periodic loop to push runtime metrics to unified collector"""
-        while True:
-            try:
-                # Get current runtime metrics
-                runtime_metrics = self.get_runtime_metrics()
-                
-                # Push to unified metrics collector
-                metrics_collector = get_metrics_collector()
-                metrics_collector.record_component_metrics("voice_trigger", runtime_metrics)
-                
-                logger.debug(f"Pushed voice trigger metrics to unified collector: {len(runtime_metrics)} metrics")
-                
-                # Wait for next push cycle
-                await asyncio.sleep(self._metrics_push_interval)
-                
-            except asyncio.CancelledError:
-                break
-            except Exception as e:
-                logger.error(f"Error in voice trigger metrics push loop: {e}")
-                await asyncio.sleep(10)  # Brief pause before retrying
-    
+    # Phase 1: metrics push task/loop provided by MetricsPushMixin
+
     async def stop(self) -> None:
         """Stop the voice trigger component"""
         # Phase 1: Stop unified metrics push task

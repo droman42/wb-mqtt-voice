@@ -14,7 +14,7 @@ import asyncio
 
 from fastapi import APIRouter, HTTPException, UploadFile, File  # type: ignore
 from pydantic import BaseModel
-from .base import Component
+from .base import Component, MetricsPushMixin
 from ..core.interfaces.asr import ASRPlugin
 from ..core.interfaces.webapi import WebAPIPlugin
 from ..core.trace_context import TraceContext
@@ -32,7 +32,7 @@ from ..utils.loader import dynamic_loader
 logger = logging.getLogger(__name__)
 
 
-class ASRComponent(Component, ASRPlugin, WebAPIPlugin, ASRPort):
+class ASRComponent(MetricsPushMixin, Component, ASRPlugin, WebAPIPlugin, ASRPort):
     """
     ASR Component - Speech Recognition Coordinator
     
@@ -86,10 +86,13 @@ class ASRComponent(Component, ASRPlugin, WebAPIPlugin, ASRPort):
         
         # Phase 1: Runtime monitoring now handled by unified metrics collector
         
-        # Phase 1: Unified metrics integration
+        # Phase 1: Unified metrics integration (loop provided by MetricsPushMixin)
         self._metrics_push_task: Optional[asyncio.Task] = None
         self._metrics_push_interval = 60.0  # seconds
-        
+        self._metrics_component_key = "asr"
+        self._metrics_task_label = "ASR component"
+        self._metrics_loop_label = "ASR"
+
     async def initialize(self, core) -> None:
         """Initialize ASR providers from configuration"""
         await super().initialize(core)
@@ -710,46 +713,8 @@ class ASRComponent(Component, ASRPlugin, WebAPIPlugin, ASRPort):
         """ASR component needs web API functionality"""
         return ["web-api"]  # FastAPI/uvicorn/websockets/python-multipart stack
     
-    # Phase 1: Unified metrics integration methods
-    def _start_metrics_push_task(self) -> None:
-        """Start the periodic metrics push task"""
-        if self._metrics_push_task is None:
-            self._metrics_push_task = asyncio.create_task(self._metrics_push_loop())
-            logger.debug("ASR component metrics push task started")
-    
-    async def _stop_metrics_push_task(self) -> None:
-        """Stop the periodic metrics push task"""
-        if self._metrics_push_task:
-            self._metrics_push_task.cancel()
-            try:
-                await self._metrics_push_task
-            except asyncio.CancelledError:
-                pass
-            self._metrics_push_task = None
-            logger.debug("ASR component metrics push task stopped")
-    
-    async def _metrics_push_loop(self) -> None:
-        """Periodic loop to push runtime metrics to unified collector"""
-        while True:
-            try:
-                # Get current runtime metrics
-                runtime_metrics = self.get_runtime_metrics()
-                
-                # Push to unified metrics collector
-                metrics_collector = get_metrics_collector()
-                metrics_collector.record_component_metrics("asr", runtime_metrics)
-                
-                logger.debug(f"Pushed ASR metrics to unified collector: {len(runtime_metrics)} metrics")
-                
-                # Wait for next push cycle
-                await asyncio.sleep(self._metrics_push_interval)
-                
-            except asyncio.CancelledError:
-                break
-            except Exception as e:
-                logger.error(f"Error in ASR metrics push loop: {e}")
-                await asyncio.sleep(10)  # Brief pause before retrying
-    
+    # Phase 1: metrics push task/loop provided by MetricsPushMixin
+
     async def stop(self) -> None:
         """Stop the ASR component (alias for shutdown)"""
         # Phase 1: Stop unified metrics push task

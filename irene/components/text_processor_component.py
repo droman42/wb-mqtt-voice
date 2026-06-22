@@ -7,7 +7,6 @@ providers and maintains backward compatibility with legacy utilities.
 Phase 3 of TODO #2: Updated to use new stage-specific providers
 """
 
-import importlib.util
 import logging
 import time
 from typing import Dict, Any, List, Optional, Type
@@ -425,13 +424,6 @@ class TextProcessorComponent(Component, TextProcessorPlugin, WebAPIPlugin):
         except ImportError:
             logger.warning("FastAPI not available for text processing web API")
             return None
-    
-    def is_api_available(self) -> bool:
-        """Check if web API is available."""
-        return (
-            importlib.util.find_spec("fastapi") is not None
-            and importlib.util.find_spec("pydantic") is not None
-        )
     
     def get_api_prefix(self) -> str:
         """Get URL prefix for text processing API endpoints"""

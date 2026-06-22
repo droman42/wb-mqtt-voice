@@ -1,14 +1,87 @@
 """Base component class for fundamental voice assistant components."""
 
+import asyncio
+import importlib.util
 import logging
 from abc import abstractmethod
 from typing import Dict, Any, List, Optional, Type
 
 from pydantic import BaseModel
 from ..core.interfaces.component import ComponentPort
+from ..core.metrics import get_metrics_collector
 from ..config.models import CoreConfig
 
 logger = logging.getLogger(__name__)
+
+
+class MetricsPushMixin:
+    """Periodic push of runtime metrics to the unified collector.
+
+    Shared by components that expose ``get_runtime_metrics()`` and maintain a
+    ``self._metrics_push_task`` / ``self._metrics_push_interval`` pair. Extracted
+    verbatim from the previously duplicated ASR/voice-trigger implementations.
+
+    The three label attributes below are kept distinct (rather than derived from
+    one another) so the emitted log lines and the collector key stay byte-for-byte
+    identical to the original per-component code, including the original casing.
+    Subclasses must set them. Logging deliberately resolves the subclass module
+    logger (``self.__module__``) so log records keep their original logger name.
+    """
+
+    # Per-component identifiers (set by each subclass):
+    _metrics_component_key: str   # collector key, e.g. "asr" / "voice_trigger"
+    _metrics_task_label: str      # start/stop logs, e.g. "ASR component" / "Voice trigger component"
+    _metrics_loop_label: str      # push/error logs, e.g. "ASR" / "voice trigger"
+    _metrics_push_interval: float  # seconds between pushes (set by each subclass)
+    _metrics_push_task: Optional[asyncio.Task]  # set by each subclass __init__
+
+    def get_runtime_metrics(self) -> Dict[str, Any]:
+        """Provided by the component subclass; the push loop reports its values."""
+        raise NotImplementedError
+
+    def _start_metrics_push_task(self) -> None:
+        """Start the periodic metrics push task"""
+        if self._metrics_push_task is None:
+            self._metrics_push_task = asyncio.create_task(self._metrics_push_loop())
+            logging.getLogger(self.__module__).debug(
+                f"{self._metrics_task_label} metrics push task started"
+            )
+
+    async def _stop_metrics_push_task(self) -> None:
+        """Stop the periodic metrics push task"""
+        if self._metrics_push_task:
+            self._metrics_push_task.cancel()
+            try:
+                await self._metrics_push_task
+            except asyncio.CancelledError:
+                pass
+            self._metrics_push_task = None
+            logging.getLogger(self.__module__).debug(
+                f"{self._metrics_task_label} metrics push task stopped"
+            )
+
+    async def _metrics_push_loop(self) -> None:
+        """Periodic loop to push runtime metrics to unified collector"""
+        log = logging.getLogger(self.__module__)
+        while True:
+            try:
+                # Get current runtime metrics
+                runtime_metrics = self.get_runtime_metrics()
+
+                # Push to unified metrics collector
+                metrics_collector = get_metrics_collector()
+                metrics_collector.record_component_metrics(self._metrics_component_key, runtime_metrics)
+
+                log.debug(f"Pushed {self._metrics_loop_label} metrics to unified collector: {len(runtime_metrics)} metrics")
+
+                # Wait for next push cycle
+                await asyncio.sleep(self._metrics_push_interval)
+
+            except asyncio.CancelledError:
+                break
+            except Exception as e:
+                log.error(f"Error in {self._metrics_loop_label} metrics push loop: {e}")
+                await asyncio.sleep(10)  # Brief pause before retrying
 
 
 class Component(ComponentPort):
@@ -57,6 +130,22 @@ class Component(ComponentPort):
         from ..config.resolver import extract_config_by_path
         return extract_config_by_path(core_config, config_path, config_class)
     
+    def is_api_available(self) -> bool:
+        """Check if web API dependencies (FastAPI + Pydantic) are available.
+
+        Hoisted from the previously duplicated, byte-identical copies in the
+        NLU / text-processor / monitoring components. This overrides the
+        FastAPI-only ``WebAPIPlugin.is_api_available`` for every component (all of
+        which list ``Component`` ahead of ``WebAPIPlugin`` in their bases). Pydantic
+        is a hard base dependency (imported unconditionally at the top of this
+        module), so the added pydantic check is always satisfied when this code
+        runs and the result is identical to the inherited FastAPI-only check.
+        """
+        return (
+            importlib.util.find_spec("fastapi") is not None
+            and importlib.util.find_spec("pydantic") is not None
+        )
+
     def inject_dependency(self, name: str, dependency: Any) -> None:
         """Inject a dependency into this component"""
         self.injected_dependencies[name] = dependency

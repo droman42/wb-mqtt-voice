@@ -12,6 +12,17 @@ newest entries near the top of each dated section.
 ## Action journal
 
 ### 2026-06-22
+- **Provider-base duplication dedup (review CR-C6/C7/C8) — `docs/review/codebase_review_2026-06-21.md`.** Behavior-
+  preserving base/mixin extractions, run as 3 parallel specialists over disjoint files (llm/, tts/, components/), then
+  verified together. **CR-C6:** new `silero_base.py::SileroTTSBase` holds the ~80%-shared Silero body; `silero_v3`/
+  `silero_v4` subclass it and override only the genuinely-different bits (model URLs, `is_available`, synthesis engine,
+  speakers). **CR-C7:** hoisted the byte-identical `_GENERIC_SYSTEM_FALLBACK`/`_LLM_TEMPERATURE` + default
+  `get_supported_tasks` into `LLMProvider`; dropped redundant `get_platform_*` overrides; left genuinely per-provider
+  bits alone. **CR-C8 (partial):** `is_api_available` → one `Component` base copy; metrics-push trio → `MetricsPushMixin`
+  (ASR + voice_trigger); the `/configure`(×7) + `/providers`(×6) FastAPI route handlers deferred to a dedicated pass
+  (per-component response models; not worth the route-behavior risk). Added typed stubs for subclass-provided members so
+  pyright stays 0 without `TYPE_CHECKING` (Invariant #9). ~−180 lines across the three. Gates: suite 1013 passed / 0
+  failed, pyright 0, import-linter 9/9. Review tracker + this ledger updated.
 - **Dead-code sweep (review CR-B) — `docs/review/codebase_review_2026-06-21.md`.** Removed 22 verified-dead methods +
   a no-op fallback stub + an orphaned example package, across `irene/core/` (debug_tools, analytics_dashboard, metrics,
   workflow_manager, components), `irene/components/base.py` (the dead `Component.start`/`is_dependencies_available`

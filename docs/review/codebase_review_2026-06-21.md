@@ -1,7 +1,7 @@
 # Whole-codebase review (2026-06-21)
 
 **Status:** findings filed; **resolved 2026-06-22:** CR-A1 group (A1/A2/A3/A14/B2/D5) + BUILD-7 doc/dup cluster (C1/C2/C4/D1–D4) + dead-code
-sweep (all CR-B except B4 KEPT) — see Resolution log. Remainder open. **Backs:** general health pass (post-BUILD-7); individual items
+sweep (all CR-B except B4 KEPT) + provider-base dedup (C6/C7, C8 partial) — see Resolution log. Remainder open. **Backs:** general health pass (post-BUILD-7); individual items
 cross-ref
 their owning task below. **Scope:** entire `irene/` tree + `docker/` + `pyproject.toml` + `docs/guides/`. **Method:**
 7 parallel finder passes (subsystem deep-reads + cross-cutting dead-code / duplication / doc-claim specialists);
@@ -36,13 +36,29 @@ _Plausible_ = realistic but depends on a reachable runtime state / framework beh
 | CR-A15 | P2 | Plausible | asset-loader save/load: `assets_root / domain / language` unsanitized (path traversal) | new (security) |
 | CR-A16 | P3 | Plausible | self-routing handlers' broad `except Exception` can swallow `ParameterExtractionError` | QUAL-30 boundary |
 | CR-B1..13 | — | ✅ swept | dead/zombie code (see §B) | FIXED 2026-06-22 (CR-B4 KEPT — ARCH-22/25; B12 was QUAL-20) |
-| CR-C1..13 | — | C1/C2/C4 ✅ | duplication / drift risk (see §C) | C1/C2/C4 FIXED 2026-06-22; CR-C9 → ARCH-25 |
+| CR-C1..13 | — | C1/2/4/6/7 ✅, C8◐ | duplication / drift risk (see §C) | C1/C2/C4/C6/C7 + C8(partial) FIXED 2026-06-22; CR-C9 → ARCH-25 |
 | CR-D1..5 | — | D1-D4 ✅ | stale user-facing doc claims (see §D) | D1–D4 FIXED 2026-06-22; D5 done in CR-A1 group |
 
 ---
 
 ## Resolution log
 
+- **2026-06-22 — Provider-base duplication (CR-C6/C7/C8).** Behavior-preserving base/mixin extractions (suite 1013
+  passed / 0 failed, pyright 0, import-linter 9/9). **CR-C6:** new `irene/providers/tts/silero_base.py` `SileroTTSBase`
+  holds the ~80%-shared body (torch-device handling, the `f"{model_file}:{torch_device}"` cache plumbing, config
+  scaffolding, `_ensure_model_loaded`/`_load_model`/`warm_up`/`_normalize_text_async`, build-dep methods); `silero_v3`/
+  `silero_v4` subclass it and override only what genuinely differs (model URLs/dir, `is_available`, `_load_model_async`,
+  `_download_model`, the synthesis engines, speaker handling) — net ~−73 lines. **CR-C7:** hoisted the byte-identical
+  `_GENERIC_SYSTEM_FALLBACK` / `_LLM_TEMPERATURE` constants + the default `get_supported_tasks` into `LLMProvider`, and
+  dropped the redundant all-platforms `get_platform_*` overrides (the grandparent default is identical); left genuinely
+  per-provider bits (`_get_default_credentials`, the credential-load idiom, the three distinct `is_available`s) alone —
+  net ~−55 lines. **CR-C8 (partial):** `is_api_available` collapsed to one `Component.base` copy (3 dupes removed);
+  the byte-identical metrics-push trio extracted to a `MetricsPushMixin` (ASR + voice_trigger), with the per-component
+  label/key parameterized so log lines stay identical. **Deferred:** the `/configure` (×7) + `/providers` (×6) route
+  handlers — they're FastAPI closures with per-component response models; left for a dedicated pass to avoid risking a
+  route behavior change. Added typed stubs on the new base/mixin for subclass-provided members (`_load_model_async`,
+  `_model_cache`, `get_runtime_metrics`, `_metrics_push_interval`) to keep pyright at 0 without `TYPE_CHECKING`
+  (Invariant #9).
 - **2026-06-22 — Dead-code sweep (CR-B).** Deleted (all verified 0 callers; suite/pyright/import-linter re-run green):
   **CR-B1** `Component.start` + `is_dependencies_available` (`components/base.py`); **CR-B2** remainder — `switch_workflow`,
   `hot_reload_workflow`, `get_workflow_dependencies`, `optimize_component_sharing`, `get_startup_performance_metrics`
@@ -236,12 +252,12 @@ of their `get_param` calls ever drops its caller-supplied default.
   the `# base dependency` comments — so the extras are inconsistent with the intended convention.) _Ref: **BUILD-7**._
 - **CR-C5** — `spacy_provider._initialize_spacy` (`:110`) vs `_initialize_spacy_with_assets` (`:165`): ~75 near-identical
   lines; `recognize()` re-init and `is_available()` each pick a different one → a fix can land on only some paths.
-- **CR-C6** — `silero_v3.py` vs `silero_v4.py`: ~80% shared body, **shared `torch_model_cache` key** → device/cache
+- **CR-C6** — ✅ **FIXED 2026-06-22**. `silero_v3.py` vs `silero_v4.py`: ~80% shared body, **shared `torch_model_cache` key** → device/cache
   changes must mirror; source of the CR-A8/A12/A13-class divergence. Candidate `SileroTTSBase`.
-- **CR-C7** — cloud-LLM providers (openai/deepseek/anthropic) duplicate `_GENERIC_SYSTEM_FALLBACK`/`_LLM_TEMPERATURE`
+- **CR-C7** — ✅ **FIXED 2026-06-22**. cloud-LLM providers (openai/deepseek/anthropic) duplicate `_GENERIC_SYSTEM_FALLBACK`/`_LLM_TEMPERATURE`
   (byte-identical), `_get_default_credentials`, `get_supported_tasks`, credential-load idiom, import-probe
   `is_available`. Belongs in `LLMProvider`.
-- **CR-C8** — component web scaffolding copy-paste: `_metrics_push_*` (`asr_component.py:702` ≡
+- **CR-C8** — ✅ **PARTIAL 2026-06-22** (is_api_available + metrics mixin done; /configure & /providers deferred). component web scaffolding copy-paste: `_metrics_push_*` (`asr_component.py:702` ≡
   `voice_trigger_component.py:565`, byte-identical), `is_api_available` (×3: nlu/text_processor/monitoring),
   `/configure` POST (×7), `/providers` (×6). Candidate `MetricsPushMixin` + shared `_apply_provider_config`.
 - **CR-C9** — `["linux.ubuntu","linux.alpine","macos","windows"]` `get_platform_support()` literal hardcoded in ~25

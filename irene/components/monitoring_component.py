@@ -5,7 +5,6 @@ Integrates all Phase 3 services (notifications, metrics, memory management,
 debug tools, analytics dashboard) into the system component architecture.
 """
 
-import importlib.util
 import logging
 from typing import Dict, Any, List, Optional, Type
 
@@ -584,13 +583,6 @@ class MonitoringComponent(Component, WebAPIPlugin):
         """Get OpenAPI tags for monitoring endpoints"""
         return ["Monitoring"]
     
-    def is_api_available(self) -> bool:
-        """Check if FastAPI dependencies are available for web API"""
-        return (
-            importlib.util.find_spec("fastapi") is not None
-            and importlib.util.find_spec("pydantic") is not None
-        )
-
     # Component interface methods
     @classmethod
     def get_python_dependencies(cls) -> List[str]:
