@@ -12,6 +12,16 @@ newest entries near the top of each dated section.
 ## Action journal
 
 ### 2026-06-22
+- **NLU-analysis donation loaders implemented (review CR-A6) — `docs/review/codebase_review_2026-06-21.md`.**
+  `_get_context_units` / `_get_all_intent_units` were `return []` stubs, so the NLU-analysis endpoints always reported
+  "healthy / no conflicts". Implemented them to enumerate the loaded donations off the NLU component's
+  `IntentAssetLoader` (`get_all_handlers_with_languages` → `get_language_phrasing_for_editing`) and build one
+  `IntentUnit` per (handler, language); the context variant excludes the candidate handler. Resolved lazily through
+  `core` so it degrades to empty (no crash) before the donation source is up. **Bonus:** fixed `_donation_to_intent_unit`
+  — it read `methods` (a dict), but real donations use `method_donations` (a list), so even the realtime path produced
+  empty units; now reads the real shape with a legacy fallback. New `test_nlu_analysis_loaders.py`. Gates: suite 1047
+  passed / 0 failed, pyright 0, import-linter 9/9. Review §A now clear except CR-A5 (audio_playback — next). Review
+  tracker + this ledger updated.
 - **Cyrillic/script-detection dedup (review CR-C3) — `docs/review/codebase_review_2026-06-21.md`.** The `Ѐ–ӿ` Cyrillic
   test (+ latin/CJK ranges) was copy-pasted across 6 sites in 5 files (`spacy_provider`, `hybrid_keyword_matcher`,
   `nlu/llm` — which used literal `"Ѐ"`/`"ӿ"` bounds — `nlu_component`'s char-count→ratio, and `analysis/hybrid_analyzer`

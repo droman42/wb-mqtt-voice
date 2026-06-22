@@ -1,7 +1,7 @@
 # Whole-codebase review (2026-06-21)
 
 **Status:** findings filed; **resolved 2026-06-22:** CR-A1 group (A1/A2/A3/A14/B2/D5) + BUILD-7 doc/dup cluster (C1/C2/C4/D1–D4) + dead-code
-sweep (all CR-B except B4 KEPT) + provider-base dedup (C6/C7, C8 partial) + standalone correctness (A4/A8) + silero cleanups (A12/A13) + tracing pair (A7/A9) + path-traversal hardening (A15) + correctness trio (A10/A11/A16) + Cyrillic dedup (C3) — see Resolution log. **§A clear except A5/A6 (feature stubs).** Remainder open. **Backs:** general health pass (post-BUILD-7); individual items
+sweep (all CR-B except B4 KEPT) + provider-base dedup (C6/C7, C8 partial) + standalone correctness (A4/A8) + silero cleanups (A12/A13) + tracing pair (A7/A9) + path-traversal hardening (A15) + correctness trio (A10/A11/A16) + Cyrillic dedup (C3) + nlu-analysis loaders (A6) — see Resolution log. **§A clear except A5 (audio_playback).** Remainder open. **Backs:** general health pass (post-BUILD-7); individual items
 cross-ref
 their owning task below. **Scope:** entire `irene/` tree + `docker/` + `pyproject.toml` + `docs/guides/`. **Method:**
 7 parallel finder passes (subsystem deep-reads + cross-cutting dead-code / duplication / doc-claim specialists);
@@ -24,7 +24,7 @@ _Plausible_ = realistic but depends on a reachable runtime state / framework beh
 | CR-A3 | P1 | ✅ FIXED | `ASRComponent.initialize` swallows exceptions but stays `initialized=True` | new (compounds CR-A2) |
 | CR-A4 | P1 | ✅ FIXED | `tts/vosk` `is_available` probes wrong asset namespace → dead on first run | new |
 | CR-A5 | P2 | Confirmed | `audio_playback` "play" is a shipped simulation (commented-out call + 10% dice fail) | new |
-| CR-A6 | P2 | Confirmed | `nlu_analysis` context loaders are stubs → endpoints always "healthy/no conflicts" | new |
+| CR-A6 | P2 | ✅ FIXED | `nlu_analysis` context loaders are stubs → endpoints always "healthy/no conflicts" | new |
 | CR-A7 | P2 | ✅ FIXED | `process_text_input` drops the trace when the workflow raises (audio path doesn't) | tracing |
 | CR-A8 | P2 | ✅ FIXED | `elevenlabs.synthesize_to_file` swallows error, writes no file | new |
 | CR-A9 | P3 | ✅ FIXED | Over-broad substring trace redaction nukes `session_id`/`keyword`/`author` | tracing |
@@ -43,6 +43,16 @@ _Plausible_ = realistic but depends on a reachable runtime state / framework beh
 
 ## Resolution log
 
+- **2026-06-22 — NLU-analysis donation loaders (CR-A6).** `_get_context_units` / `_get_all_intent_units` were
+  `return []` stubs, so conflict detection always found nothing and the health score was always `1.0`. Implemented them
+  to enumerate the loaded donations off the NLU component's `IntentAssetLoader`
+  (`get_all_handlers_with_languages` → `get_language_phrasing_for_editing`) and build one `IntentUnit` per
+  (handler, language); `_get_context_units` excludes the candidate handler. Resolved lazily via `core` (degrades to
+  empty when the donation source isn't up yet — no init-order crash). **Bonus fix:** `_donation_to_intent_unit` read
+  the wrong key `methods` (a dict) — real donations use `method_donations` (a **list**), so even the realtime path
+  produced empty units; now reads `method_donations` with a legacy `methods` fallback, so realtime analysis works too.
+  New `test_nlu_analysis_loaders.py`. Gates: suite 1047 passed / 0 failed, pyright 0, import-linter 9/9. (§A now clear
+  except CR-A5.)
 - **2026-06-22 — Cyrillic/script detection dedup (CR-C3).** The `Ѐ–ӿ` Cyrillic test (and the latin/CJK
   ranges) was copy-pasted across 6 sites in 5 files — `spacy_provider`, `hybrid_keyword_matcher`, `nlu/llm` (which used
   literal `"Ѐ"`/`"ӿ"` bounds), `nlu_component` (char-count→ratio), and `analysis/hybrid_analyzer` (×2). Extracted one
@@ -193,7 +203,7 @@ ASR has no mask.)
 **Impact:** "включи музыку" → optimistic "starting playback" reply, plays nothing, ~10% of calls report a spurious
 failure from the dice roll.
 
-### CR-A6 — [P2, Confirmed] `nlu_analysis` context loaders are permanent stubs
+### CR-A6 — [P2, ✅ FIXED 2026-06-22] `nlu_analysis` context loaders are permanent stubs
 `irene/components/nlu_analysis_component.py:520-530`. `_get_context_units()` / `_get_all_intent_units()` both
 `return []` ("simplified implementation"). So conflicts always `[]`, batch `total_intents=0`, health always `1.0`.
 **Impact:** every NLU-analysis endpoint (`/analyze/donation`, `/analysis/batch`, `/conflicts/{handler}`, `/health`)

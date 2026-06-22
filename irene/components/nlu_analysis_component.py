@@ -79,6 +79,9 @@ class NLUAnalysisComponent(Component, WebAPIPlugin):
         
         # Concurrency control
         self._analysis_semaphore: Optional[asyncio.Semaphore] = None
+
+        # Core ref — used to reach the NLU component's asset loader for donation enumeration (CR-A6).
+        self._core: Any = None
     
     @classmethod
     def get_config_class(cls) -> Type[BaseModel]:
@@ -116,7 +119,8 @@ class NLUAnalysisComponent(Component, WebAPIPlugin):
     async def initialize(self, core=None):
         """Initialize the NLU analysis component and its analyzers"""
         await super().initialize(core)
-        
+        self._core = core  # CR-A6: needed to reach the donation source at analysis time
+
         # Get configuration
         if core:
             config = getattr(core.config, 'nlu_analysis', None) or NLUAnalysisConfig()
@@ -476,32 +480,30 @@ class NLUAnalysisComponent(Component, WebAPIPlugin):
     # Helper methods
     
     def _donation_to_intent_unit(self, handler_name: str, language: str, donation_data: Dict[str, Any]) -> IntentUnit:
-        """Convert donation data to IntentUnit for analysis"""
-        # Extract method donations
-        methods = donation_data.get('methods', {})
-        
-        # For simplified analysis, combine all methods into one unit
-        # Real implementation might analyze each method separately
-        all_phrases = []
-        all_lemmas = []
-        all_token_patterns = []
-        all_slot_patterns = {}
-        all_examples = []
-        all_parameters = []
-        
-        for method_key, method_data in methods.items():
+        """Convert donation data to IntentUnit for analysis. Reads the real per-language donation shape
+        — `method_donations`, a LIST of method dicts — with a fallback to a legacy `methods` dict (the
+        original code read only `methods`, so real donations produced empty units)."""
+        methods = donation_data.get('method_donations')
+        if methods is None:
+            methods = donation_data.get('methods', [])
+        if isinstance(methods, dict):
+            methods = list(methods.values())
+
+        # Combine all methods of a handler into one unit (per-method analysis is a future refinement).
+        all_phrases: List[str] = []
+        all_lemmas: List[str] = []
+        all_token_patterns: List[Any] = []
+        all_slot_patterns: Dict[str, Any] = {}
+        all_examples: List[Any] = []
+        all_parameters: List[Any] = []
+
+        for method_data in methods:
             if isinstance(method_data, dict):
                 all_phrases.extend(method_data.get('phrases', []))
                 all_lemmas.extend(method_data.get('lemmas', []))
                 all_token_patterns.extend(method_data.get('token_patterns', []))
-                
-                # Merge slot patterns
-                slot_patterns = method_data.get('slot_patterns', {})
-                for slot_name, patterns in slot_patterns.items():
-                    if slot_name not in all_slot_patterns:
-                        all_slot_patterns[slot_name] = []
-                    all_slot_patterns[slot_name].extend(patterns)
-                
+                for slot_name, patterns in (method_data.get('slot_patterns', {}) or {}).items():
+                    all_slot_patterns.setdefault(slot_name, []).extend(patterns)
                 all_examples.extend(method_data.get('examples', []))
                 all_parameters.extend(method_data.get('parameters', []))
         
@@ -517,17 +519,51 @@ class NLUAnalysisComponent(Component, WebAPIPlugin):
             parameters=all_parameters
         )
     
+    @staticmethod
+    def _normalize_handler(name: str) -> str:
+        return name[:-8] if name.endswith("_handler") else name
+
+    def _get_asset_loader(self):
+        """The IntentAssetLoader that owns the on-disk donations — resolved lazily off the NLU component
+        (which loads donations at startup). None until that component is up, in which case analysis
+        degrades to an empty set rather than crashing."""
+        cm = getattr(self._core, "component_manager", None) if self._core else None
+        if cm is None:
+            return None
+        nlu = cm.get_component("nlu")
+        return getattr(nlu, "asset_loader", None) if nlu else None
+
+    async def _load_intent_units(self, language: Optional[str]) -> List[IntentUnit]:
+        """Build one IntentUnit per (handler, language) from the loaded donations (CR-A6). When `language`
+        is given, only that language is loaded. Empty when the donation source isn't available yet."""
+        loader = self._get_asset_loader()
+        if loader is None:
+            return []
+        try:
+            handlers_languages = loader.get_all_handlers_with_languages()
+        except Exception as e:
+            self.logger.warning(f"Could not enumerate donations for analysis: {e}")
+            return []
+        units: List[IntentUnit] = []
+        for handler, available in handlers_languages.items():
+            for lang in ([language] if language else available):
+                if lang not in available:
+                    continue
+                donation_data = loader.get_language_phrasing_for_editing(handler, lang)
+                if donation_data:
+                    units.append(self._donation_to_intent_unit(handler, lang, donation_data))
+        return units
+
     async def _get_context_units(self, language: str, exclude_handler: Optional[str] = None) -> List[IntentUnit]:
-        """Get context units for analysis (simplified implementation)"""
-        # This is a simplified implementation
-        # Real implementation would load from donation system
-        return []
-    
+        """All OTHER handlers' donation units for `language` — the context a candidate donation is checked
+        against for conflict detection (CR-A6)."""
+        exclude = self._normalize_handler(exclude_handler) if exclude_handler else None
+        return [u for u in await self._load_intent_units(language)
+                if self._normalize_handler(u.handler_name) != exclude]
+
     async def _get_all_intent_units(self, language: Optional[str] = None) -> List[IntentUnit]:
-        """Get all intent units for batch analysis (simplified implementation)"""
-        # This is a simplified implementation
-        # Real implementation would load all donations from the system
-        return []
+        """All handlers' donation units — for batch analysis and the system-health score (CR-A6)."""
+        return await self._load_intent_units(language)
     
     async def _analyze_conflicts(self, unit: IntentUnit, context: List[IntentUnit], conflicts: List[ConflictReport]):
         """Analyze conflicts for a unit and add to conflicts list"""
