@@ -472,18 +472,35 @@ class WorkflowManager:
         if trace_context and trace_context.enabled:
             trace_context.record_input("text", text=text)
             trace_context.record_request(self._replay_request(context))
-        with trace_scope(trace_context):
-            await self._publish_pipeline_event(EventType.INPUT_RECEIVED, context,
-                                               {"text": text, "format": "text"})
-            result = await unified_workflow.process_text_input(text, context, trace_context)
-            await self._publish_pipeline_event(EventType.RESULT_PRODUCED, context, {
-                "text": result.text, "success": result.success,
-                "intent": result.metadata.get("intent_name") if result.metadata else None})
-        if trace_context and trace_context.enabled:
-            trace_context.record_output(result)
-        self._save_trace_if_enabled(trace_context)
-        # (QUAL-28) F&F actions are registered in the store by the launch — no write-back needed.
-        return result
+        try:
+            with trace_scope(trace_context):
+                await self._publish_pipeline_event(EventType.INPUT_RECEIVED, context,
+                                                   {"text": text, "format": "text"})
+                result = await unified_workflow.process_text_input(text, context, trace_context)
+                await self._publish_pipeline_event(EventType.RESULT_PRODUCED, context, {
+                    "text": result.text, "success": result.success,
+                    "intent": result.metadata.get("intent_name") if result.metadata else None})
+            if trace_context and trace_context.enabled:
+                trace_context.record_output(result)
+            self._save_trace_if_enabled(trace_context)
+            # (QUAL-28) F&F actions are registered in the store by the launch — no write-back needed.
+            return result
+        except Exception as e:
+            # CR-A7: persist the trace on the error path too (mirror process_audio_input). The text path
+            # previously skipped _save_trace_if_enabled when the workflow raised, so the trace — and the
+            # failing stage — were lost exactly when a bug fired. Re-raise to preserve the caller contract
+            # (endpoints convert this to HTTP 500); only the trace handling is added here.
+            logger.error(f"Text processing error in WorkflowManager: {e}")
+            if trace_context:
+                trace_context.record_stage(
+                    stage_name="workflow_manager_text_error",
+                    input_data={"text": text},
+                    output_data=None,
+                    metadata={"error": str(e), "error_type": type(e).__name__, "session_id": session_id},
+                    processing_time_ms=0.0,
+                )
+            self._save_trace_if_enabled(trace_context)
+            raise
 
     # `_replay_request` kept as a thin alias over the shared core helper (call sites unchanged).
     _replay_request = staticmethod(replay_request)

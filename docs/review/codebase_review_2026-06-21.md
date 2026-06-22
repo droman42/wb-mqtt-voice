@@ -1,7 +1,7 @@
 # Whole-codebase review (2026-06-21)
 
 **Status:** findings filed; **resolved 2026-06-22:** CR-A1 group (A1/A2/A3/A14/B2/D5) + BUILD-7 doc/dup cluster (C1/C2/C4/D1–D4) + dead-code
-sweep (all CR-B except B4 KEPT) + provider-base dedup (C6/C7, C8 partial) + standalone correctness (A4/A8) + silero cleanups (A12/A13) — see Resolution log. Remainder open. **Backs:** general health pass (post-BUILD-7); individual items
+sweep (all CR-B except B4 KEPT) + provider-base dedup (C6/C7, C8 partial) + standalone correctness (A4/A8) + silero cleanups (A12/A13) + tracing pair (A7/A9) — see Resolution log. Remainder open. **Backs:** general health pass (post-BUILD-7); individual items
 cross-ref
 their owning task below. **Scope:** entire `irene/` tree + `docker/` + `pyproject.toml` + `docs/guides/`. **Method:**
 7 parallel finder passes (subsystem deep-reads + cross-cutting dead-code / duplication / doc-claim specialists);
@@ -25,9 +25,9 @@ _Plausible_ = realistic but depends on a reachable runtime state / framework beh
 | CR-A4 | P1 | ✅ FIXED | `tts/vosk` `is_available` probes wrong asset namespace → dead on first run | new |
 | CR-A5 | P2 | Confirmed | `audio_playback` "play" is a shipped simulation (commented-out call + 10% dice fail) | new |
 | CR-A6 | P2 | Confirmed | `nlu_analysis` context loaders are stubs → endpoints always "healthy/no conflicts" | new |
-| CR-A7 | P2 | Likely | `process_text_input` drops the trace when the workflow raises (audio path doesn't) | tracing |
+| CR-A7 | P2 | ✅ FIXED | `process_text_input` drops the trace when the workflow raises (audio path doesn't) | tracing |
 | CR-A8 | P2 | ✅ FIXED | `elevenlabs.synthesize_to_file` swallows error, writes no file | new |
-| CR-A9 | P3 | Plausible | Over-broad substring trace redaction nukes `session_id`/`keyword`/`author` | tracing |
+| CR-A9 | P3 | ✅ FIXED | Over-broad substring trace redaction nukes `session_id`/`keyword`/`author` | tracing |
 | CR-A10 | P3 | Plausible | `asr/base.audio_contract` reads a voice-trigger method name → rates always `[16000]` | new |
 | CR-A11 | P3 | Plausible | `voice_synthesis._handle_speak_text` AttributeError on `text:null` entity | new |
 | CR-A12 | P3 | ✅ FIXED | `silero_v3.is_available` does a blocking `requests.head` in async | QUAL-15 (same anti-pattern) |
@@ -43,6 +43,16 @@ _Plausible_ = realistic but depends on a reachable runtime state / framework beh
 
 ## Resolution log
 
+- **2026-06-22 — Tracing pair (CR-A7 / CR-A9).** **CR-A7:** `workflow_manager.process_text_input` now mirrors the
+  audio path — wraps the workflow call in try/except that records a `workflow_manager_text_error` stage and calls
+  `_save_trace_if_enabled` before re-raising. Previously a text-path exception unwound past the save, so the trace and
+  the failing stage were lost exactly when a bug fired. Re-raises (not return-error-result) to preserve the caller
+  contract — `webapi_router` wraps the call in `except → HTTPException(500)`, so swallowing would have turned 500s into
+  200s. **CR-A9:** trace-value redaction switched from raw-substring to word-TOKEN matching (`_key_tokens` splits on
+  separators + camelCase) and dropped `session` from the secret set — so `session_id` / `keyword` / `matched_keys` /
+  `author` survive while real secrets (`api_key`→{api,key}, `access_token`→{access,token}, `authorization`, `password`,
+  …) are still `[REDACTED]`. New `test_trace_fixes.py` covers both. Gates: suite 1024 passed / 0 failed, pyright 0,
+  import-linter 9/9.
 - **2026-06-22 — Silero cleanups (CR-A12 / CR-A13).** **CR-A12:** `silero_v3.is_available` dropped its blocking
   `requests.head(model_url, timeout=5)` network probe (QUAL-15 anti-pattern) — now local-only (`torch` present), like
   v4; the model still downloads lazily and fails through the fallback chain. **CR-A13:** `silero_v4._download_model`
@@ -164,7 +174,7 @@ failure from the dice roll.
 **Impact:** every NLU-analysis endpoint (`/analyze/donation`, `/analysis/batch`, `/conflicts/{handler}`, `/health`)
 reports "healthy / no conflicts" regardless of reality.
 
-### CR-A7 — [P2, Likely] `process_text_input` loses the trace when the workflow raises
+### CR-A7 — [P2, ✅ FIXED 2026-06-22] `process_text_input` loses the trace when the workflow raises
 `irene/core/workflow_manager.py:444-492`. The text path has no try/except and `_save_trace_if_enabled` (`:490`) is
 after the `with trace_scope` block; `process_audio_input` (`:576`) records an error stage and saves. With tracing on,
 a text-path exception → trace never written, no error stage. The "save every request" guarantee is violated for text.
@@ -173,7 +183,7 @@ a text-path exception → trace never written, no error stage. The "save every r
 `irene/providers/tts/elevenlabs.py:104-121`. Catches + logs, **no `raise`** (silero/vosk/piper all raise). Returns
 normally without creating `output_path` → caller reads a non-existent WAV; fallback chain never engages.
 
-### CR-A9 — [P3, Plausible] Over-broad trace redaction
+### CR-A9 — [P3, ✅ FIXED 2026-06-22] Over-broad trace redaction
 `irene/core/trace_context.py:412-426`. `sensitive_keys` includes short tokens `'key'`,`'session'`,`'auth'`,`'cert'`,
 matched by substring → `session_id`, `keyword`/`matched_keys`, `author` get `[REDACTED]`. Non-secret diagnostic data
 destroyed in every exported trace.

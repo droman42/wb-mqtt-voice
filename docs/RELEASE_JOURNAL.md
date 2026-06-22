@@ -12,6 +12,16 @@ newest entries near the top of each dated section.
 ## Action journal
 
 ### 2026-06-22
+- **Tracing pair fixed (review CR-A7/A9) — `docs/review/codebase_review_2026-06-21.md`.** **CR-A7:**
+  `workflow_manager.process_text_input` lost the trace when the workflow raised (no try/except; `_save_trace_if_enabled`
+  sat after the `trace_scope` block) — observability gone exactly when a bug fired. Now mirrors `process_audio_input`:
+  records a `workflow_manager_text_error` stage + saves the trace, then **re-raises** (callers convert it to
+  HTTPException 500 — return-error-result would have turned 500s into 200s). **CR-A9:** trace-value redaction was
+  raw-substring matching, so `session_id` (⊃ session), `keyword`/`matched_keys` (⊃ key), and `author` (⊃ auth) were all
+  `[REDACTED]`. Switched to word-TOKEN matching (`_key_tokens` splits on separators + camelCase) and dropped `session`
+  from the secret set; real secrets (`api_key`, `access_token`, `authorization`, `password`, …) still redact. New
+  `test_trace_fixes.py`. Gates: suite 1024 passed / 0 failed, pyright 0, import-linter 9/9. Review tracker + this
+  ledger updated.
 - **Silero TTS cleanups (review CR-A12/A13) — `docs/review/codebase_review_2026-06-21.md`.** **CR-A12:**
   `silero_v3.is_available` did a blocking `requests.head(model_url, timeout=5)` inside an async method (the QUAL-15
   anti-pattern) — now local-only (`torch` present), matching v4; the model still downloads lazily and fails through the

@@ -17,6 +17,7 @@ import dataclasses
 import hashlib
 import json
 import logging
+import re
 import time
 import traceback
 import uuid
@@ -129,6 +130,26 @@ class TraceLogger(logging.Handler):
             )
         except Exception:  # logging must never crash the app
             self.handleError(record)
+
+
+# Redact trace values whose key NAMES a secret. CR-A9: match on word TOKENS, not raw substrings — the
+# old substring test nuked legitimate diagnostic fields (`session_id` ⊃ "session", `keyword` /
+# `matched_keys` ⊃ "key", `author` ⊃ "auth"). `session` is intentionally absent: a session *id* is not a
+# secret; an actual session secret would be `session_token` / `session_key`, caught via `token` / `key`.
+_SENSITIVE_KEY_TOKENS = {
+    'password', 'passwd', 'pwd', 'secret', 'token', 'key', 'auth', 'authorization',
+    'credential', 'credentials', 'bearer', 'private', 'cookie', 'jwt', 'oauth',
+    'cert', 'certificate',
+}
+_KEY_TOKEN_RE = re.compile(r'[a-z0-9]+')
+
+
+def _key_tokens(key: Any) -> set:
+    """Word tokens of a dict key, splitting on separators AND camelCase, so `sessionId` / `session_id`
+    both → {session, id} and `keyword` → {keyword} (not {key, word}). Used to redact only keys whose
+    token actually names a secret."""
+    spaced = re.sub(r'(?<=[a-z0-9])(?=[A-Z])', ' ', str(key))
+    return set(_KEY_TOKEN_RE.findall(spaced.lower()))
 
 
 class TraceContext:
@@ -408,21 +429,15 @@ class TraceContext:
         Internal sanitization implementation (separated for error handling)
         """
         if isinstance(data, dict):
-            # Phase 8: Enhanced security - remove sensitive keys and recursively sanitize
-            sensitive_keys = {
-                'password', 'token', 'api_key', 'secret', 'auth', 'credential', 
-                'authorization', 'bearer', 'key', 'private', 'cert', 'certificate',
-                'session', 'cookie', 'jwt', 'oauth', 'access_token', 'refresh_token'
-            }
-            
+            # Phase 8: redact values whose key names a secret, recurse into the rest. CR-A9: match on
+            # key word-TOKENS (see _key_tokens / _SENSITIVE_KEY_TOKENS), not raw substrings — the old
+            # substring test redacted legitimate fields (session_id / keyword / matched_keys / author).
             sanitized = {}
             for k, v in data.items():
-                key_lower = k.lower()
-                # Skip sensitive keys or keys containing sensitive patterns
-                if not any(sensitive in key_lower for sensitive in sensitive_keys):
-                    sanitized[k] = self._do_sanitize(v)
-                else:
+                if _key_tokens(k) & _SENSITIVE_KEY_TOKENS:
                     sanitized[k] = "[REDACTED]"
+                else:
+                    sanitized[k] = self._do_sanitize(v)
             return sanitized
             
         elif isinstance(data, list):
