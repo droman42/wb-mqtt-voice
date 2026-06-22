@@ -10,6 +10,7 @@ High-performance NLU provider implementing keyword-first strategy with:
 
 import re
 import logging
+from ...utils.text_script import detect_language_by_script
 import time
 import math
 import unicodedata
@@ -344,11 +345,8 @@ class HybridKeywordMatcherProvider(NLUProvider):
         return keywords
     
     def _detect_language(self, text: str) -> str:
-        """Detect language based on Cyrillic script presence"""
-        # Cyrillic script detection for Russian
-        if any('\u0400' <= char <= '\u04FF' for char in text):
-            return 'ru'
-        return 'en'
+        """Detect language based on Cyrillic script presence (CR-C3: shared helper)."""
+        return detect_language_by_script(text)
     
     def _check_partial_match(self, input_tokens: Set[str], phrase_tokens: List[str]) -> bool:
         """Token-based partial matching (replace regex explosion)"""

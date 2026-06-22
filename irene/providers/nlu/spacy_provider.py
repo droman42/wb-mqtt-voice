@@ -6,6 +6,7 @@ Provides more sophisticated natural language understanding than rule-based appro
 """
 
 import logging
+from ...utils.text_script import detect_language_by_script
 import hashlib
 import numpy as np
 from datetime import datetime
@@ -84,11 +85,8 @@ class SpaCyNLUProvider(NLUProvider):
         return "spacy_nlu"
     
     def _detect_language(self, text: str) -> str:
-        """Language detection based on Cyrillic script presence"""
-        # Cyrillic script detection for Russian
-        if any('\u0400' <= char <= '\u04FF' for char in text):
-            return 'ru'
-        return 'en'
+        """Language detection based on Cyrillic script presence (CR-C3: shared helper)."""
+        return detect_language_by_script(text)
     
     async def is_available(self) -> bool:
         """Check if spaCy is available and models can be loaded (patterns loaded separately during donation phase)"""

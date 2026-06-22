@@ -1,7 +1,7 @@
 # Whole-codebase review (2026-06-21)
 
 **Status:** findings filed; **resolved 2026-06-22:** CR-A1 group (A1/A2/A3/A14/B2/D5) + BUILD-7 doc/dup cluster (C1/C2/C4/D1–D4) + dead-code
-sweep (all CR-B except B4 KEPT) + provider-base dedup (C6/C7, C8 partial) + standalone correctness (A4/A8) + silero cleanups (A12/A13) + tracing pair (A7/A9) + path-traversal hardening (A15) + correctness trio (A10/A11/A16) — see Resolution log. **§A clear except A5/A6 (feature stubs).** Remainder open. **Backs:** general health pass (post-BUILD-7); individual items
+sweep (all CR-B except B4 KEPT) + provider-base dedup (C6/C7, C8 partial) + standalone correctness (A4/A8) + silero cleanups (A12/A13) + tracing pair (A7/A9) + path-traversal hardening (A15) + correctness trio (A10/A11/A16) + Cyrillic dedup (C3) — see Resolution log. **§A clear except A5/A6 (feature stubs).** Remainder open. **Backs:** general health pass (post-BUILD-7); individual items
 cross-ref
 their owning task below. **Scope:** entire `irene/` tree + `docker/` + `pyproject.toml` + `docs/guides/`. **Method:**
 7 parallel finder passes (subsystem deep-reads + cross-cutting dead-code / duplication / doc-claim specialists);
@@ -36,13 +36,20 @@ _Plausible_ = realistic but depends on a reachable runtime state / framework beh
 | CR-A15 | P2 | ✅ FIXED | asset-loader save/load: `assets_root / domain / language` unsanitized (path traversal) | new (security) |
 | CR-A16 | P3 | ✅ FIXED | self-routing handlers' broad `except Exception` can swallow `ParameterExtractionError` | QUAL-30 boundary |
 | CR-B1..13 | — | ✅ swept | dead/zombie code (see §B) | FIXED 2026-06-22 (CR-B4 KEPT — ARCH-22/25; B12 was QUAL-20) |
-| CR-C1..13 | — | C1/2/4/6/7 ✅, C8◐ | duplication / drift risk (see §C) | C1/C2/C4/C6/C7 + C8(partial) FIXED 2026-06-22; CR-C9 → ARCH-25 |
+| CR-C1..13 | — | C1/2/3/4/6/7 ✅, C8◐ | duplication / drift risk (see §C) | C1/C2/C3/C4/C6/C7 + C8(partial) FIXED 2026-06-22; CR-C9 → ARCH-25 |
 | CR-D1..5 | — | D1-D4 ✅ | stale user-facing doc claims (see §D) | D1–D4 FIXED 2026-06-22; D5 done in CR-A1 group |
 
 ---
 
 ## Resolution log
 
+- **2026-06-22 — Cyrillic/script detection dedup (CR-C3).** The `Ѐ–ӿ` Cyrillic test (and the latin/CJK
+  ranges) was copy-pasted across 6 sites in 5 files — `spacy_provider`, `hybrid_keyword_matcher`, `nlu/llm` (which used
+  literal `"Ѐ"`/`"ӿ"` bounds), `nlu_component` (char-count→ratio), and `analysis/hybrid_analyzer` (×2). Extracted one
+  source of truth `irene/utils/text_script.py` (`is_cyrillic`/`is_latin`/`is_cjk`, `contains_cyrillic`,
+  `cyrillic_char_count`, `detect_language_by_script`) and refactored all six to use it; the three NLU providers in one
+  cascade can no longer disagree on the ru/en split if the range is tweaked. Pure foundation module (ARCH-12 import
+  contract holds). New `test_text_script.py`. Gates: suite 1040 passed / 0 failed, pyright 0, import-linter 9/9.
 - **2026-06-22 — Correctness trio (CR-A10 / CR-A11 / CR-A16).** **CR-A10:** `asr/base.audio_contract` read the
   voice-trigger-only method name `get_supported_sample_rates` (always absent on ASR), so the contract was always
   `[16000]`; now calls the real `get_preferred_sample_rates()` and defaults to `[16000]` only when it returns nothing.
@@ -288,7 +295,7 @@ of their `get_param` calls ever drops its caller-supplied default.
   vs `dependency_validator.py:453` **and** `:475` (hand-rolled `>=`/`==`/`[`/` @ ` ladder, twice in one method).
   Disagree on `<`,`~=`,`!=`,markers → validator "passes CI" while build buckets the same spec differently.
   _Ref: **BUILD-7 / BUILD-5**._
-- **CR-C3** — Cyrillic detection (`Ѐ-ӿ`) re-implemented in 5+ files: `spacy_provider.py:76`,
+- **CR-C3** — ✅ **FIXED 2026-06-22**. Cyrillic detection (`Ѐ-ӿ`) re-implemented in 5+ files: `spacy_provider.py:76`,
   `hybrid_keyword_matcher.py:349`, `nlu/llm.py:264`, `nlu_component.py:172`, `analysis/hybrid_analyzer.py:571,589`.
   Three NLU providers in one cascade can disagree on language if anyone tweaks the range. Extract one `utils` helper.
 - **CR-C4** — ✅ **FIXED 2026-06-22**. base-dep re-listings with inconsistent floors: `numpy` base `<2` vs extras `>=1.21.0`; `aiohttp` base

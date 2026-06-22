@@ -11,6 +11,7 @@ from typing import Dict, Any, List, Optional, Type
 
 from pydantic import BaseModel
 from .base import Component
+from ..utils.text_script import cyrillic_char_count
 from ..core.interfaces.webapi import WebAPIPlugin
 from ..core.interfaces.nlu import NLUPlugin
 from ..core.trace_context import TraceContext
@@ -168,7 +169,7 @@ class ContextAwareNLUProcessor:
         text_lower = text.lower()
         
         # Cyrillic character detection
-        cyrillic_chars = sum(1 for char in text if '\u0400' <= char <= '\u04FF')
+        cyrillic_chars = cyrillic_char_count(text)
         cyrillic_ratio = cyrillic_chars / len(text) if text else 0
         
         # Common Russian words

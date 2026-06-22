@@ -30,6 +30,7 @@ import logging
 from typing import Dict, Any, List, Optional
 
 from .base import NLUProvider
+from ...utils.text_script import detect_language_by_script
 from ...intents.models import Intent
 from ...intents.context_models import UnifiedConversationContext
 from ...intents.ports import LLMPort
@@ -259,7 +260,7 @@ class LLMNLUProvider(NLUProvider):
     @staticmethod
     def _lang_of(text: str) -> str:
         """Language by script: Cyrillic present → ru, else en (mirrors the keyword matcher's split)."""
-        return "ru" if any("Ѐ" <= ch <= "ӿ" for ch in text) else "en"
+        return detect_language_by_script(text)
 
     @staticmethod
     def _format_param(p: ParameterSpec) -> str:

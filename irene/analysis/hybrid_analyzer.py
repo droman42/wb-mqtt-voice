@@ -8,6 +8,7 @@ to detect conflicts and performance issues without affecting live recognition.
 import re
 import math
 import time
+from ..utils.text_script import is_cyrillic, is_latin, is_cjk
 import unicodedata
 from typing import Dict, Any, List, Set
 from collections import defaultdict
@@ -568,11 +569,11 @@ class HybridKeywordAnalyzer(BaseAnalyzer):
         scripts = set()
         
         for char in text:
-            if '\u0400' <= char <= '\u04FF':  # Cyrillic
+            if is_cyrillic(char):
                 scripts.add('cyrillic')
-            elif 'A' <= char <= 'Z' or 'a' <= char <= 'z':  # Latin
+            elif is_latin(char):
                 scripts.add('latin')
-            elif '\u4e00' <= char <= '\u9fff':  # CJK
+            elif is_cjk(char):
                 scripts.add('cjk')
         
         primary_script = max(scripts, key=lambda s: sum(1 for c in text if self._char_in_script(c, s))) if scripts else 'unknown'
@@ -586,11 +587,11 @@ class HybridKeywordAnalyzer(BaseAnalyzer):
     def _char_in_script(self, char: str, script: str) -> bool:
         """Check if character belongs to script"""
         if script == 'cyrillic':
-            return '\u0400' <= char <= '\u04FF'
+            return is_cyrillic(char)
         elif script == 'latin':
-            return 'A' <= char <= 'Z' or 'a' <= char <= 'z'
+            return is_latin(char)
         elif script == 'cjk':
-            return '\u4e00' <= char <= '\u9fff'
+            return is_cjk(char)
         return False
     
     def _calculate_collision_severity(self, intents: Set[str], keyword: str) -> float:

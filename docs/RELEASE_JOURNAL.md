@@ -12,6 +12,14 @@ newest entries near the top of each dated section.
 ## Action journal
 
 ### 2026-06-22
+- **Cyrillic/script-detection dedup (review CR-C3) — `docs/review/codebase_review_2026-06-21.md`.** The `Ѐ–ӿ` Cyrillic
+  test (+ latin/CJK ranges) was copy-pasted across 6 sites in 5 files (`spacy_provider`, `hybrid_keyword_matcher`,
+  `nlu/llm` — which used literal `"Ѐ"`/`"ӿ"` bounds — `nlu_component`'s char-count→ratio, and `analysis/hybrid_analyzer`
+  ×2). Extracted one source of truth `irene/utils/text_script.py` (`is_cyrillic`/`is_latin`/`is_cjk`,
+  `contains_cyrillic`, `cyrillic_char_count`, `detect_language_by_script`) and refactored all six to it — the three NLU
+  providers in one cascade can no longer drift on the ru/en split. Pure foundation module; ARCH-12 import contract
+  holds. New `test_text_script.py`. Gates: suite 1040 passed / 0 failed, pyright 0, import-linter 9/9. Review tracker +
+  this ledger updated.
 - **Correctness trio (review CR-A10/A11/A16) — `docs/review/codebase_review_2026-06-21.md`.** **CR-A10:**
   `asr/base.audio_contract` read the voice-trigger-only `get_supported_sample_rates` (never present on ASR) → the
   contract was always `[16000]`; now calls the real `get_preferred_sample_rates()`. **CR-A11:**
