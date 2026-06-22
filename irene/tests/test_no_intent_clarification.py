@@ -24,7 +24,7 @@ def _run(coro):
 
 
 def _handler() -> ConversationIntentHandler:
-    loader = IntentAssetLoader(Path("assets"), AssetLoaderConfig(validate_method_existence=False))
+    loader = IntentAssetLoader(Path("assets"), AssetLoaderConfig())
     _run(loader.load_all_assets(["conversation"]))
     h = ConversationIntentHandler()
     h.asset_loader = loader

@@ -74,7 +74,6 @@ class AssetLoaderConfig:
     def __init__(
         self,
         validate_json_schema: bool = True,
-        validate_method_existence: bool = True,
         validate_spacy_patterns: bool = False,
         validate_contract_wiring: bool = True,
         strict_parameters: bool = False,
@@ -82,10 +81,15 @@ class AssetLoaderConfig:
         default_language: str = "ru",
         fallback_language: str = "en",
         supported_languages: Optional[List[str]] = None,
-        enable_language_filtering: bool = True
+        enable_language_filtering: bool = True,
+        # Absorb removed/unknown keys: this is built via `AssetLoaderConfig(**config.asset_validation)`
+        # (intents/manager.py), so a stale config key must not crash boot. (CR-C13 retired
+        # `validate_method_existence` — method-wiring is validated by `validate_contract_wiring`.)
+        **_ignored: Any
     ):
+        if _ignored:
+            logger.debug(f"AssetLoaderConfig ignoring unknown keys: {sorted(_ignored)}")
         self.validate_json_schema = validate_json_schema
-        self.validate_method_existence = validate_method_existence
         self.validate_spacy_patterns = validate_spacy_patterns
         # QUAL-42: reconcile every contract against its handler code at startup. Unwired methods are fatal;
         # `strict_parameters` promotes "declared-but-unread parameter" warnings to fatal errors (ratchet).
@@ -522,9 +526,6 @@ class IntentAssetLoader:
         except Exception as e:
             self._add_warning(f"Failed to assemble v1.1 donation for handler '{handler_name}': {e}")
             return
-
-        if self.config.validate_method_existence:
-            await self._validate_method_existence(donation, handler_name)
 
         self.donations[handler_name] = donation
         logger.info(f"Assembled v1.1 donation for handler '{handler_name}' ({len(lang_jsons)} languages)")
@@ -1531,41 +1532,6 @@ class IntentAssetLoader:
                 raise DonationDiscoveryError(error_msg)
             self._add_error(error_msg)
 
-    async def _validate_method_existence(self, donation: HandlerDonation, handler_name: str):
-        """Validate that donated methods exist in Python handler"""
-        try:
-            # Convert handler name to module path
-            module_name = f"irene.intents.handlers.{handler_name}"
-            
-            # Use importlib.import_module for proper package context
-            import importlib
-            module = importlib.import_module(module_name)
-            
-            # Find handler class
-            handler_class = None
-            for item_name in dir(module):
-                item = getattr(module, item_name)
-                if (isinstance(item, type) and 
-                    hasattr(item, '__bases__') and 
-                    any('IntentHandler' in base.__name__ for base in item.__bases__)):
-                    handler_class = item
-                    break
-            
-            if not handler_class:
-                raise DonationDiscoveryError(f"No IntentHandler class found for {handler_name}")
-            
-            # Check methods exist
-            for method_donation in donation.method_donations:
-                if not hasattr(handler_class, method_donation.method_name):
-                    error_msg = f"Method '{method_donation.method_name}' not found in handler class {handler_class.__name__}"
-                    raise DonationDiscoveryError(error_msg)
-        
-        except Exception as e:
-            if "No IntentHandler class found" in str(e) or "Method" in str(e) and "not found" in str(e):
-                raise
-            else:
-                self._add_warning(f"Could not validate method existence for {handler_name}: {e}")
-    
     async def _load_language_file(self, lang_file: Path) -> Dict[str, str]:
         """Load template/prompt data from a single language file (YAML and JSON formats only)"""
         templates = {}

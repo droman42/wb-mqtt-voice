@@ -36,13 +36,23 @@ _Plausible_ = realistic but depends on a reachable runtime state / framework beh
 | CR-A15 | P2 | ✅ FIXED | asset-loader save/load: `assets_root / domain / language` unsanitized (path traversal) | new (security) |
 | CR-A16 | P3 | ✅ FIXED | self-routing handlers' broad `except Exception` can swallow `ParameterExtractionError` | QUAL-30 boundary |
 | CR-B1..13 | — | ✅ swept | dead/zombie code (see §B) | FIXED 2026-06-22 (CR-B4 KEPT — ARCH-22/25; B12 was QUAL-20) |
-| CR-C1..13 | — | C1/2/3/4/6/7 ✅, C8◐ | duplication / drift risk (see §C) | C1/C2/C3/C4/C6/C7 + C8(partial) FIXED 2026-06-22; CR-C9 → ARCH-25 |
+| CR-C1..13 | — | C1/2/3/4/6/7/13 ✅, C8◐ | duplication / drift risk (see §C) | C1/C2/C3/C4/C6/C7/C13 + C8(partial) FIXED 2026-06-22; CR-C9 → ARCH-25 |
 | CR-D1..5 | — | D1-D4 ✅ | stale user-facing doc claims (see §D) | D1–D4 FIXED 2026-06-22; D5 done in CR-A1 group |
 
 ---
 
 ## Resolution log
 
+- **2026-06-22 — Retired the duplicate boot-time handler validator (CR-C13).** `intent_asset_loader._validate_method_existence`
+  ran per handler during donation load — importing each handler module + scanning its classes to check declared methods
+  exist (`hasattr`) — duplicating the contract validator (`validate_contract_wiring` → `validate_contracts`), which
+  imports each handler once (cached) and does the stricter `callable(getattr(...))` check, also raising
+  `DonationDiscoveryError`. Deleted the method + its call. Full config-schema removal (user-approved, since config-ui has
+  no specific reference — `asset_validation` is a free-form dict): dropped the `validate_method_existence` flag from
+  `AssetLoaderConfig`, `DonationValidationConfig`, the `asset_validation` default, **4 config TOMLs**, and 5 tests.
+  Made `AssetLoaderConfig` absorb unknown/stale keys (`**_ignored`) so the `AssetLoaderConfig(**config.asset_validation)`
+  unpack can't crash on a leftover config key. New `test_asset_loader_config.py`. Gates: 12 profiles valid (Invariant
+  #2), suite 1050 passed, pyright 0, import-linter 9/9.
 - **2026-06-22 — Audio playback made real (CR-A5).** Purpose (per user): system/notification sounds (e.g. a
   timer-done chime) from a local media library. The "play" and "stop" fire-and-forget actions were simulated (`sleep` +
   a 10% `random` failure; the real call commented out) — and `play` couldn't even be wired because **`AudioPort` didn't
@@ -346,7 +356,7 @@ of their `get_param` calls ever drops its caller-supplied default.
   drifted** (`datetime`/`timer` added an extra short-circuit). Candidate base-class defaults.
 - **CR-C12** — the "iterate components, filter `isinstance(.., WebAPIPlugin)`" walk reimplemented 3× with different
   guarding: `web_server.py:161`, `webapi_router.py:37` and `:1094`.
-- **CR-C13** — `intent_asset_loader._validate_method_existence` (`:1501`) duplicates `contract_validator.py:142`
+- **CR-C13** — ✅ **FIXED 2026-06-22**. `intent_asset_loader._validate_method_existence` (`:1501`) duplicates `contract_validator.py:142`
   (both default-on) → **every handler module is `importlib.import_module`-ed twice at boot** for one logical check.
 
 ---

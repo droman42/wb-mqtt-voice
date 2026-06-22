@@ -226,7 +226,6 @@ discovery_paths = ["irene.intents.handlers"]
 
 [intent_system.handlers.asset_validation]
 strict_mode = true
-validate_method_existence = true
 validate_spacy_patterns = false
 validate_json_schema = true
 

@@ -21,7 +21,7 @@ def _run(c):
 
 
 def _handler(cls, name):
-    loader = IntentAssetLoader(Path("assets"), AssetLoaderConfig(validate_method_existence=False))
+    loader = IntentAssetLoader(Path("assets"), AssetLoaderConfig())
     _run(loader.load_all_assets([name]))
     h = cls()
     h.set_asset_loader(loader)

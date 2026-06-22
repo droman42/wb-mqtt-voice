@@ -498,7 +498,6 @@ discovery_paths = ["irene.intents.handlers"]  # Entry-point discovery paths
 # Asset validation configuration
 [intent_system.handlers.asset_validation]
 strict_mode = true                 # Enable strict validation mode
-validate_method_existence = true   # Validate handler methods exist
 validate_spacy_patterns = false    # Validate spaCy patterns (disabled for runtime validation)
 validate_json_schema = true        # Validate JSON schema compliance
 

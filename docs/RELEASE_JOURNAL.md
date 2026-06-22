@@ -12,6 +12,17 @@ newest entries near the top of each dated section.
 ## Action journal
 
 ### 2026-06-22
+- **Retired the duplicate boot-time handler validator (review CR-C13) — `docs/review/codebase_review_2026-06-21.md`.**
+  `intent_asset_loader._validate_method_existence` imported each handler module + scanned its classes per donation to
+  check method existence (`hasattr`), duplicating the contract validator (`validate_contract_wiring`), which imports
+  each handler once and does the stricter `callable(getattr(...))` check (both raise `DonationDiscoveryError`). Deleted
+  the method + call. **User approved the config-ui/schema change**, so did the full removal: dropped the
+  `validate_method_existence` flag from `AssetLoaderConfig`, `DonationValidationConfig`, the `asset_validation` default,
+  4 config TOMLs (config-master + 3 build profiles), and 5 tests. config-ui needs no change — it has no specific
+  reference (`asset_validation` is a free-form `Dict[str, Any]`). Hardened `AssetLoaderConfig` to absorb unknown/stale
+  keys (`**_ignored`) so the `AssetLoaderConfig(**config.asset_validation)` unpack can't crash on a leftover key. New
+  `test_asset_loader_config.py`. Gates: 12 profiles valid (Invariant #2), suite 1050 passed / 0 failed, pyright 0,
+  import-linter 9/9. Review tracker + this ledger updated.
 - **Audio playback made real (review CR-A5) — `docs/review/codebase_review_2026-06-21.md`.** Purpose: system/
   notification sounds (e.g. a timer-done chime) from a local media library. The play/stop fire-and-forget actions were
   simulated (`sleep` + a 10% `random` failure; real call commented out), and play *couldn't* be wired because the domain

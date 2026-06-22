@@ -639,7 +639,6 @@ class IntentHandlerListConfig(BaseModel):
     asset_validation: Dict[str, Any] = Field(
         default_factory=lambda: {
             "strict_mode": True,
-            "validate_method_existence": True,
             "validate_spacy_patterns": False,
             "validate_json_schema": True
         },

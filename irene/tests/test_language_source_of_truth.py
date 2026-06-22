@@ -46,7 +46,7 @@ def test_request_unspecified_does_not_override_seed():
 
 def test_context_labels_localize_by_session_language():
     """Machine-context labels for the LLM follow the session language (T7, folded from QUAL-16)."""
-    loader = IntentAssetLoader(Path("assets"), AssetLoaderConfig(validate_method_existence=False))
+    loader = IntentAssetLoader(Path("assets"), AssetLoaderConfig())
     _run(loader.load_all_assets(["conversation"]))
 
     handler = ConversationIntentHandler()

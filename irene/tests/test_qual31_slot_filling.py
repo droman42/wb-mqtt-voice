@@ -48,7 +48,7 @@ class _ClarifyHandler(IntentHandler):
 
 
 async def _handler() -> _ClarifyHandler:
-    loader = IntentAssetLoader(Path("assets"), AssetLoaderConfig(validate_method_existence=False))
+    loader = IntentAssetLoader(Path("assets"), AssetLoaderConfig())
     await loader.load_all_assets(["timer"])
     h = _ClarifyHandler()
     h.set_asset_loader(loader)
