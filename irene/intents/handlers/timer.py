@@ -14,6 +14,7 @@ from typing import Dict, List, Optional, Any, Type
 from pydantic import BaseModel
 
 from .base import IntentHandler
+from ...core.donations import ParameterExtractionError
 from ..models import Intent, IntentResult
 from ..context_models import UnifiedConversationContext
 from ...core.trace_context import trace_event  # ARCH-19 (D-5): opt-in, no-op when no trace is active
@@ -133,6 +134,12 @@ class TimerIntentHandler(IntentHandler):
                 # Default: try to set timer from natural language
                 return await self._handle_set_timer(intent, context)
                 
+        except ParameterExtractionError as e:
+            # QUAL-30 / CR-A16: a structured parameter failure → conversational clarification, not a
+            # swallowed error. Self-routing handlers bypass execute_with_donation_routing's boundary,
+            # so re-establish it here before the broad catch.
+            self.logger.info(f"Clarification needed for {intent.name}: {e}")
+            return await self._clarify(intent, context, e)
         except Exception as e:
             logger.error(f"Timer intent execution failed: {e}")
             # Determine language for error response

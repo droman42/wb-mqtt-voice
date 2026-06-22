@@ -14,6 +14,7 @@ from ...__version__ import __version__
 from pydantic import BaseModel
 
 from .base import IntentHandler
+from ...core.donations import ParameterExtractionError
 from ...core.trace_context import trace_event  # ARCH-19 (D-5): opt-in, no-op when no trace is active
 from ..models import Intent, IntentResult
 from ..context_models import UnifiedConversationContext
@@ -137,6 +138,12 @@ class SystemIntentHandler(IntentHandler):
                 # Default: provide general system information
                 return await self._handle_general_info(intent, context)
                 
+        except ParameterExtractionError as e:
+            # QUAL-30 / CR-A16: a structured parameter failure → conversational clarification, not a
+            # swallowed error. Self-routing handlers bypass execute_with_donation_routing's boundary,
+            # so re-establish it here before the broad catch.
+            self.logger.info(f"Clarification needed for {intent.name}: {e}")
+            return await self._clarify(intent, context, e)
         except Exception as e:
             logger.error(f"System intent execution failed: {e}")
             language = context.language

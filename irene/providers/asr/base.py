@@ -185,13 +185,10 @@ class ASRProvider(ProviderBase):
         }
 
     def audio_contract(self):
-        """What this ASR engine needs from the pipeline (ARCH-18). ASR is 16 kHz-standard; a provider with
-        a `get_supported_sample_rates` is honoured if present."""
+        """What this ASR engine needs from the pipeline (ARCH-18). ASR is 16 kHz-standard; a provider's
+        `get_preferred_sample_rates()` override is honoured when it returns rates (CR-A10: this read the
+        wrong, voice-trigger-only method name `get_supported_sample_rates`, so rates were always [16000])."""
         from ...utils.audio_negotiation import AudioContract
-        get_rates = getattr(self, "get_supported_sample_rates", None)
-        rates: List[int] = [16000]
-        if callable(get_rates):
-            result: Any = get_rates()
-            if result:
-                rates = [int(r) for r in result]
+        result: Any = self.get_preferred_sample_rates()
+        rates: List[int] = [int(r) for r in result] if result else [16000]
         return AudioContract(rates, rates[0], ["pcm16"], "pcm16", 1)

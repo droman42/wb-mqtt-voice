@@ -12,6 +12,17 @@ newest entries near the top of each dated section.
 ## Action journal
 
 ### 2026-06-22
+- **Correctness trio (review CR-A10/A11/A16) — `docs/review/codebase_review_2026-06-21.md`.** **CR-A10:**
+  `asr/base.audio_contract` read the voice-trigger-only `get_supported_sample_rates` (never present on ASR) → the
+  contract was always `[16000]`; now calls the real `get_preferred_sample_rates()`. **CR-A11:**
+  `voice_synthesis._handle_speak_text` crashed on an explicit `text: null` entity (`.get("text", raw_text)` only falls
+  back when the key is absent) → now coalesces `entities.get("text") or raw_text or ""`. **CR-A16:** the 5 self-routing
+  handlers (`conversation`/`datetime`/`greetings`/`system`/`timer`) override `execute()` and bypass
+  `execute_with_donation_routing`'s QUAL-30 boundary, so a `ParameterExtractionError` would be swallowed by their broad
+  `except` → added an `except ParameterExtractionError → self._clarify(...)` clause to each, restoring the
+  explain-and-ask clarification path. New `test_correctness_a10_a11_a16.py`. Gates: suite 1036 passed / 0 failed,
+  pyright 0, import-linter 9/9. Review §A is now clear except CR-A5/A6 (genuine feature-completion). Review tracker +
+  this ledger updated.
 - **Asset-loader path-traversal hardening (review CR-A15, security) — `docs/review/codebase_review_2026-06-21.md`.**
   User-supplied `handler_name` / `domain` / `language` flowed unsanitized into `assets_root / … / <segment>` reads AND
   writes in `intent_asset_loader.py` (some via FastAPI path params). Added `_safe_path_segment()` (single traversal-safe

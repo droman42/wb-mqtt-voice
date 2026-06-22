@@ -10,6 +10,7 @@ from datetime import datetime, timedelta
 from typing import Dict, List, Any
 
 from .base import IntentHandler
+from ...core.donations import ParameterExtractionError
 from ..models import Intent, IntentResult
 from ..context_models import UnifiedConversationContext
 
@@ -69,6 +70,12 @@ class DateTimeIntentHandler(IntentHandler):
                 # Default: provide both date and time
                 return await self._handle_datetime_request(intent, context)
                 
+        except ParameterExtractionError as e:
+            # QUAL-30 / CR-A16: a structured parameter failure → conversational clarification, not a
+            # swallowed error. Self-routing handlers bypass execute_with_donation_routing's boundary,
+            # so re-establish it here before the broad catch.
+            self.logger.info(f"Clarification needed for {intent.name}: {e}")
+            return await self._clarify(intent, context, e)
         except Exception as e:
             logger.error(f"DateTime intent execution failed: {e}")
             return IntentResult(

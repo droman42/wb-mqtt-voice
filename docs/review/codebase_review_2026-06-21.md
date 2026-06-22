@@ -1,7 +1,7 @@
 # Whole-codebase review (2026-06-21)
 
 **Status:** findings filed; **resolved 2026-06-22:** CR-A1 group (A1/A2/A3/A14/B2/D5) + BUILD-7 doc/dup cluster (C1/C2/C4/D1–D4) + dead-code
-sweep (all CR-B except B4 KEPT) + provider-base dedup (C6/C7, C8 partial) + standalone correctness (A4/A8) + silero cleanups (A12/A13) + tracing pair (A7/A9) + path-traversal hardening (A15) — see Resolution log. Remainder open. **Backs:** general health pass (post-BUILD-7); individual items
+sweep (all CR-B except B4 KEPT) + provider-base dedup (C6/C7, C8 partial) + standalone correctness (A4/A8) + silero cleanups (A12/A13) + tracing pair (A7/A9) + path-traversal hardening (A15) + correctness trio (A10/A11/A16) — see Resolution log. **§A clear except A5/A6 (feature stubs).** Remainder open. **Backs:** general health pass (post-BUILD-7); individual items
 cross-ref
 their owning task below. **Scope:** entire `irene/` tree + `docker/` + `pyproject.toml` + `docs/guides/`. **Method:**
 7 parallel finder passes (subsystem deep-reads + cross-cutting dead-code / duplication / doc-claim specialists);
@@ -28,13 +28,13 @@ _Plausible_ = realistic but depends on a reachable runtime state / framework beh
 | CR-A7 | P2 | ✅ FIXED | `process_text_input` drops the trace when the workflow raises (audio path doesn't) | tracing |
 | CR-A8 | P2 | ✅ FIXED | `elevenlabs.synthesize_to_file` swallows error, writes no file | new |
 | CR-A9 | P3 | ✅ FIXED | Over-broad substring trace redaction nukes `session_id`/`keyword`/`author` | tracing |
-| CR-A10 | P3 | Plausible | `asr/base.audio_contract` reads a voice-trigger method name → rates always `[16000]` | new |
-| CR-A11 | P3 | Plausible | `voice_synthesis._handle_speak_text` AttributeError on `text:null` entity | new |
+| CR-A10 | P3 | ✅ FIXED | `asr/base.audio_contract` reads a voice-trigger method name → rates always `[16000]` | new |
+| CR-A11 | P3 | ✅ FIXED | `voice_synthesis._handle_speak_text` AttributeError on `text:null` entity | new |
 | CR-A12 | P3 | ✅ FIXED | `silero_v3.is_available` does a blocking `requests.head` in async | QUAL-15 (same anti-pattern) |
 | CR-A13 | P3 | ✅ FIXED | `silero_v4._download_model` hardcodes the RU URL, ignores `model_id` | ASSET-2 |
 | CR-A14 | P3 | ✅ FIXED | monitoring `uptime` always ~0 (`_start_time` never assigned) | new |
 | CR-A15 | P2 | ✅ FIXED | asset-loader save/load: `assets_root / domain / language` unsanitized (path traversal) | new (security) |
-| CR-A16 | P3 | Plausible | self-routing handlers' broad `except Exception` can swallow `ParameterExtractionError` | QUAL-30 boundary |
+| CR-A16 | P3 | ✅ FIXED | self-routing handlers' broad `except Exception` can swallow `ParameterExtractionError` | QUAL-30 boundary |
 | CR-B1..13 | — | ✅ swept | dead/zombie code (see §B) | FIXED 2026-06-22 (CR-B4 KEPT — ARCH-22/25; B12 was QUAL-20) |
 | CR-C1..13 | — | C1/2/4/6/7 ✅, C8◐ | duplication / drift risk (see §C) | C1/C2/C4/C6/C7 + C8(partial) FIXED 2026-06-22; CR-C9 → ARCH-25 |
 | CR-D1..5 | — | D1-D4 ✅ | stale user-facing doc claims (see §D) | D1–D4 FIXED 2026-06-22; D5 done in CR-A1 group |
@@ -43,6 +43,16 @@ _Plausible_ = realistic but depends on a reachable runtime state / framework beh
 
 ## Resolution log
 
+- **2026-06-22 — Correctness trio (CR-A10 / CR-A11 / CR-A16).** **CR-A10:** `asr/base.audio_contract` read the
+  voice-trigger-only method name `get_supported_sample_rates` (always absent on ASR), so the contract was always
+  `[16000]`; now calls the real `get_preferred_sample_rates()` and defaults to `[16000]` only when it returns nothing.
+  **CR-A11:** `voice_synthesis._handle_speak_text` used `entities.get("text", raw_text)` (only falls back when the key
+  is *absent*) then `.strip()` — an explicit `text: null` crashed; now coalesces `entities.get("text") or raw_text or
+  ""`. **CR-A16:** the 5 self-routing handlers (`conversation`, `datetime`, `greetings`, `system`, `timer`) override
+  `execute()` and bypass `execute_with_donation_routing`'s QUAL-30 boundary, so their broad `except Exception` would
+  swallow a `ParameterExtractionError`; added an `except ParameterExtractionError → self._clarify(...)` clause ahead of
+  it in each, restoring the explain-and-ask clarification path. New `test_correctness_a10_a11_a16.py`. Gates: suite
+  1036 passed / 0 failed, pyright 0, import-linter 9/9. (§A now clear except CR-A5/A6, genuine feature-completion.)
 - **2026-06-22 — Asset-loader path traversal (CR-A15, security).** User-supplied `handler_name` / `domain` /
   `language` flow into `assets_root / … / <segment> / …` reads AND writes in `intent_asset_loader.py` (some via FastAPI
   path params). Added `_safe_path_segment()` (single segment only — no separators, `..`, leading dot, absolute, or NUL;
@@ -196,12 +206,12 @@ normally without creating `output_path` → caller reads a non-existent WAV; fal
 matched by substring → `session_id`, `keyword`/`matched_keys`, `author` get `[REDACTED]`. Non-secret diagnostic data
 destroyed in every exported trace.
 
-### CR-A10 — [P3, Plausible] `asr/base.audio_contract` reads a non-existent method
+### CR-A10 — [P3, ✅ FIXED 2026-06-22] `asr/base.audio_contract` reads a non-existent method
 `irene/providers/asr/base.py:191`. `getattr(self, "get_supported_sample_rates", None)` is the *voice_trigger*
 convention; ASR providers define `get_preferred_sample_rates` (`whisper:259`, `vosk:402`, `sherpa_onnx:294`,
 `google_cloud:251`). Branch never fires → contract always `rates=[16000]`, discarding declared preferences.
 
-### CR-A11 — [P3, Plausible] `voice_synthesis._handle_speak_text` crashes on null text entity
+### CR-A11 — [P3, ✅ FIXED 2026-06-22] `voice_synthesis._handle_speak_text` crashes on null text entity
 `irene/intents/handlers/voice_synthesis_handler.py:164-166`. `entities.get("text", raw_text).strip()` — the default
 only applies when the key is absent; `entities["text"] = None` → `.strip()` throws `AttributeError`. Sibling
 `_handle_speak_with_voice` (`:98`) uses the correct `get_param(... default=None) or parsed_text`.
@@ -230,7 +240,7 @@ is limited (Starlette single-segment `{param}` doesn't capture `/`, and normaliz
 defensive clamp and are also callable internally. Clamp each component to one path segment / verify the resolved path
 is under `assets_root`. (Fix once via the shared helper proposed in CR-C10.)
 
-### CR-A16 — [P3, Plausible] Self-routing handlers' broad `except` can swallow `ParameterExtractionError`
+### CR-A16 — [P3, ✅ FIXED 2026-06-22] Self-routing handlers' broad `except` can swallow `ParameterExtractionError`
 Self-routing handlers (`conversation`, `datetime`, `greetings`, `system`, `timer`) wrap `execute()` in
 `except Exception`, which would swallow `ParameterExtractionError` and defeat the QUAL-30 clarification boundary if any
 of their `get_param` calls ever drops its caller-supplied default.

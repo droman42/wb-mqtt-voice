@@ -160,8 +160,9 @@ class VoiceSynthesisIntentHandler(IntentHandler):
         if not tts_component:
             return self._error_result(context, "TTS component not available")
         
-        # Extract text to speak from intent entities
-        text_to_speak = intent.entities.get("text", intent.raw_text)
+        # Extract text to speak from intent entities. CR-A11: `.get("text", raw_text)` only falls back
+        # when the key is ABSENT — an explicit `text: null` from NLU would crash `.strip()`. Coalesce.
+        text_to_speak = intent.entities.get("text") or intent.raw_text or ""
         if not text_to_speak.strip():
             return self._error_result(context, "No text to speak")
         
