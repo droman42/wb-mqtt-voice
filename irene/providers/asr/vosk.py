@@ -385,12 +385,6 @@ class VoskASRProvider(ASRProvider):
             "macos": [],  # macOS includes FFI libraries
             "windows": []  # Windows package management differs
         }
-        
-    @classmethod
-    def get_platform_support(cls) -> List[str]:
-        """Vosk supports all platforms"""
-        return ["linux.ubuntu", "linux.alpine", "macos", "windows"]
-    
     def get_supported_languages(self) -> List[str]:
         """Return list of supported language codes"""
         return list(self.model_paths.keys())

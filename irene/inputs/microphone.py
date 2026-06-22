@@ -331,12 +331,6 @@ class MicrophoneInput(InputPort):
             "macos": ["portaudio", "libsndfile"],
             "windows": []
         }
-        
-    @classmethod
-    def get_platform_support(cls) -> List[str]:
-        """Input sources support all platforms"""
-        return ["linux.ubuntu", "linux.alpine", "macos", "windows"]
-    
     @classmethod
     def get_python_dependencies(cls) -> List[str]:
         """Microphone input needs audio processing libraries"""

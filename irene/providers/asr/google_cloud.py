@@ -228,12 +228,6 @@ class GoogleCloudASRProvider(ASRProvider):
             "macos": [],
             "windows": []
         }
-        
-    @classmethod
-    def get_platform_support(cls) -> List[str]:
-        """Google Cloud ASR supports all platforms"""
-        return ["linux.ubuntu", "linux.alpine", "macos", "windows"]
-    
     def get_supported_languages(self) -> List[str]:
         """Return list of supported language codes"""
         return [

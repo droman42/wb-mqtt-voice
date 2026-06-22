@@ -327,12 +327,6 @@ class DateTimeIntentHandler(IntentHandler):
             "macos": [],
             "windows": []
         }
-    
-    @classmethod
-    def get_platform_support(cls) -> List[str]:
-        """DateTime handler supports all platforms"""
-        return ["linux.ubuntu", "linux.alpine", "macos", "windows"]
-    
     # Configuration metadata: No configuration needed
     # This handler uses asset loader for localization data only
     # No get_config_schema() method = no configuration required 

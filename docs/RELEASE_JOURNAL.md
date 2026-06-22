@@ -12,6 +12,19 @@ newest entries near the top of each dated section.
 ## Action journal
 
 ### 2026-06-22
+- **Platform-list centralization (review CR-C9) — `docs/review/codebase_review_2026-06-21.md`.** The OS-platform list
+  `["linux.ubuntu","linux.alpine","macos","windows"]` was hardcoded in 52 `get_platform_support()` overrides +
+  `build_analyzer` (×3) + `dependency_validator` choices + 2 test assertions. Added `SUPPORTED_PLATFORMS` to
+  `core/metadata.py` (canonical `get_platform_support` returns it); **deleted 46 redundant overrides** (handlers/
+  components/providers/workflows/inputs now inherit the default — validator uses `hasattr` so inherited is fine); kept
+  `aplay` (linux-only restriction) + 3 single-platform test fixtures; `BaseRunner`/`InputManager` + tools + 2 test
+  assertions reference the constant. **Build-safe by proof:** a golden snapshot of all 60 entry points'
+  `get_platform_support()` is byte-identical before/after (only `aplay` non-default) and `--validate-all` stays 60/60, so
+  `build_analyzer` sees identical values. CPU-arch gating (`get_supported_architectures` — the armv7/torch/sherpa lib
+  path) is a separate method, untouched. Net −244 LOC / 53 files. Gates: suite 1066 passed, pyright 0, import-linter 9/9,
+  12 profiles valid. CR-C9's standalone dedup is done; **ARCH-25 (WB7/WB8 on-device bring-up) remains a separate
+  hardware-gated task** (not a review item). With this, **the whole-codebase review (§A/§B/§C/§D) is fully resolved.**
+  Review tracker + this ledger updated.
 - **Provider `/configure` gate dedup — CR-C8 completed (review) — `docs/review/codebase_review_2026-06-21.md`.** The
   byte-identical "set `default_provider` if it names a loaded provider, else warn and keep" block in 6 components'
   `/configure` endpoints (audio/asr/tts/llm/nlu/voice_trigger) → one base method `Component._apply_provider_config`.

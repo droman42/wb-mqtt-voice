@@ -104,12 +104,6 @@ class ConsoleTTSProvider(TTSProvider):
             "macos": [],
             "windows": []
         }
-        
-    @classmethod
-    def get_platform_support(cls) -> List[str]:
-        """Console TTS supports all platforms"""
-        return ["linux.ubuntu", "linux.alpine", "macos", "windows"]
-    
     async def synthesize_to_file(self, text: str, output_path: Path, **kwargs) -> None:
         """
         Save text to file instead of audio.

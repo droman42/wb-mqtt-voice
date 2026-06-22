@@ -13,6 +13,7 @@ Method follows the project's new-code recipe (see ``test_cascading_nlu.py``):
   no global singleton/registry/env mutation, so the file is order-independent.
 """
 
+from irene.core.metadata import SUPPORTED_PLATFORMS
 from types import SimpleNamespace
 
 import asyncio
@@ -343,4 +344,4 @@ def test_build_dependency_metadata():
     platform_deps = cls.get_platform_dependencies()
     assert set(platform_deps) == {"linux.ubuntu", "linux.alpine", "macos", "windows"}
     assert all(v == [] for v in platform_deps.values())
-    assert cls.get_platform_support() == ["linux.ubuntu", "linux.alpine", "macos", "windows"]
+    assert cls.get_platform_support() == SUPPORTED_PLATFORMS

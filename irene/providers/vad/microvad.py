@@ -48,11 +48,6 @@ class MicroVADProvider(VADProvider):
     @classmethod
     def get_platform_dependencies(cls) -> Dict[str, List[str]]:
         return {"linux.ubuntu": [], "linux.alpine": [], "macos": [], "windows": []}
-
-    @classmethod
-    def get_platform_support(cls) -> List[str]:
-        return ["linux.ubuntu", "linux.alpine", "macos", "windows"]
-
     @classmethod
     def get_supported_architectures(cls) -> List[str]:
         return ["x86_64", "aarch64"]  # pymicro-vad has no armv7 wheel (ARCH-24 T3)

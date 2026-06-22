@@ -73,12 +73,6 @@ class TimerIntentHandler(IntentHandler):
             "macos": [],
             "windows": []
         }
-        
-    @classmethod
-    def get_platform_support(cls) -> List[str]:
-        """Timer handler supports all platforms"""
-        return ["linux.ubuntu", "linux.alpine", "macos", "windows"]
-    
     # Configuration metadata methods
     @classmethod
     def get_config_schema(cls) -> Type[BaseModel]:

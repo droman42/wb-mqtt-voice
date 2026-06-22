@@ -84,13 +84,6 @@ class PiperRuAccentTTSProvider(PiperTTSProvider):
     def get_python_dependencies(cls) -> List[str]:
         # Both extras: the sherpa runtime (inherited need) + the 64-bit-only ruaccent stack.
         return ["asr-onnx", "tts-ruaccent"]
-
-    @classmethod
-    def get_platform_support(cls) -> List[str]:
-        # OS support is the full set; the armv7 exclusion is expressed via get_supported_architectures()
-        # (the arch dimension), enforced by the ARCH-24 T3 build gate + the `tts-ruaccent` extra's marker.
-        return ["linux.ubuntu", "linux.alpine", "macos", "windows"]
-
     @classmethod
     def get_supported_architectures(cls) -> List[str]:
         # 64-bit only — ruaccent → standalone onnxruntime, which has no armv7 wheel. On the WB7 use the

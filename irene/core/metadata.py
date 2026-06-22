@@ -15,6 +15,13 @@ from typing import Dict, Any, List, Optional, Type
 from pydantic import BaseModel
 
 
+# CR-C9: single source of truth for the OS-platform keys used by `get_platform_support()`,
+# `get_platform_dependencies()`, the build analyzer, and the dependency validator. NOTE: this is the
+# OS-family list — CPU-architecture gating (armv7l/aarch64/x86_64, e.g. torch- or sherpa-on-armv7) lives
+# separately in `get_supported_architectures()` and is NOT governed by this constant.
+SUPPORTED_PLATFORMS: List[str] = ["linux.ubuntu", "linux.alpine", "macos", "windows"]
+
+
 class EntryPointMetadata(ABC):
     """
     Universal metadata interface for all entry-points.
@@ -131,7 +138,7 @@ class EntryPointMetadata(ABC):
             
         Default supports all common platforms. Override for platform-specific limitations.
         """
-        return ["linux.ubuntu", "linux.alpine", "macos", "windows"]
+        return list(SUPPORTED_PLATFORMS)
 
     @classmethod
     def get_supported_architectures(cls) -> List[str]:

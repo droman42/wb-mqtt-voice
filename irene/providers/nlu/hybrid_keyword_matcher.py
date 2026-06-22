@@ -984,12 +984,6 @@ class HybridKeywordMatcherProvider(NLUProvider):
             "macos": [],  # Xcode Command Line Tools provide build tools
             "windows": []  # Windows build tools handled differently
         }
-        
-    @classmethod
-    def get_platform_support(cls) -> List[str]:
-        """Hybrid keyword matcher supports all platforms"""
-        return ["linux.ubuntu", "linux.alpine", "macos", "windows"]
-    
     async def extract_entities(self, text: str, intent_name: str) -> Dict[str, Any]:
         """Extract entities for a given intent using basic patterns"""
         entities = {}

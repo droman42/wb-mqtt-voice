@@ -36,13 +36,26 @@ _Plausible_ = realistic but depends on a reachable runtime state / framework beh
 | CR-A15 | P2 | ✅ FIXED | asset-loader save/load: `assets_root / domain / language` unsanitized (path traversal) | new (security) |
 | CR-A16 | P3 | ✅ FIXED | self-routing handlers' broad `except Exception` can swallow `ParameterExtractionError` | QUAL-30 boundary |
 | CR-B1..13 | — | ✅ swept | dead/zombie code (see §B) | FIXED 2026-06-22 (CR-B4 KEPT — ARCH-22/25; B12 was QUAL-20) |
-| CR-C1..13 | — | C1–C8/C10/C11/C12/C13 ✅ | duplication / drift risk (see §C) | C1–C8/C10/C11/C12/C13 FIXED 2026-06-22; CR-C9 → ARCH-25 |
+| CR-C1..13 | — | C1–C13 ✅ (C9 standalone dedup done; ARCH-25 = separate HW task) | duplication / drift risk (see §C) | C1–C13 all FIXED 2026-06-22 (CR-C9 dedup standalone; ARCH-25 hardware bring-up separate) |
 | CR-D1..5 | — | D1-D4 ✅ | stale user-facing doc claims (see §D) | D1–D4 FIXED 2026-06-22; D5 done in CR-A1 group |
 
 ---
 
 ## Resolution log
 
+- **2026-06-22 — Platform-list centralization (CR-C9).** The OS-platform list
+  `["linux.ubuntu","linux.alpine","macos","windows"]` was hardcoded in 52 `get_platform_support()` overrides +
+  `build_analyzer` (×3) + the `dependency_validator` argparse `choices` + 2 test assertions, with `metadata.py`'s
+  canonical method as the would-be source but unused. Added a `SUPPORTED_PLATFORMS` constant to `core/metadata.py` (the
+  canonical `EntryPointMetadata.get_platform_support` now returns it). **Deleted 46 redundant overrides** — handlers /
+  components / providers / workflows / inputs that returned the default now inherit it (validator uses `hasattr`, so
+  inherited satisfies the metadata contract). Kept `aplay` (genuine linux-only restriction) and the 3 single-platform
+  test fixtures; `BaseRunner` / `InputManager` (don't inherit `EntryPointMetadata`), the two tool consumers, and the 2
+  test assertions now reference the constant. **Build-safety proof:** a golden snapshot of all **60 entry points'**
+  `get_platform_support()` is byte-identical before/after (only `aplay` non-default) and `--validate-all` stays 60/60 —
+  so the docker build (`build_analyzer:868`) sees identical values. **CPU-arch gating** (`get_supported_architectures`,
+  the armv7/torch/sherpa lib path) is a *separate* method and is untouched. Net **−244 LOC across 53 files**. Gates:
+  suite 1066 passed, pyright 0, import-linter 9/9, 12 profiles valid. **§C fully complete (incl. CR-C9).**
 - **2026-06-22 — Provider `/configure` gate dedup (CR-C8, completing the partial).** The "set `default_provider` if it
   names a loaded provider, else warn and keep" block was byte-identical (modulo the log label) in 6 components' `/configure`
   endpoints (audio/asr/tts/llm/nlu/voice_trigger). Extracted `Component._apply_provider_config(config_dict)` (base) — the
@@ -392,7 +405,7 @@ of their `get_param` calls ever drops its caller-supplied default.
 - **CR-C8** — ✅ **FIXED 2026-06-22** (is_api_available + metrics mixin + /configure `_apply_provider_config`; /providers assessed — not unified, see Resolution log). component web scaffolding copy-paste: `_metrics_push_*` (`asr_component.py:702` ≡
   `voice_trigger_component.py:565`, byte-identical), `is_api_available` (×3: nlu/text_processor/monitoring),
   `/configure` POST (×7), `/providers` (×6). Candidate `MetricsPushMixin` + shared `_apply_provider_config`.
-- **CR-C9** — `["linux.ubuntu","linux.alpine","macos","windows"]` `get_platform_support()` literal hardcoded in ~25
+- **CR-C9** — ✅ **FIXED 2026-06-22** (standalone dedup; ARCH-25 hardware bring-up is separate). `["linux.ubuntu","linux.alpine","macos","windows"]` `get_platform_support()` literal hardcoded in ~25
   files (handlers/inputs/workflows/components) + `dependency_validator.py:678` (`argparse choices`) +
   `build_analyzer.py:122,134` (allow-list) + a test assertion. `core/metadata.py:134` is the would-be canonical source
   but isn't reused. _Ref: **ARCH-25** (adding an armv7/WB platform would touch all of them)._

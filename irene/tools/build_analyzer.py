@@ -17,6 +17,7 @@ import sys
 import tomllib
 from dataclasses import dataclass, field
 from pathlib import Path
+from ..core.metadata import SUPPORTED_PLATFORMS
 from typing import Dict, List, Optional, Set, Any, Tuple
 import json
 
@@ -119,7 +120,7 @@ class IreneBuildAnalyzer:
         Raises:
             ValueError: If platform is not supported
         """
-        if platform in ["linux.ubuntu", "linux.alpine", "macos", "windows"]:
+        if platform in list(SUPPORTED_PLATFORMS):
             # Already using new format
             return platform
         
@@ -785,7 +786,7 @@ class IreneBuildAnalyzer:
         Replaces hardcoded PROVIDER_SYSTEM_DEPENDENCIES and PROVIDER_PYTHON_DEPENDENCIES.
         """
         # Initialize platform containers
-        platforms = ["linux.ubuntu", "linux.alpine", "macos", "windows"]
+        platforms = list(SUPPORTED_PLATFORMS)
         for platform in platforms:
             requirements.system_packages[platform] = set()
         
@@ -988,7 +989,7 @@ Examples:
     )
     parser.add_argument(
         "--platform",
-        choices=["linux.ubuntu", "linux.alpine", "macos", "windows"],
+        choices=list(SUPPORTED_PLATFORMS),
         default="linux.ubuntu",
         help="Target platform for system dependencies"
     )

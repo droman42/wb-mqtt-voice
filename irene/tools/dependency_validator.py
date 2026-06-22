@@ -21,6 +21,7 @@ import json
 import logging
 import re
 import sys
+from ..core.metadata import SUPPORTED_PLATFORMS
 import time
 import tomllib
 from dataclasses import dataclass, field
@@ -665,7 +666,7 @@ Examples:
     )
     parser.add_argument(
         "--platform",
-        choices=["linux.ubuntu", "linux.alpine", "macos", "windows"],
+        choices=list(SUPPORTED_PLATFORMS),
         help="Target platform for validation"
     )
     parser.add_argument(

@@ -222,9 +222,3 @@ class PiperTTSProvider(TTSProvider):
         # sherpa-onnx is self-contained (vendors libasound, bundles piper-phonemize). No system
         # espeak-ng/bz2 needed (bz2 is in the python base; espeak-ng-data ships in the pack).
         return {"linux.ubuntu": ["libasound2"], "linux.alpine": ["alsa-lib"], "macos": [], "windows": []}
-
-    @classmethod
-    def get_platform_support(cls) -> List[str]:
-        # All targets incl. armv7 — the WB7 TTS (ARCH-24). Verified `OfflineTts` loads on the WB7's
-        # pinned sherpa-onnx==1.10.46 (glibc 2.31 / Cortex-A7).
-        return ["linux.ubuntu", "linux.alpine", "macos", "windows"]

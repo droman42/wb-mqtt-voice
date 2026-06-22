@@ -1163,12 +1163,6 @@ class SpaCyNLUProvider(NLUProvider):
             "macos": [],  # Prebuilt wheels available
             "windows": []  # Prebuilt wheels available
         }
-        
-    @classmethod
-    def get_platform_support(cls) -> List[str]:
-        """spaCy NLU supports all platforms"""
-        return ["linux.ubuntu", "linux.alpine", "macos", "windows"]
-    
     async def process_intent(self, text: str, **kwargs) -> Dict[str, Any]:
         """
         Process text for intent recognition using spaCy NLP pipeline.

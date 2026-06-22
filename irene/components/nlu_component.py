@@ -1306,12 +1306,6 @@ class NLUComponent(Component, NLUPlugin, WebAPIPlugin):
             "macos": [],
             "windows": []
         }
-        
-    @classmethod
-    def get_platform_support(cls) -> List[str]:
-        """NLU component supports all platforms"""
-        return ["linux.ubuntu", "linux.alpine", "macos", "windows"]
-    
     # Config interface methods (Phase 3 - Configuration Architecture Cleanup)
     @classmethod
     def get_config_class(cls) -> Type[BaseModel]:

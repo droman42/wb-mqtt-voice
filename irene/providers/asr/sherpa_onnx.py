@@ -395,8 +395,3 @@ class SherpaOnnxASRProvider(ASRProvider):
             "macos": [],
             "windows": [],
         }
-
-    @classmethod
-    def get_platform_support(cls) -> List[str]:
-        # All four: armv7 (1.10.46), x86_64/aarch64 + Windows/macOS (1.13.x + sherpa-onnx-core).
-        return ["linux.ubuntu", "linux.alpine", "macos", "windows"]

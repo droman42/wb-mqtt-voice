@@ -11,6 +11,7 @@ import logging
 import os
 from abc import ABC, abstractmethod
 from pathlib import Path
+from ..core.metadata import SUPPORTED_PLATFORMS
 from typing import Optional, Dict, Any, List
 from dataclasses import dataclass
 
@@ -73,7 +74,7 @@ class BaseRunner(ABC):
     @classmethod
     def get_platform_support(cls) -> List[str]:
         """Platforms the runner supports (default: all)."""
-        return ["linux.ubuntu", "linux.alpine", "macos", "windows"]
+        return list(SUPPORTED_PLATFORMS)
 
     async def run(self, args: Optional[List[str]] = None) -> int:
         """Main runner entry point with unified pattern"""

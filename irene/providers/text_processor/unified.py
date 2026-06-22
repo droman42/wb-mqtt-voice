@@ -142,11 +142,6 @@ class UnifiedTextProcessor(TextProcessingProvider):
     @classmethod
     def get_platform_dependencies(cls) -> Dict[str, List[str]]:
         return {"linux.ubuntu": [], "linux.alpine": [], "macos": [], "windows": []}
-
-    @classmethod
-    def get_platform_support(cls) -> List[str]:
-        return ["linux.ubuntu", "linux.alpine", "macos", "windows"]
-
     async def cleanup(self) -> None:
         runorm = self.normalizers.get("runorm")
         if runorm is not None and hasattr(runorm, "cleanup"):

@@ -236,8 +236,3 @@ class ElevenLabsTTSProvider(TTSProvider):
             "macos": [],
             "windows": []
         }
-        
-    @classmethod
-    def get_platform_support(cls) -> List[str]:
-        """ElevenLabs supports all platforms"""
-        return ["linux.ubuntu", "linux.alpine", "macos", "windows"] 

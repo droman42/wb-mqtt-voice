@@ -102,12 +102,6 @@ class ConsoleAudioProvider(AudioProvider):
             "macos": [],
             "windows": []
         }
-        
-    @classmethod
-    def get_platform_support(cls) -> List[str]:
-        """Console audio supports all platforms"""
-        return ["linux.ubuntu", "linux.alpine", "macos", "windows"]
-    
     async def play_file(self, file_path: Path, **kwargs) -> None:
         """
         'Play' an audio file by printing information to console.

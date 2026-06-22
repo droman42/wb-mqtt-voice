@@ -14,6 +14,7 @@ from typing import Any, Dict, List, Optional
 from ..intents.models import AudioData
 from ..core.interfaces.input import InputPort, InputData
 from .base import ComponentNotAvailable
+from ..core.metadata import SUPPORTED_PLATFORMS
 from .cli import CLIInput
 from .microphone import MicrophoneInput
 from .web import WebInput
@@ -299,4 +300,4 @@ class InputManager:
     @classmethod
     def get_platform_support(cls) -> List[str]:
         """Input sources support all platforms"""
-        return ["linux.ubuntu", "linux.alpine", "macos", "windows"]
+        return list(SUPPORTED_PLATFORMS)

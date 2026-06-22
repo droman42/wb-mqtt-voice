@@ -341,10 +341,5 @@ class LLMNLUProvider(NLUProvider):
     @classmethod
     def get_platform_dependencies(cls) -> Dict[str, List[str]]:
         return {"linux.ubuntu": [], "linux.alpine": [], "macos": [], "windows": []}
-
-    @classmethod
-    def get_platform_support(cls) -> List[str]:
-        return ["linux.ubuntu", "linux.alpine", "macos", "windows"]
-
     # get_supported_architectures: inherits the default (all three) — a cloud LLM is reached over HTTP,
     # so the classifier is armv7-viable (ARCH-24 T3); no override needed.

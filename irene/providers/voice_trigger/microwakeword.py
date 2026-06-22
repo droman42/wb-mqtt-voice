@@ -226,12 +226,6 @@ class MicroWakeWordProvider(VoiceTriggerProvider):
     @classmethod
     def get_platform_dependencies(cls) -> Dict[str, List[str]]:
         return {"linux.ubuntu": [], "linux.alpine": [], "macos": [], "windows": []}
-
-    @classmethod
-    def get_platform_support(cls) -> List[str]:
-        """64-bit only — the WB7/armv7 satellite wakes on-device, never server-side here."""
-        return ["linux.ubuntu", "linux.alpine", "macos", "windows"]
-
     @classmethod
     def get_supported_architectures(cls) -> List[str]:
         return ["x86_64", "aarch64"]  # pymicro-wakeword has no armv7 wheel (ARCH-24 T3)

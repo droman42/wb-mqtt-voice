@@ -158,12 +158,6 @@ class SileroTTSBase(TTSProvider):
             "macos": ["libsndfile"],  # macOS includes audio libraries
             "windows": []  # Windows package management differs
         }
-
-    @classmethod
-    def get_platform_support(cls) -> List[str]:
-        """Silero supports all platforms"""
-        return ["linux.ubuntu", "linux.alpine", "macos", "windows"]
-
     @classmethod
     def get_supported_architectures(cls) -> List[str]:
         return ["x86_64", "aarch64"]  # torch has no armv7 wheel (ARCH-24 T3)

@@ -447,12 +447,6 @@ class Component(ComponentPort):
             "macos": [],
             "windows": []
         }
-        
-    @classmethod
-    def get_platform_support(cls) -> List[str]:
-        """Components support all platforms"""
-        return ["linux.ubuntu", "linux.alpine", "macos", "windows"]
-    
     def get_component_dependencies(self) -> list[str]:
         """Return list of required component dependencies"""
         return []  # Default: no dependencies

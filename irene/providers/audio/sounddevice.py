@@ -124,12 +124,6 @@ class SoundDeviceAudioProvider(AudioProvider):
             "macos": ["portaudio", "libsndfile"],  # Homebrew handles dependencies
             "windows": []  # Windows package management differs
         }
-        
-    @classmethod
-    def get_platform_support(cls) -> List[str]:
-        """SoundDevice supports all major platforms"""
-        return ["linux.ubuntu", "linux.alpine", "macos", "windows"]
-    
     async def is_available(self) -> bool:
         """Check if SoundDevice dependencies are available"""
         return self._available

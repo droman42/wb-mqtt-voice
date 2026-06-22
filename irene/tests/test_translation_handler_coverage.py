@@ -20,6 +20,7 @@ driven with ``asyncio.run`` so no event loop is left open and the tests are
 order-independent (no global singletons/registries/env are mutated).
 """
 
+from irene.core.metadata import SUPPORTED_PLATFORMS
 import asyncio
 import logging
 from types import SimpleNamespace
@@ -327,4 +328,4 @@ def test_build_dependency_class_methods():
     assert all(v == [] for v in platform_deps.values())
 
     support = TranslationIntentHandler.get_platform_support()
-    assert support == ["linux.ubuntu", "linux.alpine", "macos", "windows"]
+    assert support == SUPPORTED_PLATFORMS

@@ -126,12 +126,6 @@ class PyttsTTSProvider(TTSProvider):
             "macos": [],  # macOS has built-in TTS
             "windows": []  # Windows has built-in TTS
         }
-        
-    @classmethod
-    def get_platform_support(cls) -> List[str]:
-        """Pyttsx3 supports all platforms"""
-        return ["linux.ubuntu", "linux.alpine", "macos", "windows"]
-    
     async def synthesize_to_file(self, text: str, output_path: Path, **kwargs) -> None:
         """
         Convert text to speech and save to audio file.

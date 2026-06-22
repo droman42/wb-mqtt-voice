@@ -47,12 +47,6 @@ class CLIInput(InputPort):
             "macos": [],
             "windows": []
         }
-        
-    @classmethod
-    def get_platform_support(cls) -> List[str]:
-        """CLI input supports all platforms"""
-        return ["linux.ubuntu", "linux.alpine", "macos", "windows"]
-        
     async def listen(self) -> AsyncIterator[InputData]:
         """
         Listen for CLI commands and yield them as they arrive.

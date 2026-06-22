@@ -1078,12 +1078,6 @@ class IntentHandler(EntryPointMetadata, ABC):
             "macos": [],
             "windows": []
         }
-        
-    @classmethod
-    def get_platform_support(cls) -> List[str]:
-        """Intent handlers support all platforms"""
-        return ["linux.ubuntu", "linux.alpine", "macos", "windows"]
-    
     # Phase 3.5: Enhanced Action Management Interface
     async def get_action_status(self, domain: str, context: UnifiedConversationContext) -> Dict[str, Any]:
         """Get detailed status of an action in a specific domain"""

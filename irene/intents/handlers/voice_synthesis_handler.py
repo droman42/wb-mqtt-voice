@@ -49,11 +49,6 @@ class VoiceSynthesisIntentHandler(IntentHandler):
             "macos": [],
             "windows": []
         }
-        
-    @classmethod
-    def get_platform_support(cls) -> List[str]:
-        """Voice synthesis handler supports all platforms"""
-        return ["linux.ubuntu", "linux.alpine", "macos", "windows"]
     async def execute(self, intent: Intent, context: UnifiedConversationContext) -> IntentResult:
         """Execute voice synthesis intent"""
         # Use donation-driven routing exclusively

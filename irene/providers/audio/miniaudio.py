@@ -100,12 +100,6 @@ class MiniaudioAudioProvider(AudioProvider):
             "macos": [],
             "windows": []
         }
-
-    @classmethod
-    def get_platform_support(cls) -> List[str]:
-        """Cross-platform, including Raspberry Pi."""
-        return ["linux.ubuntu", "linux.alpine", "macos", "windows"]
-
     async def play_file(self, file_path: Path, **kwargs) -> None:
         """Decode an audio file to PCM and stream it to the device."""
         if not self._available or not self._ma:
