@@ -26,8 +26,8 @@ class SileroTTSBase(TTSProvider):
     Subclasses MUST set the version-specific class attributes below and provide a
     `_model_cache` (a per-class `TorchModelCache` instance), plus override
     `get_provider_name`, `get_capabilities`, `_get_default_directory`,
-    `_get_default_model_urls`, `is_available`, `_download_model`, `_load_model_async`
-    and the synthesis methods.
+    `_get_default_model_urls`, `_load_model_async` and the synthesis methods.
+    (`is_available` and `_download_model` are shared here — CR-A12/CR-A13.)
     """
 
     # --- Version-specific class attributes (overridden by subclasses) -----------------
@@ -124,6 +124,24 @@ class SileroTTSBase(TTSProvider):
     async def _load_model_async(self) -> None:
         """Download (if needed) + load the model into ``self._model``. Provided by subclass."""
         raise NotImplementedError
+
+    async def is_available(self) -> bool:
+        """Whether the provider can run. Local-only (CR-A12): torch present is enough — the model
+        downloads lazily at synthesis/preload time and fails through the fallback chain. An async
+        availability check must not do a blocking network/file probe (QUAL-15)."""
+        return self._available and self._torch is not None
+
+    def _download_model(self, model_path: Path) -> None:
+        """Download the model via the legacy torch.hub path (called from a worker thread). CR-A13:
+        always uses ``self.model_url`` (v4 previously hardcoded the RU wheel, ignoring model_url/model_id)."""
+        if not self._torch:
+            return
+        try:
+            self._torch.hub.download_url_to_file(self.model_url, str(model_path))
+            logger.info(f"Silero {self._version} model downloaded to: {model_path}")
+        except Exception as e:
+            logger.error(f"Failed to download Silero {self._version} model: {e}")
+            raise
 
     # --- Shared build-dependency methods ----------------------------------------------
     @classmethod

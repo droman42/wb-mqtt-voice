@@ -7,6 +7,8 @@ from unittest.mock import AsyncMock
 
 from irene.providers.tts.vosk import VoskTTSProvider
 from irene.providers.tts.elevenlabs import ElevenLabsTTSProvider
+from irene.providers.tts.silero_v3 import SileroV3TTSProvider
+from irene.providers.tts.silero_v4 import SileroV4TTSProvider
 
 
 def _arun(coro):
@@ -54,6 +56,51 @@ class TestElevenLabsSynthesizeRaises(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             _arun(p.synthesize_to_file("hi", out))
         self.assertFalse(out.exists())  # no phantom file left behind
+
+
+class TestSileroIsAvailableLocalOnly(unittest.TestCase):
+    """CR-A12: is_available is local-only (torch present) for both v3 and v4 — no blocking network probe."""
+
+    def _provider(self, cls, torch):
+        p = object.__new__(cls)
+        p._available = True
+        p._torch = torch
+        return p
+
+    def test_v3_available_without_model_or_network(self):
+        # v3 previously did a blocking requests.head(model_url) here; now torch-present is enough.
+        self.assertTrue(_arun(self._provider(SileroV3TTSProvider, object()).is_available()))
+
+    def test_v4_available_with_torch(self):
+        self.assertTrue(_arun(self._provider(SileroV4TTSProvider, object()).is_available()))
+
+    def test_unavailable_without_torch(self):
+        self.assertFalse(_arun(self._provider(SileroV3TTSProvider, None).is_available()))
+        self.assertFalse(_arun(self._provider(SileroV4TTSProvider, None).is_available()))
+
+
+class TestSileroDownloadUsesModelUrl(unittest.TestCase):
+    """CR-A13: _download_model uses self.model_url (v4 previously hardcoded the RU wheel)."""
+
+    def _download_with(self, cls, model_url):
+        p = object.__new__(cls)
+        p.model_url = model_url
+        p._version = "vX"
+        calls = []
+        p._torch = SimpleNamespace(hub=SimpleNamespace(
+            download_url_to_file=lambda url, path: calls.append((url, path))))
+        p._download_model(Path("/tmp/irene_silero_model.pt"))
+        return calls
+
+    def test_v4_download_uses_self_model_url(self):
+        url = "https://example.test/custom_v4.pt"
+        self.assertEqual(self._download_with(SileroV4TTSProvider, url),
+                         [(url, "/tmp/irene_silero_model.pt")])
+
+    def test_v3_download_uses_self_model_url(self):
+        url = "https://example.test/custom_v3.pt"
+        self.assertEqual(self._download_with(SileroV3TTSProvider, url),
+                         [(url, "/tmp/irene_silero_model.pt")])
 
 
 if __name__ == "__main__":

@@ -1,7 +1,7 @@
 # Whole-codebase review (2026-06-21)
 
 **Status:** findings filed; **resolved 2026-06-22:** CR-A1 group (A1/A2/A3/A14/B2/D5) + BUILD-7 doc/dup cluster (C1/C2/C4/D1–D4) + dead-code
-sweep (all CR-B except B4 KEPT) + provider-base dedup (C6/C7, C8 partial) + standalone correctness (A4/A8) — see Resolution log. Remainder open. **Backs:** general health pass (post-BUILD-7); individual items
+sweep (all CR-B except B4 KEPT) + provider-base dedup (C6/C7, C8 partial) + standalone correctness (A4/A8) + silero cleanups (A12/A13) — see Resolution log. Remainder open. **Backs:** general health pass (post-BUILD-7); individual items
 cross-ref
 their owning task below. **Scope:** entire `irene/` tree + `docker/` + `pyproject.toml` + `docs/guides/`. **Method:**
 7 parallel finder passes (subsystem deep-reads + cross-cutting dead-code / duplication / doc-claim specialists);
@@ -30,8 +30,8 @@ _Plausible_ = realistic but depends on a reachable runtime state / framework beh
 | CR-A9 | P3 | Plausible | Over-broad substring trace redaction nukes `session_id`/`keyword`/`author` | tracing |
 | CR-A10 | P3 | Plausible | `asr/base.audio_contract` reads a voice-trigger method name → rates always `[16000]` | new |
 | CR-A11 | P3 | Plausible | `voice_synthesis._handle_speak_text` AttributeError on `text:null` entity | new |
-| CR-A12 | P3 | Plausible | `silero_v3.is_available` does a blocking `requests.head` in async | QUAL-15 (same anti-pattern) |
-| CR-A13 | P3 | Plausible | `silero_v4._download_model` hardcodes the RU URL, ignores `model_id` | ASSET-2 |
+| CR-A12 | P3 | ✅ FIXED | `silero_v3.is_available` does a blocking `requests.head` in async | QUAL-15 (same anti-pattern) |
+| CR-A13 | P3 | ✅ FIXED | `silero_v4._download_model` hardcodes the RU URL, ignores `model_id` | ASSET-2 |
 | CR-A14 | P3 | ✅ FIXED | monitoring `uptime` always ~0 (`_start_time` never assigned) | new |
 | CR-A15 | P2 | Plausible | asset-loader save/load: `assets_root / domain / language` unsanitized (path traversal) | new (security) |
 | CR-A16 | P3 | Plausible | self-routing handlers' broad `except Exception` can swallow `ParameterExtractionError` | QUAL-30 boundary |
@@ -43,6 +43,15 @@ _Plausible_ = realistic but depends on a reachable runtime state / framework beh
 
 ## Resolution log
 
+- **2026-06-22 — Silero cleanups (CR-A12 / CR-A13).** **CR-A12:** `silero_v3.is_available` dropped its blocking
+  `requests.head(model_url, timeout=5)` network probe (QUAL-15 anti-pattern) — now local-only (`torch` present), like
+  v4; the model still downloads lazily and fails through the fallback chain. **CR-A13:** `silero_v4._download_model`
+  now uses `self.model_url` (was a hardcoded RU wheel URL ignoring `model_url`/`model_id`). Since both fixes made the
+  methods identical across v3/v4 (modulo the `self._version` log label the base already parameterizes), **hoisted
+  `is_available` and `_download_model` into `SileroTTSBase`** and removed both per-class overrides — completing the
+  CR-C6 dedup these bugs had blocked. New regression tests in `test_tts_provider_fixes.py` (local-only availability for
+  v3+v4; `_download_model` honors `self.model_url`). Net ~−29 lines. Gates: suite 1021 passed / 0 failed, pyright 0,
+  import-linter 9/9.
 - **2026-06-22 — Standalone correctness (CR-A4 / CR-A8).** **CR-A4:** `tts/vosk.py` `is_available` now probes the
   correct asset namespace `("vosk_tts","ru_multi")` (was `("vosk","tts")`, which matched nothing → on a clean install
   the provider reported unavailable and the model was never downloaded). **CR-A8:** `tts/elevenlabs.py`
@@ -179,12 +188,12 @@ convention; ASR providers define `get_preferred_sample_rates` (`whisper:259`, `v
 only applies when the key is absent; `entities["text"] = None` → `.strip()` throws `AttributeError`. Sibling
 `_handle_speak_with_voice` (`:98`) uses the correct `get_param(... default=None) or parsed_text`.
 
-### CR-A12 — [P3, Plausible] `silero_v3.is_available` blocks on a network probe
+### CR-A12 — [P3, ✅ FIXED 2026-06-22] `silero_v3.is_available` blocks on a network probe
 `irene/providers/tts/silero_v3.py:150-155`. Synchronous `requests.head(self.model_url, timeout=5)` inside an async
 method — the anti-pattern QUAL-15 removed from the OpenAI provider. `silero_v4.is_available` (`:91`) is local-only.
 Blocks the loop up to 5s and marks v3 unavailable whenever offline (even with torch installed).
 
-### CR-A13 — [P3, Plausible] `silero_v4._download_model` hardcodes the RU URL
+### CR-A13 — [P3, ✅ FIXED 2026-06-22] `silero_v4._download_model` hardcodes the RU URL
 `irene/providers/tts/silero_v4.py:285-294`. `model_url = "https://models.silero.ai/.../v4_ru.pt"` ignores
 `self.model_url`/`model_id` (v3 `:306` uses `self.model_url`). Latent today (v4 is RU-only per ASSET-2) but the legacy
 path fetches RU for any `model_id`. Both v3/v4 `_load_model_async` log `get_model_info("silero","v3_ru"/"v4_ru")`

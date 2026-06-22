@@ -12,6 +12,15 @@ newest entries near the top of each dated section.
 ## Action journal
 
 ### 2026-06-22
+- **Silero TTS cleanups (review CR-A12/A13) — `docs/review/codebase_review_2026-06-21.md`.** **CR-A12:**
+  `silero_v3.is_available` did a blocking `requests.head(model_url, timeout=5)` inside an async method (the QUAL-15
+  anti-pattern) — now local-only (`torch` present), matching v4; the model still downloads lazily and fails through the
+  fallback chain. **CR-A13:** `silero_v4._download_model` hardcoded the RU wheel URL, ignoring `self.model_url`/
+  `model_id`; now uses `self.model_url` like v3. Both fixes made the two methods identical (modulo the `self._version`
+  log label the base already parameterizes), so **hoisted `is_available` + `_download_model` into `SileroTTSBase`** and
+  dropped the per-class overrides — finishing the CR-C6 dedup these bugs had blocked. New regression tests in
+  `test_tts_provider_fixes.py`. Gates: suite 1021 passed / 0 failed, pyright 0, import-linter 9/9. Review tracker + this
+  ledger updated.
 - **Standalone correctness fixes (review CR-A4/A8) — `docs/review/codebase_review_2026-06-21.md`.** **CR-A4:**
   `tts/vosk.py is_available` probed the wrong asset namespace `("vosk","tts")` (matched nothing) → a clean install
   reported vosk-TTS unavailable and never downloaded the model; now queries `("vosk_tts","ru_multi")` as the rest of the

@@ -80,24 +80,6 @@ class SileroV3TTSProvider(SileroTTSBase):
             "v3_es": "https://models.silero.ai/models/tts/es/v3_es.pt"
         }
 
-    async def is_available(self) -> bool:
-        """Check if provider dependencies are available and functional"""
-        if not self._available or not self._torch:
-            return False
-
-        # Check if model file exists or can be downloaded
-        model_path = Path(self.model_file)
-        if model_path.exists():
-            return True
-
-        # Check if we can access the download URL
-        try:
-            import requests
-            response = requests.head(self.model_url, timeout=5)
-            return response.status_code == 200
-        except Exception:
-            return False
-
     async def synthesize_to_file(self, text: str, output_path: Path, **kwargs) -> None:
         """
         Convert text to speech and save to audio file.
@@ -200,18 +182,6 @@ class SileroV3TTSProvider(SileroTTSBase):
         # Load model
         logger.info(f"Loading Silero v3 model from {self.model_file}...")
         await asyncio.to_thread(self._load_model, self.model_file)
-
-    def _download_model(self, model_path: Path) -> None:
-        """Download model using legacy method (called from thread)"""
-        if not self._torch:
-            return
-
-        try:
-            self._torch.hub.download_url_to_file(self.model_url, str(model_path))
-            logger.info(f"Silero v3 model downloaded to: {model_path}")
-        except Exception as e:
-            logger.error(f"Failed to download Silero v3 model: {e}")
-            raise
 
     async def synthesize_to_stream(self, text: str, **kwargs) -> PCMStream:
         """Native streaming override (ARCH-21): run Silero `apply_tts` and yield the waveform as int16

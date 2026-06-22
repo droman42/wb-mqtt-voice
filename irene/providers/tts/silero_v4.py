@@ -43,10 +43,6 @@ class SileroV4TTSProvider(SileroTTSBase):
     _default_speakers = ["xenia", "aidar", "baya", "kseniya", "eugene", "random"]
     _model_info_id = "v4_ru"
 
-    async def is_available(self) -> bool:
-        """Check if provider dependencies are available and functional"""
-        return self._available and self._torch is not None
-
     @classmethod
     def _get_default_directory(cls) -> str:
         """Silero v4 directory for model storage"""
@@ -171,19 +167,6 @@ class SileroV4TTSProvider(SileroTTSBase):
         logger.info(f"Loading Silero v4 model from {self.model_file}...")
         await asyncio.to_thread(self._load_model, self.model_file)
 
-    def _download_model(self, model_path: Path) -> None:
-        """Download model using legacy method (called from thread)"""
-        if not self._torch:
-            return
-
-        try:
-            # Silero v4 model URL - this may need to be updated when v4 is officially released
-            model_url = "https://models.silero.ai/models/tts/ru/v4_ru.pt"
-            self._torch.hub.download_url_to_file(model_url, str(model_path))
-            logger.info(f"Silero v4 model downloaded to: {model_path}")
-        except Exception as e:
-            logger.error(f"Failed to download Silero v4 model: {e}")
-            raise
 
     async def _generate_speech_async(self, text: str, output_path: Path,
                                    speaker: str, sample_rate: int) -> None:
