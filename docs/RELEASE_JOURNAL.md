@@ -12,6 +12,18 @@ newest entries near the top of each dated section.
 ## Action journal
 
 ### 2026-06-22
+- **BUILD-7 doc/dup review cluster fixed (CR-C1/C2/C4, CR-D1–D4) — `docs/review/codebase_review_2026-06-21.md`.**
+  Dedup: **CR-C1** collapsed the spaCy model `@`-URL wheel specs to one `_SPACY_MODEL_SPECS` constant in
+  `spacy_provider.py` (referenced by both `get_python_dependencies` and `get_asset_config`); **CR-C2** replaced the two
+  hand-rolled `>=`/`==`-only package-name ladders in `dependency_validator.py` with one shared regex
+  `_extract_package_name()` — also fixing the latent bug where `<`/`~=`/`!=` specs (base `numpy<2`) fell through to a
+  literal and warned falsely (new `test_dependency_validator.py`); **CR-C4** dropped the redundant base-dep
+  re-listings (`numpy`, `aiohttp`) from the `wake-onnx`/`wake-tflite` extras. Docs: **CR-D1/D2/D3**
+  (`howto-new-model.md`, `build-system.md`, `howto-new-intent.md`) now teach the extra-NAME contract for
+  `get_python_dependencies` (was teaching raw specs — a new-provider author would have produced a dead extra);
+  **CR-D4** replaced the stale "~2.5 GB" image-size estimate in the `[tool.uv.index]` comment with the confirmed
+  6.44 → 3.16 GB. `uv.lock` regenerated. Gates: suite 1013 passed / 0 failed, pyright 0, import-linter 9/9. Remaining
+  review items still open (CR-A4–A16 minus done, CR-B, CR-C3/5–13, CR-D5 done in the CR-A1 group).
 - **CR-A1 group fixed (standalone-runtime cluster) — `docs/review/codebase_review_2026-06-21.md`.** **CR-A1 (P0):** the
   shipped x86_64 standalone served no web API — `voice_runner._post_core_setup` `await`ed the infinite mic loop, so
   `_setup_web_server` never ran. Now launched as a tracked background task (`asyncio.create_task` + done-callback to

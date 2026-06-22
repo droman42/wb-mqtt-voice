@@ -1,7 +1,8 @@
 # Whole-codebase review (2026-06-21)
 
-**Status:** findings filed; **CR-A1 group resolved 2026-06-22** (CR-A1/A2/A3/A14/B2/D5 — see Resolution log), remainder
-open. **Backs:** general health pass (post-BUILD-7); individual items cross-ref
+**Status:** findings filed; **resolved 2026-06-22:** CR-A1 group (A1/A2/A3/A14/B2/D5) + BUILD-7 doc/dup cluster
+(C1/C2/C4/D1–D4) — see Resolution log. Remainder open. **Backs:** general health pass (post-BUILD-7); individual items
+cross-ref
 their owning task below. **Scope:** entire `irene/` tree + `docker/` + `pyproject.toml` + `docs/guides/`. **Method:**
 7 parallel finder passes (subsystem deep-reads + cross-cutting dead-code / duplication / doc-claim specialists);
 the highest-severity correctness items (CR-A1, A2, A4, A7) were re-verified against source by hand.
@@ -35,13 +36,25 @@ _Plausible_ = realistic but depends on a reachable runtime state / framework beh
 | CR-A15 | P2 | Plausible | asset-loader save/load: `assets_root / domain / language` unsanitized (path traversal) | new (security) |
 | CR-A16 | P3 | Plausible | self-routing handlers' broad `except Exception` can swallow `ParameterExtractionError` | QUAL-30 boundary |
 | CR-B1..13 | — | Confirmed | dead/zombie code (see §B) | CR-B1 → BUILD-7 |
-| CR-C1..13 | — | Confirmed | duplication / drift risk (see §C) | CR-C1/2/4 → BUILD-7, CR-C9 → ARCH-25 |
-| CR-D1..5 | — | Confirmed | stale user-facing doc claims (see §D) | BUILD-7 / Invariant #10 |
+| CR-C1..13 | — | C1/C2/C4 ✅ | duplication / drift risk (see §C) | C1/C2/C4 FIXED 2026-06-22; CR-C9 → ARCH-25 |
+| CR-D1..5 | — | D1-D4 ✅ | stale user-facing doc claims (see §D) | D1–D4 FIXED 2026-06-22; D5 done in CR-A1 group |
 
 ---
 
 ## Resolution log
 
+- **2026-06-22 — BUILD-7 doc/dup cluster.** **CR-C1:** spaCy model `@`-URL wheel specs collapsed to one module
+  constant `_SPACY_MODEL_SPECS` in `spacy_provider.py`, referenced by both `get_python_dependencies()` and
+  `get_asset_config()` (was 2 in-code copies + the pyproject `nlu` mirror → 1 in-code + the mirror, cross-ref
+  commented). **CR-C2:** the two hand-rolled `>=`/`==`-only package-name ladders in `dependency_validator.py`
+  replaced by one shared `_extract_package_name()` (regex-based) — also fixes the latent bug where `<`/`~=`/`!=` specs
+  (e.g. base `numpy<2`) fell through to a literal and produced false "not found" warnings; new
+  `test_dependency_validator.py` covers it. **CR-C4:** dropped the redundant `numpy>=1.21.0` / `aiohttp>=3.8.0`
+  re-listings from the `wake-onnx` / `wake-tflite` extras (both are base deps; eliminates the divergent floors).
+  **CR-D1** (`howto-new-model.md`), **CR-D2** (`build-system.md`), **CR-D3** (`howto-new-intent.md`): doc examples/prose
+  now teach the extra-NAME contract (`get_python_dependencies` returns pyproject extra names, not raw specs).
+  **CR-D4:** the `[tool.uv.index]` comment's stale "~2.5 GB" estimate replaced with the confirmed 6.44 → 3.16 GB.
+  `uv.lock` regenerated. Gates: suite 1013 passed / 0 failed, pyright 0, import-linter 9/9.
 - **2026-06-22 — CR-A1 group (the standalone-runtime cluster).** Fixed **CR-A1** (background the mic task via
   `asyncio.create_task` + done-callback to surface crashes + cancel-on-shutdown), **CR-D5** (web banner → real
   `/ws/audio` routes), **CR-B2** (deleted the dead `set_input_manager` + `_start_audio_workflow`→`_run_workflow`→
@@ -191,17 +204,17 @@ of their `get_param` calls ever drops its caller-supplied default.
 
 ## C. Duplication / drift risk
 
-- **CR-C1** — spaCy model `@`-URL specs in **3 places**: `pyproject.toml:172-177` (`nlu` extra),
+- **CR-C1** — ✅ **FIXED 2026-06-22**. spaCy model `@`-URL specs in **3 places**: `pyproject.toml:172-177` (`nlu` extra),
   `spacy_provider.py:1202` (`get_asset_config`), `spacy_provider.py:1224` (`get_python_dependencies`). A version bump
   must hit all three or dev `uv sync` and the Docker image install different model versions. _Ref: **BUILD-7**._
-- **CR-C2** — pip-spec parser written **3×** with divergent operator sets: `derive_build_reqs.py:79` (regex + `@`-split)
+- **CR-C2** — ✅ **FIXED 2026-06-22**. pip-spec parser written **3×** with divergent operator sets: `derive_build_reqs.py:79` (regex + `@`-split)
   vs `dependency_validator.py:453` **and** `:475` (hand-rolled `>=`/`==`/`[`/` @ ` ladder, twice in one method).
   Disagree on `<`,`~=`,`!=`,markers → validator "passes CI" while build buckets the same spec differently.
   _Ref: **BUILD-7 / BUILD-5**._
 - **CR-C3** — Cyrillic detection (`Ѐ-ӿ`) re-implemented in 5+ files: `spacy_provider.py:76`,
   `hybrid_keyword_matcher.py:349`, `nlu/llm.py:264`, `nlu_component.py:172`, `analysis/hybrid_analyzer.py:571,589`.
   Three NLU providers in one cascade can disagree on language if anyone tweaks the range. Extract one `utils` helper.
-- **CR-C4** — base-dep re-listings with inconsistent floors: `numpy` base `<2` vs extras `>=1.21.0`; `aiohttp` base
+- **CR-C4** — ✅ **FIXED 2026-06-22**. base-dep re-listings with inconsistent floors: `numpy` base `<2` vs extras `>=1.21.0`; `aiohttp` base
   `>=3.12.15` vs `wake-onnx`/`wake-tflite` `>=3.8.0`. (In-code pattern already prefers "don't re-list base deps" — see
   the `# base dependency` comments — so the extras are inconsistent with the intended convention.) _Ref: **BUILD-7**._
 - **CR-C5** — `spacy_provider._initialize_spacy` (`:110`) vs `_initialize_spacy_with_assets` (`:165`): ~75 near-identical
@@ -235,15 +248,15 @@ of their `get_param` calls ever drops its caller-supplied default.
 > Doc-claims pass verified ~50 concrete claims across `docs/guides/`; almost all are accurate. The stale ones cluster
 > on the BUILD-7 `get_python_dependencies` contract change (Invariant #10: user-facing docs are part of "done").
 
-- **CR-D1** — `docs/guides/howto-new-model.md:24-25` teaches `get_python_dependencies` returning a **raw spec**
+- **CR-D1** — ✅ **FIXED 2026-06-22**. `docs/guides/howto-new-model.md:24-25` teaches `get_python_dependencies` returning a **raw spec**
   (`["my-asr-lib>=1.0"]`); the real contract is extra-**names** (`whisper.py:224` → `["advanced-asr"]`). The guide's own
   step 2 then defines an extra the step-1 code never references → a new-provider author produces a provider whose extra
   is never installed. _Highest-impact doc bug._ _Ref: **BUILD-7**._
-- **CR-D2** — `docs/guides/build-system.md:9` — "`get_python_dependencies` (the pip packages)" — wrong contract. _Ref:
+- **CR-D2** — ✅ **FIXED 2026-06-22**. `docs/guides/build-system.md:9` — "`get_python_dependencies` (the pip packages)" — wrong contract. _Ref:
   **BUILD-7**._
-- **CR-D3** — `docs/guides/howto-new-intent.md:73` — comment "add libs here if the handler needs any" invites the same
+- **CR-D3** — ✅ **FIXED 2026-06-22**. `docs/guides/howto-new-intent.md:73` — comment "add libs here if the handler needs any" invites the same
   raw-spec mistake.
-- **CR-D4** — `pyproject.toml` `[tool.uv.index]` comment says "image: ~6.4 GB → ~2.5 GB"; confirmed actual is
+- **CR-D4** — ✅ **FIXED 2026-06-22**. `pyproject.toml` `[tool.uv.index]` comment says "image: ~6.4 GB → ~2.5 GB"; confirmed actual is
   **3.16 GB** (BUILD-7 ledger has the right number). Self-inflicted; correct alongside the docs.
 - **CR-D5** — ✅ **FIXED 2026-06-22**. `irene/runners/web_server.py:230` `_web_banner` still advertises `/asr/stream, /asr/binary` as the ESP32
   path; those endpoints were deleted (transport is now `/ws/audio`).

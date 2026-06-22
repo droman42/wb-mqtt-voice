@@ -22,7 +22,8 @@ class MyASRProvider(ASRProvider):
 
     @classmethod
     def get_python_dependencies(cls) -> List[str]:
-        return ["my-asr-lib>=1.0"]                      # the libraries this engine needs
+        return ["asr-myasr"]                            # the pyproject EXTRA group(s) this engine needs,
+                                                        # BY NAME (defined in step 2) — not a raw pip spec
 
     @classmethod
     def _get_default_model_urls(cls) -> Dict[str, str]:
@@ -37,9 +38,10 @@ class MyASRProvider(ASRProvider):
     # ... plus the family's other abstract methods (streaming, supported languages, …)
 ```
 
-The two `@classmethod` declarations are what keep it cheap: the dependencies are pulled only when this
-provider is configured, and the model is downloaded on demand and cached (see [assets](asset-management.md)
-and the [build system](build-system.md)).
+The two `@classmethod` declarations are what keep it cheap: `get_python_dependencies` names the optional
+**extra** (step 2) rather than a raw spec, so the build pulls that extra only when this provider is
+configured, and the model is downloaded on demand and cached (see [assets](asset-management.md) and the
+[build system](build-system.md)).
 
 ## Wire it in
 

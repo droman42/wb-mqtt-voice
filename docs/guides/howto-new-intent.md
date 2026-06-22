@@ -71,7 +71,8 @@ from .base import IntentHandler
 class WeatherIntentHandler(IntentHandler):
     @classmethod
     def get_python_dependencies(cls) -> list[str]:
-        return []                                          # add libs here if the handler needs any
+        return []                                          # pyproject EXTRA name(s) if the handler needs any,
+                                                           # e.g. ["nlu-spacy"] — not a raw package spec
 
     async def can_handle(self, intent: Intent) -> bool:
         return self.has_donation() and intent.domain == "weather"

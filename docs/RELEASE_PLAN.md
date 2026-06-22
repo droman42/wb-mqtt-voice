@@ -119,7 +119,7 @@ Living findings behind the tasks (Invariant #5). `[x]` = exists; others are prod
 | `docs/design/esp32_satellite.md` (DRAFT 2026-06-14) | **consolidated** ESP32 voice-satellite design — supersedes `ws_esp32_transport.md`, folds `esp32_wakeword_review.md` + `onnx §10/11` + ARCH-21; D-1..D-18 (device shape, wire protocol in+reply, micro stack, models/push, identity/multi-room, provisioning/CSR/OTA); backend plan §12 | ARCH-22 |
 | `config-ui/docs/donation_editor_ux.md` | human-friendly donations editor design | UI-1/2/3 |
 | `docs/review/test7_triage.md` (2026-06-15) | TEST-7 Phase-B worklist — 82-failure triage (delete/rewrite/fix) + risk-ranked coverage tiers + fix-code suspects | TEST-7 ✓ |
-| `docs/review/codebase_review_2026-06-21.md` (2026-06-21; CR-A1 group resolved 2026-06-22) | whole-codebase health pass — 16 correctness (CR-A1 P0: standalone `voice_runner` web API never starts), 13 dead/zombie (CR-B), 13 duplication (CR-C), 5 stale user-facing doc claims (CR-D). **CR-A1 group DONE 2026-06-22** (CR-A1/A2/A3/A14/B2/D5 + the masking-test fix); remainder open. Cross-refs: CR-B1→BUILD-7, CR-C1/2/4/D1-4→BUILD-7, CR-C9→ARCH-25, CR-A12→QUAL-15, CR-A16→QUAL-30 | (new findings) |
+| `docs/review/codebase_review_2026-06-21.md` (2026-06-21; CR-A1 group resolved 2026-06-22) | whole-codebase health pass — 16 correctness (CR-A1 P0: standalone `voice_runner` web API never starts), 13 dead/zombie (CR-B), 13 duplication (CR-C), 5 stale user-facing doc claims (CR-D). **DONE 2026-06-22:** CR-A1 group (A1/A2/A3/A14/B2/D5 + masking-test fix) + BUILD-7 doc/dup cluster (C1/C2/C4/D1–D4); remainder open. Cross-refs: CR-B1→BUILD-7, CR-C1/2/4/D1-4→BUILD-7, CR-C9→ARCH-25, CR-A12→QUAL-15, CR-A16→QUAL-30 | (new findings) |
 
 ---
 

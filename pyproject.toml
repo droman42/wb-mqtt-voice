@@ -108,18 +108,16 @@ audio-output = [
 #   openWakeWord  → wake-onnx  (ONNX runtime, no torch)
 #   microWakeWord → wake-tflite (pymicro-wakeword: micro frontend + bundled tflite C lib; ESP32-unified)
 wake-onnx = [
-    "numpy>=1.21.0",
+    # numpy + aiohttp are base dependencies — not re-listed here (CR-C4: avoid drifting version floors).
     "openwakeword>=0.6.0",
     "onnxruntime>=1.15.0",
-    "aiohttp>=3.8.0", # Required for asset management model downloads
 ]
 # pymicro-wakeword ships wheels for x86_64 / aarch64 / win_amd64 / macos — NO armv7 (which is correct:
 # the WB7 wakes on-device on the ESP32, never server-side here). The marker keeps the extra installable
 # on armv7 (it just resolves to nothing there) instead of failing on a missing wheel.
 wake-tflite = [
-    "numpy>=1.21.0",
+    # numpy + aiohttp are base dependencies — not re-listed here (CR-C4).
     "pymicro-wakeword>=2.0.0; platform_machine != 'armv7l'",
-    "aiohttp>=3.8.0",
 ]
 # microVAD (pymicro-vad) — the 'microvad' VAD engine; self-contained (bundles model + tflite C lib),
 # shares the micro frontend with wake-tflite. pymicro-vad ships wheels for **Linux x86_64/aarch64 only**
@@ -373,7 +371,8 @@ webapi = "irene.runners.webapi_runner:WebAPIRunner"
 
 # Pull torch/torchaudio from the CPU-only wheel index. The only torch consumer is the x86_64 standalone
 # (Silero TTS + Whisper ASR), and it runs device="cpu" — the default PyPI torch drags in ~3.4 GB of unused
-# NVIDIA CUDA + Triton wheels. The CPU wheels carry none of that (image: ~6.4 GB → ~2.5 GB). Satellites
+# NVIDIA CUDA + Triton wheels. The CPU wheels carry none of that (confirmed: image 6.44 GB → 3.16 GB;
+# triton ~688 MB still rides in via openai-whisper — see review CR-A1/triton follow-up). Satellites
 # ship no torch at all. The index is `explicit` + scoped via [tool.uv.sources] so it is consulted ONLY for
 # torch/torchaudio; a non-explicit index would let uv's first-index rule cap pytorch's stale mirrors of
 # common deps (urllib3, types-requests, …) and break resolution. torch reaches the build only through the

@@ -1393,7 +1393,6 @@ advanced-asr = [
     { name = "torchaudio", version = "2.11.0+cpu", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "platform_machine == 'armv7l' or sys_platform != 'darwin'" },
 ]
 all = [
-    { name = "aiohttp" },
     { name = "anthropic" },
     { name = "elevenlabs" },
     { name = "en-core-web-md" },
@@ -1405,7 +1404,6 @@ all = [
     { name = "httpx" },
     { name = "librosa" },
     { name = "miniaudio" },
-    { name = "numpy" },
     { name = "onnxruntime" },
     { name = "openai" },
     { name = "openai-whisper" },
@@ -1560,7 +1558,6 @@ vad-tflite = [
     { name = "pymicro-vad", marker = "(platform_machine == 'aarch64' and sys_platform == 'linux') or (platform_machine == 'x86_64' and sys_platform == 'linux')" },
 ]
 voice = [
-    { name = "aiohttp" },
     { name = "elevenlabs" },
     { name = "en-core-web-md" },
     { name = "en-core-web-sm" },
@@ -1569,7 +1566,6 @@ voice = [
     { name = "httpx" },
     { name = "librosa" },
     { name = "miniaudio" },
-    { name = "numpy" },
     { name = "onnxruntime" },
     { name = "openwakeword" },
     { name = "ovos-number-parser" },
@@ -1590,21 +1586,15 @@ voice = [
     { name = "websockets" },
 ]
 voice-trigger = [
-    { name = "aiohttp" },
-    { name = "numpy" },
     { name = "onnxruntime" },
     { name = "openwakeword" },
     { name = "pymicro-wakeword", marker = "platform_machine != 'armv7l'" },
 ]
 wake-onnx = [
-    { name = "aiohttp" },
-    { name = "numpy" },
     { name = "onnxruntime" },
     { name = "openwakeword" },
 ]
 wake-tflite = [
-    { name = "aiohttp" },
-    { name = "numpy" },
     { name = "pymicro-wakeword", marker = "platform_machine != 'armv7l'" },
 ]
 web-api = [
@@ -1617,8 +1607,6 @@ web-api = [
 [package.metadata]
 requires-dist = [
     { name = "aiohttp", specifier = ">=3.12.15" },
-    { name = "aiohttp", marker = "extra == 'wake-onnx'", specifier = ">=3.8.0" },
-    { name = "aiohttp", marker = "extra == 'wake-tflite'", specifier = ">=3.8.0" },
     { name = "anthropic", marker = "extra == 'llm-anthropic'", specifier = ">=0.25.0" },
     { name = "black", marker = "extra == 'dev'", specifier = ">=22.0.0" },
     { name = "elevenlabs", marker = "extra == 'tts-elevenlabs'", specifier = ">=1.0.3" },
@@ -1649,8 +1637,6 @@ requires-dist = [
     { name = "miniaudio", marker = "extra == 'audio-miniaudio'", specifier = ">=1.59" },
     { name = "mypy", marker = "extra == 'dev'", specifier = "==1.15.0" },
     { name = "numpy", specifier = "<2" },
-    { name = "numpy", marker = "extra == 'wake-onnx'", specifier = ">=1.21.0" },
-    { name = "numpy", marker = "extra == 'wake-tflite'", specifier = ">=1.21.0" },
     { name = "onnxruntime", marker = "extra == 'wake-onnx'", specifier = ">=1.15.0" },
     { name = "openai", marker = "extra == 'llm-openai'", specifier = ">=1.0.0" },
     { name = "openai-whisper", marker = "extra == 'advanced-asr'", specifier = ">=20230314" },

@@ -19,12 +19,26 @@ import argparse
 import importlib.util
 import json
 import logging
+import re
 import sys
 import time
 import tomllib
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Dict, List, Optional, Set, Any, Type
+
+
+_PKG_NAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*")
+
+
+def _extract_package_name(spec: str) -> str:
+    """Distribution name from a PEP 508 spec — strips URL (`name @ url`), marker (`; …`), extras
+    (`name[x]`), and ANY version operator (>=, ==, ~=, !=, <, >, …). One implementation shared by both
+    scans in `_validate_python_dependencies` so they can't diverge (CR-C2) — the old hand-rolled
+    `>=`/`==`-only ladders silently mis-parsed `<`/`~=`/`!=` specs like base `numpy<2`."""
+    head = spec.split(" @ ", 1)[0].split(";", 1)[0].strip()
+    m = _PKG_NAME_RE.match(head)
+    return m.group(0) if m else head
 
 
 logger = logging.getLogger(__name__)
@@ -449,19 +463,7 @@ class DependencyValidator:
             all_available_packages = set()
             for group_name, packages in optional_deps.items():
                 for package in packages:
-                    # Extract package name (before version specifiers or git URLs)
-                    if " @ " in package:  # Git URL dependency
-                        pkg_name = package.split(" @ ")[0]
-                    elif ">=" in package:
-                        pkg_name = package.split(">=")[0]
-                    elif "==" in package:
-                        pkg_name = package.split("==")[0] 
-                    elif "[" in package:  # Package with extras
-                        pkg_name = package.split("[")[0]
-                    else:
-                        pkg_name = package
-                    
-                    all_available_packages.add(pkg_name.strip())
+                    all_available_packages.add(_extract_package_name(package))
             
             # Check each declared dependency
             deps_valid = True
@@ -472,19 +474,7 @@ class DependencyValidator:
                 if dep.strip() in optional_deps:
                     continue
                 # Otherwise it's a raw spec (e.g. the spaCy model `@`-URL wheels) — resolve its package name.
-                if " @ " in dep:  # Git URL dependency
-                    pkg_name = dep.split(" @ ")[0]
-                elif ">=" in dep:
-                    pkg_name = dep.split(">=")[0]
-                elif "==" in dep:
-                    pkg_name = dep.split("==")[0]
-                elif "[" in dep:  # Package with extras
-                    pkg_name = dep.split("[")[0]
-                else:
-                    pkg_name = dep
-                
-                pkg_name = pkg_name.strip()
-                
+                pkg_name = _extract_package_name(dep)
                 if pkg_name not in all_available_packages:
                     result.warnings.append(f"Python dependency '{pkg_name}' not found in pyproject.toml optional-dependencies")
                     # Don't mark as invalid for missing packages - they might be external

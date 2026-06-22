@@ -19,6 +19,19 @@ from ...core.donations import ParameterSpec, KeywordDonation
 
 logger = logging.getLogger(__name__)
 
+# spaCy language-model wheels (pinned). SINGLE SOURCE OF TRUTH for the build specs (CR-C1) — referenced by
+# both get_python_dependencies() (the Docker build installs these, trimmed per-config by
+# derive_build_reqs._spacy_keep) and get_asset_config(). pyproject.toml's `nlu` extra mirrors these for the
+# `voice` dev group (`uv sync`); TOML can't import, so a version bump must touch HERE and that one extra.
+_SPACY_MODEL_SPECS = [
+    # Russian models (in preference order - system will use first available)
+    "ru_core_news_md @ https://github.com/explosion/spacy-models/releases/download/ru_core_news_md-3.8.0/ru_core_news_md-3.8.0-py3-none-any.whl",
+    "ru_core_news_sm @ https://github.com/explosion/spacy-models/releases/download/ru_core_news_sm-3.8.0/ru_core_news_sm-3.8.0-py3-none-any.whl",
+    # English models (in preference order - system will use first available)
+    "en_core_web_md @ https://github.com/explosion/spacy-models/releases/download/en_core_web_md-3.8.0/en_core_web_md-3.8.0-py3-none-any.whl",
+    "en_core_web_sm @ https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl",
+]
+
 
 class SpaCyNLUProvider(NLUProvider):
     """
@@ -1197,14 +1210,7 @@ class SpaCyNLUProvider(NLUProvider):
             "directory_name": "spacy",
             "cache_types": ["runtime"],  # Only runtime cache, no model downloads
             "credential_patterns": [],  # No API credentials needed for spaCy models
-            "package_dependencies": [
-                # Russian models (in preference order)
-                "ru_core_news_md @ https://github.com/explosion/spacy-models/releases/download/ru_core_news_md-3.8.0/ru_core_news_md-3.8.0-py3-none-any.whl",
-                "ru_core_news_sm @ https://github.com/explosion/spacy-models/releases/download/ru_core_news_sm-3.8.0/ru_core_news_sm-3.8.0-py3-none-any.whl",
-                # English models (in preference order)
-                "en_core_web_md @ https://github.com/explosion/spacy-models/releases/download/en_core_web_md-3.8.0/en_core_web_md-3.8.0-py3-none-any.whl",
-                "en_core_web_sm @ https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl"
-            ],  # Reference for documentation only - actual installation via pyproject.toml
+            "package_dependencies": list(_SPACY_MODEL_SPECS),  # CR-C1: single source of truth; reference only
             "language_support": {
                 "ru": ["ru_core_news_md", "ru_core_news_sm"],
                 "en": ["en_core_web_md", "en_core_web_sm"]
@@ -1215,18 +1221,10 @@ class SpaCyNLUProvider(NLUProvider):
     @classmethod
     def get_python_dependencies(cls) -> List[str]:
         """spaCy NLU requires spacy library and multiple language models"""
-        # The spacy library ships via the "nlu-spacy" build extra; numpy is a base dependency.
-        # The four model "@"-URL specs stay as raw specs (not an extra) so the build can trim
-        # them per-config via derive_build_reqs._spacy_keep.
-        return [
-            "nlu-spacy",
-            # Russian models (in preference order - system will use first available)
-            "ru_core_news_md @ https://github.com/explosion/spacy-models/releases/download/ru_core_news_md-3.8.0/ru_core_news_md-3.8.0-py3-none-any.whl",
-            "ru_core_news_sm @ https://github.com/explosion/spacy-models/releases/download/ru_core_news_sm-3.8.0/ru_core_news_sm-3.8.0-py3-none-any.whl",
-            # English models (in preference order - system will use first available)
-            "en_core_web_md @ https://github.com/explosion/spacy-models/releases/download/en_core_web_md-3.8.0/en_core_web_md-3.8.0-py3-none-any.whl",
-            "en_core_web_sm @ https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl"
-        ]
+        # The spacy library ships via the "nlu-spacy" build extra; numpy is a base dependency. The four
+        # model "@"-URL specs stay as raw specs (not an extra) so the build can trim them per-config via
+        # derive_build_reqs._spacy_keep. Specs come from the module constant (CR-C1) — one place to bump.
+        return ["nlu-spacy", *_SPACY_MODEL_SPECS]
         
     @classmethod
     def get_platform_dependencies(cls) -> Dict[str, List[str]]:

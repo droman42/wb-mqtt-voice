@@ -6,8 +6,9 @@ Irene **the configuration decides the dependencies**, not a single monolithic re
 
 ## Dependencies are declared, per provider
 
-Nothing heavy is a core dependency. Each provider **declares its own** — `get_python_dependencies` (the pip
-packages) and `get_platform_dependencies` (system libraries, per OS) — and the matching libraries sit behind
+Nothing heavy is a core dependency. Each provider **declares its own** — `get_python_dependencies` returns the
+`pyproject.toml` **extra group(s)** it needs *by name* (e.g. `["advanced-asr"]`, not a raw `package>=x` spec),
+and `get_platform_dependencies` (system libraries, per OS) — and the matching libraries sit behind those
 optional **extras** in `pyproject.toml` (`advanced-asr`, `tts`, `voice-trigger`, `asr-onnx`, …). Install the
 core and you have a working text assistant; add an extra and you add that capability.
 
