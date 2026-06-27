@@ -21,6 +21,10 @@ newest entries near the top of each dated section.
   live WS suite via a small `request_id`-in-metadata enabler; `--record-out`-on-mismatch offline) so a failed case is
   replayable (`--listen`/`--step`). No new `eval-commons` code for the core surface. Design done ≠ shipped → filed
   **TEST-12** (offline surface), **TEST-13** (failure-tracing + SUT enabler), **TEST-14** (trace↔WAV, phase 2).
+  **Resolved the design's three open questions** (now D-12/13/14; design AGREED): D-12 — `trace-system` is not
+  release-gating yet but promotes on a trigger (covers the core paths + 2 consecutive green CI runs); D-13 — the
+  keep-on-failure post-step is a generic `eval-commons` helper (reusable by the bridge), not a per-project step; D-14 —
+  seed a small deterministic golden set now and grow it from real failures (failure-tracing feeds the golden set).
 - **TEST-10 DONE — WS audio fixtures are now versioned.** A blanket `*.wav` ignore had accidentally swept the eval
   fixtures in, making the WS suite un-runnable in CI (no mic) and non-reproducible (re-record → different WER). Carved
   `!eval/fixtures/*.wav` out of the ignore; other `*.wav` stay ignored. Fixtures are test inputs, not stray audio.

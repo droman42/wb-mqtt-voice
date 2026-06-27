@@ -1,6 +1,7 @@
 # Design — trace-driven system testing
 
-**Status:** DRAFT · 2026-06-27 · **Lands in:** `eval/` (YAML + Makefile) + one small SUT enabler; **reuses** the
+**Status:** DESIGN AGREED · 2026-06-27 (D-1..D-14 resolved; implementation pending — TEST-12/13/14) · **Lands in:**
+`eval/` (YAML + Makefile) + one small SUT enabler; **reuses** the
 existing `eval-commons` `cli_provider` (no new shared code for the core surface). **Builds on:** ARCH-19 trace
 record/replay (shipped), the `eval/` harness (`cli`/`ws`/`ux` surfaces), the voice-fixture recorder (TEST-9), and
 versioned fixtures (TEST-10).
@@ -99,9 +100,8 @@ Per `design-then-implement`, these are filed in the ledger on completion of this
   `make replay` / `make replay-judge`; record & commit a first deterministic golden trace (timer); add the
   "golden-trace regression" surface to `docs/guides/howto-new-test.md`. Pure YAML + Makefile + the curated trace.
 - **S2 — Failure-trace capture for the live WS suite** (TEST-13): `make ws TRACE=1`; the **SUT enabler** (echo
-  `request_id` in `/ws/audio` metadata when tracing, D-6); the harness keep-on-failure post-step (where it lives —
-  generic `eval-commons` helper vs project Makefile step — is an open question, §7); plus `--record-out`-on-mismatch
-  for the offline tier (D-7).
+  `request_id` in `/ws/audio` metadata when tracing, D-6); the harness keep-on-failure post-step (a generic
+  `eval-commons` helper, D-13); plus `--record-out`-on-mismatch for the offline tier (D-7).
 - **S3 — Trace↔WAV unification** (TEST-14, deferred / phase 2): a `--extract-wav` path so one golden trace yields the
   WS fixture (D-9).
 
@@ -115,11 +115,22 @@ make ws TARGET=local TRACE=1             # live WS suite; failing cases leave a 
 irene-replay-trace -t traces/failures/<case>.json --listen --step   # debug a failure: hear it, step it
 ```
 
-## 7. Open questions (for sign-off)
+## 7. Decisions on the open questions (resolved 2026-06-27)
 
-1. **Promote to release-gating?** Once a deterministic golden set exists, should `trace-system` block release, or stay
-   a `[deferred]` enhancement?
-2. **Where does the keep-on-failure post-step live** — a generic `eval-commons` helper (reusable across projects) or a
-   thin project-side Makefile step? (Lean: `eval-commons`, since the bridge will want it too — but it's glue.)
-3. **Golden-trace curation cadence** — record a small fixed set now (timer + smart-home), or grow it as real failures
-   surface?
+- **D-12 — Release-gating: not yet, but on a defined trigger (not "never").** `trace-system` stays `[deferred]` until
+  **both**: (a) a curated deterministic golden set covers the release-critical paths (timer + the smart-home command
+  path), and (b) it has run **green in CI across two consecutive runs** (proving it's stable/deterministic in the CI
+  environment, not just on a dev box). Gating before that would make the release gate flaky; but `trace-system` is the
+  cheapest deterministic regression signal available, so it *should* gate once proven — hence a trigger, not a
+  permanent exclusion. Promotion = retag the relevant cases/task `[release]` and add the suite to the CI gate.
+- **D-13 — The keep-on-failure post-step lives in `eval-commons`** — a small, project-agnostic helper invoked from the
+  thin Makefile `ws` target, **not** a per-project bash step. It's reusable (wb-mqtt-bridge will want failure-trace
+  capture too) and it honors the harness rule (execution/glue logic lives in `eval-commons`; projects carry YAML + a
+  thin Makefile). Its contract is fully generic: read promptfoo's results JSON → for each failing test read
+  `metadata.request_id` (D-6) → copy `<traces_dir>/<request_id>.json` into `failures/`. No Irene-specifics, so the
+  bridge reuses it unchanged.
+- **D-14 — Curation: seed small now, then grow from real failures.** Commit a tiny deterministic seed (timer + one
+  smart-home command) for immediate regression value; thereafter the **failure-trace capture loop (D-5) is the growth
+  mechanism** — a triaged-and-fixed live failure's trace is promoted to a committed golden regression. This avoids
+  speculative over-curation and creates a virtuous loop: failure-tracing (TEST-13) feeds the golden set (TEST-12),
+  which in turn is what D-12's promotion trigger measures.
