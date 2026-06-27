@@ -119,3 +119,8 @@ config-ui/node_modules/
 config-ui/dist/
 # Runtime cache (ClientRegistry persistence, model downloads, temp, tts)
 cache/
+
+# eval/ — generated results and local-only config profile
+eval/results-*.json
+eval/.env
+eval/profiles/configs/custom.env

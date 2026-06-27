@@ -1,0 +1,50 @@
+# CLI contract tests: the argparse console scripts (irene-config-validate, ...).
+# This surface needs NO running service, NO audio fixtures, and NO API key — it's the
+# fastest path to a green run and the everyday CI gate.
+#
+#   make cli
+#
+# The prompt IS the command line; cli_provider shlex-splits it (config.argv is absent).
+# Console scripts resolve because the Makefile puts the project venv's bin on PATH.
+# return_mode: full → output is JSON {stdout, stderr, exit_code, duration_ms}, so each test
+# asserts on whatever field it needs.
+
+description: wb-mqtt-voice — CLI contract tests (argparse console scripts; no service/key needed)
+
+prompts:
+  - '{{cmd}}'
+
+providers:
+  - id: file://../../eval-commons/eval_commons/providers/cli_provider.py
+    label: cli
+    config:
+      cwd: ..                 # run the project's console scripts from the repo root
+      return_mode: full       # JSON {stdout, stderr, exit_code, duration_ms}
+      timeout_s: 60
+
+tests:
+  # ── Config matrix: every shipped config validates clean (exit 0). ──────────────
+  #   Identical assertion, many configs — the static counterpart to the WS config matrix.
+  - description: validate config — voice.toml
+    vars: { cmd: "irene-config-validate --config-file configs/voice.toml --ci-mode" }
+    assert: [{ type: javascript, value: "JSON.parse(output).exit_code === 0" }]
+
+  - description: validate config — standalone-x86_64.toml
+    vars: { cmd: "irene-config-validate --config-file configs/standalone-x86_64.toml --ci-mode" }
+    assert: [{ type: javascript, value: "JSON.parse(output).exit_code === 0" }]
+
+  - description: validate config — embedded-armv7.toml (the WB7 profile)
+    vars: { cmd: "irene-config-validate --config-file configs/embedded-armv7.toml --ci-mode" }
+    assert: [{ type: javascript, value: "JSON.parse(output).exit_code === 0" }]
+
+  - description: validate config — embedded-aarch64.toml
+    vars: { cmd: "irene-config-validate --config-file configs/embedded-aarch64.toml --ci-mode" }
+    assert: [{ type: javascript, value: "JSON.parse(output).exit_code === 0" }]
+
+  # ── Failure contract: a missing file exits non-zero and reports the reason. ──
+  #   irene-config-validate writes its report (incl. errors) to stdout, exit 1 on invalid.
+  - description: failure contract — missing config exits non-zero and reports "not found"
+    vars: { cmd: "irene-config-validate --config-file does-not-exist.toml" }
+    assert:
+      - { type: javascript, value: "JSON.parse(output).exit_code !== 0" }
+      - { type: javascript, value: "/not found/i.test(JSON.parse(output).stdout)" }

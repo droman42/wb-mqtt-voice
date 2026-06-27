@@ -1,14 +1,16 @@
-# Proof-of-concept eval config for wb-mqtt-voice (Irene).
-# PURE YAML — no project code. All logic lives in ../../eval-commons.
+# System tests: the shipped streaming-ASR endpoint /ws/audio (ARCH-10, irene/runners/webapi_router.py).
+# PURE YAML — all execution logic lives in ../../eval-commons. Run via the Makefile so the
+# (target × config) axes and the project venv are wired for you:
 #
-# Run from THIS directory:   cd eval && promptfoo eval
-# Prereqs: see eval/README.md (install promptfoo + eval-commons, set env, record fixtures).
+#   make ws TARGET=local          # against a locally-running Irene
+#   make ws TARGET=wb7            # against Irene on the WB7 controller (remote)
+#   make ux TARGET=local          # only the DeepSeek-judged UX cases (needs DEEPSEEK_API_KEY)
 #
-# Surface under test: the shipped streaming-ASR endpoint /ws/audio (ARCH-10,
-# irene/runners/webapi_router.py:791). MQTT/bridge examples are at the bottom as a
-# FUTURE block (bridge REST is design-only today — docs/design/mqtt_integration.md).
+# The endpoint is injected from the target profile via {{env.WS_AUDIO_URL}} — never hard-coded
+# (promptfoo resolves {{env.VAR}} at config-load time). The config the SUT runs is an EXTERNAL
+# axis (Makefile bring-up / what's deployed on WB7); these tests are config-agnostic.
 
-description: wb-mqtt-voice — streaming ASR + Russian conversational UX (PoC)
+description: wb-mqtt-voice — streaming ASR + Russian conversational UX (system tests over /ws/audio)
 
 # The rendered prompt handed to the provider is just the audio fixture path for each case.
 prompts:
@@ -18,11 +20,11 @@ providers:
   - id: file://../../eval-commons/eval_commons/providers/ws_audio_provider.py
     label: ws-audio
     config:
-      ws_url: ${WS_AUDIO_URL}      # ws://localhost:6000/ws/audio  (IRENE_WEB_PORT=6000)
+      ws_url: "{{ env.WS_AUDIO_URL | default('ws://localhost:6000/ws/audio') }}"
       room_name: Кухня
       sample_rate: 16000
       mode: streaming
-      return_mode: full            # output = JSON {transcript, response_text, intent_name, ...}
+      return_mode: full          # output = JSON {transcript, response_text, intent_name, success, ...}
 
 # Every llm-rubric / g-eval assertion is graded by DeepSeek, wired once here.
 defaultTest:
@@ -33,6 +35,7 @@ defaultTest:
 tests:
   # ── 1. ASR transcript accuracy (deterministic, WER via jiwer) ──────────────────
   - description: ASR accuracy — «поставь таймер на десять минут»
+    metadata: { kind: system }
     vars:
       audio: fixtures/timer_10min.wav
       reference: поставь таймер на десять минут
@@ -43,19 +46,19 @@ tests:
 
   # ── 2. Intent recognition (deterministic, parse the full-JSON output) ──────────
   - description: Intent — timer set is recognized
+    metadata: { kind: system }
     vars:
       audio: fixtures/timer_10min.wav
     assert:
       - type: is-json
-      # TODO: confirm the exact intent name emitted by Irene's timer handler
-      #       (placeholder 'timer.set'); adjust once verified against a live run.
+      # TODO: confirm the exact intent name Irene's timer handler emits (placeholder 'timer.set').
       - type: javascript
         value: JSON.parse(output).intent_name === 'timer.set' && JSON.parse(output).success === true
 
   # ── 3. Conversational UX (LLM-as-human judge: DeepSeek) ────────────────────────
-  #   transform extracts the user-facing reply so the judge scores the answer, not JSON.
-  #   Canonical rubric: ../../eval-commons/shared/rubrics/ru-ux.yaml#confirms_action_ru
+  #   transform extracts the user-facing reply so the judge scores the answer, not the JSON.
   - description: UX — assistant confirms the timer in natural Russian
+    metadata: { kind: ux }
     vars:
       audio: fixtures/timer_10min.wav
     assert:
@@ -69,6 +72,7 @@ tests:
 
   # ── 4. Graceful-failure UX (unreachable device, judged on tone/clarity) ────────
   - description: UX — polite, human-readable failure when a device is unreachable
+    metadata: { kind: ux }
     vars:
       audio: fixtures/light_unreachable.wav
     assert:
@@ -78,26 +82,3 @@ tests:
           Когда действие невозможно, ассистент вежливо и понятно сообщает о проблеме на
           русском языке, не выдаёт трейсбек или сырую ошибку, и по возможности предлагает
           следующий шаг. Пройдено, если сообщение доброжелательно и человекочитаемо.
-
-# ═══════════════════════════════════════════════════════════════════════════════
-# FUTURE (not active): smart-home surface. Irene drives wb-mqtt-bridge over REST,
-# with one MQTT touchpoint. These show the zero-extra-code paths once the bridge lands.
-#
-# Bridge actuation via promptfoo's NATIVE http provider (no custom code):
-#   - id: https
-#     config:
-#       url: http://localhost:8000/devices/wb-mr6c_47/canonical
-#       method: POST
-#       headers: { 'Content-Type': 'application/json' }
-#       body: { capability: power, action: on, params: {} }
-#     # assert: type: javascript → JSON.parse(output).success === true
-#
-# MQTT retained catalog-version topic via the shared mqtt_provider:
-#   - id: file://../../eval-commons/eval_commons/providers/mqtt_provider.py
-#     config:
-#       host: ${MQTT_HOST}
-#       port: 1883
-#       subscribe_topic: bridge/catalog/version
-#       return_mode: payload
-#     # assert: type: javascript → output.length > 0   (a version hash is retained)
-# ═══════════════════════════════════════════════════════════════════════════════
