@@ -1,0 +1,26 @@
+// Irene — adding a test is a few lines of YAML; pick the surface. Render:
+//   dot -Tpng docs/images/howto-test.dot -o docs/images/howto-test.png
+digraph test {
+  rankdir=LR; bgcolor="white"; splines=spline; nodesep=0.4; ranksep=1.1;
+  fontname="Helvetica"; labelloc=t; fontsize=14;
+  label="Adding a test = a few lines of YAML; pick the surface that matches what you're checking";
+  node [fontname="Helvetica", fontsize=10, shape=box, style="filled,rounded", penwidth=1.4];
+  edge [fontname="Helvetica", fontsize=9, color="#616161", arrowsize=0.7];
+
+  q [label="what are you\nchecking?", shape=diamond, style="filled", fillcolor="#eeeeee", color="#9e9e9e"];
+
+  cli [label="CLI contract\na console script's stdout / exit code\ncli.promptfooconfig.yaml · make cli",
+       fillcolor="#e8f5e8", color="#388e3c"];
+  sys [label="WS system\nspeech is transcribed & understood\nws.promptfooconfig.yaml · make ws",
+       fillcolor="#e3f2fd", color="#1976d2"];
+  ux  [label="WS UX (judged)\nthe reply is natural / polite — DeepSeek\nws.promptfooconfig.yaml · make ux",
+       fillcolor="#f3e5f5", color="#7b1fa2"];
+
+  q -> cli [label="a command-line tool"];
+  q -> sys [label="speech → transcript / intent"];
+  q -> ux  [label="is the reply good?"];
+
+  fix [shape=note, fillcolor="#fff8e1", color="#f9a825", fontsize=9,
+       label="WS cases need an audio fixture (16 kHz mono PCM16): make record.\nCases stay endpoint-agnostic — TARGET (where) and CONFIG (which) live in eval/profiles/."];
+  { rank=sink; fix; }
+}

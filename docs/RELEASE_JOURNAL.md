@@ -14,6 +14,11 @@ newest entries near the top of each dated section.
 ## Action journal
 
 ### 2026-06-27
+- **DOC-9 DONE — user-facing eval guide.** Added `docs/guides/howto-new-test.md` (+ decision diagram
+  `howto-test.dot/png`) in the established `howto-*` voice: pick a surface (CLI contract / WS system / WS UX-judged),
+  author a case in each, record the fixture (`make record`), keep cases endpoint-agnostic (TARGET/CONFIG). Cross-linked
+  from `eval/README.md` as the walkthrough to its reference. Closes the "how do I add a test?" gap surfaced once the
+  recorder made the WS suite actually authorable.
 - **TEST-9 DONE — voice-fixture recorder wired into `eval/` (W6).** The recorder itself (design + W1–W5) was built and
   pushed in the sibling **eval-commons** repo (`eval-fixture-record`: mic capture → 16 kHz/mono/PCM16, worklist derived
   from the promptfoo YAML, interactive keep/redo); it lives there because eval-commons is the shared lower layer and

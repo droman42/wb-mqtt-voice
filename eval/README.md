@@ -4,6 +4,9 @@ Pure-YAML test cases. All execution logic lives in the shared **`eval-commons`**
 (sibling repo: `../../eval-commons`) — see its `ARCHITECTURE.md`. This directory carries only
 YAML + a thin Makefile (deployment glue, no test logic).
 
+> **Writing a new test?** Start with the recipe: **[How to add a test](../docs/guides/howto-new-test.md)**
+> (and [recording fixtures](fixtures/README.md)). This file is the reference; that guide is the walkthrough.
+
 ## Layout
 
 ```

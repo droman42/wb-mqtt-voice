@@ -1969,6 +1969,13 @@ rationale/chronology lives in [`RELEASE_JOURNAL.md`](./RELEASE_JOURNAL.md).
       deleted with those providers in QUAL-13 Stage 2; examples still import lingua_franca — demo-only, harmless.)_
 
 ### Documentation (DOC)
+- [x] **DOC-9** [EVAL] (P2) `[release]` — **DONE 2026-06-27.** User-facing guide for the eval harness:
+      `docs/guides/howto-new-test.md` (matches the `howto-*` recipe voice + a decision diagram
+      `docs/images/howto-test.{dot,png}`). Walks through the three surfaces (CLI contract, WS system, WS UX-judged),
+      authoring a case in each, recording the audio fixture (`make record`), and keeping cases endpoint-agnostic
+      (TARGET/CONFIG). Cross-linked from `eval/README.md` (reference ⟷ walkthrough division). No internal tracking
+      language in the prose (user-facing-docs voice). Complements the existing `eval/README.md` + `fixtures/README.md`
+      rather than duplicating them.
 - [x] **DOC-1** — Sync README/architecture to v15; archive ~28 historical docs to `docs/archive/`. → 4a55519
 - [x] **DOC-2** (P2) — DONE 2026-06-08: archived the entire `docs/TODO/` subfolder + `docs/TODO.md` to
       `docs/archive/` (superseded by this plan). The open TODO11/microWakeWord work is tracked under
