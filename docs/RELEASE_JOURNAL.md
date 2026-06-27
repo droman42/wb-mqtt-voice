@@ -14,6 +14,13 @@ newest entries near the top of each dated section.
 ## Action journal
 
 ### 2026-06-27
+- **TEST-11 DONE (design) — trace-driven system testing → `docs/design/trace_system_testing.md`.** Uses the shipped
+  trace record/replay (ARCH-19) two ways: an **offline deterministic regression surface** (committed golden traces
+  replayed via `irene-replay-trace --local` through the existing `cli_provider`, asserting `exit_code === 0`; tiered
+  `trace-system` vs DeepSeek-judged `trace-ux`) and **failure-trace capture** (always-trace + keep-on-failure for the
+  live WS suite via a small `request_id`-in-metadata enabler; `--record-out`-on-mismatch offline) so a failed case is
+  replayable (`--listen`/`--step`). No new `eval-commons` code for the core surface. Design done ≠ shipped → filed
+  **TEST-12** (offline surface), **TEST-13** (failure-tracing + SUT enabler), **TEST-14** (trace↔WAV, phase 2).
 - **TEST-10 DONE — WS audio fixtures are now versioned.** A blanket `*.wav` ignore had accidentally swept the eval
   fixtures in, making the WS suite un-runnable in CI (no mic) and non-reproducible (re-record → different WER). Carved
   `!eval/fixtures/*.wav` out of the ignore; other `*.wav` stay ignored. Fixtures are test inputs, not stray audio.

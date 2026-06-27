@@ -61,6 +61,7 @@ Living findings behind the tasks (`read-at-start-record-at-completion`). `[x]` =
 | `docs/design/io_architecture.md` (DRAFT 2026-06-07) | symmetric configurable hexagonal I/O — format-vs-input, OutputPort + modality matrix, daemon multiplexing, event-bus delivery+observation, F&F via OutputManager, runners-as-presets | ARCH-14/15 |
 | `docs/design/audio_pipeline.md` `[x]` (2026-06-10) | audio I/O negotiation+transformation seam (input twin of ARCH-15) — VAD provider family, canonical transform-once + derived/fatal negotiation, pre-roll contract, AudioTranscoder/VoiceSegmenter/AudioNegotiator, symmetric in+out, traced | ARCH-17 ✓, ARCH-18 |
 | `docs/design/trace_persistence.md` (COMPLETE 2026-06-14; D-1..D-18; **ARCH-19 shipped slices 1–6**) | persist utterance traces to self-contained JSON (base64 audio) for listen + pipeline replay (regression + VAD tuning) — capture levels, `current_trace` contextvar, TraceLogger, handler `trace_event`, seed+diff replay | ARCH-19 ✓ |
+| `docs/design/trace_system_testing.md` `[x]` (DRAFT 2026-06-27; D-1..D-11) | trace-driven system testing — offline golden-trace replay surface (deterministic regression via `cli_provider`, `trace-system`/`trace-ux` tiers) + failure-trace capture (always-trace keep-on-failure live; `--record-out` offline) + trace↔WAV unification | TEST-11 ✓ → TEST-12/13/14 |
 | `docs/design/streaming_tts.md` (DRAFT 2026-06-14) | producer twin of ARCH-20 — streaming TTS synthesis + output-seam delivery unification: `synthesize_to_stream` port + base simulation/native overrides, remote `AudioSink` OutputPort, collapse the 3 fragmented playout paths, retire PR-4's parse_wav bridge | ARCH-21 |
 | `docs/design/esp32_satellite.md` (DRAFT 2026-06-14) | **consolidated** ESP32 voice-satellite design — supersedes `ws_esp32_transport.md`, folds `esp32_wakeword_review.md` + `onnx §10/11` + ARCH-21; D-1..D-18 (device shape, wire protocol in+reply, micro stack, models/push, identity/multi-room, provisioning/CSR/OTA); backend plan §12 | ARCH-22 |
 | `config-ui/docs/donation_editor_ux.md` | human-friendly donations editor design | UI-1/2/3 |
@@ -285,6 +286,21 @@ _Apply to every remediation task below (from the 4 review docs + QUAL-25/26). So
 > (166 pass / 56 fail / 13 skip / 2 xfail, all committed) stands as a **partial safety net**; the remaining 56
 > failures are left **intentionally unfixed**. The real test effort is **TEST-7: rewrite the suite after the
 > architecture + code reviews land** (gated). TEST-3/4/5/6 are coverage goals folded into that rewrite.
+
+_Trace-driven system testing (design `docs/design/trace_system_testing.md`, TEST-11 ✓) → these three implementation slices:_
+- [ ] **TEST-12** [EVAL] (P2) `[deferred]` — **Offline golden-trace replay surface** (S1 of the design). `eval/traces/`
+      + `trace.promptfooconfig.yaml` driving `irene-replay-trace -t … --local` via the existing `cli_provider` (assert
+      `exit_code === 0`); `make replay` / `make replay-judge`; record + commit a first deterministic golden trace
+      (timer); add the "golden-trace regression" surface to `howto-new-test.md`. Pure YAML + Makefile + the curated
+      trace — no new `eval-commons` code. Determinism tier `trace-system` only (LLM paths → `trace-ux` judge).
+- [ ] **TEST-13** [EVAL] (P2) `[deferred]` — **Failure-trace capture for the live WS suite** (S2). `make ws TRACE=1`
+      launches the SUT traced; **SUT enabler:** echo the trace `request_id` in `/ws/audio` response metadata when
+      tracing (D-6, additive; config-ui N/A); harness keep-on-failure post-step → failing cases' traces land in
+      `eval/traces/failures/` (others pruned); plus `--record-out`-on-mismatch for the offline tier (D-7). Captures the
+      *actual* failing run; a failed case becomes replayable (`--listen`/`--step`).
+- [ ] **TEST-14** [EVAL] (P3) `[deferred]` — **Trace↔WAV unification** (S3, phase 2). A `--extract-wav` path so one
+      golden trace yields the WS fixture (record-once-test-twice, D-9); lives in this repo (decodes Irene's trace
+      format).
 
 ### Build & CI (BUILD)
 

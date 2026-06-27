@@ -1638,6 +1638,15 @@ rationale/chronology lives in [`RELEASE_JOURNAL.md`](./RELEASE_JOURNAL.md).
       console-LLM fallback / `fallback_providers` — left as-is; not in scope here.)
 
 ### Tests (TEST)
+- [x] **TEST-11** [EVAL] (P2) `[deferred]` — **DONE 2026-06-27 (design).** Design for trace-driven system testing →
+      `docs/design/trace_system_testing.md`. Uses the shipped ARCH-19 trace record/replay as (1) an **offline,
+      deterministic, CI-able regression surface** — committed golden traces under `eval/traces/`, replayed via
+      `irene-replay-trace --local` through the existing `cli_provider` (assert `exit_code === 0`), tiered
+      `trace-system` (exit-code) vs `trace-ux` (DeepSeek judge) — and (2) **failure-trace capture**: always-trace +
+      keep-on-failure for the live WS suite (with a small SUT enabler — `request_id` in `/ws/audio` metadata) and
+      `--record-out`-on-mismatch offline, so a failed case ships a replayable trace (`--listen`/`--step`). Folds in
+      the fixture-versioning fix (TEST-10) and a trace↔WAV unification idea. **Completing the design ≠ shipped:** filed
+      implementation slices **TEST-12/13/14**.
 - [x] **TEST-10** [EVAL] (P2) `[release]` — **DONE 2026-06-27.** Version the WS audio fixtures: carved
       `!eval/fixtures/*.wav` out of the repo's blanket `*.wav` ignore (`.gitignore`). The blanket rule had swept the
       fixtures in by accident (generic "don't commit audio"), which made the WS suite **un-runnable in CI** (no mic)
