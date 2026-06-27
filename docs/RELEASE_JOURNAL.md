@@ -14,6 +14,12 @@ newest entries near the top of each dated section.
 ## Action journal
 
 ### 2026-06-27
+- **config-ui dependency housekeeping — lockfile-only, no ledger ID** (per the `every-task-in-the-ledger`
+  carve-out). `npm audit fix` lifted `@babel/core`→7.29.7 and `js-yaml`→4.2.0 in `config-ui/package-lock.json`;
+  `package.json` intent unchanged, `npm run check && npm run build` green. Cleared 2 of 8 Dependabot alerts. The
+  other 6 need **breaking major upgrades outside the declared ranges** — `vite ^5`→6/8 (3 vite alerts + esbuild),
+  `react-syntax-highlighter ^15`→16 (prismjs), `@typescript-eslint ^6`→8 (minimatch) — i.e. deliberate version
+  decisions, not housekeeping; to be carried as a ledger task, not auto-applied.
 - **Work-process redesign: ledger split + journal rotation (size control).** The ledger and journal had grown to
   ~71k / ~88k tokens (~159k combined; 106 of 127 ledger tasks done, 264 journal entries), past the point where the
   harness keeps them resident — every task that obeys `read-at-start-record-at-completion`/`task-start-reconciliation` was paying to load mostly-closed history.
