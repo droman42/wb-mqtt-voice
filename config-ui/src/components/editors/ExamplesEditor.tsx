@@ -20,7 +20,7 @@ export default function ExamplesEditor({
     if (typeof item === 'string') {
       return { text: item, parameters: {} };
     }
-    return item as Example;
+    return item;
   }) ?? [];
 
   const add = (): void => {

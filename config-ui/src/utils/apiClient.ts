@@ -155,7 +155,7 @@ class IreneApiClient {
           if (errorData.error) {
             errorMessage = errorData.error;
           }
-        } catch (e) {
+        } catch {
           // If we can't parse error JSON, use the status text
         }
         

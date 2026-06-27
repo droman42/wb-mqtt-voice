@@ -52,7 +52,7 @@ export default function CardPatternsEditor({
   const removeCard = (pi: number, ci: number): void =>
     emit(patterns.map((p, i) => (i === pi ? p.filter((_, j) => j !== ci) : p)));
   const addCard = (pi: number): void =>
-    emit(patterns.map((p, i) => (i === pi ? [...p, { kind: 'word', attr: 'LOWER', word: '' } as Card] : p)));
+    emit(patterns.map((p, i) => (i === pi ? [...p, { kind: 'word', attr: 'LOWER', word: '' }] : p)));
   const removePattern = (pi: number): void => emit(patterns.filter((_, i) => i !== pi));
   const addPattern = (): void => emit([...patterns, []]);
 

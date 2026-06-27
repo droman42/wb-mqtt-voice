@@ -17,9 +17,9 @@ void i18n.use(initReactI18next).init({
   resources: { en, ru },
   lng: initialLang(),
   fallbackLng: FALLBACK_LNG,
-  supportedLngs: SUPPORTED_LNGS as unknown as string[],
+  supportedLngs: SUPPORTED_LNGS,
   defaultNS: 'common',
-  ns: NAMESPACES as unknown as string[],
+  ns: NAMESPACES,
   interpolation: { escapeValue: false }, // React already escapes
   returnNull: false,
   react: { useSuspense: false },

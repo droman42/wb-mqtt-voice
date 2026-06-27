@@ -73,7 +73,7 @@ const ConfigurationPage: React.FC = () => {
   const [state, setState] = useState<ConfigurationPageState>({
     config: null,
     originalConfig: null,
-    schema: {} as ConfigSchemaResponse,
+    schema: {},
     configStatus: null,
     sectionChanges: {},
     loading: true,

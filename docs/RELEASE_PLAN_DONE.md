@@ -1980,6 +1980,16 @@ rationale/chronology lives in [`RELEASE_JOURNAL.md`](./RELEASE_JOURNAL.md).
       covered; the standalone `PARAMETER_EXTRACTION_GUIDE.md` was not needed.
 
 ### UI / config-ui (UI)
+- [x] **UI-10** [DEPS] (P2) `[release]` — **DONE 2026-06-27.** config-ui major dependency upgrades clearing the 6
+      Dependabot alerts the lockfile-only housekeeping couldn't (all needed breaking majors outside the declared
+      ranges): `vite ^5`→`^8.1.0` + `@vitejs/plugin-react ^4`→`^6.0.3` (3 vite advisories + esbuild dev-server; vite 8
+      uses the rolldown bundler), `react-syntax-highlighter ^15`→`^16.1.1` (prismjs DOM-clobbering — the only runtime
+      one; `Prism` + prism style imports unchanged), `@typescript-eslint ^6`→`^8.62.0` + `eslint ^8.45`→`^8.57.1`
+      (minimatch ReDoS in lint tooling — stayed on eslintrc, **no eslint-9 flat-config migration**). ts-eslint 8's
+      stricter `recommended-type-checked` surfaced 6 lint errors: 5 unnecessary-type-assertions auto-fixed, 1 unused
+      catch binding → optional-catch (`apiClient.ts`). Gate green: `npm run check` (type-check + lint + orphans) +
+      `npm run build` + vitest 40/40; `npm audit` → **0 vulnerabilities**. `package.json` intent changed (deliberate
+      version decision, per the `every-task-in-the-ledger` carve-out — vs. the 2 lockfile-only bumps done as housekeeping).
 - [x] **UI-1** [DEDITOR] (P2) — **DONE 2026-06-06.** Designed the human-friendly donation/pattern authoring model →
       `config-ui/docs/donation_editor_ux.md`. **Persona-driven** (author knows handlers, **zero spaCy/NLU**): the model
       is **five everyday cards + an Advanced escape hatch** (a word [+"include its forms"] / one-of-several-words /

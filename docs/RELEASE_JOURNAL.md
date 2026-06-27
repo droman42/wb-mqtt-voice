@@ -14,6 +14,14 @@ newest entries near the top of each dated section.
 ## Action journal
 
 ### 2026-06-27
+- **UI-10 DONE — config-ui major dependency upgrades; all 8 Dependabot alerts cleared.** The 6 the housekeeping pass
+  couldn't touch needed breaking majors outside the declared ranges, so they were a deliberate version decision (filed
+  as UI-10, done same session): `vite ^5`→`^8.1.0` (+ `@vitejs/plugin-react`→`^6`; vite 8 = rolldown bundler) cleared
+  the 3 vite advisories + esbuild; `react-syntax-highlighter ^15`→`^16` cleared prismjs (the only runtime one — `Prism`
+  API unchanged); `@typescript-eslint ^6`→`^8` (eslint kept at 8.57 — stayed on eslintrc, no flat-config migration)
+  cleared the minimatch ReDoS. ts-eslint 8's stricter type-checked config surfaced 6 lint errors (5 auto-fixed, 1
+  optional-catch). `npm run check` + `build` + vitest 40/40 green; `npm audit` → 0 vulnerabilities. Upgraded
+  incrementally (gate after each major) so breakage stayed isolated.
 - **config-ui dependency housekeeping — lockfile-only, no ledger ID** (per the `every-task-in-the-ledger`
   carve-out). `npm audit fix` lifted `@babel/core`→7.29.7 and `js-yaml`→4.2.0 in `config-ui/package-lock.json`;
   `package.json` intent unchanged, `npm run check && npm run build` green. Cleared 2 of 8 Dependabot alerts. The
