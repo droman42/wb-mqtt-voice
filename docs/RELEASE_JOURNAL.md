@@ -45,6 +45,9 @@ newest entries near the top of each dated section.
   - **Journal rotation trigger defined** in `one-active-journal` (was permissive-but-undated): at each gate, if the
     active journal exceeds ~1500 lines / ~40k tokens, freeze the oldest whole dated sections into the newest archive
     until back under ~1000 lines / ~25k tokens. Closes the only "when" gap — task-moves were already per-completion.
+  - **`user-facing-docs-are-done` scope widened** to add `docs/QUICKSTART.md` (always) + non-root `README*` (e.g.
+    `eval/README.md`) — the latter **only when the task touches that README's directory/subsystem** (locality gate, so
+    it isn't a "re-audit every README" burden). Closes the scope gaps surfaced when reviewing the invariant.
 
 ### 2026-06-22
 - **Platform-list centralization (review CR-C9) — `docs/review/codebase_review_2026-06-21.md`.** The OS-platform list

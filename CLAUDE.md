@@ -70,10 +70,12 @@ but these rules apply to any task). **Single source of truth** (relocated here f
   import cycle, and a cycle is an architecture smell (dependencies not pointing inward — `hexagonal-architecture`). The
   fix is to **break the cycle** (move the shared type to a lower layer / use a port), not hide it from the runtime.
   When touching a file that has such a block, remove it. _(QUAL-32 tracks the residual sweep; new code complies from the start.)_
-- **`user-facing-docs-are-done`** — The user-facing docs (`docs/architecture/*`, `docs/guides/*`, top-level `README*`)
-  are narrative explanations for a reader who does **not** know the codebase or the release plan. For **every** task,
-  before completion check whether the change alters behavior any of them describes; if so, update them **in the same
-  change**, matching the document's voice — **no internal tracking language** (task IDs, ledger/journal refs, gate
+- **`user-facing-docs-are-done`** — The user-facing docs — `docs/architecture/*`, `docs/guides/*`,
+  `docs/QUICKSTART.md`, and top-level `README*` — are narrative explanations for a reader who does **not** know the
+  codebase or the release plan. **A non-root `README*`** (e.g. `eval/README.md`) is also in scope, **but only when the
+  task touches code in that README's directory/subsystem** (the local README documents the local code; don't audit
+  every README on every task). For **every** task, before completion check whether the change alters behavior any
+  in-scope doc describes; if so, update them **in the same change**, matching the document's voice — **no internal tracking language** (task IDs, ledger/journal refs, gate
   counts, file:line, raw internal symbols/config keys) unless the doc already teaches them as user-facing names.
   **Diagrams are docs too:** update the source (`docs/images/*.dot`) and regenerate the image in the existing visual
   style. _Pairs with `config-ui-stays-functional` (the user-facing **app**; this is the user-facing **docs**)._
