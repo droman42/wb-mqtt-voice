@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-check_scope.py — release-scope drift guard (Invariant #6).
+check_scope.py — release-scope drift guard (invariant `single-task-ledger`).
 
 The task ledger (docs/RELEASE_PLAN.md) is the single source of scope + status.
 Review/design docs are frozen evidence that link UP to ledger task IDs. This script
@@ -8,7 +8,7 @@ proves nothing has drifted between them. Run it at each gate; wire into CI later
 
 Reports (and exits non-zero on) :
   1. ORPHAN finding      — a task ID referenced in a review/design doc but NOT declared
-                           in the ledger (scope hiding in a review doc — Invariant #6).
+                           in the ledger (scope hiding in a review doc — `single-task-ledger`).
   2. DEAD evidence link  — a file named in the ledger's "Review documents" index that
                            does not exist on disk.
   3. UNINDEXED review    — a docs/review/*.md that the ledger index never references
@@ -25,7 +25,8 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-LEDGER = ROOT / "docs" / "RELEASE_PLAN.md"
+LEDGER = ROOT / "docs" / "RELEASE_PLAN.md"            # active: open + paused/partial tasks + the index
+LEDGER_DONE = ROOT / "docs" / "RELEASE_PLAN_DONE.md"  # frozen: completed [x] tasks (one ledger, two files)
 REVIEW_DIRS = [ROOT / "docs" / "review", ROOT / "docs" / "design"]
 
 # Workstream prefixes that denote a real task ID (avoids matching P0-1, v1.0, file:line, …)
@@ -66,7 +67,11 @@ def main() -> int:
         print(f"FATAL: ledger not found at {LEDGER}", file=sys.stderr)
         return 2
     ledger_text = LEDGER.read_text(encoding="utf-8")
-    declared = declared_ids(ledger_text)
+    # The ledger spans two files (`single-task-ledger`): active + frozen done-archive. Declarations
+    # come from BOTH (else references to completed tasks read as orphans); the index lives
+    # only in the active file.
+    done_text = LEDGER_DONE.read_text(encoding="utf-8") if LEDGER_DONE.exists() else ""
+    declared = declared_ids(ledger_text + "\n" + done_text)
     indexed = indexed_evidence_files(ledger_text)
 
     review_files = sorted(p for d in REVIEW_DIRS if d.exists() for p in d.glob("*.md"))
