@@ -102,6 +102,8 @@ options/
 temp/
 tts_cache/
 *.wav
+# ...but eval audio fixtures are versioned test inputs (reproducible WER + runnable in CI), not stray audio.
+!eval/fixtures/*.wav
 *.log
 
 # Centralized logging - ignore all log files in logs folder but keep the directory

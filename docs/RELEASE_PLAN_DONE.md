@@ -1638,6 +1638,13 @@ rationale/chronology lives in [`RELEASE_JOURNAL.md`](./RELEASE_JOURNAL.md).
       console-LLM fallback / `fallback_providers` — left as-is; not in scope here.)
 
 ### Tests (TEST)
+- [x] **TEST-10** [EVAL] (P2) `[release]` — **DONE 2026-06-27.** Version the WS audio fixtures: carved
+      `!eval/fixtures/*.wav` out of the repo's blanket `*.wav` ignore (`.gitignore`). The blanket rule had swept the
+      fixtures in by accident (generic "don't commit audio"), which made the WS suite **un-runnable in CI** (no mic)
+      and **non-reproducible** (re-recording → different waveform → different WER). Fixtures are versioned test inputs,
+      not stray audio. Verified the carve-out (eval/fixtures wav committable; other `*.wav` still ignored) and updated
+      `fixtures/README.md`. Small files; git-lfs only if they grow. _(Strategic follow-up — golden traces as the
+      reviewable regression inputs — is covered by the trace-system-testing design.)_
 - [x] **TEST-9** [EVAL] (P2) `[release]` — **DONE 2026-06-27.** Wired the eval-commons voice-fixture recorder (W6 of
       `../eval-commons/docs/design/fixture_recorder.md`) into this repo's `eval/`: `make record` / `record-list` /
       `record-devices` / `setup-record` targets (recorder invoked as `python -m eval_commons.record.cli`);

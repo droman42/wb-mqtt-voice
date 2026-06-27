@@ -8,9 +8,12 @@ the provider validates this and won't resample, so tests measure the ASR, not a 
 | `timer_10min.wav` | «поставь таймер на десять минут» | cases 1, 2, 3 |
 | `light_unreachable.wav` | a command targeting a device that will be unreachable | case 4 |
 
-Fixtures are git-ignored by default (binary). To version them, drop a `.gitignore`
-exception or use git-lfs. The spoken text lives in each case's `reference:` var in
-`../ws.promptfooconfig.yaml` — the recorder reads it to you, so it stays in sync.
+These fixtures **are committed** — `eval/fixtures/*.wav` is carved out of the repo's
+blanket `*.wav` ignore, because they're versioned test *inputs*: committing them keeps WER
+reproducible (everyone scores the same recording) and lets the WS suite run in CI, where
+there's no microphone. They're small; switch to git-lfs only if that ever changes. The
+spoken text lives in each case's `reference:` var in `../ws.promptfooconfig.yaml` — the
+recorder reads it to you, so it stays in sync.
 
 ## Record them: `make record`
 

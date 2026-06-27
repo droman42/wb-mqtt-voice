@@ -14,6 +14,11 @@ newest entries near the top of each dated section.
 ## Action journal
 
 ### 2026-06-27
+- **TEST-10 DONE — WS audio fixtures are now versioned.** A blanket `*.wav` ignore had accidentally swept the eval
+  fixtures in, making the WS suite un-runnable in CI (no mic) and non-reproducible (re-record → different WER). Carved
+  `!eval/fixtures/*.wav` out of the ignore; other `*.wav` stay ignored. Fixtures are test inputs, not stray audio.
+  `fixtures/README.md` updated. The deeper "golden traces as reviewable regression inputs" direction is in the
+  trace-system-testing design.
 - **DOC-9 DONE — user-facing eval guide.** Added `docs/guides/howto-new-test.md` (+ decision diagram
   `howto-test.dot/png`) in the established `howto-*` voice: pick a surface (CLI contract / WS system / WS UX-judged),
   author a case in each, record the fixture (`make record`), keep cases endpoint-agnostic (TARGET/CONFIG). Wired into
