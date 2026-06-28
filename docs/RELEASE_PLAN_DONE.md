@@ -1638,6 +1638,19 @@ rationale/chronology lives in [`RELEASE_JOURNAL.md`](./RELEASE_JOURNAL.md).
       console-LLM fallback / `fallback_providers` — left as-is; not in scope here.)
 
 ### Bugs (BUG)
+- [x] **BUG-8** [UI] (P3) `[deferred]` — **DONE 2026-06-28.** config-ui DonationsPage composite-key + stale-state
+      defects (review `config_ui_review.md` §A). All keyed by `` `${handler}:${language}` `` now: **(A1)** the
+      404-fallback stored the empty donation under the bare handler name while the load effect read the composite key →
+      **infinite reload loop** + stuck spinner for any handler lacking a donation file in the active language; hoisted
+      `donationKey` above the try so both branches agree. **(A4)** the validation *catch* stored the error under the
+      bare handler, so the language tab's indicator (reads the composite key) never showed it; hoisted the key and use
+      it in the catch. **(A5)** `globalParamNames` memo read `selectedLanguage` but omitted it from deps (under a
+      copy-pasted `eslint-disable`) → wrong-language autocomplete on a cached-language switch; added the dep and dropped
+      the now-unneeded disable. **(A7)** `handlersList.find(...)!` then `handlerInfo.languages.length` crashed if the
+      selected handler left the list mid-reload; resolve a guarded `selectedHandlerInfo` and gate the
+      CrossLanguageValidation render on it. Gate (`config-ui-stays-functional`): `npm run check` (type-check + strict
+      ESLint incl. `--report-unused-disable-directives` + orphans) and `npm run build` both green. BUG-9/10 (the other
+      review correctness findings) remain open.
 - [x] **BUG-7** [NLU/I18N] (P3) `[deferred]` — **DONE 2026-06-28.** ru oblique-case numerals didn't normalize to
       digits. `ovos-number-parser` (ru) reads only **nominative** numerals, so the oblique-case forms common in speech
       stayed as words — «одну секунду» (one), «двух минут», «без пяти», «тридцати пяти» — and it even broke compounds

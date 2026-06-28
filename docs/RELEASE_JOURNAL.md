@@ -14,6 +14,13 @@ newest entries near the top of each dated section.
 ## Action journal
 
 ### 2026-06-28
+- **BUG-8 DONE — config-ui DonationsPage composite-key + stale-state defects (the first remediation from the config-ui
+  review).** Everything keyed by `${handler}:${language}` now: the 404-fallback no longer stores under the bare handler
+  (which caused an **infinite reload loop** + stuck spinner), the validation *catch* stores the error under the key the
+  tab indicator reads, the `globalParamNames` memo gained its missing `selectedLanguage` dep (and shed a copy-pasted
+  `eslint-disable`), and CrossLanguageValidation renders behind a guarded `selectedHandlerInfo` instead of a non-null
+  assertion that crashed if the handler left the list mid-reload. Gate: config-ui `npm run check` + `build` green.
+  Remaining review correctness findings: BUG-9 (stale-request overwrite), BUG-10 (unreachable blocking dialog).
 - **config-ui review (`config_ui_review.md`) — quality/dup/dead/correctness pass.** 8 finder angles → 1-vote verify.
   Found **5 confirmed + 2 plausible correctness bugs** (404 reload loop, stale-request overwrite, unreachable blocking
   dialog, wrong-key validation error, stale memo), **type-contract drift** in `types/api.ts` (CoreConfig/NLUConfig/

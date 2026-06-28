@@ -299,15 +299,6 @@ _Discrete functional defects (distinct from QUAL refactors/quality work). Surfac
       "time"/"for", `message` → "reminder"), but **NEVER** "translate" canonical technical identifiers (provider /
       model / driver / service names are self-matchable). Per-handler gap list in the BUG-4 audit. Surfaced while
       fixing BUG-4.
-- [ ] **BUG-8** [UI] (P3) `[deferred]` — **config-ui DonationsPage composite-key + stale-state defects** (review
-      `config_ui_review.md` §A, CONFIRMED). (A1) 404-fallback stores the empty donation under bare `[handlerName]` while
-      the load effect keys on `` `${handler}:${lang}` `` with `donations` in deps → **infinite reload loop** + stuck
-      spinner for any handler lacking a donation file in the active language (`pages/DonationsPage.tsx:735` vs `755-762`,
-      effect `654-662`). (A4) validation error stored under bare `[selectedHandler]` not the composite key → the tab
-      never shows the error (`864-867` vs `878-881`). (A5) `globalParamNames` memo omits `selectedLanguage` from deps →
-      wrong-language autocomplete on a cached language switch (`788-801`). (A7, PLAUSIBLE) `handlersList.find(...)!`
-      (`996`) → `CrossLanguageValidation.tsx:53` `undefined.languages.length` crash if the selected handler leaves the
-      list mid-reload.
 - [ ] **BUG-9** [UI] (P3) `[deferred]` — **config-ui real-time analysis stale-request overwrite** (review §A2, CONFIRMED).
       `useRealtimeAnalysis.ts:100-141` reads the abort signal off `abortControllerRef.current` *after* the await (by then
       the newest controller), so a slow earlier response passes the guard and clobbers newer results; the signal is also

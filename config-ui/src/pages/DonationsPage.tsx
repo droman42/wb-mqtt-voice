@@ -729,11 +729,14 @@ const DonationsPage: React.FC = () => {
       console.warn('No language selected for loading donation');
       return;
     }
-    
+    // BUG-8: key by `${handler}:${language}` in BOTH the success and 404-fallback branches — the
+    // load effect (and the editor) read this composite key, so storing the fallback under the bare
+    // handler name left the key permanently absent → the effect re-fired forever (infinite reload).
+    const donationKey = `${handlerName}:${targetLanguage}`;
+
     try {
       const response: LanguageDonationContentResponse = await apiClient.getLanguageDonation(handlerName, targetLanguage);
-      const donationKey = `${handlerName}:${targetLanguage}`;
-      
+
       setDonations(prev => ({
         ...prev,
         [donationKey]: response.donation_data
@@ -754,11 +757,11 @@ const DonationsPage: React.FC = () => {
         };
         setDonations(prev => ({
           ...prev,
-          [handlerName]: emptyDonation
+          [donationKey]: emptyDonation
         }));
         setOriginalDonations(prev => ({
           ...prev,
-          [handlerName]: JSON.parse(JSON.stringify(emptyDonation))
+          [donationKey]: JSON.parse(JSON.stringify(emptyDonation))
         }));
       } else {
         console.error(`Failed to load donation ${handlerName}:`, err);
@@ -797,8 +800,17 @@ const DonationsPage: React.FC = () => {
     });
     
     return Array.from(allParams).sort();
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional scoped/mount load (load fns are not memoized)
-  }, [donations, selectedHandler]);
+    // BUG-8: depend on selectedLanguage too — the memo reads it, so a switch to an already-cached
+    // language (which doesn't change `donations`) must still recompute, else ExamplesEditor gets the
+    // previous language's global param names.
+  }, [donations, selectedHandler, selectedLanguage]);
+
+  // BUG-8: the selected handler can be absent from handlersList (e.g. after a reload that removed or
+  // renamed it), so resolve it safely instead of asserting non-null at the CrossLanguageValidation
+  // render — which derefs handlerInfo.languages and would crash.
+  const selectedHandlerInfo = selectedHandler
+    ? handlersList.find(h => h.handler_name === selectedHandler)
+    : undefined;
 
   const handleSave = async (): Promise<void> => {
     if (!selectedHandler || !selectedLanguage) return;
@@ -842,9 +854,11 @@ const DonationsPage: React.FC = () => {
     if (!selectedHandler || !selectedLanguage) {
       return { valid: false, errors: ['No handler or language selected'], warnings: [] };
     }
+    // BUG-8: the language tab's error indicator reads validationResults[`${handler}:${lang}`], so the
+    // catch must store under the same composite key (not the bare handler) or the failure stays hidden.
+    const donationKey = `${selectedHandler}:${selectedLanguage}`;
 
     try {
-      const donationKey = `${selectedHandler}:${selectedLanguage}`;
       const donationData = donations[donationKey];
       
       if (!donationData) {
@@ -877,7 +891,7 @@ const DonationsPage: React.FC = () => {
       
       setValidationResults(prev => ({
         ...prev,
-        [selectedHandler]: errorResult
+        [donationKey]: errorResult
       }));
 
       return errorResult;
@@ -989,11 +1003,11 @@ const DonationsPage: React.FC = () => {
             />
 
             {/* Cross-Language Validation Panel */}
-            {selectedHandler && (
+            {selectedHandler && selectedHandlerInfo && (
               <div className="border-b border-gray-200 p-4 bg-gray-50">
                 <CrossLanguageValidation
                   handlerName={selectedHandler}
-                  handlerInfo={handlersList.find(h => h.handler_name === selectedHandler)!}
+                  handlerInfo={selectedHandlerInfo}
                   activeLanguage={selectedLanguage}
                   validationReport={validationReport}
                   completenessReport={completenessReport}
