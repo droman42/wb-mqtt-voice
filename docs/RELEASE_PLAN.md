@@ -68,6 +68,7 @@ Living findings behind the tasks (`read-at-start-record-at-completion`). `[x]` =
 | `docs/review/test7_triage.md` (2026-06-15) | TEST-7 Phase-B worklist — 82-failure triage (delete/rewrite/fix) + risk-ranked coverage tiers + fix-code suspects | TEST-7 ✓ |
 | `docs/review/api_result_contract_review.md` `[x]` (2026-06-27) | API execution-result response-contract consistency — 5 findings (reply field name, 3-way intent split, divergent metadata under one model, confidence placement, live `None` internal misread); root cause = no shared serializer | QUAL-54 ✓, QUAL-55 |
 | `docs/review/codebase_review_2026-06-21.md` (2026-06-21; CR-A1 group resolved 2026-06-22) | whole-codebase health pass — 16 correctness (CR-A1 P0: standalone `voice_runner` web API never starts), 13 dead/zombie (CR-B), 13 duplication (CR-C), 5 stale user-facing doc claims (CR-D). **DONE 2026-06-22:** CR-A1 group (A1/A2/A3/A14/B2/D5 + masking-test fix) + BUILD-7 doc/dup cluster (C1/C2/C4/D1–D4) + dead-code sweep (all CR-B; B4 kept as ARCH-22/25 scaffolding, B12 was QUAL-20) + provider-base dedup (CR-C6/C7, C8 partial — route helpers deferred) + standalone correctness (CR-A4/A8) + silero cleanups (CR-A12/A13) + tracing pair (CR-A7/A9) + path-traversal hardening (CR-A15, security) + correctness trio (CR-A10/A11/A16) + Cyrillic dedup (CR-C3) + nlu-analysis loaders (CR-A6) + audio playback (CR-A5) + dup boot-validator removed (CR-C13) + handler base-class consolidation (CR-C11) + asset-name/path helper (CR-C10) + spaCy init dedup (CR-C5) + WebAPIPlugin walk dedup (CR-C12) + provider /configure gate (CR-C8) + platform-list centralization (CR-C9); **review §A + §B + §C + §D ALL fully resolved**. ARCH-25 (WB7/WB8 hardware bring-up) remains as a separate hardware-gated task, not a review item. Cross-refs: CR-B1→BUILD-7, CR-C1/2/4/D1-4→BUILD-7, CR-C9→ARCH-25, CR-A12→QUAL-15, CR-A16→QUAL-30 | (new findings) |
+| `docs/review/config_ui_review.md` `[x]` (2026-06-28) | config-ui quality/dup/dead/correctness pass — 5 confirmed + 2 plausible correctness bugs (404 reload loop, stale-request overwrite, unreachable blocking dialog, wrong-key validation error, stale memo), type-contract drift in `types/api.ts` (CoreConfig/NLUConfig/VADConfig behind backend → defeats the type-check gate), 6 duplications (apiClient quintet, page clones, editor primitives), unused-export dead code, efficiency + hardcoded-list/altitude smells | BUG-8/9/10, UI-11/12/13/14 |
 
 ---
 
@@ -298,6 +299,26 @@ _Discrete functional defects (distinct from QUAL refactors/quality work). Surfac
       "time"/"for", `message` → "reminder"), but **NEVER** "translate" canonical technical identifiers (provider /
       model / driver / service names are self-matchable). Per-handler gap list in the BUG-4 audit. Surfaced while
       fixing BUG-4.
+- [ ] **BUG-8** [UI] (P3) `[deferred]` — **config-ui DonationsPage composite-key + stale-state defects** (review
+      `config_ui_review.md` §A, CONFIRMED). (A1) 404-fallback stores the empty donation under bare `[handlerName]` while
+      the load effect keys on `` `${handler}:${lang}` `` with `donations` in deps → **infinite reload loop** + stuck
+      spinner for any handler lacking a donation file in the active language (`pages/DonationsPage.tsx:735` vs `755-762`,
+      effect `654-662`). (A4) validation error stored under bare `[selectedHandler]` not the composite key → the tab
+      never shows the error (`864-867` vs `878-881`). (A5) `globalParamNames` memo omits `selectedLanguage` from deps →
+      wrong-language autocomplete on a cached language switch (`788-801`). (A7, PLAUSIBLE) `handlersList.find(...)!`
+      (`996`) → `CrossLanguageValidation.tsx:53` `undefined.languages.length` crash if the selected handler leaves the
+      list mid-reload.
+- [ ] **BUG-9** [UI] (P3) `[deferred]` — **config-ui real-time analysis stale-request overwrite** (review §A2, CONFIRMED).
+      `useRealtimeAnalysis.ts:100-141` reads the abort signal off `abortControllerRef.current` *after* the await (by then
+      the newest controller), so a slow earlier response passes the guard and clobbers newer results; the signal is also
+      never passed to `analyzeDonation`/`fetch`, so `abort()` never cancels the network. Fix: capture the signal in a
+      per-invocation local and thread it into the request. (A6, PLAUSIBLE) harden the unguarded `.conflicts.filter`/`.map`
+      (`useValidationWorkflow.ts:98-99`, `useRealtimeAnalysis.ts:122`) against a payload missing `conflicts`.
+- [ ] **BUG-10** [UI] (P3) `[deferred]` — **config-ui enhanced-mode blocking-conflicts dialog unreachable** (review §A3,
+      CONFIRMED). `canSaveNLU` already requires `!hasBlockingConflicts`, which disables the Apply button, so
+      `handleApply`'s `if (hasBlockingConflicts) setShowBlockingDialog(true)` never runs and `BlockingConflictsDialog`
+      can never open — the entire enhanced Apply branch is gated (`ApplyChangesBar.tsx:71,127-130,190,248`). Decide the
+      intended UX (a separate "review conflicts" trigger) or remove the dead dialog.
 
 ### Tests (TEST)
 > **Strategy (decided 2026-06-01): do NOT keep repairing the existing suite.** Most tests were written against
@@ -343,6 +364,33 @@ Governed by `config-ui-stays-functional` (config-ui must stay functional).
       `MonitoringPage` placeholder and the **ARCH-7 [MQTT]** output-seam work (both touch live pipeline observability).
       Re-scope against the *fixed* pipeline + real endpoints when it's actually picked up. Captured from a config-ui
       doc reviewed during QUAL-25 (2026-06-02).
+- [ ] **UI-11** [UI] (P3) `[deferred]` — **config-ui type-contract drift in `src/types/api.ts`** (review
+      `config_ui_review.md` §B). The hand-written `api.ts` (what `apiClient` consumes) has fallen behind backend
+      `CoreConfig` while the generated `openapi.gen.ts` is current but unused: `CoreConfig` missing `outputs`/`trace`
+      (B1) and canonical `default_language`/`supported_languages` (B2); `NLUConfig` carries phantom required language
+      fields moved to CoreConfig (B3); `VADConfig` is the pre-ARCH-18 shape (B4). The editor renders from the backend
+      schema so it still works — but typed access is `undefined`/`as any` and the **type-check half of
+      `config-ui-stays-functional` gives false confidence**. Fix: regenerate/realign `api.ts`, or point `apiClient` at
+      `openapi.gen.ts`. (Also noted: `ajv`/`ajv-formats` are unused deps — client validation is backend-delegated.)
+- [ ] **UI-12** [UI] (P3) `[deferred]` — **config-ui duplication consolidation** (review §C, ~500+ duplicated lines).
+      `apiClient` per-resource CRUD quintet copy-pasted ×4 (donations/templates/prompts/localizations) → a
+      `resourceCrud(prefix, dataKey)` factory; `TemplatesPage`≈`PromptsPage` whole-page clones (+ Donations/Localizations
+      shape) → a `useHandlerLanguageResource` hook + `ResourceEditorLayout`; "list of strings" reimplemented ×4 → route
+      through `ArrayOfStringsEditor`; `TemplateKeyEditor`≈`LocalizationKeyEditor` → one `TypedValueEditor` reusing
+      `KeyValueEditor`; `CardPatternsEditor`≈`ExtractionFillersEditor` controlled-editor scaffold → a
+      `useDecompiledPatterns` hook. File:line copies in the review doc §C1–C6.
+- [ ] **UI-13** [UI] (P3) `[deferred]` — **config-ui dead-code removal** (review §D — unused *exports*, which ESLint's
+      unused-locals rule doesn't catch). `types/index.ts:12-23` 8 never-imported utility aliases; `types/components.ts`
+      dead interfaces (`TokenPatternsEditorProps`, `SlotPatternsEditorProps`, `HandlerListProps`, `ConfigSection`+
+      `ConfigField`, `SearchFilters`, `BulkOperationResult`, `MonitoringData`); `spacyAttributeHelpers.ts:261`
+      `validateSpacyAttribute`; `safeStringify.ts:77` `wouldShowObjectObject`. Verify 0 refs, then delete.
+- [ ] **UI-14** [UI] (P3) `[deferred]` — **config-ui efficiency + hardcoded-list/altitude** (review §E). Efficiency:
+      derive `hasChanges` (state-via-effect, E1), `useRef` debounce in `TomlPreview` (E2), `structuredClone` for the 8
+      `JSON.parse(JSON.stringify)` deep-copies (E3), thread the memoized donation hash instead of double-hashing (E4),
+      memoize per-render/per-row work (E5). Altitude — hardcoded lists that drift from a source of truth: derive
+      `ContractEditor` enums from the generated unions (E6), schema-drive the `ConfigSection` component roster (E7) and
+      `ConfigWidgets` per-name widget heuristics (E9), source language labels/fallback from backend `supported_languages`
+      (E8, `LanguageTabs`/`DonationsPage:534 ['en','ru']`), and de-hardcode the spaCy attribute vocab + i18n it (E10).
 
 ### Release Readiness (REL)
 - [ ] **REL-1** (P0) — Sign off the Definition-of-release checklist above (fill target + criteria).

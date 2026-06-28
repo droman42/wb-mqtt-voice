@@ -14,6 +14,15 @@ newest entries near the top of each dated section.
 ## Action journal
 
 ### 2026-06-28
+- **config-ui review (`config_ui_review.md`) — quality/dup/dead/correctness pass.** 8 finder angles → 1-vote verify.
+  Found **5 confirmed + 2 plausible correctness bugs** (404 reload loop, stale-request overwrite, unreachable blocking
+  dialog, wrong-key validation error, stale memo), **type-contract drift** in `types/api.ts` (CoreConfig/NLUConfig/
+  VADConfig behind the backend — defeats the type-check half of `config-ui-stays-functional` while the editor keeps
+  working off the backend schema), **6 duplications** (~500+ lines: apiClient CRUD quintet ×4, Templates/Prompts page
+  clones, list/key/card editor primitives), **dead exports** (ESLint only flags unused *locals*), and efficiency +
+  hardcoded-list/altitude smells. Baseline `npm run check`/`build` pass — the defects are exactly what those gates
+  don't catch. Remediation filed: **BUG-8/9/10** (correctness) + **UI-11** (drift) / **UI-12** (dup) / **UI-13** (dead)
+  / **UI-14** (efficiency+altitude), all `[deferred]`. No fixes applied (review → tasks, per `review-then-remediate`).
 - **TEST-14 DONE — trace↔WAV unification (record once, test twice).** A golden audio trace already carries its captured
   audio (the bytes `--listen` plays), so a new `irene-replay-trace --extract-wav <file.wav>` decodes it to a standard
   WAV — one golden trace now serves both the offline replay tier AND the live WS suite, no re-recording with a mic.
