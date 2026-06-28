@@ -1725,6 +1725,16 @@ rationale/chronology lives in [`RELEASE_JOURNAL.md`](./RELEASE_JOURNAL.md).
       runner overriding component config is its own smell — relevant to the `--set` work, worth a future look._
 
 ### Tests (TEST)
+- [x] **TEST-14** [EVAL] (P3) `[deferred]` — **DONE 2026-06-28.** Trace↔WAV unification (S3 / D-9): a golden audio
+      trace already carries its captured audio (base64 PCM16, the same bytes `--listen` plays), so a new
+      `irene-replay-trace --extract-wav <file.wav>` decodes it to a standard WAV — **record once, test twice** (one
+      golden trace serves both the offline replay tier *and* the live WS suite, no re-recording with a mic). It's a pure
+      trace→WAV transform: a standalone CLI mode that builds no core and runs no replay; writes at the captured
+      rate/channels (Irene's 16 kHz mono PCM16 → directly usable as a WS fixture; eval-commons `conform` aligns target
+      format if ever needed). Module fn `write_trace_audio_to_wav` (rejects text traces / non-PCM16). Documented in
+      `eval/README` (record-once-test-twice). Gates: suite 1109 passed (+3 extract-wav tests), pyright 0, import-linter
+      9/9. **This closes the trace-driven system-testing series** (TEST-11 design → TEST-12 offline replay → TEST-13
+      live-WS failure capture → TEST-14 trace↔WAV); no TEST- trace-playback tasks remain open.
 - [x] **TEST-13** [EVAL] (P2) `[deferred]` — **DONE 2026-06-28.** Failure-trace capture for the live WS suite (S2,
       design `trace_system_testing.md`). **D-6 SUT enabler:** when tracing is on, `WorkflowManager.process_text_input`/
       `process_audio_input` stamp the trace `request_id` onto `result.metadata` (the `/ws/audio` response already

@@ -14,6 +14,13 @@ newest entries near the top of each dated section.
 ## Action journal
 
 ### 2026-06-28
+- **TEST-14 DONE — trace↔WAV unification (record once, test twice).** A golden audio trace already carries its captured
+  audio (the bytes `--listen` plays), so a new `irene-replay-trace --extract-wav <file.wav>` decodes it to a standard
+  WAV — one golden trace now serves both the offline replay tier AND the live WS suite, no re-recording with a mic.
+  Pure trace→WAV transform (standalone CLI mode, no core/replay); writes at the captured rate/channels (Irene's 16 kHz
+  mono PCM16 → directly usable as a fixture). Documented in `eval/README`. Gates: suite 1109 passed (+3 tests),
+  pyright 0, import-linter 9/9. **Closes the trace-driven system-testing series** (TEST-11→12→13→14); no trace-playback
+  TEST- tasks remain open.
 - **TEST-13 DONE — failure-trace capture for the live WS suite (S2).** Two pieces: (D-6) when tracing is on, the
   `WorkflowManager` entry points stamp the trace `request_id` onto `result.metadata` — the `/ws/audio` response already
   spreads `result.metadata`, so each case correlates exactly to its saved `<request_id>.json` (no handler change,

@@ -309,9 +309,6 @@ _Discrete functional defects (distinct from QUAL refactors/quality work). Surfac
 > architecture + code reviews land** (gated). TEST-3/4/5/6 are coverage goals folded into that rewrite.
 
 _Trace-driven system testing (design `docs/design/trace_system_testing.md`, TEST-11 ✓) → these three implementation slices:_
-- [ ] **TEST-14** [EVAL] (P3) `[deferred]` — **Trace↔WAV unification** (S3, phase 2). A `--extract-wav` path so one
-      golden trace yields the WS fixture (record-once-test-twice, D-9); lives in this repo (decodes Irene's trace
-      format).
 
 ### Build & CI (BUILD)
 

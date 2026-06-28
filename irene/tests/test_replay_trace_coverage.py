@@ -23,7 +23,7 @@ from unittest import mock
 from .. import core as _core_pkg  # noqa: F401  (ensure package import)
 from ..core import trace_context as _tc
 from ..core.trace_context import TraceContext, set_step_hook
-from ..tools.replay_trace import TraceReplayer, _print_report, main_async
+from ..tools.replay_trace import TraceReplayer, _print_report, main_async, write_trace_audio_to_wav
 
 
 def _arun(coro):
@@ -539,6 +539,41 @@ class TestMainAsync(unittest.TestCase):
             with self.assertRaises(RuntimeError):
                 _arun(main_async(self._args()))
         self.assertTrue(closed["yes"])  # close() ran in the finally
+
+
+class TestExtractWav(unittest.TestCase):
+    """TEST-14 (D-9): one golden trace → the WS WAV fixture (record once, test twice)."""
+
+    def _audio_trace(self, pcm: bytes, *, rate=16000, channels=1, fmt="pcm16"):
+        import base64
+        return {"replay": {"input": {
+            "kind": "audio",
+            "audio_base64": base64.b64encode(pcm).decode("ascii"),
+            "format": {"rate": rate, "channels": channels, "format": fmt},
+        }}}
+
+    def test_extracts_pcm_to_readable_wav(self):
+        import tempfile
+        import wave
+        pcm = b"\x01\x02\x03\x04" * 400  # 1600 bytes → 800 frames mono 16-bit
+        with tempfile.TemporaryDirectory() as d:
+            out = Path(d) / "nested" / "fixture.wav"
+            info = write_trace_audio_to_wav(self._audio_trace(pcm, rate=16000), out)
+            self.assertTrue(out.exists())  # parent dir auto-created
+            self.assertEqual((info["rate"], info["channels"], info["frames"]), (16000, 1, 800))
+            with wave.open(str(out), "rb") as w:
+                self.assertEqual(w.getframerate(), 16000)
+                self.assertEqual(w.getnchannels(), 1)
+                self.assertEqual(w.getsampwidth(), 2)
+                self.assertEqual(w.readframes(w.getnframes()), pcm)  # round-trips exactly
+
+    def test_rejects_text_trace(self):
+        with self.assertRaises(ValueError):
+            write_trace_audio_to_wav({"replay": {"input": {"kind": "text", "text": "hi"}}}, Path("/tmp/x.wav"))
+
+    def test_rejects_unsupported_sample_format(self):
+        with self.assertRaises(ValueError):
+            write_trace_audio_to_wav(self._audio_trace(b"\x00\x00", fmt="opus"), Path("/tmp/x.wav"))
 
 
 if __name__ == "__main__":

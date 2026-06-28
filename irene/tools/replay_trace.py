@@ -22,6 +22,7 @@ import base64
 import json
 import logging
 import sys
+import wave
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -49,6 +50,34 @@ def _strip_volatile(obj: Any) -> Any:
     if isinstance(obj, list):
         return [_strip_volatile(v) for v in obj]
     return obj
+
+
+def write_trace_audio_to_wav(trace: Dict[str, Any], out_path: Path) -> Dict[str, Any]:
+    """Extract a trace's captured input audio into a WAV fixture (D-9 / TEST-14).
+
+    The same golden trace then serves BOTH tiers — offline replay *and* the live WS suite
+    (record once, test twice). Decodes Irene's trace audio (base64 PCM16) into a standard WAV at the
+    captured rate/channels. Raises ``ValueError`` if the trace carries no audio (e.g. a text trace) or
+    an unexpected sample format.
+    """
+    inp = (trace.get("replay") or {}).get("input") or {}
+    if inp.get("kind") != "audio" or not inp.get("audio_base64"):
+        raise ValueError("trace has no captured audio (not an audio trace) — nothing to extract")
+    fmt = inp.get("format") or {}
+    afmt = str(fmt.get("format") or "pcm16").lower()
+    if afmt not in ("pcm16", "pcm_s16le", "s16le", "pcm"):
+        raise ValueError(f"unsupported trace audio sample format {afmt!r} (expected pcm16)")
+    pcm = base64.b64decode(inp["audio_base64"])
+    rate = int(fmt.get("rate") or 16000)
+    channels = int(fmt.get("channels") or 1)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    with wave.open(str(out_path), "wb") as w:
+        w.setnchannels(channels)
+        w.setsampwidth(2)  # PCM16
+        w.setframerate(rate)
+        w.writeframes(pcm)
+    return {"path": str(out_path), "rate": rate, "channels": channels,
+            "frames": len(pcm) // (2 * max(channels, 1)), "bytes": len(pcm)}
 
 
 def diff_output(result: Any, recorded: Dict[str, Any]) -> Dict[str, Any]:
@@ -321,7 +350,8 @@ def main() -> None:
             "  irene-replay-trace -t traces/<id>.json                 # --local diff (default)\n"
             "  irene-replay-trace -t <id>.json --reproduce            # apply the trace's config\n"
             "  irene-replay-trace -t <id>.json --listen --step        # hear it, pause per stage\n"
-            "  irene-replay-trace -t <id>.json --record-out out/      # save a second trace\n"))
+            "  irene-replay-trace -t <id>.json --record-out out/      # save a second trace\n"
+            "  irene-replay-trace -t <id>.json --extract-wav f.wav    # derive the WS fixture (D-9)\n"))
     parser.add_argument("--trace", "-t", type=Path, required=True, help="Path to the trace JSON file")
     parser.add_argument("--config", "-c", type=Path, default=Path("configs/config-master.toml"),
                         help="Replayer config (default: configs/config-master.toml)")
@@ -332,11 +362,26 @@ def main() -> None:
     parser.add_argument("--step", action="store_true", help="Pause at each pipeline stage (D-12)")
     parser.add_argument("--record-out", type=Path, default=None,
                         help="Directory to save a second trace of the replay run (D-13)")
+    parser.add_argument("--extract-wav", type=Path, default=None,
+                        help="Extract the trace's captured audio to a WAV fixture and exit (D-9); no replay")
     parser.add_argument("--verbose", "-v", action="store_true", help="Verbose logging")
     args = parser.parse_args()
 
     logging.basicConfig(level=logging.DEBUG if args.verbose else logging.WARNING,
                         format="%(levelname)s %(name)s: %(message)s")
+
+    # --extract-wav is a pure trace→WAV transform (D-9): no core, no replay, no event loop.
+    if args.extract_wav is not None:
+        try:
+            trace = json.loads(args.trace.read_text(encoding="utf-8"))
+            info = write_trace_audio_to_wav(trace, args.extract_wav)
+            print(f"wrote {info['path']}  ({info['rate']} Hz, {info['channels']} ch, "
+                  f"{info['frames']} frames)")
+            sys.exit(0)
+        except Exception as e:
+            logger.error(f"extract-wav failed: {e}")
+            sys.exit(1)
+
     try:
         sys.exit(asyncio.run(main_async(args)))
     except KeyboardInterrupt:

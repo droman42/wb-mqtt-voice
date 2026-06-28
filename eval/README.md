@@ -87,6 +87,14 @@ irene-replay-trace -t traces/failures/<request_id>.json --listen --step   # hear
 (For the offline replay tier, `irene-replay-trace --record-out <dir>` keeps the replayed trace on a
 mismatch — the replay already diffs `{text, success, actions}` and names the diverging field.)
 
+**One golden trace → both tiers (`--extract-wav`).** A golden audio trace carries its captured audio,
+so it serves *record once, test twice*: replay it offline **and** derive the WS WAV fixture from it
+instead of re-recording with a mic.
+
+```bash
+irene-replay-trace -t traces/<id>.json --extract-wav fixtures/<case>.wav   # 16 kHz mono PCM
+```
+
 ## Conventions & gotchas (read before editing)
 
 These are non-obvious and have already caused (and cost) bugs — keep them in mind:
