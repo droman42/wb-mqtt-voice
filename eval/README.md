@@ -62,6 +62,7 @@ scripts resolve. No `activate` needed when going through `make`.
 make cli                                   # CLI contracts — runs today, no prerequisites
 make record                                # record the WS audio fixtures interactively (mic; see fixtures/README.md)
 make ws  TARGET=local                      # WS suite vs a locally-running Irene (start it first: make serve)
+make ws  TARGET=local TRACE=1              # ... and keep each FAILING case's execution trace (see below)
 make ws  TARGET=wb7                        # WS suite vs Irene on the WB7 controller
 make ux  TARGET=local                      # only the DeepSeek-judged UX cases
 make serve CONFIG=voice                    # bring Irene up locally with a config (foreground)
@@ -72,6 +73,19 @@ make view                                  # results UI
 For model comparison, `make compare` writes `results-ws-<target>-<config>.json` per config so you
 can diff WER side by side. Keep the `reference:` fixed; expect WER to differ per model — that's the
 measurement (so read the scores, don't lean on a single hard threshold during comparison).
+
+**Debugging a WS failure (`TRACE=1`).** Start the SUT with tracing writing into `TRACES_DIR`
+(default `traces/run`; e.g. `[trace] traces_dir = ".../eval/traces/run"` in its config), then
+`make ws TRACE=1`. The SUT tags each response with its trace `request_id`; afterwards the harness
+keeps only the **failing** cases' traces under `traces/failures/` (the rest are pruned) — the
+*actual* failing run, not a re-run that may not reproduce a flaky failure. Replay one to debug it:
+
+```bash
+irene-replay-trace -t traces/failures/<request_id>.json --listen --step   # hear it, step each stage
+```
+
+(For the offline replay tier, `irene-replay-trace --record-out <dir>` keeps the replayed trace on a
+mismatch — the replay already diffs `{text, success, actions}` and names the diverging field.)
 
 ## Conventions & gotchas (read before editing)
 

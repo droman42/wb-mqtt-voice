@@ -309,12 +309,6 @@ _Discrete functional defects (distinct from QUAL refactors/quality work). Surfac
 > architecture + code reviews land** (gated). TEST-3/4/5/6 are coverage goals folded into that rewrite.
 
 _Trace-driven system testing (design `docs/design/trace_system_testing.md`, TEST-11 ✓) → these three implementation slices:_
-- [ ] **TEST-13** [EVAL] (P2) `[deferred]` — **Failure-trace capture for the live WS suite** (S2). `make ws TRACE=1`
-      launches the SUT traced; **SUT enabler:** echo the trace `request_id` in `/ws/audio` response metadata when
-      tracing (D-6, additive; config-ui N/A); keep-on-failure post-step as a **generic `eval-commons` helper** (D-13,
-      reusable by the bridge) → failing cases' traces land in `eval/traces/failures/` (others pruned); plus
-      `--record-out`-on-mismatch for the offline tier (D-7). Captures the *actual* failing run; a failed case becomes
-      replayable (`--listen`/`--step`).
 - [ ] **TEST-14** [EVAL] (P3) `[deferred]` — **Trace↔WAV unification** (S3, phase 2). A `--extract-wav` path so one
       golden trace yields the WS fixture (record-once-test-twice, D-9); lives in this repo (decodes Irene's trace
       format).

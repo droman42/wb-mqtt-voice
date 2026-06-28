@@ -18,6 +18,14 @@ CONFIG    ?= voice
 CONFIGS   ?= voice standalone
 PROMPTFOO ?= promptfoo
 
+# TEST-13 failure-trace capture (live WS). With TRACE=1, after the run the failing cases' traces are
+# kept under FAILURES_DIR and the rest pruned — a failed case becomes replayable (`make replay`).
+# The SUT must be launched with tracing writing into TRACES_DIR (e.g. `[trace] traces_dir`); on a
+# remote TARGET, point TRACES_DIR at a path the SUT writes and you can read.
+TRACE        ?= 0
+TRACES_DIR   ?= traces/run
+FAILURES_DIR ?= traces/failures
+
 # uv-managed project venv: has irene + eval_commons, and its bin holds the console scripts.
 # promptfoo shells out to PROMPTFOO_PYTHON for the Python providers/assertions; the cli_provider
 # subprocess finds `irene-*` because we prepend the venv bin to PATH.
@@ -51,8 +59,15 @@ setup-record:                 ## add the fixture recorder + mic deps (sounddevic
 cli:                          ## CLI contract tests (argparse console scripts) — no service needed
 	$(PROMPTFOO) eval -c cli.promptfooconfig.yaml
 
-ws:                           ## streaming-ASR system tests over /ws/audio (needs a running SUT)
+ws:                           ## streaming-ASR system tests over /ws/audio (needs a running SUT; TRACE=1 keeps failing traces)
+ifeq ($(TRACE),1)
+	@$(PROMPTFOO) eval -c ws.promptfooconfig.yaml -o results-ws-$(TARGET).json; code=$$?; \
+	  $(PROMPTFOO_PYTHON) -m eval_commons.failures --results results-ws-$(TARGET).json \
+	    --traces-dir $(TRACES_DIR) --out $(FAILURES_DIR) --prune; \
+	  exit $$code
+else
 	$(PROMPTFOO) eval -c ws.promptfooconfig.yaml -o results-ws-$(TARGET).json
+endif
 
 ux:                           ## only the DeepSeek-judged UX cases (needs DEEPSEEK_API_KEY)
 	$(PROMPTFOO) eval -c ws.promptfooconfig.yaml --filter-metadata kind=ux

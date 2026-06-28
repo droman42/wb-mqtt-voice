@@ -1725,6 +1725,19 @@ rationale/chronology lives in [`RELEASE_JOURNAL.md`](./RELEASE_JOURNAL.md).
       runner overriding component config is its own smell — relevant to the `--set` work, worth a future look._
 
 ### Tests (TEST)
+- [x] **TEST-13** [EVAL] (P2) `[deferred]` — **DONE 2026-06-28.** Failure-trace capture for the live WS suite (S2,
+      design `trace_system_testing.md`). **D-6 SUT enabler:** when tracing is on, `WorkflowManager.process_text_input`/
+      `process_audio_input` stamp the trace `request_id` onto `result.metadata` (the `/ws/audio` response already
+      spreads `result.metadata`, so it surfaces with no handler change); additive, gated on tracing; config-ui N/A.
+      **D-13 keep-on-failure helper:** new project-agnostic `eval_commons.failures` (eval-commons `e740c80`) — reads the
+      promptfoo results JSON and copies each FAILING case's `<traces_dir>/<request_id>.json` into `traces/failures/`
+      (prunes the rest); robust to promptfoo nesting/version drift; reusable by wb-mqtt-bridge unchanged. Wired into the
+      thin `eval/Makefile` `ws` target behind `TRACE=1` (preserves promptfoo's exit code) + documented in `eval/README`.
+      **D-7 offline tier:** already satisfied — `irene-replay-trace --record-out` keeps the replayed trace on a mismatch
+      (the replay diffs `{text,success,actions}`); documented in the README. Reconciliation: `--record-out` pre-existed
+      (TEST-12); `/ws/audio` already had `intent_name` (QUAL-54) but not `request_id`. Gates: suite 1106 passed (+ 2
+      workflow_manager tests for the stamp; eval-commons +6), pyright 0, import-linter 9/9. Remaining: **TEST-14**
+      (trace↔WAV).
 - [x] **TEST-12** [EVAL] (P2) `[deferred]` — **DONE 2026-06-28.** Offline golden-trace replay surface (S1 of
       `trace_system_testing.md`) **+ the config-override enabler the user asked for.** (1) **`--set DOTTED.KEY=VALUE`**
       config overrides — `apply_dotted_overrides` in `config/manager.py` (JSON-typed coercion, applied pre-validation so

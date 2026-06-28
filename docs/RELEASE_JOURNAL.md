@@ -14,6 +14,16 @@ newest entries near the top of each dated section.
 ## Action journal
 
 ### 2026-06-28
+- **TEST-13 DONE — failure-trace capture for the live WS suite (S2).** Two pieces: (D-6) when tracing is on, the
+  `WorkflowManager` entry points stamp the trace `request_id` onto `result.metadata` — the `/ws/audio` response already
+  spreads `result.metadata`, so each case correlates exactly to its saved `<request_id>.json` (no handler change,
+  additive, config-ui N/A); (D-13) a new project-agnostic `eval_commons.failures` helper (eval-commons `e740c80`) reads
+  the promptfoo results JSON and keeps only the FAILING cases' traces under `traces/failures/`, pruning the rest —
+  reusable by wb-mqtt-bridge unchanged. Wired into `eval/Makefile`'s `ws` target behind `TRACE=1` and documented in
+  `eval/README` (incl. the offline `--record-out`-on-mismatch tier, D-7, which already existed). A failed case is now
+  replayable from the *actual* failing run (`irene-replay-trace --listen --step`). Gates: suite 1106 passed (+ 2
+  workflow_manager tests; eval-commons +6), pyright 0, import-linter 9/9. Trace-playback wiring now leaves only
+  **TEST-14** (trace↔WAV unification) open.
 - **BUG-7 DONE — ru oblique-case numerals normalize to digits.** ovos (ru) reads only nominative numerals, so «одну
   секунду»/«двух минут»/«тридцати пяти» stayed as words and «тридцать одну» even broke to "30 одну". Fix at the
   normalizer altitude (`text_processing.py`): remap the oblique cardinals ovos misses → nominative before ovos (digit

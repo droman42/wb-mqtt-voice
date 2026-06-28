@@ -482,6 +482,12 @@ class WorkflowManager:
                     "intent": result.metadata.get("original_intent") if result.metadata else None})
             if trace_context and trace_context.enabled:
                 trace_context.record_output(result)
+                # D-6 (TEST-13): surface the trace id on the result so a consumer (the /ws/audio
+                # response metadata, REST) can correlate each request → its saved <request_id>.json —
+                # exact mapping instead of fragile time-based matching. Additive, gated on tracing.
+                if result.metadata is None:
+                    result.metadata = {}
+                result.metadata["request_id"] = trace_context.request_id
             self._save_trace_if_enabled(trace_context)
             # (QUAL-28) F&F actions are registered in the store by the launch — no write-back needed.
             return result
@@ -637,6 +643,12 @@ class WorkflowManager:
                     "intent": result.metadata.get("original_intent") if result.metadata else None})
             if trace_context and trace_context.enabled:
                 trace_context.record_output(result)
+                # D-6 (TEST-13): surface the trace id on the result so a consumer (the /ws/audio
+                # response metadata, REST) can correlate each request → its saved <request_id>.json —
+                # exact mapping instead of fragile time-based matching. Additive, gated on tracing.
+                if result.metadata is None:
+                    result.metadata = {}
+                result.metadata["request_id"] = trace_context.request_id
             self._save_trace_if_enabled(trace_context)
             # (QUAL-28) F&F actions are registered in the store by the launch — no write-back needed.
             return result

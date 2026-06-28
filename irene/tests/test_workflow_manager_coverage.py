@@ -224,6 +224,25 @@ class TestProcessTextInput(unittest.TestCase):
             self.assertEqual(doc["replay"]["input"]["kind"], "text")
             self.assertEqual(doc["recorded_output"]["text"], "готово")
 
+    def test_stamps_request_id_on_result_when_tracing(self):
+        # D-6 (TEST-13): the trace request_id is surfaced on result.metadata so the /ws/audio
+        # response metadata can correlate a request → its saved <request_id>.json (exact match).
+        with tempfile.TemporaryDirectory() as d:
+            wf = _WorkflowStub(result=IntentResult(text="готово", success=True))
+            m = _manager(active_workflow=wf, config=_config(trace_enabled=True, traces_dir=d))
+            result = _arun(m.process_text_input("команда", session_id="s3"))
+            rid = result.metadata.get("request_id")
+            self.assertIsNotNone(rid)
+            saved = list(Path(d).glob("*.json"))[0]
+            self.assertEqual(saved.stem, rid)  # the stamp equals the trace filename
+            self.assertEqual(json.loads(saved.read_text(encoding="utf-8"))["request_id"], rid)
+
+    def test_no_request_id_stamped_when_tracing_off(self):
+        wf = _WorkflowStub(result=IntentResult(text="ok", success=True))
+        m = _manager(active_workflow=wf, config=_config(trace_enabled=False))
+        result = _arun(m.process_text_input("cmd", session_id="s4"))
+        self.assertNotIn("request_id", result.metadata or {})
+
     def test_raises_when_no_workflow_available(self):
         m = _manager(active_workflow=None, config=_config())
 
