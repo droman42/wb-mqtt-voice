@@ -280,6 +280,17 @@ _Apply to every remediation task below (from the 4 review docs + QUAL-25/26). So
 
 ### Bugs (BUG)
 _Discrete functional defects (distinct from QUAL refactors/quality work). Surfaced from any source; filed before fixing._
+- [ ] **BUG-3** [NLU/I18N] (P3) `[deferred]` — **Reply language doesn't follow the request language (en → ru reply).**
+      «set a timer for ten minutes» sets the timer correctly but replies in Russian: *"Таймер установлен на 10 мин.
+      Сообщение: Таймер завершён!"*. The success template already takes `language` (`timer.py:181
+      _get_template("timer_set_success", language, …)`), so the symptom means **`language` is resolving to `ru` for an
+      English utterance** — a language-detection/propagation issue at the handler boundary (likely systemic, not
+      timer-only), since the BUG-1 number path correctly detected `en` by script. Compounded by a **hardcoded `"ru"`**
+      default message (`timer.py:136`, and the `_parse_timer_from_text` fallback's `timer_completed_default`). Repro:
+      POST `/execute/command {"command":"set a timer for ten minutes"}`. Scope: confirm whether `context.language`
+      reaches the handler and whether per-handler en templates exist; fix the language propagation + the hardcoded `ru`
+      literals. Surfaced while fixing BUG-1. `[deferred]` — secondary-language polish (ru path is correct); promote if
+      English is a release-target language.
 
 ### Tests (TEST)
 > **Strategy (decided 2026-06-01): do NOT keep repairing the existing suite.** Most tests were written against
