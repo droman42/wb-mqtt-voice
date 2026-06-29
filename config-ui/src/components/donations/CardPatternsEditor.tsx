@@ -8,10 +8,10 @@
  * and an external reset (Cancel/revert/method switch) re-syncs from props.
  */
 
-import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Plus, Trash2 } from 'lucide-react';
 import CardEditor from './CardEditor';
+import { useDecompiledPatterns } from '@/hooks/useDecompiledPatterns';
 import {
   type SpacyPattern, type Card, type CardPattern,
   decompilePatterns, compilePatterns,
@@ -30,22 +30,8 @@ export default function CardPatternsEditor({
 }: CardPatternsEditorProps) {
   const { t } = useTranslation('donations');
   const item = itemLabel ?? t('cards.list.defaultItemLabel');
-  const [patterns, setPatterns] = useState<CardPattern[]>(() => decompilePatterns(value ?? []));
-  const lastEmitted = useRef<SpacyPattern[]>(value ?? []);
-
-  useEffect(() => {
-    if (value !== lastEmitted.current) { // external change (revert / method switch) — re-sync
-      setPatterns(decompilePatterns(value ?? []));
-      lastEmitted.current = value ?? [];
-    }
-  }, [value]);
-
-  const emit = (next: CardPattern[]): void => {
-    setPatterns(next);
-    const compiled = compilePatterns(next);
-    lastEmitted.current = compiled;
-    onChange(compiled);
-  };
+  const [patterns, emit] = useDecompiledPatterns<SpacyPattern, CardPattern>(
+    value, onChange, decompilePatterns, compilePatterns);
 
   const setCard = (pi: number, ci: number, card: Card): void =>
     emit(patterns.map((p, i) => (i === pi ? p.map((c, j) => (j === ci ? card : c)) : p)));

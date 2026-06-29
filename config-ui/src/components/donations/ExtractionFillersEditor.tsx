@@ -8,11 +8,11 @@
  * CardPatternsEditor.
  */
 
-import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Plus, Trash2 } from 'lucide-react';
 import CardEditor from './CardEditor';
 import Input from '@/components/ui/Input';
+import { useDecompiledPatterns } from '@/hooks/useDecompiledPatterns';
 import {
   type ExtractionPattern, type FillerPattern, type Card,
   decompileExtractionPatterns, compileExtractionPatterns,
@@ -26,22 +26,8 @@ interface ExtractionFillersEditorProps {
 
 export default function ExtractionFillersEditor({ value, onChange, disabled = false }: ExtractionFillersEditorProps) {
   const { t } = useTranslation('donations');
-  const [fillers, setFillers] = useState<FillerPattern[]>(() => decompileExtractionPatterns(value ?? []));
-  const lastEmitted = useRef<ExtractionPattern[]>(value ?? []);
-
-  useEffect(() => {
-    if (value !== lastEmitted.current) {
-      setFillers(decompileExtractionPatterns(value ?? []));
-      lastEmitted.current = value ?? [];
-    }
-  }, [value]);
-
-  const emit = (next: FillerPattern[]): void => {
-    setFillers(next);
-    const compiled = compileExtractionPatterns(next);
-    lastEmitted.current = compiled;
-    onChange(compiled);
-  };
+  const [fillers, emit] = useDecompiledPatterns<ExtractionPattern, FillerPattern>(
+    value, onChange, decompileExtractionPatterns, compileExtractionPatterns);
 
   const setFiller = (fi: number, f: FillerPattern): void => emit(fillers.map((x, i) => (i === fi ? f : x)));
   const setCard = (fi: number, ci: number, card: Card): void =>
