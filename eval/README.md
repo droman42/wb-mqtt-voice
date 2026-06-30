@@ -17,7 +17,7 @@ eval/
   profiles/
     targets/{local,wb7}.env    # WHERE the SUT is  → WS_AUDIO_URL, HEALTH_URL, MQTT_*
     configs/*.env              # WHICH config it runs (local bring-up) → IRENE_CONFIG_FILE
-  fixtures/                    # audio fixtures (git-ignored; see fixtures/README.md)
+  fixtures/                    # audio fixtures — committed test inputs (see fixtures/README.md)
 ```
 
 ## The two run axes (both external to the test YAML)
