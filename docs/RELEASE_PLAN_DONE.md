@@ -2183,6 +2183,17 @@ rationale/chronology lives in [`RELEASE_JOURNAL.md`](./RELEASE_JOURNAL.md).
       covered; the standalone `PARAMETER_EXTRACTION_GUIDE.md` was not needed.
 
 ### UI / config-ui (UI)
+- [x] **UI-13** [UI] (P3) `[deferred]` — **DONE 2026-06-28.** config-ui dead-code removal (review §D — unused *exports*,
+      which ESLint's unused-locals rule can't see). Each verified 0 external refs before deleting; the gate (type-check)
+      would catch a mis-call. Removed: `types/index.ts` 8 never-imported utility aliases (Maybe/Optional/RequiredKeys/
+      ChangeHandler/ClickHandler/AsyncClickHandler/ApiMethod/LoadingState; kept `ConnectionStatus`); `types/components.ts`
+      8 dead interfaces (TokenPatternsEditorProps, SlotPatternsEditorProps, HandlerListProps, ConfigSection+ConfigField,
+      SearchFilters, BulkOperationResult, MonitoringData; 239→174 lines); `spacyAttributeHelpers.ts` `validateSpacyAttribute`;
+      `safeStringify.ts` `wouldShowObjectObject`. **Plus folded in:** the 12 hand-written `*Request` types in `api.ts`
+      that C1 (UI-12) orphaned (the same-named `openapi.gen.ts` schemas are separate/generated), and the unused
+      `ajv`/`ajv-formats` deps (UI-11 §B finding — `npm uninstall`; not imported anywhere). Gate
+      (`config-ui-stays-functional`): `npm run check` (type-check + lint + orphans) + `npm run build` green — confirming
+      everything removed was truly dead.
 - [x] **UI-12** [UI] (P3) `[deferred]` — **DONE 2026-06-28.** config-ui duplication consolidation (review §C). **The two
       genuinely-clean dedups done; C2–C5 assessed and declined as over-credited.** **C1** — the `apiClient` per-language
       CRUD quintet (donations/templates/prompts/localizations, ~250 dup lines) → 6 shared private helpers + thin typed

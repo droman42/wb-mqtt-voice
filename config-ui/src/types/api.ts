@@ -190,12 +190,6 @@ export interface LanguageDonationContentResponse extends BaseApiResponse {
   cross_language_validation: CrossLanguageValidation;
 }
 
-export interface LanguageDonationUpdateRequest {
-  donation_data: any;
-  validate_before_save: boolean;
-  trigger_reload: boolean;
-}
-
 export interface LanguageDonationUpdateResponse extends BaseApiResponse {
   handler_name: string;
   language: string;
@@ -206,10 +200,6 @@ export interface LanguageDonationUpdateResponse extends BaseApiResponse {
   warnings: ValidationWarning[];
 }
 
-export interface LanguageDonationValidationRequest {
-  donation_data: any;
-}
-
 export interface LanguageDonationValidationResponse extends BaseApiResponse {
   handler_name: string;
   language: string;
@@ -217,11 +207,6 @@ export interface LanguageDonationValidationResponse extends BaseApiResponse {
   errors: ValidationError[];
   warnings: ValidationWarning[];
   validation_types: string[];
-}
-
-export interface CreateLanguageRequest {
-  copy_from?: string;
-  use_template: boolean;
 }
 
 export interface CreateLanguageResponse extends BaseApiResponse {
@@ -304,12 +289,6 @@ export interface TemplateContentResponse extends BaseApiResponse {
   };
 }
 
-export interface TemplateUpdateRequest {
-  template_data: Record<string, any>;
-  validate_before_save?: boolean;
-  trigger_reload?: boolean;
-}
-
 export interface TemplateUpdateResponse extends BaseApiResponse {
   handler_name: string;
   language: string;
@@ -320,10 +299,6 @@ export interface TemplateUpdateResponse extends BaseApiResponse {
   warnings: ValidationWarning[];
 }
 
-export interface TemplateValidationRequest {
-  template_data: Record<string, any>;
-}
-
 export interface TemplateValidationResponse extends BaseApiResponse {
   handler_name: string;
   language: string;
@@ -331,11 +306,6 @@ export interface TemplateValidationResponse extends BaseApiResponse {
   errors: ValidationError[];
   warnings: ValidationWarning[];
   validation_types: string[];
-}
-
-export interface CreateTemplateLanguageRequest {
-  copy_from?: string;
-  use_template?: boolean;
 }
 
 export interface CreateTemplateLanguageResponse extends BaseApiResponse {
@@ -389,12 +359,6 @@ export interface PromptContentResponse extends BaseApiResponse {
   };
 }
 
-export interface PromptUpdateRequest {
-  prompt_data: Record<string, PromptDefinition>;
-  validate_before_save?: boolean;
-  trigger_reload?: boolean;
-}
-
 export interface PromptUpdateResponse extends BaseApiResponse {
   handler_name: string;
   language: string;
@@ -405,10 +369,6 @@ export interface PromptUpdateResponse extends BaseApiResponse {
   warnings: ValidationWarning[];
 }
 
-export interface PromptValidationRequest {
-  prompt_data: Record<string, PromptDefinition>;
-}
-
 export interface PromptValidationResponse extends BaseApiResponse {
   handler_name: string;
   language: string;
@@ -416,11 +376,6 @@ export interface PromptValidationResponse extends BaseApiResponse {
   errors: ValidationError[];
   warnings: ValidationWarning[];
   validation_types: string[];
-}
-
-export interface CreatePromptLanguageRequest {
-  copy_from?: string;
-  use_template?: boolean;
 }
 
 export interface CreatePromptLanguageResponse extends BaseApiResponse {
@@ -467,12 +422,6 @@ export interface LocalizationContentResponse extends BaseApiResponse {
   };
 }
 
-export interface LocalizationUpdateRequest {
-  localization_data: Record<string, any>;
-  validate_before_save?: boolean;
-  trigger_reload?: boolean;
-}
-
 export interface LocalizationUpdateResponse extends BaseApiResponse {
   domain: string;
   language: string;
@@ -483,10 +432,6 @@ export interface LocalizationUpdateResponse extends BaseApiResponse {
   warnings: ValidationWarning[];
 }
 
-export interface LocalizationValidationRequest {
-  localization_data: Record<string, any>;
-}
-
 export interface LocalizationValidationResponse extends BaseApiResponse {
   domain: string;
   language: string;
@@ -494,11 +439,6 @@ export interface LocalizationValidationResponse extends BaseApiResponse {
   errors: ValidationError[];
   warnings: ValidationWarning[];
   validation_types: string[];
-}
-
-export interface CreateLocalizationLanguageRequest {
-  copy_from?: string;
-  use_template?: boolean;
 }
 
 export interface CreateLocalizationLanguageResponse extends BaseApiResponse {

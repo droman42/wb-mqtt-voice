@@ -353,11 +353,6 @@ Governed by `config-ui-stays-functional` (config-ui must stay functional).
       (today `canSaveNLU` hard-requires `!hasBlockingConflicts`). Deliverable: a design doc under `docs/design/` first,
       then implementation follow-up(s). The inline `ValidationIndicator` already surfaces blockers, so scope the modal's
       added value deliberately (resolution UX, not just a second display).
-- [ ] **UI-13** [UI] (P3) `[deferred]` — **config-ui dead-code removal** (review §D — unused *exports*, which ESLint's
-      unused-locals rule doesn't catch). `types/index.ts:12-23` 8 never-imported utility aliases; `types/components.ts`
-      dead interfaces (`TokenPatternsEditorProps`, `SlotPatternsEditorProps`, `HandlerListProps`, `ConfigSection`+
-      `ConfigField`, `SearchFilters`, `BulkOperationResult`, `MonitoringData`); `spacyAttributeHelpers.ts:261`
-      `validateSpacyAttribute`; `safeStringify.ts:77` `wouldShowObjectObject`. Verify 0 refs, then delete.
 - [ ] **UI-14** [UI] (P3) `[deferred]` — **config-ui efficiency + hardcoded-list/altitude** (review §E). Efficiency:
       derive `hasChanges` (state-via-effect, E1), `useRef` debounce in `TomlPreview` (E2), `structuredClone` for the 8
       `JSON.parse(JSON.stringify)` deep-copies (E3), thread the memoized donation hash instead of double-hashing (E4),

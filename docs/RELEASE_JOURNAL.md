@@ -13,6 +13,13 @@ newest entries near the top of each dated section.
 
 ## Action journal
 
+- **UI-13 DONE — config-ui dead-export removal (the clean one).** Verified 0 external refs for each (ESLint flags only
+  unused *locals*; type-check would catch a mis-call), then deleted: 8 utility aliases (`types/index.ts`), 8 dead
+  interfaces (`types/components.ts`, 239→174), `validateSpacyAttribute`, `wouldShowObjectObject`. Folded in: the 12
+  hand-written `*Request` types in `api.ts` that C1 orphaned (the same-named `openapi.gen.ts` schemas are generated/
+  separate), and the unused `ajv`/`ajv-formats` deps (UI-11 §B finding; `npm uninstall`). Gate green (check + build),
+  confirming all dead. Contrast with UI-12: unlike presentation-coupled "duplication", dead exports ARE cleanly
+  removable — verify-then-delete, gate-caught.
 - **UI-12 DONE — config-ui duplication consolidation: the 2 clean dedups done, C2–C5 assessed-declined.** **C1** (apiClient
   per-language CRUD quintet → 6 shared helpers + thin typed wrappers, `123ce3b`) and **C6** (decompile scaffold →
   `useDecompiledPatterns` hook, `99c1432`) — ~280 lines genuinely removed, type-proven & behavior-preserving. Pushing

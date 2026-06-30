@@ -71,15 +71,7 @@ export function safeDisplayValue(value: any): string {
   return String(value);
 }
 
-/**
- * Check if a value would result in [object Object] when converted to string
- */
-export function wouldShowObjectObject(value: any): boolean {
-  return typeof value === 'object' && 
-         value !== null && 
-         !Array.isArray(value) && 
-         String(value) === '[object Object]';
-}
+// UI-13: removed dead wouldShowObjectObject (exported, never called).
 
 /**
  * Safe conversion for array items that might be objects

@@ -16,8 +16,6 @@
   },
   "dependencies": {
     "@monaco-editor/react": "^4.6.0",
-    "ajv": "^8.17.1",
-    "ajv-formats": "^3.0.1",
     "i18next": "^23.16.8",
     "lucide-react": "^0.453.0",
     "react": "^18.2.0",

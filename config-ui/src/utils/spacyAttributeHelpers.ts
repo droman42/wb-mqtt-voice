@@ -255,29 +255,4 @@ export function getSpacyAttributeSuggestions(): Record<string, string[]> {
   };
 }
 
-/**
- * Validate SpaCy attribute structure
- */
-export function validateSpacyAttribute(key: string, value: any): { isValid: boolean; error?: string } {
-  if (!key || key.trim() === '') {
-    return { isValid: false, error: 'Attribute name cannot be empty' };
-  }
-
-  if (key === 'OP') {
-    const validOps = getOperatorOptions();
-    if (typeof value === 'string' && !validOps.some(op => value.includes(op.replace(/[{}]/g, '')))) {
-      return { isValid: false, error: `Invalid operator. Use one of: ${validOps.join(', ')}` };
-    }
-  }
-
-  if (typeof value === 'object' && value !== null) {
-    if (value.IN && !Array.isArray(value.IN)) {
-      return { isValid: false, error: 'IN value must be an array' };
-    }
-    if (value.NOT_IN && !Array.isArray(value.NOT_IN)) {
-      return { isValid: false, error: 'NOT_IN value must be an array' };
-    }
-  }
-
-  return { isValid: true };
-}
+// UI-13: removed dead validateSpacyAttribute (exported, never called).

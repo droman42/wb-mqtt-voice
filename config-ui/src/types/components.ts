@@ -87,22 +87,8 @@ export interface ArrayOfStringsEditorProps {
 // ParameterListEditor/ParameterSpecEditor components — structural params are now edited by ContractEditor
 // against the generated contract types.
 
-export interface TokenPatternsEditorProps {
-  value: Array<Array<Record<string, any>>>;
-  onChange: (value: Array<Array<Record<string, any>>>) => void;
-  globalParams?: string[];
-  disabled?: boolean;
-  currentLemmas?: string[];
-  onLemmasSync?: (extractedLemmas: string[]) => void;
-  showSyncIndicator?: boolean;
-}
-
-export interface SlotPatternsEditorProps {
-  value: Record<string, Array<Array<Record<string, any>>>>;
-  onChange: (value: Record<string, Array<Array<Record<string, any>>>>) => void;
-  globalParams?: string[];
-  disabled?: boolean;
-}
+// UI-13: removed dead TokenPatternsEditorProps + SlotPatternsEditorProps (superseded by the UI-5
+// card editors; never imported).
 
 export interface ExamplesEditorProps {
   value: Array<string | { text: string; parameters: Record<string, any> }>;
@@ -111,25 +97,7 @@ export interface ExamplesEditorProps {
   disabled?: boolean;
 }
 
-// Donations Component Props
-export interface HandlerListProps {
-  handlers: DonationListItem[];
-  selectedHandler?: string;
-  onSelect: (handlerName: string) => void;
-  searchQuery: string;
-  onSearchChange: (query: string) => void;
-  filterDomain: string;
-  onFilterDomainChange: (domain: string) => void;
-  filterMethodCount: string;
-  onFilterMethodCountChange: (filter: string) => void;
-  filterModified: boolean;
-  onFilterModifiedChange: (modified: boolean) => void;
-  bulkSelection: string[];
-  onBulkSelectionChange: (selection: string[]) => void;
-  hasChanges: Record<string, boolean>;
-  loading?: boolean;
-  error?: string;
-}
+// UI-13: removed dead HandlerListProps (the live HandlerList uses HandlerLanguageListProps).
 
 export interface ApplyChangesBarProps {
   visible: boolean;
@@ -180,73 +148,8 @@ export interface DonationsPageState {
   lastSaved: Date | null;
 }
 
-// Search and Filter Types
-export interface SearchFilters {
-  query: string;
-  domain: string;
-  methodCount: string;
-  modified: boolean;
-}
-
-export interface BulkOperationResult {
-  success: boolean;
-  message: string;
-  results: Array<{
-    handler: string;
-    success: boolean;
-    error?: string;
-  }>;
-}
-
-// Configuration Types (for future use)
-export interface ConfigSection {
-  name: string;
-  title: string;
-  description?: string;
-  fields: ConfigField[];
-}
-
-export interface ConfigField {
-  name: string;
-  type: 'string' | 'number' | 'boolean' | 'select' | 'array' | 'object';
-  label: string;
-  description?: string;
-  required?: boolean;
-  default?: any;
-  options?: Array<{ value: any; label: string }>;
-  validation?: {
-    min?: number;
-    max?: number;
-    pattern?: string;
-  };
-}
-
-// Monitoring Types (for future use)
-export interface MonitoringData {
-  system: {
-    status: 'healthy' | 'warning' | 'error';
-    uptime: string;
-    memory_usage: number;
-    cpu_usage: number;
-  };
-  components: Array<{
-    name: string;
-    status: 'healthy' | 'warning' | 'error';
-    last_update: string;
-    details?: any;
-  }>;
-  metrics: {
-    requests_per_minute: number;
-    error_rate: number;
-    response_time_avg: number;
-  };
-  activity: Array<{
-    timestamp: string;
-    type: 'info' | 'warning' | 'error';
-    message: string;
-    component?: string;
-  }>;
-}
+// UI-13: removed dead "for future use" types never imported anywhere — SearchFilters,
+// BulkOperationResult, ConfigSection (+ ConfigField), MonitoringData.
 
 // ============================================================
 // LANGUAGE-AWARE COMPONENT PROPS (Phase 3)
