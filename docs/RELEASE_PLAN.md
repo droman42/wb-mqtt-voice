@@ -353,18 +353,16 @@ Governed by `config-ui-stays-functional` (config-ui must stay functional).
       (today `canSaveNLU` hard-requires `!hasBlockingConflicts`). Deliverable: a design doc under `docs/design/` first,
       then implementation follow-up(s). The inline `ValidationIndicator` already surfaces blockers, so scope the modal's
       added value deliberately (resolution UX, not just a second display).
-- [~] **UI-14** [UI] (P3) `[deferred]` — **config-ui efficiency + hardcoded-list/altitude** (review §E). **EFFICIENCY
-      HALF DONE (2026-06-28).** **Done:** E1 derived `hasChanges` (dropped the state-via-effect + the imperative
-      `setHasChanges(false)` calls on both Templates/Prompts pages — verified each coincided with `data===original`);
-      E2 `useRef` debounce in `TomlPreview` (no re-render per keystroke); E3 `structuredClone` for all 14
-      `JSON.parse(JSON.stringify)` deep-copies (Configuration + Donations pages); E5 memoized LemmasEditor's nested-loop
-      suggestion scan + per-row conflict map. **E4 skipped** — `performAnalysis` is also called from a manual path, so
-      threading `currentHash` (a hash of `donation`) risks a cache-key mismatch; minor perf, real risk. **REMAINING —
-      hardcoded-list/altitude (the UX-touching half):** derive `ContractEditor` enums from the generated unions (E6),
-      schema-drive the `ConfigSection` component roster (E7) + `ConfigWidgets` per-name widget heuristics (E9), source
-      language labels/fallback from backend `supported_languages` (E8, `LanguageTabs`/`DonationsPage` `['en','ru']`),
-      de-hardcode + i18n the spaCy attribute vocab (E10). These change what the UI offers / overlap backend-contract
-      decisions, so they're a separate call.
+- [ ] **UI-16** [UI] (P3) `[deferred]` — **config-ui schema-driven sections/widgets + spaCy-attr i18n** (review §E
+      altitude; spun out of UI-14 on completion, 2026-06-28 — these need backend support or are low-value, unlike the
+      E6 part UI-14 did). **E7** schema-drive the `ConfigSection` component roster + `section→component` map, and **E9**
+      schema-drive `ConfigWidgets`' per-name/path widget heuristics — **both blocked on backend schema metadata** (a
+      per-section `is_component` signal / per-field `widget` hint; the config schema carries neither today), so this is
+      a backend+frontend task, not a config-ui-only fix. **E10** i18n the spaCy attribute descriptions
+      (`getSpacyAttributeSuggestions`, 21 entries) — config-ui-only but niche (a power-user raw-pattern editor; the
+      attribute *keys* stay technical per `donation-choice-surfaces-rule`). _Assessed non-issue (not filed): E8 — the
+      `LanguageTabs` display-name map is inherently a UI concern (the backend has no display names) and degrades to
+      `code.toUpperCase()`; the `DonationsPage` `['en','ru']` fallback is a defensible default for a rare miss._
 
 ### Release Readiness (REL)
 - [ ] **REL-1** (P0) — Sign off the Definition-of-release checklist above (fill target + criteria).

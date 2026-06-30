@@ -13,6 +13,14 @@ newest entries near the top of each dated section.
 
 ## Action journal
 
+- **UI-14 DONE — config-ui §E completed: efficiency + E6 drift-guard done; E7/E9/E10 → UI-16; E8 non-issue.** Added the
+  altitude half: E6 makes the `ContractEditor` enum dropdowns derive from `satisfies Record<Union,…>` keys, so a backend
+  donation-enum change fails the build rather than silently dropping options (a TS union can't be enumerated at runtime,
+  so a compile-time exhaustiveness guard is the right fix). Assessing the rest surfaced (UI-12-style) that §E's altitude
+  items were partly over-credited: E7 (component roster) + E9 (widget heuristics) need backend schema metadata that
+  doesn't exist (`is_component`/`widget` hints) → spun out as **UI-16**; E10 (spaCy-attr i18n) is niche → UI-16; E8
+  (language labels/fallback) is a non-issue (display names are inherently UI; the `['en','ru']` fallback is defensible).
+  Gate: config-ui check + build green.
 - **UI-14 efficiency half DONE — config-ui perf fixes (behavior-preserving).** E1 derived `hasChanges` (removed the
   state-via-effect + the redundant `setHasChanges(false)` calls on the Templates/Prompts pages — verified each
   coincided with `data===original`, so equivalent); E2 `TomlPreview` debounce moved to a `useRef` (no re-render per

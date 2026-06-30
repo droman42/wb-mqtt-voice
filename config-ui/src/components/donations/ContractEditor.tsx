@@ -18,11 +18,19 @@ import Badge from '@/components/ui/Badge';
 import ArrayOfStringsEditor from '@/components/editors/ArrayOfStringsEditor';
 import type { DonationContract, ContractMethod, ContractParam, ParameterType, RoomContext } from '@/types';
 
-const PARAMETER_TYPES: ParameterType[] = [
-  'string', 'integer', 'float', 'datetime', 'boolean', 'choice', 'entity',
-];
-const ENTITY_TYPES = ['device', 'location', 'room', 'person', 'generic'] as const;
-const ROOM_CONTEXTS: RoomContext[] = ['none', 'required', 'conditional'];
+// UI-14 (E6): each enum value is a key checked against the generated donation-contract union via
+// `satisfies Record<…>`, so a backend enum change (new/renamed type, entity_type, room_context) fails
+// the build here instead of silently dropping from these dropdowns. The arrays derive from the keys.
+type EntityType = NonNullable<ContractParam['entity_type']>;
+const PARAMETER_TYPES = Object.keys({
+  string: 1, integer: 1, float: 1, datetime: 1, boolean: 1, choice: 1, entity: 1,
+} satisfies Record<ParameterType, 1>) as ParameterType[];
+const ENTITY_TYPES = Object.keys({
+  device: 1, location: 1, room: 1, person: 1, generic: 1,
+} satisfies Record<EntityType, 1>) as EntityType[];
+const ROOM_CONTEXTS = Object.keys({
+  none: 1, required: 1, conditional: 1,
+} satisfies Record<RoomContext, 1>) as RoomContext[];
 
 interface ContractEditorProps {
   contract: DonationContract;

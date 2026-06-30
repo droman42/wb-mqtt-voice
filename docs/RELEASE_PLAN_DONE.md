@@ -2183,6 +2183,22 @@ rationale/chronology lives in [`RELEASE_JOURNAL.md`](./RELEASE_JOURNAL.md).
       covered; the standalone `PARAMETER_EXTRACTION_GUIDE.md` was not needed.
 
 ### UI / config-ui (UI)
+- [x] **UI-14** [UI] (P3) `[deferred]` — **DONE 2026-06-28.** config-ui efficiency + hardcoded-list/altitude (review
+      §E). **Efficiency (behavior-preserving, gate-green):** E1 derived `hasChanges` instead of the state-via-effect
+      anti-pattern on both Templates/Prompts pages (removed the effect + the redundant `setHasChanges(false)` calls —
+      verified each coincided with `data===original`); E2 `TomlPreview` debounce → `useRef` (no re-render per keystroke);
+      E3 all 14 `JSON.parse(JSON.stringify)` deep-copies → `structuredClone`; E5 memoized LemmasEditor's nested-loop
+      suggestion scan + per-row conflict map. **E4 skipped** (`performAnalysis` also runs from a manual path → threading
+      `currentHash` risks a cache-key mismatch; minor perf, real risk). **Altitude:** E6 the `ContractEditor`
+      PARAMETER_TYPES/ENTITY_TYPES/ROOM_CONTEXTS dropdowns now derive from `satisfies Record<Union,…>` keys, so a backend
+      donation-enum change **fails the build** instead of silently dropping options (the review's drift concern, fixed at
+      compile time since a TS union can't be enumerated at runtime). **E7/E9/E10 spun out as UI-16** — E7 (component
+      roster) + E9 (widget heuristics) are **blocked on backend schema metadata** (no `is_component`/`widget` hint
+      exists); E10 (spaCy-attr i18n) is niche/low-value. **E8 assessed non-issue** — `LanguageTabs` display names are
+      inherently UI + degrade gracefully; the `['en','ru']` fallback is a defensible default. Gate
+      (`config-ui-stays-functional`): `npm run check` + `npm run build` green. Like UI-12, the review's §E altitude items
+      were partly over-credited (most need backend signals or are non-issues); the genuine config-ui wins (efficiency +
+      E6 drift-guard) are done.
 - [x] **UI-13** [UI] (P3) `[deferred]` — **DONE 2026-06-28.** config-ui dead-code removal (review §D — unused *exports*,
       which ESLint's unused-locals rule can't see). Each verified 0 external refs before deleting; the gate (type-check)
       would catch a mis-call. Removed: `types/index.ts` 8 never-imported utility aliases (Maybe/Optional/RequiredKeys/
