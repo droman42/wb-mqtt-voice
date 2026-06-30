@@ -274,14 +274,14 @@ const ConfigurationPage: React.FC = () => {
         const componentConfig = (configData as any)?.[componentKey];
         if (componentConfig) {
           state.current = componentConfig;
-          state.persisted = JSON.parse(JSON.stringify(componentConfig)); // Deep copy
+          state.persisted = structuredClone(componentConfig); // Deep copy
         }
       });
 
       setState(prev => ({
         ...prev,
         config: configData,
-        originalConfig: JSON.parse(JSON.stringify(configData)), // Deep copy
+        originalConfig: structuredClone(configData), // Deep copy
         schema: schemaData,
         configStatus: statusData,
         connectionStatus: 'connected',
@@ -385,7 +385,7 @@ const ConfigurationPage: React.FC = () => {
               const sectionData = (prev.config as any)[sectionName];
               newComponentStates[componentName] = {
                 ...newComponentStates[componentName],
-                persisted: JSON.parse(JSON.stringify(sectionData)), // Deep copy
+                persisted: structuredClone(sectionData), // Deep copy
                 hasPendingPersist: false,
                 // If this config was also tested, mark it as no longer needing persistence
                 hasPendingTests: newComponentStates[componentName].tested 
@@ -429,7 +429,7 @@ const ConfigurationPage: React.FC = () => {
             const sectionData = (prev.config as any)[sectionName];
             newComponentStates[componentName] = {
               ...newComponentStates[componentName],
-              persisted: JSON.parse(JSON.stringify(sectionData)), // Deep copy
+              persisted: structuredClone(sectionData), // Deep copy
               hasPendingPersist: false,
               // If this config was also tested, mark it as no longer needing persistence
               hasPendingTests: newComponentStates[componentName].tested 
@@ -540,7 +540,7 @@ const ConfigurationPage: React.FC = () => {
           if (originalSectionData) {
             newComponentStates[component as ComponentName] = {
               ...componentState,
-              current: JSON.parse(JSON.stringify(originalSectionData)), // Deep copy
+              current: structuredClone(originalSectionData), // Deep copy
               hasPendingTests: componentState.tested 
                 ? JSON.stringify(originalSectionData) !== JSON.stringify(componentState.tested)
                 : false
@@ -550,7 +550,7 @@ const ConfigurationPage: React.FC = () => {
         
         return {
           ...prev,
-          config: JSON.parse(JSON.stringify(prev.originalConfig)), // Deep copy
+          config: structuredClone(prev.originalConfig), // Deep copy
           sectionChanges: {},
           componentStates: newComponentStates
         };
@@ -639,7 +639,7 @@ const ConfigurationPage: React.FC = () => {
             ...prev.componentStates,
             [component]: {
               ...componentState,
-              tested: JSON.parse(JSON.stringify(config)), // Deep copy of tested config
+              tested: structuredClone(config), // Deep copy of tested config
               testState: successTestState,
               hasPendingTests: false, // Config is now tested
               hasPendingPersist // Check if persist is needed
@@ -702,7 +702,7 @@ const ConfigurationPage: React.FC = () => {
       
       // Update component state to reflect persistence
       updateComponentState(component, {
-        persisted: JSON.parse(JSON.stringify(componentState.tested)), // Deep copy
+        persisted: structuredClone(componentState.tested), // Deep copy
         hasPendingPersist: false
       });
 
@@ -731,7 +731,7 @@ const ConfigurationPage: React.FC = () => {
       
       // Update component state
       updateComponentState(component, {
-        current: JSON.parse(JSON.stringify(componentState.persisted)), // Deep copy
+        current: structuredClone(componentState.persisted), // Deep copy
         tested: null, // Clear tested config since we rolled back
         testState: { status: 'idle', message: '' },
         hasPendingTests: false,
@@ -762,7 +762,7 @@ const ConfigurationPage: React.FC = () => {
       
       // Update component state
       updateComponentState(component, {
-        current: JSON.parse(JSON.stringify(componentState.tested)), // Deep copy
+        current: structuredClone(componentState.tested), // Deep copy
         hasPendingTests: false
       });
 

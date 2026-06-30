@@ -353,13 +353,18 @@ Governed by `config-ui-stays-functional` (config-ui must stay functional).
       (today `canSaveNLU` hard-requires `!hasBlockingConflicts`). Deliverable: a design doc under `docs/design/` first,
       then implementation follow-up(s). The inline `ValidationIndicator` already surfaces blockers, so scope the modal's
       added value deliberately (resolution UX, not just a second display).
-- [ ] **UI-14** [UI] (P3) `[deferred]` — **config-ui efficiency + hardcoded-list/altitude** (review §E). Efficiency:
-      derive `hasChanges` (state-via-effect, E1), `useRef` debounce in `TomlPreview` (E2), `structuredClone` for the 8
-      `JSON.parse(JSON.stringify)` deep-copies (E3), thread the memoized donation hash instead of double-hashing (E4),
-      memoize per-render/per-row work (E5). Altitude — hardcoded lists that drift from a source of truth: derive
-      `ContractEditor` enums from the generated unions (E6), schema-drive the `ConfigSection` component roster (E7) and
-      `ConfigWidgets` per-name widget heuristics (E9), source language labels/fallback from backend `supported_languages`
-      (E8, `LanguageTabs`/`DonationsPage:534 ['en','ru']`), and de-hardcode the spaCy attribute vocab + i18n it (E10).
+- [~] **UI-14** [UI] (P3) `[deferred]` — **config-ui efficiency + hardcoded-list/altitude** (review §E). **EFFICIENCY
+      HALF DONE (2026-06-28).** **Done:** E1 derived `hasChanges` (dropped the state-via-effect + the imperative
+      `setHasChanges(false)` calls on both Templates/Prompts pages — verified each coincided with `data===original`);
+      E2 `useRef` debounce in `TomlPreview` (no re-render per keystroke); E3 `structuredClone` for all 14
+      `JSON.parse(JSON.stringify)` deep-copies (Configuration + Donations pages); E5 memoized LemmasEditor's nested-loop
+      suggestion scan + per-row conflict map. **E4 skipped** — `performAnalysis` is also called from a manual path, so
+      threading `currentHash` (a hash of `donation`) risks a cache-key mismatch; minor perf, real risk. **REMAINING —
+      hardcoded-list/altitude (the UX-touching half):** derive `ContractEditor` enums from the generated unions (E6),
+      schema-drive the `ConfigSection` component roster (E7) + `ConfigWidgets` per-name widget heuristics (E9), source
+      language labels/fallback from backend `supported_languages` (E8, `LanguageTabs`/`DonationsPage` `['en','ru']`),
+      de-hardcode + i18n the spaCy attribute vocab (E10). These change what the UI offers / overlap backend-contract
+      decisions, so they're a separate call.
 
 ### Release Readiness (REL)
 - [ ] **REL-1** (P0) — Sign off the Definition-of-release checklist above (fill target + criteria).

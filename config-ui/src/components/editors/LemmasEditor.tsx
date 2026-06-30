@@ -1,5 +1,5 @@
 import { Plus, Trash2, AlertTriangle, RefreshCw } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ConflictBadge } from '@/components/analysis';
 import type { ConflictReport } from '@/types';
@@ -52,60 +52,50 @@ export default function LemmasEditor({
     }
   };
 
-  // Extract suggested lemmas from token patterns and slot patterns
-  const getSuggestedLemmas = (): string[] => {
+  // Extract suggested lemmas from token patterns and slot patterns.
+  // UI-14 (E5): memoized — this nested-loop scan ran on every render before.
+  const suggestedLemmas = useMemo((): string[] => {
     const suggested: Set<string> = new Set();
-    
-    // Extract from token patterns
-    tokenPatterns.forEach(pattern => {
-      pattern.forEach(token => {
-        if (token.LEMMA) {
-          if (typeof token.LEMMA === 'string') {
-            suggested.add(token.LEMMA);
-          } else if (token.LEMMA.IN && Array.isArray(token.LEMMA.IN)) {
-            token.LEMMA.IN.forEach((lemma: string) => suggested.add(lemma));
-          }
+
+    const collect = (token: Record<string, any>): void => {
+      if (token.LEMMA) {
+        if (typeof token.LEMMA === 'string') {
+          suggested.add(token.LEMMA);
+        } else if (token.LEMMA.IN && Array.isArray(token.LEMMA.IN)) {
+          token.LEMMA.IN.forEach((lemma: string) => suggested.add(lemma));
         }
-      });
-    });
-    
-    // Extract from slot patterns
-    Object.values(slotPatterns).forEach(slotPatternArray => {
-      slotPatternArray.forEach(pattern => {
-        pattern.forEach(token => {
-          if (token.LEMMA) {
-            if (typeof token.LEMMA === 'string') {
-              suggested.add(token.LEMMA);
-            } else if (token.LEMMA.IN && Array.isArray(token.LEMMA.IN)) {
-              token.LEMMA.IN.forEach((lemma: string) => suggested.add(lemma));
-            }
-          }
-        });
-      });
-    });
+      }
+    };
+
+    tokenPatterns.forEach(pattern => pattern.forEach(collect));
+    Object.values(slotPatterns).forEach(slotPatternArray =>
+      slotPatternArray.forEach(pattern => pattern.forEach(collect)));
 
     // Filter out lemmas that are already added
     return Array.from(suggested).filter(lemma => !value.includes(lemma));
-  };
+  }, [tokenPatterns, slotPatterns, value]);
 
-  const suggestedLemmas = getSuggestedLemmas();
-
-  // Get conflicts that involve a specific lemma
-  const getLemmaConflicts = (lemma: string): ConflictReport[] => {
-    return conflicts.filter(conflict => {
-      // Check if this lemma appears in the conflict signals
+  // Conflicts that involve a specific lemma.
+  // UI-14 (E5): precompute the lemma→conflicts map once per change instead of filtering all
+  // conflicts inside every row's render.
+  const conflictsByLemma = useMemo(() => {
+    const matches = (lemma: string): ConflictReport[] => conflicts.filter(conflict => {
       const signals = conflict.signals;
       if (signals.shared_lemmas && Array.isArray(signals.shared_lemmas)) {
         return signals.shared_lemmas.includes(lemma);
       }
       if (signals.shared_phrases && Array.isArray(signals.shared_phrases)) {
-        return signals.shared_phrases.some((phrase: string) => 
-          phrase.toLowerCase().includes(lemma.toLowerCase())
-        );
+        return signals.shared_phrases.some((phrase: string) =>
+          phrase.toLowerCase().includes(lemma.toLowerCase()));
       }
       return false;
     });
-  };
+    const map: Record<string, ConflictReport[]> = {};
+    value.forEach(lemma => { if (!(lemma in map)) map[lemma] = matches(lemma); });
+    return map;
+  }, [value, conflicts]);
+
+  const getLemmaConflicts = (lemma: string): ConflictReport[] => conflictsByLemma[lemma] ?? [];
 
   return (
     <div className="mb-4">

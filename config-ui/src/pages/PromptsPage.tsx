@@ -58,7 +58,13 @@ const PromptsPage: React.FC = () => {
     errors: [],
     warnings: []
   });
-  const [hasChanges, setHasChanges] = useState(false);
+  // UI-14 (E1): derive hasChanges instead of syncing it via an effect (which lagged a render and
+  // forced an extra one). Every former imperative setHasChanges(false) coincided with data===original
+  // (save sets original=data; select/discard/delete make them equal), so the derived value is equivalent.
+  const hasChanges = useMemo(
+    () => !!(selectedHandler && selectedLanguage) &&
+      JSON.stringify(promptData) !== JSON.stringify(originalPromptData),
+    [promptData, originalPromptData, selectedHandler, selectedLanguage]);
   
   // Language management state  
   const [languageInfos, setLanguageInfos] = useState<Record<string, LanguageInfo>>({});
@@ -72,14 +78,6 @@ const PromptsPage: React.FC = () => {
     void loadHandlers();
   // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional scoped/mount load (load fns are not memoized)
   }, []);
-
-  // Check for changes when prompt data changes
-  useEffect(() => {
-    if (selectedHandler && selectedLanguage) {
-      const changed = JSON.stringify(promptData) !== JSON.stringify(originalPromptData);
-      setHasChanges(changed);
-    }
-  }, [promptData, originalPromptData, selectedHandler, selectedLanguage]);
 
   // Update language info when handlers change
   useEffect(() => {
@@ -164,7 +162,6 @@ const PromptsPage: React.FC = () => {
     
     setPromptData({});
     setOriginalPromptData({});
-    setHasChanges(false);
     setError(null);
   }, [selectedHandler, handlers]);
 
@@ -200,7 +197,6 @@ const PromptsPage: React.FC = () => {
 
       if (response.success) {
         setOriginalPromptData(promptData);
-        setHasChanges(false);
         
         // Show success message briefly
         setTimeout(() => {
@@ -301,7 +297,6 @@ const PromptsPage: React.FC = () => {
         setSelectedLanguage(null);
         setPromptData({});
         setOriginalPromptData({});
-        setHasChanges(false);
       }
     } catch (err) {
       console.error('Failed to delete language:', err);
@@ -311,7 +306,6 @@ const PromptsPage: React.FC = () => {
 
   const handleRevert = () => {
     setPromptData(originalPromptData);
-    setHasChanges(false);
   };
 
   // Filter handlers based on search query and language count

@@ -58,7 +58,13 @@ const TemplatesPage: React.FC = () => {
     errors: [],
     warnings: []
   });
-  const [hasChanges, setHasChanges] = useState(false);
+  // UI-14 (E1): derive hasChanges instead of syncing it via an effect (which lagged a render and
+  // forced an extra one). Every former imperative setHasChanges(false) coincided with data===original
+  // (save sets original=data; select/discard make them equal), so the derived value is equivalent.
+  const hasChanges = useMemo(
+    () => !!(selectedHandler && selectedLanguage) &&
+      JSON.stringify(templateData) !== JSON.stringify(originalTemplateData),
+    [templateData, originalTemplateData, selectedHandler, selectedLanguage]);
   
   // Language management state  
   const [languageInfos, setLanguageInfos] = useState<Record<string, LanguageInfo>>({});
@@ -72,14 +78,6 @@ const TemplatesPage: React.FC = () => {
     void loadHandlers();
   // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional scoped/mount load (load fns are not memoized)
   }, []);
-
-  // Check for changes when template data changes
-  useEffect(() => {
-    if (selectedHandler && selectedLanguage) {
-      const changed = JSON.stringify(templateData) !== JSON.stringify(originalTemplateData);
-      setHasChanges(changed);
-    }
-  }, [templateData, originalTemplateData, selectedHandler, selectedLanguage]);
 
   // Update language info when handlers change
   useEffect(() => {
@@ -228,7 +226,6 @@ const TemplatesPage: React.FC = () => {
       
       if (response.success) {
         setOriginalTemplateData(templateData);
-        setHasChanges(false);
         
         // Update language info with validation results
         if (response.errors && response.errors.length > 0) {
@@ -304,7 +301,6 @@ const TemplatesPage: React.FC = () => {
 
   const handleDiscard = () => {
     setTemplateData(originalTemplateData);
-    setHasChanges(false);
     setValidationResult({
       isValid: true,
       errors: [],

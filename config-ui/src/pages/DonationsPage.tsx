@@ -743,7 +743,7 @@ const DonationsPage: React.FC = () => {
       }));
       setOriginalDonations(prev => ({
         ...prev,
-        [donationKey]: JSON.parse(JSON.stringify(response.donation_data))
+        [donationKey]: structuredClone(response.donation_data)
       }));
     } catch (err) {
       // Handle 404 errors gracefully - some handlers might not have donation files yet
@@ -761,7 +761,7 @@ const DonationsPage: React.FC = () => {
         }));
         setOriginalDonations(prev => ({
           ...prev,
-          [donationKey]: JSON.parse(JSON.stringify(emptyDonation))
+          [donationKey]: structuredClone(emptyDonation)
         }));
       } else {
         console.error(`Failed to load donation ${handlerName}:`, err);
@@ -831,7 +831,7 @@ const DonationsPage: React.FC = () => {
       // Update original to mark as saved
       setOriginalDonations(prev => ({
         ...prev,
-        [donationKey]: JSON.parse(JSON.stringify(donationData))
+        [donationKey]: structuredClone(donationData)
       }));
 
       setHasChanges(prev => ({
@@ -906,7 +906,7 @@ const DonationsPage: React.FC = () => {
     if (original) {
       setDonations(prev => ({
         ...prev,
-        [donationKey]: JSON.parse(JSON.stringify(original))
+        [donationKey]: structuredClone(original)
       }));
       
       setHasChanges(prev => ({

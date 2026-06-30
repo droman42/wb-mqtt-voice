@@ -8,7 +8,7 @@
  * - Comment preservation using Phase 4/5 backend APIs
  */
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Copy, CheckCircle, Eye, EyeOff, RefreshCw, AlertCircle, GitCompare, Code, Settings } from 'lucide-react';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
@@ -56,7 +56,9 @@ export const TomlPreview: React.FC<TomlPreviewProps> = ({
   const [tomlErrors, setTomlErrors] = useState<TomlError[]>([]);
   const [validating, setValidating] = useState(false);
   const [originalToml, setOriginalToml] = useState(''); // For diff comparison
-  const [validationDebounceTimer, setValidationDebounceTimer] = useState<NodeJS.Timeout | null>(null);
+  // UI-14 (E2): a ref, not state — the debounce handle doesn't need to trigger a re-render on every
+  // keystroke (and keeps scheduleValidation's identity stable).
+  const validationDebounceTimer = useRef<NodeJS.Timeout | null>(null);
   
   // Phase 6: Real-time TOML validation with debouncing
   const validateTomlLive = useCallback(async (content: string) => {
@@ -95,17 +97,15 @@ export const TomlPreview: React.FC<TomlPreviewProps> = ({
   // Debounced validation function
   const scheduleValidation = useCallback((content: string) => {
     // Clear existing timer
-    if (validationDebounceTimer) {
-      clearTimeout(validationDebounceTimer);
+    if (validationDebounceTimer.current) {
+      clearTimeout(validationDebounceTimer.current);
     }
-    
+
     // Schedule new validation after 500ms delay
-    const timer = setTimeout(() => {
+    validationDebounceTimer.current = setTimeout(() => {
       void validateTomlLive(content);
     }, 500);
-    
-    setValidationDebounceTimer(timer);
-  }, [validateTomlLive, validationDebounceTimer]);
+  }, [validateTomlLive]);
   
   // Load raw TOML content from backend with comments preserved
   const loadRawToml = async (skipValidation = false) => {
@@ -165,11 +165,11 @@ export const TomlPreview: React.FC<TomlPreviewProps> = ({
   // Cleanup debounce timer on unmount
   useEffect(() => {
     return () => {
-      if (validationDebounceTimer) {
-        clearTimeout(validationDebounceTimer);
+      if (validationDebounceTimer.current) {
+        clearTimeout(validationDebounceTimer.current);
       }
     };
-  }, [validationDebounceTimer]);
+  }, []);
   
   const handleCopy = async () => {
     try {

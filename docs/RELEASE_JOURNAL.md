@@ -13,6 +13,13 @@ newest entries near the top of each dated section.
 
 ## Action journal
 
+- **UI-14 efficiency half DONE — config-ui perf fixes (behavior-preserving).** E1 derived `hasChanges` (removed the
+  state-via-effect + the redundant `setHasChanges(false)` calls on the Templates/Prompts pages — verified each
+  coincided with `data===original`, so equivalent); E2 `TomlPreview` debounce moved to a `useRef` (no re-render per
+  keystroke); E3 all 14 `JSON.parse(JSON.stringify)` deep-copies → `structuredClone`; E5 memoized LemmasEditor's
+  nested-loop suggestion scan + a per-row conflict map. **E4 skipped** (threading the memoized hash risks a cache-key
+  mismatch on the manual-analyze path — minor perf, real risk). Gate: config-ui check + build green. UI-14 stays open
+  `[~]`; the hardcoded-list/altitude half (E6–E10) is UX-touching / backend-contract-coupled — left as a separate call.
 - **UI-13 DONE — config-ui dead-export removal (the clean one).** Verified 0 external refs for each (ESLint flags only
   unused *locals*; type-check would catch a mis-call), then deleted: 8 utility aliases (`types/index.ts`), 8 dead
   interfaces (`types/components.ts`, 239→174), `validateSpacyAttribute`, `wouldShowObjectObject`. Folded in: the 12
