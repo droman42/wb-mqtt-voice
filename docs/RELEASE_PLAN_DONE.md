@@ -1638,6 +1638,19 @@ rationale/chronology lives in [`RELEASE_JOURNAL.md`](./RELEASE_JOURNAL.md).
       console-LLM fallback / `fallback_providers` — left as-is; not in scope here.)
 
 ### Bugs (BUG)
+- [x] **BUG-12** [EVAL][WS] (P2) `[release]` — **DONE 2026-06-30.** `make ws` reported the SUT failing ("ASR provider
+      'whisper' not available") while a direct WS client succeeded — **not a hang, not the provider, not a stale SUT.**
+      Root cause: **promptfoo's response cache.** An early `make ws` against a mis-launched SUT cached the "whisper"
+      failure for each fixture in `~/.promptfoo/cache/cache.json`, and every later run **replayed the cached failure
+      without contacting `:6000`** — proven by the SUT log showing **zero `/ws/audio` requests** during a `make ws` run,
+      while `PROMPTFOO_CACHE_ENABLED=false` made the same run hit the live SUT (4 `provider=sherpa_onnx` requests) and
+      return the correct «Таймер установлен на 10 мин». The eval-commons `ws_audio_provider` was correct all along
+      (`call_api` succeeded directly). **Fix:** `eval/Makefile` exports `PROMPTFOO_CACHE_ENABLED := false` — every surface
+      in this harness is a *live* test (CLI argparse, WS-to-SUT, DeepSeek judge), so caching can only mask reality;
+      cleared the poisoned cache. **Verified:** plain `make ws` now runs live — the ASR case **passes** (sherpa
+      transcript) and the intent case confirms `timer.set` live; `make cli` still 5/5. Remaining 1 fail (WER vs
+      reply-text) → **TEST-15**; 2 UX errors need `DEEPSEEK_API_KEY`. _Credit: the user's "isn't the ws port different?"
+      nudge reframed it from "SUT bug" to "the request never reaches the SUT" → the cache._
 - [x] **BUG-11** [ASR][CONFIG] (P2) `[release]` — **DONE 2026-06-30.** Misconfigured-ASR configs failed every audio
       request at runtime instead of failing fast. **Origin disproven:** the first `make ws TARGET=local` reported "ASR
       provider 'whisper' not available", which I first hypothesised as `/ws/audio` ignoring the configured provider —

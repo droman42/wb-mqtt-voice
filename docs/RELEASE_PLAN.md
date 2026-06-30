@@ -311,6 +311,14 @@ _Discrete functional defects (distinct from QUAL refactors/quality work). Surfac
 > architecture + code reviews land** (gated). TEST-3/4/5/6 are coverage goals folded into that rewrite.
 
 _Trace-driven system testing (design `docs/design/trace_system_testing.md`, TEST-11 ✓) → these three implementation slices:_
+- [ ] **TEST-15** [EVAL][WS] (P3) `[deferred]` — **WS system suite can't assert ASR/WER for offline ASR — it gets the
+      reply, not the recognized speech.** Surfaced 2026-06-30 by the first live `make ws` run (after BUG-12): with an
+      offline ASR (sherpa_onnx/vosk emits no streaming `partial`s), `ws_audio_provider` falls back to the assistant's
+      **reply text** as the transcript proxy, so a WER assertion against the spoken reference (`«поставь таймер на
+      десять минут»` vs the reply `«Таймер установлен…»`) fails by construction. The **intent-name** assertion passes
+      live (`timer.set` confirmed — resolves the old "intent name is a placeholder" TODO). To measure WER over
+      `/ws/audio` with offline ASR, the SUT must surface the recognized transcript in the response `metadata` (then the
+      provider/assert reads it); streaming ASR would expose it via partials. Decide the approach + implement.
 
 ### Build & CI (BUILD)
 

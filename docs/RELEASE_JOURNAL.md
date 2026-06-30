@@ -13,6 +13,19 @@ newest entries near the top of each dated section.
 
 ## Action journal
 
+- **BUG-12 DONE — the `make ws` "SUT failure" was promptfoo's response cache, not a hang/provider/SUT bug.** Chasing
+  the apparent hang: it wasn't a hang (my Bash timeout) and the eval-commons `ws_audio_provider` is correct (`call_api`
+  succeeds directly). The real cause: an early `make ws` against a mis-launched SUT cached "ASR provider 'whisper' not
+  available" per fixture in `~/.promptfoo/cache`, and every later run **replayed the cached failure without contacting
+  `:6000`** — the SUT log showed zero `/ws/audio` requests, while `PROMPTFOO_CACHE_ENABLED=false` made the same run hit
+  the live SUT (sherpa_onnx) and return «Таймер установлен на 10 мин». Fix: `eval/Makefile` now exports
+  `PROMPTFOO_CACHE_ENABLED := false` (every surface here is a live test — caching can only mask reality) + cleared the
+  poisoned cache. Verified: plain `make ws` runs live, ASR case passes, intent confirms `timer.set`; `make cli` still
+  5/5. Filed **TEST-15** for the WER-vs-reply-text gap (offline ASR emits no partials, so the provider returns reply
+  text — WER needs the SUT to surface the recognized transcript in metadata). UX still needs `DEEPSEEK_API_KEY`.
+  **Lesson:** a test harness that caches *live* tests is a footgun — a transient failure poisons every later run and
+  reads as a persistent SUT bug. The user's "isn't the ws port different?" reframed it to "the request never reaches the
+  SUT," which pointed straight at the cache.
 - **BUG-11 DONE — the WS e2e "whisper" error was a broken config, not a `/ws/audio` provider bug.** Deep research
   (static-map agent + live instrumented repro) **disproved** the original hypothesis: a clean `embedded-armv7` SUT
   transcribes the recording correctly via `sherpa_onnx` (verified «Таймер установлен на 10 мин» success:true). The error

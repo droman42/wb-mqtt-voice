@@ -33,6 +33,13 @@ VENV_BIN := $(abspath ..)/.venv/bin
 export PROMPTFOO_PYTHON := $(VENV_BIN)/python
 export PATH := $(VENV_BIN):$(PATH)
 
+# BUG-12: never serve cached results in this harness. Every surface here is a LIVE test — CLI
+# contracts shell out to argparse, the WS suite hits a running SUT, the judge calls DeepSeek.
+# promptfoo's response cache once captured a transient "ASR provider 'whisper' not available"
+# (from a mis-launched SUT) and replayed it for every later run — masking the fixed SUT and never
+# touching :6000. A test harness must always run live; correctness here beats cache speed.
+export PROMPTFOO_CACHE_ENABLED := false
+
 # Target profile (endpoint wiring) — always applied and exported to promptfoo's environment.
 include profiles/targets/$(TARGET).env
 export WS_AUDIO_URL HEALTH_URL MQTT_HOST MQTT_PORT

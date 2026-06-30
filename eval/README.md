@@ -35,8 +35,8 @@ deployment concern (what the SUT runs) — for `wb7` it's whatever is deployed o
 | Config | Kind | Needs running | Needs key | Needs fixtures | Status |
 |---|---|---|---|---|---|
 | `cli.promptfooconfig.yaml` | CLI contracts | nothing | no | no | ✅ **passing (5/5)** |
-| `ws.promptfooconfig.yaml` (system) | ASR + intent | Irene on the target | no | yes (WAV) | ⏳ pending fixtures |
-| `ws.promptfooconfig.yaml` (ux) | DeepSeek judge | Irene on the target | `DEEPSEEK_API_KEY` | yes (WAV) | ⏳ pending fixtures + calibration |
+| `ws.promptfooconfig.yaml` (system) | ASR + intent | Irene on the target | no | yes (WAV) | ✅ runs live — intent ✓; ASR/WER tier pending |
+| `ws.promptfooconfig.yaml` (ux) | DeepSeek judge | Irene on the target | `DEEPSEEK_API_KEY` | yes (WAV) | ⏳ needs key + calibration |
 
 ## Setup (uv)
 
@@ -109,6 +109,10 @@ These are non-obvious and have already caused (and cost) bugs — keep them in m
   project venv and prepends its `bin` to `PATH`; without that, the Python providers can't import
   `eval_commons` and the `irene-*` console scripts don't resolve. promptfoo is a **global** npm
   install; everything Python is **`uv`**-managed in `../.venv`.
+- **The harness runs cache-disabled** (`PROMPTFOO_CACHE_ENABLED=false`, set in the Makefile). Every
+  surface here is a *live* test — CLI argparse, the WS suite against a running SUT, the DeepSeek
+  judge — so a cached response can only mask reality. A cached transient failure once replayed for
+  every later run and read as a persistent SUT bug; never re-enable the cache for these suites.
 - **`irene-config-validate` writes its report (including errors) to STDOUT, not stderr, and exits
   1 on invalid/missing config.** Assert on `stdout` + `exit_code`, never `stderr`.
 - **The two axes (TARGET, CONFIG) belong in `profiles/*.env`, never in a test case.** Test YAML
@@ -117,10 +121,12 @@ These are non-obvious and have already caused (and cost) bugs — keep them in m
 
 ## Notes / TODO
 
-- **Record the fixtures** before the WS suite can run — `fixtures/{timer_10min,light_unreachable}.wav`,
-  16 kHz mono PCM16. Use **`make record`** (`make setup-record` once first; see `fixtures/README.md`). This is the
-  only blocker for the system/UX surfaces.
-- **Intent name** in the intent case is a placeholder (`timer.set`) — confirm against a live run.
+- **Fixtures are recorded + committed** — `fixtures/{timer_10min,light_unreachable}.wav`, 16 kHz mono PCM16. Re-record
+  with **`make record`** (`make setup-record` once first; see `fixtures/README.md`) only if you change the spoken reference.
+- **Intent name** `timer.set` is **confirmed against a live run** — the intent case passes.
+- **ASR/WER tier:** offline ASR (sherpa_onnx/vosk) emits no streaming `partial`s, so the provider returns the
+  assistant's *reply* as the transcript proxy — a WER assertion against the spoken reference can't pass until the SUT
+  surfaces the recognized transcript in the response `metadata`. Tracked separately; the intent tier works today.
 - **DeepSeek-as-judge on Russian is unvalidated.** Hand-score a few replies and check agreement
   before trusting UX pass/fail in CI (eval-commons `ARCHITECTURE.md` §7.1). Treat UX verdicts as
   indicative for now.
