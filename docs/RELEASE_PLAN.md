@@ -290,6 +290,17 @@ _Apply to every remediation task below (from the 4 review docs + QUAL-25/26). So
 
 ### Bugs (BUG)
 _Discrete functional defects (distinct from QUAL refactors/quality work). Surfaced from any source; filed before fixing._
+- [ ] **BUG-11** [ASR][WS] (P2) `[release]` — **`/ws/audio` audio transcription requests ASR provider `whisper`
+      regardless of the configured `default_provider`.** Surfaced 2026-06-30 by the first real `make ws TARGET=local`
+      run (the new system-test e2e). Repro: launch Irene with `configs/embedded-armv7.toml` (whose `[asr]
+      default_provider = "sherpa_onnx"` **loads + warms `vosk-model-small-ru` successfully**), then run the WS suite — the
+      `/ws/audio` response is `{"transcript":"Error processing audio request: ASR provider 'whisper' not available", …}`,
+      `success:false`. So the streaming-audio path is **not honouring the component's configured/loaded provider** — it
+      asks for `whisper` (only correct for the `voice` config). The audio→ASR calls in `audio_processor.process_audio`
+      pass no explicit provider (→ `default_provider`), so `whisper` is coming from somewhere specific
+      (streaming-vs-batch branch in `webapi_router` ws handler, a second/stale ASR instance, or `AudioData` metadata).
+      **Significance:** this is the satellite/embedded voice-input path (ESP32 → `/ws/audio`), so on any non-whisper ASR
+      it's broken — blocks WS e2e AND real satellite voice. Root-cause research in progress; fix presented before applying.
 - [ ] **BUG-5** [NLU/I18N/DONATION] (P3) `[deferred]` — **Donation en files missing user-facing translations
       (recognition enrichment).** The translation audit (under BUG-4) found Russian donation files richer than English:
       ~28 params across 13 handlers have RU `aliases` (param-name synonyms) with no EN equivalent, and ~9 params have
