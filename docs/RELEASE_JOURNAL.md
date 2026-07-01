@@ -13,6 +13,16 @@ newest entries near the top of each dated section.
 
 ## Action journal
 
+- **BUG-15 DONE — AssetManager no longer wedges on a partial download (filed + fixed on request).** The I18N-8 note
+  became a task: `download_model` trusted `model_path.exists()` as "download complete", so an interrupted/failed
+  extraction left a broken-but-present pack that was never re-downloaded (the empty `piper/amy` + `piper/irina` dirs that
+  failed Piper warm-up). Fixed both roots in `irene/core/assets.py`: (1) extraction now **stages into
+  `.<name>.incomplete` and renames into place only on success** (was: unpacked straight into the final path, and the
+  `except` cleaned only the archive) — so a failure never leaves a partial; (2) the cache check skips only a **populated**
+  path (`_is_populated_download`: non-empty file, or dir with ≥1 file), clearing an empty/partial one and re-downloading.
+  `download_model_pack` already validated members, so it was fine. 4 regression tests in `test_asset_extract.py`. Gates:
+  pyright 0, suite 1120, import-linter 9/9. Tagged `[release]` (any interrupted first-boot download on a satellite would
+  otherwise wedge a model).
 - **I18N-8 DONE — English eval suite green end-to-end (+ a base-provider runtime fix it exposed).** Brought up
   `embedded-armv7-en` locally (Moonshine downloaded + extracted cleanly — the `_bz2` venv fix proven in the real asset
   path) and ran the English suites: **`make ws CONFIG=embedded-armv7-en` = 4/4** (Moonshine WER ✓ + intent ✓ +
@@ -27,8 +37,8 @@ newest entries near the top of each dated section.
   "end-to-end" validation had only exercised the provider directly, not through the ASR component gate — I18N-8 is where
   the true integration closed. Also verified the full EN stack boots clean incl. Piper `amy` TTS (an earlier amy warm-up
   error was a **stale pre-`_bz2` empty model dir** that `AssetManager`'s existence check skipped re-downloading; cleared
-  amy + irina, both re-download fine). Gates: pyright 0, suite **1116** (+1 regression), import-linter 9/9. Latent note
-  (not filed): the "Model already exists" dir-existence check re-uses a broken partial after an interrupted extraction.
+  amy + irina, both re-download fine). Gates: pyright 0, suite **1116** (+1 regression), import-linter 9/9. The
+  dir-existence fragility this surfaced (re-using a broken partial after an interrupted extraction) is now **BUG-15**.
 - **Doc + dev-env follow-ups to BUG-14 (no repo behavior change).** (1) Annotated the stale
   `docs/design/onnx_inference_layer.md` §4 — its `sherpa-onnx==1.10.46` armv7 pin was **superseded** by BUG-14 (the
   ELF-alignment failure is now patched in-build via `patch_onnx_align.py` + bookworm base; pin is **1.12.36**). Added a

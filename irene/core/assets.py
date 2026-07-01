@@ -11,6 +11,7 @@ import os
 import asyncio
 import logging
 import pickle
+import shutil
 from pathlib import Path
 from typing import Dict, Any, Optional, List
 import json
@@ -406,6 +407,26 @@ class AssetManager:
         
         return credentials
     
+    @staticmethod
+    def _is_populated_download(path: Path) -> bool:
+        """True if `path` looks like a *complete* download: a non-empty file, or a directory that
+        holds at least one file. An empty directory (or empty file) is a partial/failed download — a
+        cache-existence check must not treat it as a hit (rglob short-circuits on the first file)."""
+        if path.is_dir():
+            return any(p.is_file() for p in path.rglob("*"))
+        return path.is_file() and path.stat().st_size > 0
+
+    @staticmethod
+    def _remove_partial(path: Path) -> None:
+        """Best-effort recursive remove of a file or directory (clearing a partial/stale download)."""
+        if path.is_dir():
+            shutil.rmtree(path, ignore_errors=True)
+        elif path.exists():
+            try:
+                path.unlink()
+            except OSError:
+                pass
+
     async def download_model(self, provider: str, model_id: str, force: bool = False) -> Path:
         """Download model if not cached, return path"""
         # Get download lock to prevent concurrent downloads of same model
@@ -419,11 +440,17 @@ class AssetManager:
     async def _download_model_impl(self, provider: str, model_id: str, force: bool) -> Path:
         """Internal download implementation"""
         model_path = self.get_model_path(provider, model_id)
-        
-        # Check if already exists
+
+        # Check if already present. A *populated* path (a non-empty file, or a directory holding at
+        # least one file) is a complete download; an empty/partial path — left by an extraction that
+        # was interrupted or failed (a killed container, a full disk, a missing bz2 module) — must NOT
+        # be trusted, or "already exists" skips it forever. Clear the partial and re-download.
         if model_path.exists() and not force:
-            logger.info(f"Model already exists: {model_path}")
-            return model_path
+            if self._is_populated_download(model_path):
+                logger.info(f"Model already exists: {model_path}")
+                return model_path
+            logger.warning(f"Model path exists but is empty/partial — re-downloading: {model_path}")
+            self._remove_partial(model_path)
         
         # Get model info from provider configuration (replaces model_registry)
         model_info = self.get_model_info(provider, model_id)
@@ -462,18 +489,29 @@ class AssetManager:
         
         try:
             await self._download_file(model_url, temp_path)
-            
+
             # Handle extraction if needed
             if model_info.get("extract", False):
-                await self._extract_archive(temp_path, model_path, model_url)
+                # Extract into a staging dir and swap into place only on success, so a failed or
+                # interrupted extraction never leaves a partial pack at model_path (which the
+                # populated-check above would otherwise trust on the next run).
+                staging = model_path.parent / f".{model_path.name}.incomplete"
+                self._remove_partial(staging)
+                try:
+                    await self._extract_archive(temp_path, staging, model_url)
+                except Exception:
+                    self._remove_partial(staging)
+                    raise
+                self._remove_partial(model_path)   # clear any stale target
+                staging.rename(model_path)         # atomic on the same filesystem
                 temp_path.unlink()  # Remove downloaded archive
             else:
                 # Move to final location
                 temp_path.rename(model_path)
-            
+
             logger.info(f"Successfully downloaded: {model_path}")
             return model_path
-            
+
         except Exception as e:
             # Clean up on failure
             if temp_path.exists():

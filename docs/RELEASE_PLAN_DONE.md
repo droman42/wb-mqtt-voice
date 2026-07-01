@@ -1638,6 +1638,20 @@ rationale/chronology lives in [`RELEASE_JOURNAL.md`](./RELEASE_JOURNAL.md).
       console-LLM fallback / `fallback_providers` — left as-is; not in scope here.)
 
 ### Bugs (BUG)
+- [x] **BUG-15** [ASSET] (P2) `[release]` — **DONE 2026-07-01.** `AssetManager.download_model` treated a model path's
+      mere existence as a completed download (`if model_path.exists()`), so an **interrupted or failed extraction** left a
+      **broken-but-present** pack that was never re-downloaded — a permanently-wedged model recoverable only by a manual
+      `rm`. Surfaced in I18N-8: a pre-`_bz2` failed extraction left empty `piper/amy` + `piper/irina` dirs, and the next
+      boot skipped them → Piper warm-up failed ("missing model.onnx / tokens.txt / espeak-ng-data"). Two failure modes,
+      both fixed in `irene/core/assets.py`: (1) **non-atomic extraction** — `_extract_archive` unpacked straight into the
+      final path (and the `except` only cleaned the archive, not the half-written dir); now it stages into
+      `.<name>.incomplete` and **renames into place only on success** (atomic on one filesystem), removing the staging dir
+      on any error. (2) **existence ≠ complete** — the cache check now skips only a **populated** path (a non-empty file,
+      or a directory holding ≥1 file, via `_is_populated_download`); an empty/partial path is cleared and re-downloaded.
+      `download_model_pack` already validated members (non-empty), so it was unaffected. Deployment-relevant (any
+      interrupted first-boot download on the WB7/satellites would wedge a model). Tests: 4 new in `test_asset_extract.py`
+      (helper truth-table + failed-extract-leaves-nothing + empty-partial-re-downloads + populated-is-a-hit). Gates:
+      pyright 0, suite **1120**, import-linter 9/9. Filed + fixed in one change (chat-requested).
 - [x] **BUG-14** [ASR][BUILD] (P3) `[deferred]` — **DONE 2026-07-01 (fix implemented + proven on the WB7; full image
       buildx validation is the remaining deploy checkpoint).** sherpa-onnx ≥1.12 (needed for Moonshine's merged `.ort`
       decoder, EN ASR) failed to load on the WB7 two ways — the bundled onnxruntime `.so` has **64 KB-aligned LOAD
@@ -2058,9 +2072,8 @@ rationale/chronology lives in [`RELEASE_JOURNAL.md`](./RELEASE_JOURNAL.md).
       `asr_required_for_audio` — now keyed on `get_provider_name()` (`sherpa_onnx.py` `is_available` + `download_model_pack`),
       with a regression test. Also confirmed the full EN stack boots clean (Moonshine ASR + Piper `amy` TTS; an earlier
       amy warm-up error was a stale pre-`_bz2` empty model dir, cleared). Gates: pyright 0, suite **1116** (+1 regression),
-      import-linter 9/9. Design §3. _Note: `AssetManager` "Model already exists" trusts a dir's mere existence, so an
-      interrupted extraction leaves a broken-but-present pack it never re-downloads (bit amy + irina here) — latent, not
-      filed._
+      import-linter 9/9. Design §3. _The stale-partial fragility this surfaced (`AssetManager` trusting a dir's mere
+      existence) is now **BUG-15** (filed + fixed)._
 - [x] **I18N-3** [ASSET] (P3) `[deferred]` — **DONE 2026-07-01.** English Piper TTS voices for the two torch-free
       satellites (armv7/aarch64). Generalized the `ru_RU`-hardcoded catalog (`irene/providers/tts/piper.py`) to a
       `locale` parameter and added `en_US-amy-medium` (default) + `lessac`/`ryan` — same k2-fsa `.tar.bz2` medium packs,
