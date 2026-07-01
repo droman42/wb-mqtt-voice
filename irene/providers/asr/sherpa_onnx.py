@@ -81,10 +81,13 @@ class SherpaOnnxASRProvider(ASRProvider):
             logger.warning("sherpa-onnx not installed — sherpa_onnx ASR provider unavailable")
             return False
         # Available if the pack is present locally or downloadable (descriptor configured).
-        pack_dir = self.asset_manager.get_model_path("sherpa_onnx", self.model_id)
+        # Key on get_provider_name(), not a literal, so subclasses (e.g. sherpa_moonshine) resolve
+        # their own asset namespace rather than the base's.
+        provider = self.get_provider_name()
+        pack_dir = self.asset_manager.get_model_path(provider, self.model_id)
         if pack_dir.exists():
             return True
-        return bool(self.asset_manager.get_model_info("sherpa_onnx", self.model_id))
+        return bool(self.asset_manager.get_model_info(provider, self.model_id))
 
     async def _load_recognizer(self) -> None:
         if self._recognizer is not None:
@@ -93,7 +96,7 @@ class SherpaOnnxASRProvider(ASRProvider):
 
         # First-run download of the multi-file pack into the mounted asset folder (§6).
         # The descriptor declares its member set (transducer=4 files, whisper=3).
-        files = await self.asset_manager.download_model_pack("sherpa_onnx", self.model_id)
+        files = await self.asset_manager.download_model_pack(self.get_provider_name(), self.model_id)
 
         build: Callable[[], Any]
         if self.model_type == "vosk-transducer":

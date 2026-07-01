@@ -3,6 +3,8 @@
 Light unit tests (no model download / no real sherpa session): the URL-tarball catalog, the merged-.ort
 pack resolver, and the offline/English defaults that differ from the base VOSK provider.
 """
+import asyncio
+
 from irene.providers.asr.sherpa_moonshine import SherpaMoonshineASRProvider
 
 
@@ -23,6 +25,34 @@ def test_offline_english_defaults():
     assert p.default_language == "en"
     assert p.supports_streaming is False            # offline → batch branch → dodges BUG-13
     assert p.get_supported_languages() == ["en"]
+
+
+def test_is_available_resolves_under_own_namespace(monkeypatch):
+    # Regression (I18N-8): the inherited is_available() must key on get_provider_name()
+    # ("sherpa_moonshine"), not the base's hardcoded "sherpa_onnx". Before the fix it looked up
+    # moonshine-tiny-en under the sherpa_onnx namespace, missed, and the ASR component dropped the
+    # provider ("not available (dependencies missing)") → /ws/audio rejected audio.
+    p = SherpaMoonshineASRProvider({})
+    seen = {}
+
+    class _Path:
+        def exists(self):
+            return False  # force the descriptor branch
+
+    def fake_get_model_path(provider, model_id):
+        seen["path"] = provider
+        return _Path()
+
+    def fake_get_model_info(provider, model_id):
+        seen["info"] = (provider, model_id)
+        return {"url": "x"} if provider == "sherpa_moonshine" else None
+
+    monkeypatch.setattr(p.asset_manager, "get_model_path", fake_get_model_path)
+    monkeypatch.setattr(p.asset_manager, "get_model_info", fake_get_model_info)
+
+    assert asyncio.run(p.is_available()) is True
+    assert seen["path"] == "sherpa_moonshine"                     # not "sherpa_onnx"
+    assert seen["info"] == ("sherpa_moonshine", "moonshine-tiny-en")
 
 
 def test_resolve_pack_finds_merged_ort_members(tmp_path):

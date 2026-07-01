@@ -167,7 +167,7 @@ merged-decoder load, real-fixture accuracy, on-device runtime) is confirmed; the
 
 ---
 
-## 3. Eval design — one bulk per language (I18N-5, harness ✓; fixtures pending)
+## 3. Eval design — one bulk per language (I18N-5 harness ✓; I18N-8 English suite ✓)
 
 The voice pipeline is monolingual-per-config (§1a), so language is a **run-level axis**, exactly like `TARGET`/`CONFIG`.
 As built:
@@ -186,8 +186,11 @@ As built:
   conditions mirroring the TEST-16 Russian structure. **Validated live** against DeepSeek: 7/7 agreement (passes genuine
   English, fails Russian/error/rude/non-confirmation). The RU ws cases were also migrated to the co-equal rubrics.
 - **Verified:** the Russian suite is green under the new layout (`make ws CONFIG=embedded-armv7` = 4/4).
-- **Remaining (mic-dependent):** record `fixtures/en/{timer_10min,light_unreachable}.wav` and the `traces/en/`
-  golden — the only piece that needs a person at a microphone; everything else (axis, rubrics, cases, configs) is done.
+- **English suite green (I18N-8):** `fixtures/en/{timer_10min,light_unreachable}.wav` recorded; `make ws
+  CONFIG=embedded-armv7-en` = **4/4** (Moonshine ASR — WER ✓ + intent ✓ + DeepSeek-UX ✓); `traces/en/timer_set_10min.json`
+  golden recorded (an audio-input trace from a live `-en` run) and `make replay CONFIG=embedded-armv7-en` matches its
+  oracle. Runtime fix landed with it: the base sherpa `is_available()` hardcoded the `sherpa_onnx` asset namespace, so the
+  ASR component dropped the `sherpa_moonshine` subclass at boot — now keyed on `get_provider_name()`.
 
 ---
 
@@ -248,5 +251,7 @@ not a deployment.)
 - **I18N-7** [ASSET] ✓ — Silero v3 English (standalone): `silero_v3` now pulls speakers/accent/language by model (`v3_en` → `en_0…en_117`, no Russian `put_accent`). Real `v3_en` synthesis verified (57 MB, `en_0` OK).
 - **I18N-4** [CONFIG] ✓ — the three `*-en.toml` variants (§4); also made the three RU configs explicitly RU-only (symmetry: `default_language`/`supported_languages`/`auto_detect_language=false`).
 - **I18N-5** [EVAL] ✓ — bilingual eval harness: `EVAL_LANG` axis, language-subdir fixtures/traces, en config profiles, en rubrics validated 7/7, ru suite green.
-- **I18N-8** [EVAL] — record `fixtures/en/*` + a `traces/en/` golden (mic-dependent tail of I18N-5), then the English suite runs green.
+- **I18N-8** [EVAL] ✓ **DONE** — `fixtures/en/*` + `traces/en/timer_set_10min.json` golden recorded; the English suite
+  runs green (`make ws CONFIG=embedded-armv7-en` 4/4, `make replay` 1/1). Landed the base sherpa `is_available()`
+  namespace fix that unblocked the ASR component.
 - **I18N-6** [CONTENT] ✓ — audited `en.json` donations: functional parity across all 13 handlers (structure + phrases); empty English lemmas are appropriate (additive, morphological — English needs none). No fill required.

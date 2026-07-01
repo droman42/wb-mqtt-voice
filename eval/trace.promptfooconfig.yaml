@@ -35,8 +35,9 @@ tests:
     assert:
       - { type: javascript, value: "JSON.parse(output).exit_code === 0" }   # 0 = matched the oracle
 
-  # English golden — pending recording (traces/en/timer_set_10min.json under an -en config). Runs only
-  # under EVAL_LANG=en (make replay CONFIG=embedded-armv7-en); red until the golden is recorded.
+  # English golden (I18N-8): traces/en/timer_set_10min.json, an audio-input trace recorded from a live
+  # embedded-armv7-en run (Moonshine ASR → timer). Runs under EVAL_LANG=en (make replay
+  # CONFIG=embedded-armv7-en); replays offline and matches its oracle.
   - description: EN golden — "set a timer for ten minutes" still sets the timer
     metadata: { kind: trace-system, language: en }
     vars:

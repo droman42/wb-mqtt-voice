@@ -13,6 +13,22 @@ newest entries near the top of each dated section.
 
 ## Action journal
 
+- **I18N-8 DONE — English eval suite green end-to-end (+ a base-provider runtime fix it exposed).** Brought up
+  `embedded-armv7-en` locally (Moonshine downloaded + extracted cleanly — the `_bz2` venv fix proven in the real asset
+  path) and ran the English suites: **`make ws CONFIG=embedded-armv7-en` = 4/4** (Moonshine WER ✓ + intent ✓ +
+  DeepSeek-UX ✓) and recorded **`traces/en/timer_set_10min.json`** — an *audio-input* golden captured from the live run
+  (so `make replay` re-runs the real ASR, a stronger regression than the ru text-golden) → **`make replay
+  CONFIG=embedded-armv7-en` = 1/1** (offline, matches oracle). **The first component-level EN run exposed a real bug:** the
+  base sherpa `is_available()` hardcoded the `sherpa_onnx` asset namespace, so the ASR component evaluated the
+  `sherpa_moonshine` subclass under the wrong namespace, judged it "not available (dependencies missing)", and dropped it
+  — `/ws/audio` then rejected every fixture with `asr_required_for_audio` (0/4). Fixed at the base (altitude): key
+  `is_available()` + `download_model_pack()` on `get_provider_name()` so any subclass resolves its own namespace
+  (behavior-preserving for the base, whose name *is* `sherpa_onnx`); added a regression test. This means I18N-2's
+  "end-to-end" validation had only exercised the provider directly, not through the ASR component gate — I18N-8 is where
+  the true integration closed. Also verified the full EN stack boots clean incl. Piper `amy` TTS (an earlier amy warm-up
+  error was a **stale pre-`_bz2` empty model dir** that `AssetManager`'s existence check skipped re-downloading; cleared
+  amy + irina, both re-download fine). Gates: pyright 0, suite **1116** (+1 regression), import-linter 9/9. Latent note
+  (not filed): the "Model already exists" dir-existence check re-uses a broken partial after an interrupted extraction.
 - **Doc + dev-env follow-ups to BUG-14 (no repo behavior change).** (1) Annotated the stale
   `docs/design/onnx_inference_layer.md` §4 — its `sherpa-onnx==1.10.46` armv7 pin was **superseded** by BUG-14 (the
   ELF-alignment failure is now patched in-build via `patch_onnx_align.py` + bookworm base; pin is **1.12.36**). Added a

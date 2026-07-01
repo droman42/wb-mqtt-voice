@@ -40,8 +40,9 @@ config runs the English set) unless overridden, e.g. `EVAL_LANG=en` for a remote
 | Config | Kind | Needs running | Needs key | Needs fixtures | Status |
 |---|---|---|---|---|---|
 | `cli.promptfooconfig.yaml` | CLI contracts | nothing | no | no | ✅ **passing (5/5)** |
-| `ws.promptfooconfig.yaml` (system) | ASR + intent | Irene on the target | no | yes (WAV) | ✅ ru live (WER ✓ + intent ✓); en harness ready, `fixtures/en/*` pending |
-| `ws.promptfooconfig.yaml` (ux) | DeepSeek judge | Irene on the target | `DEEPSEEK_API_KEY` | yes (WAV) | ✅ ru live; en rubrics validated live (fixtures pending) |
+| `ws.promptfooconfig.yaml` (system) | ASR + intent | Irene on the target | no | yes (WAV) | ✅ ru live + en live (WER ✓ + intent ✓; `make ws CONFIG=embedded-armv7-en` = 4/4, Moonshine ASR) |
+| `ws.promptfooconfig.yaml` (ux) | DeepSeek judge | Irene on the target | `DEEPSEEK_API_KEY` | yes (WAV) | ✅ ru live; en live (rubrics validated; fixtures recorded) |
+| `trace.promptfooconfig.yaml` | offline golden replay | nothing (models present) | no | traces (JSON) | ✅ ru + en golden green (`make replay CONFIG=embedded-armv7-en`) |
 
 ## Setup (uv)
 

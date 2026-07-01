@@ -2047,6 +2047,20 @@ rationale/chronology lives in [`RELEASE_JOURNAL.md`](./RELEASE_JOURNAL.md).
       fixtures cleanly (`light_unreachable`, `timer_10min`). Gates: pyright 0, config-validator ✓, suite **1113** (+3
       new Moonshine unit tests), import-linter 9/9. Design §2d. Follow-up: **I18N-8** (green English `make ws` — needs a
       bz2-capable env for the `.tar.bz2` extraction; the dev `.venv` Python lacks `libbz2`).
+- [x] **I18N-8** [EVAL] (P3) `[deferred]` — **DONE 2026-07-01.** English eval assets — the mic-dependent tail of the
+      I18N-5 harness — now recorded, and the **English suite runs green end-to-end**. `fixtures/en/{timer_10min,
+      light_unreachable}.wav` (16 kHz mono PCM16) + `traces/en/timer_set_10min.json` (an **audio-input** golden captured
+      from a live `embedded-armv7-en` run, so replay re-runs Moonshine ASR → a stronger regression than the ru text-golden).
+      **`make ws TARGET=local CONFIG=embedded-armv7-en` = 4/4** (Moonshine ASR: WER ✓ + intent ✓ + DeepSeek-UX ✓) and
+      **`make replay CONFIG=embedded-armv7-en` = 1/1** (offline, matches the oracle). **Runtime fix landed with it:** the
+      base sherpa `is_available()` hardcoded the `sherpa_onnx` asset namespace, so the ASR component dropped the
+      `sherpa_moonshine` subclass at boot ("not available (dependencies missing)") and `/ws/audio` rejected audio with
+      `asr_required_for_audio` — now keyed on `get_provider_name()` (`sherpa_onnx.py` `is_available` + `download_model_pack`),
+      with a regression test. Also confirmed the full EN stack boots clean (Moonshine ASR + Piper `amy` TTS; an earlier
+      amy warm-up error was a stale pre-`_bz2` empty model dir, cleared). Gates: pyright 0, suite **1116** (+1 regression),
+      import-linter 9/9. Design §3. _Note: `AssetManager` "Model already exists" trusts a dir's mere existence, so an
+      interrupted extraction leaves a broken-but-present pack it never re-downloads (bit amy + irina here) — latent, not
+      filed._
 - [x] **I18N-3** [ASSET] (P3) `[deferred]` — **DONE 2026-07-01.** English Piper TTS voices for the two torch-free
       satellites (armv7/aarch64). Generalized the `ru_RU`-hardcoded catalog (`irene/providers/tts/piper.py`) to a
       `locale` parameter and added `en_US-amy-medium` (default) + `lessac`/`ryan` — same k2-fsa `.tar.bz2` medium packs,

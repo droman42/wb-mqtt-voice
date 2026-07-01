@@ -381,16 +381,6 @@ _Trace-driven system testing (design `docs/design/trace_system_testing.md`, TEST
 _Real English deployment across all three Docker arches (armv7/aarch64/x86_64) + English eval. Design
 `docs/design/multilingual_deployment.md` (I18N-1 ✓) → the implementation slices below. English models are slim and
 size-matched to the Russian stack; language is a per-config/deployment choice (auto-detect is NOT wired to ASR/TTS)._
-- [ ] **I18N-8** [EVAL] (P3) `[deferred]` — **English eval assets — fixtures recorded + validated; the armv7 ASR
-      blocker (I18N-2) is now DONE.**
-      `fixtures/en/{timer_10min,light_unreachable}.wav` are recorded (16 kHz mono PCM16) and **validated good** (offline
-      Moonshine transcribed them, one perfectly — the audio is fine; the armv7 failure is the ASR model, I18N-2). The
-      recorder is now language-aware (eval-commons `629fb8d`). **Remaining:** the `traces/en/` golden + a green
-      `make ws CONFIG=embedded-armv7-en`. I18N-2 (the offline Moonshine armv7 ASR) is now wired, so the SUT can bring up
-      the English config; the green run needs a **bz2-capable env** (the Moonshine `.tar.bz2` extraction — the dev `.venv`
-      Python lacks `libbz2`, same gap that blocks Piper amy locally), i.e. the WB7/Docker image or a `bz2`-enabled local
-      Python. The harness itself is proven (RU 4/4, EN rubrics 7/7); alternatively the English suite can be greened on an
-      offline 64-bit config (`embedded-aarch64-en`, Whisper) to decouple from the armv7 model. See design §3.
 
 ### Models & Assets (ASSET)
 
