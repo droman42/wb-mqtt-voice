@@ -13,6 +13,19 @@ newest entries near the top of each dated section.
 
 ## Action journal
 
+- **I18N-4 DONE — English deployment configs for all three arches; RU configs made explicitly RU-only.** Added
+  `configs/{embedded-armv7,embedded-aarch64,standalone-x86_64}-en.toml` as full copies of their Russian counterparts
+  with only the language-bearing fields swapped: armv7 → `zipformer-en-20M`/`zipformer-streaming` + Piper `amy`; aarch64
+  → `whisper-small` (multilingual, config-only) + plain Piper `amy` (`piper_ruaccent` disabled); standalone →
+  torch-whisper (config-only) + `silero_v3 v3_en` (`put_accent`/`put_yo` off), wake word already `hey_jarvis`. Each sets
+  `default_language`/`supported_languages`=en at the top level, `[asr]` + `[asr.providers.*].default_language=en`,
+  `auto_detect_language=false`, workflow + keyword-matcher language. **Symmetry (user-raised):** the three RU configs
+  were implicitly bilingual (legacy `language="ru"` only → schema-default `supported_languages=["ru","en"]` +
+  auto-detect on, which only ever changed the reply *string*, never ASR/TTS); they now declare `default_language="ru"` +
+  `supported_languages=["ru"]` + `auto_detect_language=false` — one honest language per config, parallel to the `-en`
+  files. `config-master.toml` stays the comprehensive `["ru","en"]` reference. Added an English worked-example pointer
+  to `docs/guides/howto-new-language.md`. Gates: config-validator ✓ (12 configs), suite 1110, pyright 0. No schema
+  change (config-ui unaffected). Remaining I18N: I18N-5 (EN eval + fixtures), I18N-6 (`en.json` donation audit).
 - **I18N-3 + I18N-7 DONE — English TTS on all three arches (Piper on the satellites, Silero v3 on the standalone).**
   I18N-3: generalized the `ru_RU`-hardcoded Piper catalog to a locale param and added `en_US-amy`(default)/`lessac`/`ryan`
   — same `.tar.bz2` packs + sherpa runtime, no provider change; capabilities now report per-instance language so

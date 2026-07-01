@@ -140,6 +140,14 @@ plus the top-level/workflow `default_language`.
 
 `config-master.toml` stays the canonical reference; these are deployment variants (`config-master-canonical`).
 
+**Symmetry — the RU configs are now explicitly RU-only.** Previously the three Russian configs set only the legacy
+`language = "ru"` with `auto_detect_language = true`, so `default_language` fell to the schema default and
+`supported_languages` to `["ru","en"]` — implicitly bilingual at the text layer. Since the voice pipeline is
+monolingual-per-config (§1a) and auto-detect only ever changed the response *string* (never ASR/TTS), the RU configs now
+set `default_language="ru"` + `supported_languages=["ru"]` + `auto_detect_language=false` — parallel to the `-en`
+variants, one honest language per config. (`config-master.toml` keeps `["ru","en"]` — it is the comprehensive reference,
+not a deployment.)
+
 ---
 
 ## 5. Code deltas (small)
@@ -167,6 +175,6 @@ plus the top-level/workflow `default_language`.
 - **I18N-2** [ASSET] ✓ — armv7 EN ASR spike → **zipformer-en-20M** chosen + added to the sherpa catalog (§2c).
 - **I18N-3** [ASSET] ✓ — EN Piper voices (satellites): catalog generalized to a locale param, added `en_US-amy`/`lessac`/`ryan`; capabilities report per-instance language.
 - **I18N-7** [ASSET] ✓ — Silero v3 English (standalone): `silero_v3` now pulls speakers/accent/language by model (`v3_en` → `en_0…en_117`, no Russian `put_accent`). Real `v3_en` synthesis verified (57 MB, `en_0` OK).
-- **I18N-4** [CONFIG] — the three `*-en.toml` variants (§4).
+- **I18N-4** [CONFIG] ✓ — the three `*-en.toml` variants (§4); also made the three RU configs explicitly RU-only (symmetry: `default_language`/`supported_languages`/`auto_detect_language=false`).
 - **I18N-5** [EVAL] — `LANG` axis + `metadata.language` tag + `profiles/langs/*`; EN rubrics; EN fixtures.
 - **I18N-6** [CONTENT] — audit `en.json` donation completeness across handlers.

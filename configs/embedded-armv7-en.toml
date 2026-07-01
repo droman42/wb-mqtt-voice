@@ -1,5 +1,11 @@
 # ============================================================
-# IRENE — WB7 (armv7l) SATELLITE-SERVER  (ARCH-24 / BUILD-3)
+# IRENE — WB7 (armv7l) SATELLITE-SERVER — ENGLISH (I18N-4)
+# ============================================================
+# English deployment variant of embedded-armv7.toml. Only the language-bearing fields differ:
+# ASR = sherpa_onnx + zipformer-en-20M (English streaming transducer, ~44 MB int8 — I18N-2),
+# TTS = piper voice "amy" (en_US — I18N-3), and default_language flipped to "en" everywhere with
+# auto-detect OFF (language is fixed per deployment; the voice pipeline is monolingual — see
+# docs/design/multilingual_deployment.md). All other settings mirror the Russian armv7 config.
 # ============================================================
 # Role: the BACK HALF of the voice pipeline. The ESP32 satellites own mic capture, VAD,
 # wake-word/voice-trigger and audio playback; this server receives a gated, segmented
@@ -26,11 +32,11 @@ version = "15.0.0"
 debug = false
 log_level = "INFO"
 
-# Top-level language / runtime. `default_language` is the canonical source of truth (legacy `language`
-# kept for back-compat). Russian-only deployment → supported_languages = ["ru"], auto-detect OFF (below).
-language = "ru"
-default_language = "ru"
-supported_languages = ["ru"]
+# Top-level language / runtime. `default_language` is the canonical source of truth (the legacy
+# `language` key is kept for back-compat). English-only deployment → supported_languages = ["en"].
+language = "en"
+default_language = "en"
+supported_languages = ["en"]
 max_concurrent_commands = 10
 command_timeout_seconds = 30.0
 context_timeout_minutes = 30
@@ -83,12 +89,13 @@ nlu_analysis = true             # kept for traces (see build-time lean-down abov
 enabled = true
 default_provider = "sherpa_onnx"
 fallback_providers = []
+default_language = "en"
 
 [asr.providers.sherpa_onnx]
 enabled = true
-model = "vosk-model-small-ru"      # small int8 pack (~27 MB) — the big model is unusable at armv7 RTF
-model_type = "vosk-transducer"
-default_language = "ru"
+model = "zipformer-en-20M"         # English streaming transducer, ~44 MB int8 (I18N-2); armv7-proven
+model_type = "zipformer-streaming"
+default_language = "en"
 sample_rate = 16000
 num_threads = 2                    # leave 2 of the 4 A7 cores for the co-hosted wb-mqtt-bridge/ui
 decoding_method = "greedy_search"
@@ -104,7 +111,8 @@ fallback_providers = ["console"]
 
 [tts.providers.piper]
 enabled = true
-voice = "irina"                    # ru_RU female (best of the k2-fsa zoo voices)
+voice = "amy"                      # en_US female (I18N-3)
+language = "en"
 speaker_id = 0
 speed = 1.0
 num_threads = 0                    # 0 = auto → 2 on armv7 (shared InferencePolicy)
@@ -174,12 +182,13 @@ max_cascade_attempts = 4
 cascade_timeout_ms = 200
 cache_recognition_results = false
 cache_ttl_seconds = 300
-auto_detect_language = false        # Russian-only deployment — language is fixed by config
+auto_detect_language = false        # English-only deployment — language is fixed by config (I18N-4)
 language_detection_confidence_threshold = 0.8
 persist_language_preference = true
 
 [nlu.providers.hybrid_keyword_matcher]
 enabled = true
+default_language = "en"
 confidence_threshold = 0.7
 fuzzy_enabled = true
 fuzzy_threshold = 0.8
@@ -326,7 +335,7 @@ channels = 1
 validate_audio_compatibility = true
 enable_vad_processing = false      # no server VAD — utterances arrive already segmented
 default_source = "voice"
-default_language = "ru"
+default_language = "en"
 session_timeout_minutes = 30
 
 [workflows.unified_voice_assistant.audio_validation]

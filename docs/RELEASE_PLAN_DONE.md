@@ -2041,6 +2041,20 @@ rationale/chronology lives in [`RELEASE_JOURNAL.md`](./RELEASE_JOURNAL.md).
       `v3_ru`). **Verified with real synthesis** (torch): `v3_en.pt` = 57 MB (≈ `v4_ru` size), 119 speakers,
       `apply_tts(en_0)` produced audio cleanly. Tests added (EN speaker set / default / accent-off / capabilities). Gates:
       pyright 0, suite 1107, import-linter 9/9.
+- [x] **I18N-4** [CONFIG] (P3) `[deferred]` — **DONE 2026-07-01.** English deployment configs for all three arches +
+      made the Russian configs explicitly RU-only (symmetry, user-requested). New: `configs/embedded-armv7-en.toml`
+      (ASR `zipformer-en-20M`/`zipformer-streaming` per I18N-2; TTS Piper `amy`), `configs/embedded-aarch64-en.toml`
+      (ASR `whisper-small` multilingual — config-only; TTS plain Piper `amy`, `piper_ruaccent` disabled),
+      `configs/standalone-x86_64-en.toml` (ASR torch-whisper — config-only; TTS `silero_v3 v3_en`, `put_accent`/`put_yo`
+      off; wake word already `hey_jarvis`). Each flips `default_language`/`supported_languages` + `[asr]` &
+      `[asr.providers.*].default_language` to `en`, `auto_detect_language=false`, workflow `default_language="en"`, and
+      the NLU keyword-matcher `default_language`. **Symmetry:** the three RU configs now set `default_language="ru"` +
+      `supported_languages=["ru"]` + `auto_detect_language=false` (were implicitly bilingual via the schema default +
+      auto-detect, which only ever changed the reply *string*, never ASR/TTS). `config-master.toml` untouched (the
+      comprehensive `["ru","en"]` reference). No `CoreConfig` schema change (config-ui unaffected). Doc: added an
+      English worked-example pointer to `docs/guides/howto-new-language.md`. Gates: config-validator ✓ (12 configs),
+      suite **1110 passed** (+3 = the parametrized per-config canonical test now covers the `-en` files), pyright 0.
+      Design §4.
 
 ### Build & CI (BUILD)
 - [x] **BUILD-1** (P0) — Verify clean `uv sync` + CLI and WebAPI boot at v15. **DONE 2026-06-01** (`bab6f97`):

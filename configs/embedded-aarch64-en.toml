@@ -1,47 +1,45 @@
 # ============================================================
-# IRENE — WB7 (armv7l) SATELLITE-SERVER  (ARCH-24 / BUILD-3)
+# IRENE — WB8.5 / Pi (aarch64) SATELLITE-SERVER — ENGLISH (I18N-4)
 # ============================================================
-# Role: the BACK HALF of the voice pipeline. The ESP32 satellites own mic capture, VAD,
-# wake-word/voice-trigger and audio playback; this server receives a gated, segmented
-# utterance and runs ASR → NLU → intent → TTS. The TTS reply is streamed back to the device
-# over the output seam (RemoteAudioOutput / /ws/audio/reply) once the ESP32 transport (QUAL-45)
-# registers it — NOT through the local `audio` component, which is DISABLED here (no speaker on WB7;
-# the workflow's local-playout path no-ops when `audio` is absent).
+# English deployment variant of embedded-aarch64.toml. ASR stays `whisper-small` (multilingual — EN
+# is a config flag, no new model); TTS switches to plain Piper voice "amy" (en_US — I18N-3) since
+# `piper_ruaccent` is Russian-stress-only; default_language flipped to "en" with auto-detect OFF
+# (see docs/design/multilingual_deployment.md). All other settings mirror the Russian aarch64 config.
+# ============================================================
+# Same role as the WB7 (armv7) satellite — the BACK HALF of the pipeline (ASR → NLU → intent → TTS);
+# the ESP32 owns mic capture, VAD, wake-word and playback. Difference: aarch64 has 4 GB and no ORT
+# wall, so it runs the BIGGER torch-free models the WB7 can't fit:
+#   ASR = sherpa_onnx + whisper-small  (vs WB7's vosk-small)
+#   TTS = piper_ruaccent (RUAccent Russian stress)  (vs WB7's plain piper)
+#   NLU = keyword → spaCy(small) → llm  (spaCy has 64-bit wheels; the WB7 cannot run it)
+# torch *could* run on aarch64 (wheels exist) but is DELIBERATELY excluded (footprint + A53 latency) —
+# this stays the torch-free sherpa stack, just with bigger models. Canonical matrix: §5 of
+# docs/design/torch_free_armv7_voice.md.
 #
-# Torch-free, armv7-viable stack (canonical matrix: docs/design/torch_free_armv7_voice.md §5):
-#   ASR = sherpa_onnx + vosk-small  (Whisper-small barred by WB7 RAM; Kaldi `vosk` has no armv7 wheel)
-#   TTS = piper (direct, espeak-ng stress)  — RUAccent/vosk_tts are 64-bit-only (the armv7 ORT wall)
-#   NLU = keyword → llm cascade  (no spaCy — no armv7 wheel; LLM classifier recovers fuzzy commands)
+# Baked default config for the aarch64 image. WB8.5 = Allwinner T507, quad Cortex-A53 @ 1.5 GHz, 4 GB.
 #
-# Baked default config for the armv7 image. Co-hosted with wb-mqtt-bridge + wb-mqtt-ui on a 4-core
-# Cortex-A7 / ~712 MB free — hence num_threads=2 and lean providers.
-#
-# BUILD-TIME LEAN-DOWN (once the system is stable and traces are no longer needed): set
-#   components.monitoring = false  and  components.nlu_analysis = false
-# (and drop their [monitoring]/[nlu_analysis] sections) to reclaim RAM. Kept ON for now to collect
-# traces (QUAL-53 — analysing why utterances fall through to the LLM tier).
+# BUILD-TIME LEAN-DOWN (once stable / traces no longer needed): set components.monitoring = false and
+# components.nlu_analysis = false (and drop their sections) to reclaim RAM.
 
 name = "Irene"
 version = "15.0.0"
 debug = false
 log_level = "INFO"
 
-# Top-level language / runtime. `default_language` is the canonical source of truth (legacy `language`
-# kept for back-compat). Russian-only deployment → supported_languages = ["ru"], auto-detect OFF (below).
-language = "ru"
-default_language = "ru"
-supported_languages = ["ru"]
+language = "en"
+default_language = "en"            # canonical source of truth (legacy `language` kept for back-compat)
+supported_languages = ["en"]
 max_concurrent_commands = 10
 command_timeout_seconds = 30.0
 context_timeout_minutes = 30
 
 # ============================================================
-# SYSTEM CAPABILITIES — Hardware & Services
+# SYSTEM CAPABILITIES
 # ============================================================
 [system]
-microphone_enabled = false      # No local mic — the ESP32 captures + gates audio (so NO server VAD)
-audio_playback_enabled = false  # No local speaker — TTS goes back to the device via the output seam
-web_api_enabled = true          # WS/HTTP API for the ESP32 transport + control
+microphone_enabled = false      # ESP32 captures + gates audio (no server VAD)
+audio_playback_enabled = false  # no local speaker — TTS reply rides the output seam
+web_api_enabled = true
 web_port = 6000
 metrics_enabled = false
 metrics_port = 9090
@@ -50,8 +48,8 @@ metrics_port = 9090
 # INPUT SOURCES
 # ============================================================
 [inputs]
-microphone = false              # ESP32 owns capture
-web = true                      # ESP32 transport + Web API
+microphone = false
+web = true
 cli = false
 default_input = "web"
 
@@ -64,69 +62,79 @@ rest_api_enabled = true
 # COMPONENT ENABLEMENT
 # ============================================================
 [components]
-asr = true                      # sherpa_onnx (vosk-small)
-nlu = true                      # keyword → llm cascade
-intent_system = true            # essential
-tts = true                      # piper
-llm = true                      # powers the NLU classifier fallback + conversation (deepseek)
+asr = true                      # sherpa_onnx (whisper-small)
+nlu = true                      # keyword → spaCy → llm cascade
+intent_system = true
+tts = true                      # piper_ruaccent
+llm = true                      # NLU classifier fallback + conversation (deepseek)
 text_processor = true
-audio = false                   # no local speaker — TTS reply rides the output seam, not this component
+audio = false                   # no local speaker — TTS reply rides the output seam
 voice_trigger = false           # ESP32 owns wake-word
-configuration = true            # Web API config endpoints
-monitoring = true               # kept for traces (see build-time lean-down above)
-nlu_analysis = true             # kept for traces (see build-time lean-down above)
+configuration = true
+monitoring = true               # kept for traces (see build-time lean-down)
+nlu_analysis = true             # kept for traces (see build-time lean-down)
 
 # ============================================================
-# ASR — sherpa-onnx (the only armv7 ASR; no torch, no Kaldi)
+# ASR — sherpa-onnx + Whisper-small (4 GB fits it; the WB7 cannot)
 # ============================================================
 [asr]
 enabled = true
 default_provider = "sherpa_onnx"
 fallback_providers = []
+default_language = "en"
 
 [asr.providers.sherpa_onnx]
 enabled = true
-model = "vosk-model-small-ru"      # small int8 pack (~27 MB) — the big model is unusable at armv7 RTF
-model_type = "vosk-transducer"
-default_language = "ru"
+model = "whisper-small"            # multilingual Whisper int8 pack — EN is a config flag (I18N-4)
+model_type = "whisper"
+default_language = "en"            # whisper decodes in this language (wired at from_whisper build)
 sample_rate = 16000
-num_threads = 2                    # leave 2 of the 4 A7 cores for the co-hosted wb-mqtt-bridge/ui
+num_threads = 4                    # all 4 A53 cores — whisper-small is heavy; best RTF on this SoC
 decoding_method = "greedy_search"
-preload_models = true              # pay the ~38 s graph-init at boot, off the first-utterance path
+preload_models = true              # pay the graph-init at boot, off the first-utterance path
 
 # ============================================================
-# TTS — Piper direct (VITS via sherpa-onnx; espeak-ng stress)
+# TTS — Piper + RUAccent (Russian stress); plain piper fallback
 # ============================================================
 [tts]
 enabled = true
-default_provider = "piper"
+default_provider = "piper"                  # plain en_US Piper — RUAccent is Russian-stress-only
 fallback_providers = ["console"]
 
-[tts.providers.piper]
-enabled = true
-voice = "irina"                    # ru_RU female (best of the k2-fsa zoo voices)
+[tts.providers.piper_ruaccent]
+enabled = false                    # Russian-stress accentor — unused in the English variant
+voice = "irina"                    # ru_RU female (best)
 speaker_id = 0
 speed = 1.0
-num_threads = 0                    # 0 = auto → 2 on armv7 (shared InferencePolicy)
+num_threads = 0                    # 0 = auto → min(4,cpu) on 64-bit
+preload_models = true
+omograph_model_size = "turbo"      # RUAccent homograph model: "turbo" (fast) | "tiny" | "big"
+use_dictionary = true              # RUAccent stress dictionary
+
+[tts.providers.piper]
+enabled = true                     # primary in the English variant (en_US Piper, espeak-ng)
+voice = "amy"                      # en_US female (I18N-3)
+language = "en"
+speaker_id = 0
+speed = 1.0
+num_threads = 0
 preload_models = true
 
 [tts.providers.console]
-enabled = true                     # fallback (debug text output)
+enabled = true                     # last-resort text output
 color = "blue"
 style = "console"
 format = "txt"
 
 # ============================================================
-# AUDIO — DISABLED (no local speaker on WB7). The TTS reply to the ESP32 rides the
-# output seam (RemoteAudioOutput); the workflow's local-playout path no-ops without it.
+# AUDIO — DISABLED (no local speaker). TTS reply rides the output seam.
 # ============================================================
 [audio]
 enabled = false
 
 # ============================================================
 # LLM — deepseek (NLU classifier fallback + conversation); console floor
-# Requires DEEPSEEK_API_KEY at runtime; degrades gracefully offline
-# (keyword NLU still works; conversation falls to the console floor).
+# Requires DEEPSEEK_API_KEY at runtime; degrades gracefully offline.
 # ============================================================
 [llm]
 enabled = true
@@ -143,10 +151,10 @@ context_window = 64000
 timeout = 30
 
 [llm.providers.console]
-enabled = true                     # offline floor — never crashes when no network/key
+enabled = true
 
 # ============================================================
-# VOICE TRIGGER — off (ESP32 wakes on-device, then streams; skip_wake_word)
+# VOICE TRIGGER — off (ESP32 wakes on-device)
 # ============================================================
 [voice_trigger]
 enabled = false
@@ -162,24 +170,25 @@ enabled = false
 default_provider = "energy"
 
 # ============================================================
-# NLU — keyword → llm cascade (no spaCy on armv7)
+# NLU — keyword → spaCy(small) → llm cascade
 # ============================================================
 [nlu]
 enabled = true
 default_provider = "hybrid_keyword_matcher"
 confidence_threshold = 0.7
 fallback_intent = "conversation.general"
-provider_cascade_order = ["hybrid_keyword_matcher", "llm"]   # spaCy dropped — no armv7 wheel
+provider_cascade_order = ["hybrid_keyword_matcher", "spacy_nlu", "llm"]
 max_cascade_attempts = 4
 cascade_timeout_ms = 200
 cache_recognition_results = false
 cache_ttl_seconds = 300
-auto_detect_language = false        # Russian-only deployment — language is fixed by config
+auto_detect_language = false        # English-only deployment — language is fixed by config (I18N-4)
 language_detection_confidence_threshold = 0.8
 persist_language_preference = true
 
 [nlu.providers.hybrid_keyword_matcher]
 enabled = true
+default_language = "en"
 confidence_threshold = 0.7
 fuzzy_enabled = true
 fuzzy_threshold = 0.8
@@ -191,13 +200,18 @@ max_fuzzy_keywords_per_intent = 50
 min_pattern_length = 2
 
 [nlu.providers.spacy_nlu]
-enabled = false                    # no armv7 wheel — the LLM tier replaces it here
+enabled = true                     # 64-bit deterministic tier (the WB7 can't run this)
+confidence_threshold = 0.7
+entity_types = ["PERSON", "ORG", "GPE", "DATE", "TIME", "MONEY", "QUANTITY"]
+
+[nlu.providers.spacy_nlu.language_preferences]
+ru = ["ru_core_news_sm"]           # SMALL model only — keeps the image/RAM footprint down
+en = ["en_core_web_sm"]
 
 [nlu.providers.llm]
-enabled = true                     # last-resort classifier for fuzzy commands (QUAL-50/51)
+enabled = true                     # last-resort classifier for genuine fuzz (QUAL-50/51)
 confidence_threshold = 0.7
 max_phrases_per_intent = 3
-# model / provider omitted → uses the [llm] default chain (deepseek)
 
 # ============================================================
 # TEXT PROCESSING
@@ -255,7 +269,7 @@ info_detail_level = "basic"
 [monitoring]
 enabled = true
 metrics_enabled = true
-dashboard_enabled = false          # headless satellite — no web dashboard
+dashboard_enabled = false
 notifications_enabled = false
 debug_tools_enabled = true
 memory_management_enabled = true
@@ -312,21 +326,21 @@ enabled = ["unified_voice_assistant"]
 default = "unified_voice_assistant"
 
 [workflows.unified_voice_assistant]
-voice_trigger_enabled = false      # ESP32 owns wake-word
+voice_trigger_enabled = false
 asr_enabled = true
 text_processing_enabled = true
 nlu_enabled = true
 intent_execution_enabled = true
 llm_enabled = true
 tts_enabled = true
-audio_enabled = false              # no local playback — reply rides the output seam
+audio_enabled = false
 monitoring_enabled = true
 sample_rate = 16000
 channels = 1
 validate_audio_compatibility = true
-enable_vad_processing = false      # no server VAD — utterances arrive already segmented
+enable_vad_processing = false
 default_source = "voice"
-default_language = "ru"
+default_language = "en"
 session_timeout_minutes = 30
 
 [workflows.unified_voice_assistant.audio_validation]
@@ -336,14 +350,12 @@ auto_resolve_defaults = true
 log_resolution_details = true
 
 # ============================================================
-# TRACE — per-request utterance traces (ARCH-19). OFF by default (CPU/disk overhead on the WB7).
-# Flip enabled=true to collect traces for QUAL-53 (analysing why utterances fall through to the LLM
-# tier) — but note that analysis needs the cascade trace enriched with per-provider attempts first.
-# Can also be toggled per-run with the runner's --trace flag.
+# TRACE — per-request traces (ARCH-19). OFF by default. Enable for QUAL-53
+# (analysing why utterances fall through to the LLM tier), or via --trace.
 # ============================================================
 [trace]
 enabled = false
-capture_level = "utterance"        # "utterance" | "segmenter" | "raw" (raw = heaviest)
+capture_level = "utterance"
 
 # ============================================================
 # ASSET MANAGEMENT
@@ -351,4 +363,3 @@ capture_level = "utterance"        # "utterance" | "segmenter" | "raw" (raw = he
 [assets]
 auto_create_dirs = true
 cleanup_on_startup = false
-# Paths via env: IRENE_ASSETS_ROOT (default ~/.cache/irene)

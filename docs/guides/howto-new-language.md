@@ -5,7 +5,9 @@ kinds of thing: the **config** that admits it, the **words** you author, and the
 
 ![What a language touches](../images/howto-language.png)
 
-This guide uses German (`de`) as the example; substitute your code throughout.
+This guide uses German (`de`) as the example; substitute your code throughout. For a complete worked
+example, the shipped **English** deployment configs (`configs/*-en.toml`) are full copies of their Russian
+counterparts with only the language-bearing fields swapped — a good template for a new single-language build.
 
 ## 1. Config
 

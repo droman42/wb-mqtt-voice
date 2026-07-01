@@ -339,12 +339,6 @@ _Trace-driven system testing (design `docs/design/trace_system_testing.md`, TEST
 _Real English deployment across all three Docker arches (armv7/aarch64/x86_64) + English eval. Design
 `docs/design/multilingual_deployment.md` (I18N-1 ✓) → the implementation slices below. English models are slim and
 size-matched to the Russian stack; language is a per-config/deployment choice (auto-detect is NOT wired to ASR/TTS)._
-- [ ] **I18N-4** [CONFIG] (P3) `[deferred]` — **`*-en.toml` config variants** for the three deployment arches: flip
-      `default_language`/`supported_languages` (at **both** `[asr]` and `[asr.providers.<p>]` levels — see design §2a),
-      `auto_detect_language=false`. Per-arch: `embedded-armv7-en` (EN ASR = `zipformer-en-20M`, `model_type="zipformer-streaming"` per I18N-2 ✓; TTS Piper `amy`),
-      `embedded-aarch64-en` (ASR `whisper-small`, config-only; TTS Piper `amy`), `standalone-x86_64-en` (ASR torch-whisper,
-      config-only; TTS `silero_v3 v3_en` per I18N-7). Config-only; no `CoreConfig` schema change (config-ui unaffected).
-      `config-master.toml` stays canonical. See design §4.
 - [ ] **I18N-5** [EVAL] (P3) `[deferred]` — **English eval: one bulk per language.** Add a `LANG` run-axis to
       `eval/Makefile` (`make ws LANG=en`) + `metadata.language` tag on cases + `profiles/langs/{ru,en}.env`; add the
       **English rubrics** (`polite_helpful_en`/`confirms_action_en`/`graceful_failure_en` in eval-commons

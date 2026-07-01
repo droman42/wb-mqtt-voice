@@ -22,6 +22,8 @@ debug = false
 log_level = "INFO"
 
 language = "ru"
+default_language = "ru"            # canonical source of truth (legacy `language` kept for back-compat)
+supported_languages = ["ru"]      # Russian-only deployment (auto-detect OFF below)
 max_concurrent_commands = 10
 command_timeout_seconds = 30.0
 context_timeout_minutes = 30
@@ -173,7 +175,7 @@ max_cascade_attempts = 4
 cascade_timeout_ms = 200
 cache_recognition_results = false
 cache_ttl_seconds = 300
-auto_detect_language = true
+auto_detect_language = false        # Russian-only deployment — language is fixed by config
 language_detection_confidence_threshold = 0.8
 persist_language_preference = true
 
