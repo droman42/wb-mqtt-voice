@@ -189,6 +189,22 @@ See `docs/review/phase1_architecture_map.md` §5.
       `torch_free_armv7_voice.md`, `esp32_satellite.md` §4.4/§12, BUILD-3, ARCH-10.
 
 ### Code Quality & Review (QUAL)
+- [ ] **QUAL-56** [QUAL][REVIEW][ARCH] (P3) `[deferred]` — **Review + critique the fire-and-forget (F&F) action design &
+      implementation through the "durable"-execution pattern lens.** F&F = long-running intent actions (timers, etc.)
+      launched by handlers, tracked as `active_actions` on the conversation context, with **deferred completion
+      callbacks** routed back to the originating channel (room/device) — QUAL-28 action store, QUAL-11 lifecycle. Code:
+      `irene/intents/orchestrator.py` (active-action disambiguation/confirmation, ~156/445/558), `irene/intents/context.py`
+      (`active_actions`, F&F completion, room-scoped deferred completion — ~87/107/143/479), `irene/intents/handlers/base.py`
+      (launch + completion), `irene/intents/models.py:52` (`action_metadata`), `irene/core/notifications.py`. **Lens —
+      treat it as a classic durable pattern and critique against it:** is the action state **persisted or in-memory**
+      (it looks in-memory: `asyncio.create_task` + context dicts)? **What survives a process restart / crash** — are
+      in-flight actions lost (e.g. a timer set before a restart never fires; a deferred completion never delivered)?
+      **Idempotency** (replays/duplicates), **delivery guarantees** (at-least-once / exactly-once to the reply channel),
+      **scheduling durability** (timers vs a durable scheduler), **reconciliation on restart**, **retry / failure
+      handling**, **observability** (can you inspect/resume an in-flight action?). Compare to the durable-execution
+      reference model (persisted event log + idempotent steps + recovery). **Deliverable = a review doc under
+      `docs/review/` (frozen evidence)**; on completion file follow-up ledger tasks for findings worth acting on
+      (`review-then-remediate` — a finding isn't scope until it has an ID). _Filed 2026-07-01 at user request._
 - [ ] **QUAL-18** [STREAMAPI] (P-TBD) — Act on QUAL-17 (per `streaming_api_review.md` §5): **(1)** vendor + wire the
       official `@asyncapi/web-component` at `/asyncapi`, delete the bespoke renderer (≈ −900 LOC); **(2)** fix the
       lossy `_clean_property_for_asyncapi` union/nullable handling; **(3, scoped separately)** emit AsyncAPI 3.0 +
