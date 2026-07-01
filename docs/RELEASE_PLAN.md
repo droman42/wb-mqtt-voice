@@ -346,15 +346,26 @@ size-matched to the Russian stack; language is a per-config/deployment choice (a
       streaming-vs-offline. Then add the winner to the sherpa catalog (`irene/providers/asr/sherpa_onnx.py`) + a
       `zipformer-streaming`/`moonshine` `model_type` if needed. Interim default: zipformer-en-20M (proven). aarch64 +
       x86_64 need **no** new ASR asset (Whisper is multilingual → config-only). See design §2/§2c.
-- [ ] **I18N-3** [ASSET] (P3) `[deferred]` — **English Piper TTS voices.** Generalize the `ru_RU`-hardcoded Piper
-      catalog (`irene/providers/tts/piper.py`) to a locale parameter and add **`en_US-amy-medium`** (default) +
-      `lessac`/`ryan`. Same k2-fsa `.tar.bz2` medium packs, same sherpa-onnx runtime, ~same size as the Russian voices —
-      no provider/runtime change. Unblocks real EN speech-out on all three arches (eval itself runs `wants_audio=false`,
-      so this is a deployment need, not an eval need). See design §2/§5.
-- [ ] **I18N-4** [CONFIG] (P3) `[deferred]` — **`*-en.toml` config variants** for the three deployment arches
-      (`embedded-armv7-en`, `embedded-aarch64-en`, `standalone-x86_64-en`): flip `default_language`/`supported_languages`,
-      set the EN ASR model (I18N-2 winner) + EN Piper voice (I18N-3), `auto_detect_language=false`. Config-only; no
-      `CoreConfig` schema change (config-ui unaffected). `config-master.toml` stays canonical. See design §4.
+- [ ] **I18N-3** [ASSET] (P3) `[deferred]` — **English Piper TTS voices (the two torch-free satellites: armv7 +
+      aarch64).** Generalize the `ru_RU`-hardcoded Piper catalog (`irene/providers/tts/piper.py`) to a locale parameter
+      and add **`en_US-amy-medium`** (default) + `lessac`/`ryan`. Same k2-fsa `.tar.bz2` medium packs, same sherpa-onnx
+      runtime, ~same size as the Russian voices — no provider/runtime change. (The x86_64 standalone stays on torch
+      Silero — I18N-7, not Piper.) Eval runs `wants_audio=false`, so this is a deployment need, not an eval need. See
+      design §2/§5.
+- [ ] **I18N-7** [ASSET] (P3) `[deferred]` — **Silero v3 English for the x86_64 standalone (torch TTS parity).** The
+      standalone runs `silero_v4 baya` (torch) for Russian; Silero **froze English at `v3_en`** (no `v4_en`/`v5_en`
+      exists — `silero_v4.py:54`), so torch parity means `v3_en` (torch `.pt`, ~same size, one quality tier below RU
+      `v4_ru` — an accepted trade to keep the standalone image torch-only, not pull in the sherpa-onnx runtime for
+      Piper). The `silero_v3` provider **already exists** and already lists `v3_en` (`silero_v3.py:78`) — this is an
+      *adjustment*, not a new provider: pull `model_id` (`v3_ru`/`v3_en`) + the matching speaker set (`en_0…en_117`) by
+      language instead of the Russian hardcode (`_default_speakers`/`speaker_by_assname`, `get_capabilities` →
+      `["ru-RU"]` at `:136`), and skip the Russian `put_accent`/`put_yo` path for English. See design §2/§5.
+- [ ] **I18N-4** [CONFIG] (P3) `[deferred]` — **`*-en.toml` config variants** for the three deployment arches: flip
+      `default_language`/`supported_languages` (at **both** `[asr]` and `[asr.providers.<p>]` levels — see design §2a),
+      `auto_detect_language=false`. Per-arch: `embedded-armv7-en` (EN ASR = I18N-2 winner; TTS Piper `amy`),
+      `embedded-aarch64-en` (ASR `whisper-small`, config-only; TTS Piper `amy`), `standalone-x86_64-en` (ASR torch-whisper,
+      config-only; TTS `silero_v3 v3_en` per I18N-7). Config-only; no `CoreConfig` schema change (config-ui unaffected).
+      `config-master.toml` stays canonical. See design §4.
 - [ ] **I18N-5** [EVAL] (P3) `[deferred]` — **English eval: one bulk per language.** Add a `LANG` run-axis to
       `eval/Makefile` (`make ws LANG=en`) + `metadata.language` tag on cases + `profiles/langs/{ru,en}.env`; add the
       **English rubrics** (`polite_helpful_en`/`confirms_action_en`/`graceful_failure_en` in eval-commons

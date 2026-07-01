@@ -42,20 +42,28 @@ a real deployment — but it turns out to be cheap (§2).
 
 ## 2. The slim English model set (cross-arch, size-matched)
 
-Two providers already span all three Docker arches **torch-free**: **sherpa-onnx** (ASR) and **Piper** (TTS, on the
-sherpa-onnx runtime). Both have English models of the same class and size as the Russian ones. Only **one genuinely new
-ASR asset** is needed (armv7); everything else is already present or a small catalog addition.
+sherpa-onnx (ASR) + Piper (TTS) span the two **torch-free** satellites; the x86_64 **standalone** is the torch image
+(ASR torch-Whisper, TTS torch-Silero). English models exist in the same class/size as the Russian ones on every stage.
+**TTS is per-architecture, not unified** (mirroring the Russian split): Piper on the torch-free satellites, torch-Silero
+on the standalone.
 
 | Stage | Russian today | English — plan | Size vs RU | New? |
 |---|---|---|---|---|
 | ASR — **armv7** (torch-free) | `vosk-model-small-ru` sherpa transducer, ~27 MB int8 | **spike: `sherpa-onnx-streaming-zipformer-en-20M` (43.6 MB int8, proven arm32, streaming) vs `moonshine-tiny-en` (27M params, English-only, offline, ~48% lower WER than whisper-tiny, arm32 UNCONFIRMED)** | same tier (~27–44 MB) | **NEW asset** (I18N-2) |
 | ASR — **aarch64** | `whisper-small` sherpa (~470 MB, multilingual) | same `whisper-small` — EN is **config-only** | identical | no |
 | ASR — **x86_64** | torch `whisper small` (multilingual) | same — EN is **config-only** | identical | no |
-| TTS — **all arches** | Piper `irina` ru_RU medium, ~60–75 MB | **Piper `en_US-amy-medium`** (same k2-fsa release, same `.tar.bz2` medium format); generalize the `ru_RU`-hardcoded catalog | ~same | catalog code (I18N-3) |
+| TTS — **armv7 + aarch64** (torch-free) | Piper `irina` ru_RU / `piper_ruaccent` medium, ~60–75 MB | **Piper `en_US-amy-medium`** (same k2-fsa release, same `.tar.bz2` medium format); generalize the `ru_RU`-hardcoded catalog | ~same | catalog code (I18N-3) |
+| TTS — **x86_64 standalone** (torch) | `silero_v4` `baya` (torch `.pt`, ~50 MB) | **`silero_v3` `v3_en`** (torch `.pt`, multi-speaker `en_0…en_117`) — torch parity, in-image | ~same size, **v3-tier quality** (Silero froze English at v3 — no `v4_en`/`v5_en` exists) | small provider generalization (I18N-7) |
 | NLU / donations | `hybrid_keyword` + `ru.json`; spaCy `ru_core_news` (64-bit) | `en.json` + spaCy `en_core_web` — **already cataloged** | — | content audit (I18N-6) |
 | Number norm | pure-Python ru | `ovos-number-parser` en — **already wired** | — | no |
 | VAD | silero / energy — language-neutral | same | — | no |
 | Wake word | ESP32 on-device (armv7) / disabled | English wake phrase model where wake is enabled | — | out of scope for now |
+
+**Standalone TTS note.** The standalone runs `silero_v4` (torch) for Russian, but **Silero never shipped an improved
+English model** — the official `models.yml` has `v3_ru→v4_ru→v5_ru` for Russian yet English stops at `v3_en` (no
+`v4_en`/`v5_en`; the code comment at `silero_v4.py:54` confirms it). So torch parity on the standalone means accepting
+**`v3_en`** (torch, ~same size, one quality generation below the RU `v4_ru`) — the deliberate trade to keep the
+standalone image torch-only rather than pulling the sherpa-onnx runtime in for Piper.
 
 **armv7 is the crux and it is solvable.** The 20M English streaming zipformer is 43.6 MB int8 — same order as
 `vosk-model-small-ru` — and sherpa-onnx ships `linux_armv7l` wheels + arm32 prebuilt binaries. Whisper stays 64-bit-only,
@@ -117,7 +125,8 @@ plus the top-level/workflow `default_language`.
 - `embedded-aarch64-en.toml` — ASR `whisper-small` stays (multilingual); flip `[asr]` + `[asr.providers.sherpa_onnx].default_language="en"`
   (already wired at inference, §2a); TTS Piper `amy` (replaces `piper_ruaccent`, which is Russian-stress-specific).
 - `standalone-x86_64-en.toml` — ASR torch-whisper model stays; flip `[asr]` + `[asr.providers.whisper].default_language="en"`
-  (already wired, §2a); TTS → Piper `amy` (replaces `silero_v4`, which has no English model).
+  (already wired, §2a); TTS → **`silero_v3` `v3_en`** (torch parity; `silero_v4` has no English). `default_provider="silero_v3"`,
+  `[tts.providers.silero_v3] model_id="v3_en"`, an `en_*` `default_speaker`, `put_accent=false`/`put_yo=false`.
 
 `config-master.toml` stays the canonical reference; these are deployment variants (`config-master-canonical`).
 
@@ -128,6 +137,11 @@ plus the top-level/workflow `default_language`.
   (and/or `moonshine`) `model_type` if not already handled by the transducer path.
 - **Piper TTS catalog** (`irene/providers/tts/piper.py`): generalize the hardcoded `ru_RU` URL to a locale parameter;
   add `en_US-amy-medium` (+ `lessac`/`ryan`). No provider/runtime change — same `.tar.bz2` packs, same sherpa runtime.
+- **Silero v3 English** (`irene/providers/tts/silero_v3.py`): the provider **already exists** — this is an *adjustment*,
+  not a new provider. `v3_en` is already in its catalog (`:78`); it just needs to **pull the model by language**: select
+  `model_id` (`v3_ru`/`v3_en`) + the matching speaker set (`en_0…en_117`) from config/language instead of the current
+  Russian hardcode (`_default_speakers`/`speaker_by_assname` ru, `get_capabilities` → `languages: ["ru-RU"]` at `:136`),
+  and skip the Russian `put_accent`/`put_yo` path for English. Same torch runtime — no new dependency.
 
 ## 6. Scope boundaries / non-goals
 - **No auto-detect wiring.** Language stays a per-config/deployment choice (§1a). ASR/TTS runtime language-switching is
@@ -141,7 +155,9 @@ plus the top-level/workflow `default_language`.
 
 ## 7. Implementation tasks (filed off this design)
 - **I18N-2** [ASSET] — armv7 EN ASR spike (zipformer-en-20M vs moonshine-tiny-en) → decide + add to the sherpa catalog.
-- **I18N-3** [ASSET] — EN Piper voices: generalize the `ru_RU` catalog, add `en_US-amy-medium` (default) + variants.
+- **I18N-3** [ASSET] — EN Piper voices (satellites): generalize the `ru_RU` catalog, add `en_US-amy-medium` (default) + variants.
+- **I18N-7** [ASSET] — Silero v3 English (standalone torch TTS): adjust the existing `silero_v3` provider to pull the
+  model + speakers by language (`v3_en`), not a new provider (§5).
 - **I18N-4** [CONFIG] — the three `*-en.toml` variants (§4).
 - **I18N-5** [EVAL] — `LANG` axis + `metadata.language` tag + `profiles/langs/*`; EN rubrics; EN fixtures.
 - **I18N-6** [CONTENT] — audit `en.json` donation completeness across handlers.

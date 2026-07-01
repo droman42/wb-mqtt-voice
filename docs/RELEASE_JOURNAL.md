@@ -13,6 +13,14 @@ newest entries near the top of each dated section.
 
 ## Action journal
 
+- **I18N design refinement — standalone TTS is torch Silero, not Piper; Silero English caps at `v3_en`.** Corrected an
+  over-unification in the I18N-1 design: TTS is per-architecture (Piper on the two torch-free satellites; the x86_64
+  standalone runs `silero_v4` torch for Russian). The authoritative Silero `models.yml` shows Russian advanced
+  `v3→v4→v5` but **English never left `v3`** (no `v4_en`/`v5_en`; confirmed at `silero_v4.py:54`). Decision (user):
+  keep **torch parity** on the standalone with **`silero_v3 v3_en`** — same `.pt` size, one quality tier below RU
+  `v4_ru`, accepted to avoid pulling the sherpa-onnx runtime into the torch image. The `silero_v3` provider already
+  exists and already lists `v3_en` — the work is an *adjustment* (pull model + speakers by language), filed as
+  **I18N-7**; I18N-3 (Piper) is now scoped to the satellites, and I18N-4 points the standalone config at `silero_v3`.
 - **I18N-1 (design) — real English deployment: slim cross-arch model set + one-bulk-per-language eval.** Three
   read-only investigations settled the architecture question raised while adding EN UX rubrics: language auto-detection
   is wired only to text-understanding + response strings, **not** ASR/TTS (`switch_language` is a TODO stub;
