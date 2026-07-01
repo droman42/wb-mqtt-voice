@@ -65,6 +65,7 @@ Living findings behind the tasks (`read-at-start-record-at-completion`). `[x]` =
 | `docs/design/streaming_tts.md` (DRAFT 2026-06-14) | producer twin of ARCH-20 — streaming TTS synthesis + output-seam delivery unification: `synthesize_to_stream` port + base simulation/native overrides, remote `AudioSink` OutputPort, collapse the 3 fragmented playout paths, retire PR-4's parse_wav bridge | ARCH-21 |
 | `docs/design/esp32_satellite.md` (DRAFT 2026-06-14) | **consolidated** ESP32 voice-satellite design — supersedes `ws_esp32_transport.md`, folds `esp32_wakeword_review.md` + `onnx §10/11` + ARCH-21; D-1..D-18 (device shape, wire protocol in+reply, micro stack, models/push, identity/multi-room, provisioning/CSR/OTA); backend plan §12 | ARCH-22 |
 | `docs/design/torch_free_armv7_voice.md` `[x]` (2026-06-15; research/analysis, no code) | torch-free inference for the armv7 voice stack — canonical three-image matrix (§5): torch contained to the x86_64 standalone image; both ARM satellites (armv7 WB7 + aarch64 WB8/Pi) are torch-free sherpa-onnx; Whisper→sherpa-Whisper, Silero TTS→Piper/RUAccent seams | ARCH-24 ✓ |
+| `docs/design/multilingual_deployment.md` `[x]` (2026-07-01; design, no code) | real English deployment across all 3 Docker arches + English eval — slim cross-arch model set size-matched to Russian (armv7 EN ASR spike zipformer-en-20M vs moonshine-tiny-en; EN Piper amy; whisper multilingual on 64-bit); one-bulk-per-language eval; auto-detect NOT wired to ASR/TTS so language is a per-config choice | I18N-1 ✓ → I18N-2..6 |
 | `config-ui/docs/donation_editor_ux.md` | human-friendly donations editor design | UI-1/2/3 |
 | `docs/review/test7_triage.md` (2026-06-15) | TEST-7 Phase-B worklist — 82-failure triage (delete/rewrite/fix) + risk-ranked coverage tiers + fix-code suspects | TEST-7 ✓ |
 | `docs/review/api_result_contract_review.md` `[x]` (2026-06-27) | API execution-result response-contract consistency — 5 findings (reply field name, 3-way intent split, divergent metadata under one model, confidence placement, live `None` internal misread); root cause = no shared serializer | QUAL-54 ✓, QUAL-55 |
@@ -333,6 +334,35 @@ _Trace-driven system testing (design `docs/design/trace_system_testing.md`, TEST
       gold labels (the user)**, not Claude.
 
 ### Build & CI (BUILD)
+
+### Internationalization (I18N)
+_Real English deployment across all three Docker arches (armv7/aarch64/x86_64) + English eval. Design
+`docs/design/multilingual_deployment.md` (I18N-1 ✓) → the implementation slices below. English models are slim and
+size-matched to the Russian stack; language is a per-config/deployment choice (auto-detect is NOT wired to ASR/TTS)._
+- [ ] **I18N-2** [ASSET] (P3) `[deferred]` — **armv7 English ASR spike + catalog.** Decide the WB7 (torch-free) English
+      ASR by measuring **`sherpa-onnx-streaming-zipformer-en-20M`** (43.6 MB int8, proven `linux_armv7l`, streaming) vs
+      **`moonshine-tiny-en`** (27M params, English-only, offline, ~48% lower WER than whisper-tiny, **arm32 support
+      unconfirmed**) on: arm32 runtime support, int8 size/RAM on the WB7 budget, English WER on the eval fixtures,
+      streaming-vs-offline. Then add the winner to the sherpa catalog (`irene/providers/asr/sherpa_onnx.py`) + a
+      `zipformer-streaming`/`moonshine` `model_type` if needed. Interim default: zipformer-en-20M (proven). aarch64 +
+      x86_64 need **no** new ASR asset (Whisper is multilingual → config-only). See design §2/§2a.
+- [ ] **I18N-3** [ASSET] (P3) `[deferred]` — **English Piper TTS voices.** Generalize the `ru_RU`-hardcoded Piper
+      catalog (`irene/providers/tts/piper.py`) to a locale parameter and add **`en_US-amy-medium`** (default) +
+      `lessac`/`ryan`. Same k2-fsa `.tar.bz2` medium packs, same sherpa-onnx runtime, ~same size as the Russian voices —
+      no provider/runtime change. Unblocks real EN speech-out on all three arches (eval itself runs `wants_audio=false`,
+      so this is a deployment need, not an eval need). See design §2/§5.
+- [ ] **I18N-4** [CONFIG] (P3) `[deferred]` — **`*-en.toml` config variants** for the three deployment arches
+      (`embedded-armv7-en`, `embedded-aarch64-en`, `standalone-x86_64-en`): flip `default_language`/`supported_languages`,
+      set the EN ASR model (I18N-2 winner) + EN Piper voice (I18N-3), `auto_detect_language=false`. Config-only; no
+      `CoreConfig` schema change (config-ui unaffected). `config-master.toml` stays canonical. See design §4.
+- [ ] **I18N-5** [EVAL] (P3) `[deferred]` — **English eval: one bulk per language.** Add a `LANG` run-axis to
+      `eval/Makefile` (`make ws LANG=en`) + `metadata.language` tag on cases + `profiles/langs/{ru,en}.env`; add the
+      **English rubrics** (`polite_helpful_en`/`confirms_action_en`/`graceful_failure_en` in eval-commons
+      `shared/rubrics/`, mirroring the TEST-16 co-equal structure); record **English fixtures**. Satisfies the original
+      "we have RU UX rubrics but nothing for EN" request. Depends on I18N-4 (an EN bring-up config). See design §3.
+- [ ] **I18N-6** [CONTENT] (P3) `[deferred]` — **Audit `en.json` donation completeness** across handlers (the EN NLU
+      path selects `en.json` by `default_language`; spaCy `en_core_web` + `ovos-number-parser` en are already wired).
+      Fill gaps so English intent coverage matches Russian. See design §2.
 
 ### Models & Assets (ASSET)
 

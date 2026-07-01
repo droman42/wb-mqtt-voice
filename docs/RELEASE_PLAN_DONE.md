@@ -2001,6 +2001,20 @@ rationale/chronology lives in [`RELEASE_JOURNAL.md`](./RELEASE_JOURNAL.md).
       enforcement — a component missing a port method fails at instantiation (regression guard for the ports↔components
       contract). Fixtures: the localization-asset-loader pattern + fake port impls. Relates to QUAL-24, ARCH-1.
 
+### Internationalization (I18N)
+- [x] **I18N-1** [DESIGN] (P3) `[deferred]` — **DONE 2026-07-01 (design; no code).** Real English deployment design →
+      **`docs/design/multilingual_deployment.md`**. Three read-only investigations established: (1) language
+      auto-detection is wired only to text-understanding + response strings, **not** ASR/TTS (`switch_language` is a TODO
+      stub; `persist_language_preference` + `[nlu_analysis.languages]` are dead config) → the voice pipeline is
+      **monolingual per config**; (2) the config language flag drives the text side automatically but ASR/TTS model paths
+      are independent per-provider fields; (3) the WS eval runs `wants_audio=false` → TTS isn't exercised in eval (but is
+      needed for real deployment). **Model finding:** sherpa-onnx (ASR) + Piper (TTS) already span all three Docker
+      arches torch-free, with English models size-matched to the Russian stack — only **one new ASR asset** (armv7) is
+      genuinely required; whisper is multilingual on 64-bit (config-only), and English Piper voices are a catalog
+      generalization. armv7 EN ASR is a spike (zipformer-en-20M vs moonshine-tiny-en); EN Piper voice = `amy`. Eval =
+      one-bulk-per-language (`LANG` axis). **Completing the design ≠ shipped:** filed implementation slices
+      **I18N-2/3/4/5/6** (active ledger). Web-sourced (sherpa-onnx HF/PyPI arm32, k2-fsa Piper release, Moonshine).
+
 ### Build & CI (BUILD)
 - [x] **BUILD-1** (P0) — Verify clean `uv sync` + CLI and WebAPI boot at v15. **DONE 2026-06-01** (`bab6f97`):
       `uv sync --extra all` clean; `--check-deps` 5/5; **WebAPI** boots (workflow READY, 10 routers) and

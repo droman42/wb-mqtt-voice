@@ -13,6 +13,20 @@ newest entries near the top of each dated section.
 
 ## Action journal
 
+- **I18N-1 (design) — real English deployment: slim cross-arch model set + one-bulk-per-language eval.** Three
+  read-only investigations settled the architecture question raised while adding EN UX rubrics: language auto-detection
+  is wired only to text-understanding + response strings, **not** ASR/TTS (`switch_language` is a TODO stub;
+  `persist_language_preference` + `[nlu_analysis.languages]` are dead config) — so the voice pipeline is **monolingual
+  per config**, and language is a per-deployment choice, not a runtime switch (staying slim, as intended). The config
+  language flag drives the text side automatically but ASR/TTS model paths are independent per-provider fields. **Model
+  finding (web-sourced):** sherpa-onnx (ASR) + Piper (TTS) already span all three Docker arches torch-free with English
+  models size-matched to the Russian stack — only **one new ASR asset** is genuinely required (armv7), because whisper is
+  multilingual on 64-bit (config-only) and English Piper voices are the *same* k2-fsa `.tar.bz2` medium packs (a catalog
+  generalization, not the "TTS blocker" it first looked like). armv7 EN ASR is a measured spike:
+  `sherpa-onnx-streaming-zipformer-en-20M` (43.6 MB int8, proven arm32, streaming) vs `moonshine-tiny-en` (English-only,
+  offline, better WER than whisper-tiny, arm32 unconfirmed). EN Piper voice = `amy`. Design →
+  `docs/design/multilingual_deployment.md`; filed implementation slices I18N-2/3/4/5/6 (ASR spike, Piper catalog,
+  `*-en.toml` configs, EN eval `LANG` axis + rubrics + fixtures, `en.json` donation audit). No code shipped.
 - **TEST-16 (partial) — calibrated the DeepSeek Russian UX judge; hardened the shared rubrics.** The live UX suite's
   two cases are both expected-PASS happy paths, so they can't tell a working judge from one that rubber-stamps. A
   12-case balanced probe (both classes, run through the *same* `llm-rubric`→DeepSeek path, in scratchpad) showed the

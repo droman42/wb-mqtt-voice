@@ -30,9 +30,9 @@ LEDGER_DONE = ROOT / "docs" / "RELEASE_PLAN_DONE.md"  # frozen: completed [x] ta
 REVIEW_DIRS = [ROOT / "docs" / "review", ROOT / "docs" / "design"]
 
 # Workstream prefixes that denote a real task ID (avoids matching P0-1, v1.0, file:line, …)
-ID_RE = re.compile(r"\b((?:ARCH|QUAL|TEST|UI|DOC|BUILD|ASSET|REL|BUG)-\d+)\b")
+ID_RE = re.compile(r"\b((?:ARCH|QUAL|TEST|UI|DOC|BUILD|ASSET|REL|BUG|I18N)-\d+)\b")
 # A task DECLARATION line in the ledger:  - [ ] **QUAL-27** …   /  - [x] **ARCH-5** …
-DECL_RE = re.compile(r"^- \[([ x~])\] \*\*((?:ARCH|QUAL|TEST|UI|DOC|BUILD|ASSET|REL|BUG)-\d+)\*\*")
+DECL_RE = re.compile(r"^- \[([ x~])\] \*\*((?:ARCH|QUAL|TEST|UI|DOC|BUILD|ASSET|REL|BUG|I18N)-\d+)\*\*")
 
 
 def declared_ids(text: str) -> dict[str, str]:
