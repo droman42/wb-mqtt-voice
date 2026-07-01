@@ -2055,6 +2055,19 @@ rationale/chronology lives in [`RELEASE_JOURNAL.md`](./RELEASE_JOURNAL.md).
       English worked-example pointer to `docs/guides/howto-new-language.md`. Gates: config-validator ✓ (12 configs),
       suite **1110 passed** (+3 = the parametrized per-config canonical test now covers the `-en` files), pyright 0.
       Design §4.
+- [x] **I18N-5** [EVAL] (P3) `[deferred]` — **DONE 2026-07-01 (bilingual eval harness; English audio recording split to
+      I18N-8).** Built + validated the multilingual eval harness. Design (user-confirmed): **fixtures/traces partitioned
+      by language subdirectory** (`fixtures/<lang>/`, `traces/<lang>/`) — same scenario filenames across languages so
+      coverage parity is a directory diff; moved the Russian assets into `ru/`. Added an **`EVAL_LANG`** axis to
+      `eval/Makefile` (default `ru`, derived from the `*-en` CONFIG name; named `EVAL_LANG` not `LANG` to avoid clobbering
+      the POSIX locale var) driving the fixture/trace subdir (`{{env.EVAL_LANG}}`) + `--filter-metadata
+      language=$(EVAL_LANG)` (promptfoo ANDs it with `kind=ux`), plus `EVAL_ROOM` (Кухня/Kitchen — the room name is echoed
+      in the failure reply). Cases duplicated per language + tagged `metadata.language`; EN config profiles
+      `profiles/configs/*-en.env`; **EN rubrics** `shared/rubrics/en-ux.yaml` (eval-commons `4ece478`, co-equal). **RU ws
+      cases migrated to the co-equal rubrics** (closes the TEST-16 loop); fixed a stale `voice` config ref in
+      `eval/README`. **Validated:** RU suite green under the new layout (`make ws CONFIG=embedded-armv7` = **4/4**); EN
+      rubrics **7/7** live against DeepSeek. **The mic-recorded English fixtures + golden trace are tracked as I18N-8**
+      (the one piece not doable headless). Design §3.
 - [x] **I18N-6** [CONTENT] (P3) `[deferred]` — **DONE 2026-07-01 (audit only, no fill).** Audited `en.json` vs `ru.json`
       across all **13 handlers** three ways: (1) **structural parity** — identical method sets + parameter specs, no
       stubs, all `language="en"` (13/13); (2) **phrase coverage** — genuine idiomatic English everywhere, adequate even

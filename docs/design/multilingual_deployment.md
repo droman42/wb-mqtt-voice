@@ -194,5 +194,6 @@ not a deployment.)
 - **I18N-3** [ASSET] ✓ — EN Piper voices (satellites): catalog generalized to a locale param, added `en_US-amy`/`lessac`/`ryan`; capabilities report per-instance language.
 - **I18N-7** [ASSET] ✓ — Silero v3 English (standalone): `silero_v3` now pulls speakers/accent/language by model (`v3_en` → `en_0…en_117`, no Russian `put_accent`). Real `v3_en` synthesis verified (57 MB, `en_0` OK).
 - **I18N-4** [CONFIG] ✓ — the three `*-en.toml` variants (§4); also made the three RU configs explicitly RU-only (symmetry: `default_language`/`supported_languages`/`auto_detect_language=false`).
-- **I18N-5** [EVAL] ~ — harness ✓ (`EVAL_LANG` axis, language-subdir fixtures/traces, en config profiles, en rubrics validated 7/7, ru suite green); **only `fixtures/en/*` + `traces/en/*` recording remains** (mic).
+- **I18N-5** [EVAL] ✓ — bilingual eval harness: `EVAL_LANG` axis, language-subdir fixtures/traces, en config profiles, en rubrics validated 7/7, ru suite green.
+- **I18N-8** [EVAL] — record `fixtures/en/*` + a `traces/en/` golden (mic-dependent tail of I18N-5), then the English suite runs green.
 - **I18N-6** [CONTENT] ✓ — audited `en.json` donations: functional parity across all 13 handlers (structure + phrases); empty English lemmas are appropriate (additive, morphological — English needs none). No fill required.

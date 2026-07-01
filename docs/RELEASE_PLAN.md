@@ -339,17 +339,12 @@ _Trace-driven system testing (design `docs/design/trace_system_testing.md`, TEST
 _Real English deployment across all three Docker arches (armv7/aarch64/x86_64) + English eval. Design
 `docs/design/multilingual_deployment.md` (I18N-1 ✓) → the implementation slices below. English models are slim and
 size-matched to the Russian stack; language is a per-config/deployment choice (auto-detect is NOT wired to ASR/TTS)._
-- [ ] **I18N-5** [EVAL] (P3) `[deferred]` — **English eval: one bulk per language. Harness DONE (2026-07-01); only the
-      mic-recorded English audio remains.** Built + verified: an **`EVAL_LANG`** run-axis in `eval/Makefile` (default
-      `ru`, derived from the `*-en` CONFIG name; named `EVAL_LANG` not `LANG` to avoid clobbering the POSIX locale var) +
-      `--filter-metadata language=$(EVAL_LANG)` (composes with `kind=ux`); **fixtures/traces partitioned into
-      `<lang>/` subdirs** (Russian moved to `ru/`); `metadata.language` on every case; per-language `reference`/rubric +
-      an `EVAL_ROOM` (Кухня/Kitchen, echoed in the failure reply); EN config profiles `profiles/configs/*-en.env`; **EN
-      rubrics** `shared/rubrics/en-ux.yaml` (co-equal, **validated live 7/7** against DeepSeek); the RU ws cases migrated
-      to the co-equal rubrics (closes the TEST-16 loop). Verified: `make ws CONFIG=embedded-armv7` = **4/4** under the new
-      layout. **Remaining:** record `fixtures/en/{timer_10min,light_unreachable}.wav` + a `traces/en/` golden (needs a
-      microphone — the one piece not doable headless). Satisfies the original "RU UX rubrics but nothing for EN" request.
-      See design §3.
+- [ ] **I18N-8** [EVAL] (P3) `[deferred]` — **Record the English eval assets** (the mic-dependent tail of I18N-5, which
+      delivered the bilingual harness). Record `fixtures/en/{timer_10min,light_unreachable}.wav` (16 kHz mono PCM16 — say
+      "set a timer for ten minutes" / "turn on the light in the garage") via `make record EVAL_LANG=en`, and a
+      `traces/en/timer_set_10min.json` golden under an `-en` config. Then `make ws CONFIG=embedded-armv7-en` runs the full
+      English suite green (harness already validated: RU 4/4, EN rubrics 7/7). Needs a microphone — the one piece not
+      doable headless. See design §3.
 
 ### Models & Assets (ASSET)
 

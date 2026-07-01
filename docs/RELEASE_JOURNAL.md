@@ -13,6 +13,9 @@ newest entries near the top of each dated section.
 
 ## Action journal
 
+- **I18N-5 closed as DONE (harness); English audio recording split to I18N-8.** The harness is a complete, committed,
+  validated unit, so it moves to the done ledger; the one mic-dependent remainder (record `fixtures/en/*` + a `traces/en/`
+  golden) is now its own task **I18N-8** rather than a long-lived partial. No code change — a ledger split for accuracy.
 - **I18N-5 (harness DONE) — bilingual eval; only mic-recorded English audio remains.** Built the multilingual eval
   harness and verified it end-to-end. Design decision (user-confirmed): **fixtures/traces partitioned by language
   subdirectory** (`fixtures/<lang>/`, `traces/<lang>/`) — same scenario filenames across languages so parity is a
