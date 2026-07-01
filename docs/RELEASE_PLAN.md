@@ -55,7 +55,7 @@ Living findings behind the tasks (`read-at-start-record-at-completion`). `[x]` =
 | `streaming_api_review.md` `[x]` | AsyncAPI streaming-API tooling — Hybrid: replace renderer / keep+improve generator | QUAL-17 ✓, QUAL-18 |
 | `esp32_wakeword_review.md` `[x]` | ESP32 + wakeword keep/fix/cut + microWakeWord upstream study | QUAL-19 ✓, QUAL-20 ✓ |
 | `docker_build_review.md` `[x]` | Docker/build verification (entry-point renames, armv7 base, build-analyzer drift) | BUILD-5, BUILD-3 |
-| `docs/design/mqtt_integration.md` `[x]` (DONE 2026-06-06; bridge contract AGREED) | smart-home integration — bridge is the single device authority, Irene speaks canonical commands | ARCH-7/8 |
+| `docs/design/mqtt_integration.md` `[x]` (DONE 2026-06-06; bridge contract AGREED) | smart-home integration — bridge is the single device authority, Irene speaks canonical commands | ARCH-7/8, ARCH-26 |
 | `docs/design/ws_esp32_transport.md` `[x]` | WS streaming-input driving adapter + ESP32 satellite transport | ARCH-6 |
 | `docs/design/onnx_inference_layer.md` `[x]` (complete 2026-06-04; ASR/platform/build + VAD/wake-word all resolved) | shared sherpa-onnx inference layer — ASR-centric; WB7 armv7 feasibility proven on hardware | ARCH-9/10 |
 | `docs/design/io_architecture.md` (DRAFT 2026-06-07) | symmetric configurable hexagonal I/O — format-vs-input, OutputPort + modality matrix, daemon multiplexing, event-bus delivery+observation, F&F via OutputManager, runners-as-presets | ARCH-14/15 |
@@ -154,6 +154,31 @@ See `docs/review/phase1_architecture_map.md` §5.
       (No "everywhere" fan-out — "выключи свет везде" = an Actuate against the `global` `all_lights` aggregate device, on
       PR-4's path.) PR-2+ integrate as the bridge's slice comes online. Broad
       device coverage + T2/T3 NLU = QUAL-35.
+- [ ] **ARCH-26** [MQTT][DESIGN] (P3) `[deferred]` — **Resolve two Irene↔bridge catalog-contract questions before
+      ARCH-8 PR-2.** Design-clarification task (deliverable = an edit to `docs/design/mqtt_integration.md`, resolving the
+      points below + filing the implementation follow-ups per `design-then-implement`). Source: the 2026-07-01 MQTT
+      status review.
+      **(1) Catalog-staleness mechanism — reconcile §5a vs §8 (currently contradictory).** §5a/PR-2 have Irene *subscribe*
+      to the retained MQTT topic **`bridge/catalog/version`** and re-pull `/system/catalog` on change; but §8 asserts Flow 2
+      "adds no MQTT dependency" (`aiohttp` only) and quarantines "raw MQTT" to the deferred Flow 1 — yet you cannot
+      subscribe to a topic with an HTTP client, so **as written Irene would need a raw MQTT client for this one nudge**,
+      contradicting the "bridge owns all MQTT" framing. (The bridge publishes the version hash *only* to the retained
+      topic — no lightweight version REST route, and SSE `/events/system` does not carry it.) Decide among: **(a)** Irene
+      runs a minimal MQTT subscriber for the single retained topic (accept one MQTT dep — narrowest per the real boundary:
+      Irene never speaks raw device *control* topics, `voice_integration_contract_draft.md:293-294`); **(b)** REST poll —
+      periodically GET `/system/catalog` and diff `.version` (no MQTT dep, but polls the whole catalog); **(c)** bridge
+      adds a cheap signal — a `GET /system/catalog/version` route and/or the version on SSE `/events/system` — so Irene
+      stays pure-REST/SSE (cross-project: needs a bridge follow-up). Record the decision in §5a/§8; file the follow-up(s).
+      **(2) A committed catalog *contract artifact* (openapi.json-style) to unblock development.** PR-1 (`DeviceCommand` +
+      `DeviceCatalog` types) and PR-3 (resolver) otherwise need a live bridge to build against. Instead, treat the bridge
+      catalog like `openapi.json`: the bridge emits a **JSON Schema of the `/system/catalog` response** (incl. the
+      `{wire, canonical, labels}` enum triplets, §P3.7 #26 / §5a) **plus a representative sample dump** (rooms/devices/
+      capabilities), committed as a **cross-project contract fixture** both repos pin — Irene builds + tests catalog
+      parsing and the entity resolver against it with no running bridge, and it doubles as the PR-1 fake-bridge payload +
+      the eval `mqtt`/`http` contract seed. Decide the artifact's format, canonical location + ownership (which repo holds
+      it / how it's shared), generation (the bridge's pydantic `CatalogResponse` can emit JSON Schema; dump a sample), and
+      refresh/version policy; file the bridge-side "emit schema + sample" task and the Irene-side "consume it" task.
+      **Gates ARCH-8 PR-2** (the `bridge/catalog/version` subscribe) and de-risks PR-1/PR-3.
 - [ ] **ARCH-16** [IO] (P-deferred) — **I/O daemon multiplexer + runners→thin presets (deferred ARCH-15 PR-10).**
       The I/O hexagon (ARCH-15) is complete and every channel runs; this is the internal-cleanliness endgame, deferred
       2026-06-07 as low-incremental-value / higher-risk. Scope: (a) **remote interactive text-attach channel** (e.g.

@@ -13,6 +13,16 @@ newest entries near the top of each dated section.
 
 ## Action journal
 
+- **ARCH-26 filed — two Irene↔bridge catalog-contract clarifications to settle before ARCH-8 PR-2.** A multi-agent MQTT
+  status review surfaced a real design gap: `mqtt_integration.md` §5a/PR-2 have Irene *subscribe* to the retained MQTT
+  topic `bridge/catalog/version`, while §8 asserts Flow 2 adds no MQTT dependency — contradictory (you can't subscribe
+  with an HTTP client), and the bridge exposes the version hash only over that topic (no lightweight REST/SSE signal). So
+  the earlier "Irene never speaks MQTT" framing is only true once this is decided (MQTT-subscribe vs REST-poll vs
+  bridge-adds-a-cheap-signal). Bundled with a second, development-unblocking ask (user-requested): a committed
+  **openapi.json-style catalog contract artifact** — a JSON Schema of the `/system/catalog` response + a sample dump,
+  shared cross-project — so Irene's PR-1/PR-3 can build the `DeviceCatalog`/resolver against a concrete contract with no
+  live bridge. Design task (deliverable = an `mqtt_integration.md` edit + filed follow-ups); `[deferred]` to match the
+  P-TBD parent ARCH-8. Registered in the design index against `mqtt_integration.md`.
 - **BUG-15 DONE — AssetManager no longer wedges on a partial download (filed + fixed on request).** The I18N-8 note
   became a task: `download_model` trusted `model_path.exists()` as "download complete", so an interrupted/failed
   extraction left a broken-but-present pack that was never re-downloaded (the empty `piper/amy` + `piper/irina` dirs that
