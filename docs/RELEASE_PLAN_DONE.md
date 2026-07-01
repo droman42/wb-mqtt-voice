@@ -131,6 +131,20 @@ rationale/chronology lives in [`RELEASE_JOURNAL.md`](./RELEASE_JOURNAL.md).
       `ClientRegistry`). Substrate for **QUAL-35** (T2/T3 device NLU + the relocated `entity_type`/`_is_device_entity`→
       declarative resolver swap). Implementation = ARCH-8. **Design extended 2026-06-07 (ARCH-15 PR-9.1):**
       `mqtt_integration.md` §13 reconciles the seam shapes with the I/O architecture (bridge = `OutputPort`, see ARCH-8).
+- [x] **ARCH-26** [MQTT][DESIGN] (P3) `[deferred]` — **DONE 2026-07-01 (design; interactive session with the user).**
+      Two Irene↔bridge catalog-contract questions settled and recorded in `docs/design/mqtt_integration.md` (banner +
+      §5a + §8 + §12 + §13.3 + new **§14**). **(1) Catalog refresh = lazy** — startup pull + re-pull on a
+      resolution/actuation miss (self-correcting, ≤1 stale round-trip); Irene runs **no MQTT client** and does **not**
+      subscribe to `bridge/catalog/version`, resolving the §5a-vs-§8 contradiction in favour of no-MQTT (the retained
+      topic stays a bridge concern; proactive freshness via bridge SSE is a future optional). **(2) A committed
+      development contract artifact + bidirectional contract-testing seam** — the bridge's openapi `/openapi.json`
+      (already carries `CatalogResponse` **and** the canonical action-request body) + a curated golden catalog ("the
+      works") + a real WB7 dump, canonical home **eval-commons**; the canonical `DeviceCommand` is the boundary object,
+      with `{utterance → expected canonical command}` crossover fixtures both sides test against (Irene = producer via
+      PR-1's capturing fake bridge; bridge = consumer of crafted commands). **Follow-ups filed:** **TEST-17** (the
+      eval-commons contract bundle), **TEST-18** (the `device_command` capture provider + producer tests) — both this
+      ledger; **VWB-15** (emit the artifact) + **VWB-16** (consumer test) — the `wb-mqtt-bridge` ledger. Gates ARCH-8
+      PR-1/PR-2/PR-3. Deliverable per `design-then-implement`.
 - [x] **ARCH-9** [INFER] — **✓ DONE 2026-06-04.** **★ ARCH-22 (2026-06-14):** the §10/§11 WB7-satellite-vs-standalone
       VAD+wake split is folded into **`docs/design/esp32_satellite.md`** (D-11 inference split; D-9/D-10 micro stack). _Orig:_
       (design deliverable `docs/design/onnx_inference_layer.md` complete; all

@@ -11,6 +11,14 @@ unblocked**; implementation sliced in §10.
 > fields now project `{wire, canonical, labels}` triplets and device-enum resolution rides the QUAL-29
 > surface→canonical CHOICE mechanism. The cross-project contract doc moved to `docs/design/` and is being
 > updated bridge-side to match.
+>
+> **Amended 2026-07-01 (ARCH-26, settled interactively):** two catalog-contract points. **(1) Catalog
+> refresh is lazy** — startup pull + re-pull on a resolution/actuation miss; Irene runs **no MQTT client**
+> and does **not** subscribe to `bridge/catalog/version` (resolves the old §5a-vs-§8 tension in favour of
+> no-MQTT). **(2)** A committed **development contract artifact** (the bridge's openapi `CatalogResponse` +
+> action-request schema, a curated golden catalog + a real WB7 dump) and a **bidirectional contract-testing
+> seam** around the canonical `DeviceCommand` — see the new **§14**. Follow-ups: TEST-17 / TEST-18
+> (voice + eval-commons), VWB-15 / VWB-16 (bridge).
 
 > Supersedes `docs/archive/intent_mqtt.md` (the v13-era "MQTT intent handler with runtime method
 > generation" design — explicitly rejected, see §2).
@@ -167,8 +175,12 @@ UI-oriented). Irene pulls it on boot and builds the DeviceCatalog:
   such an aggregate device in `global` and fires **one** canonical command (§6). **Irene never iterates
   rooms or synthesizes a group** — group/scene controls are aggregate *devices* in the catalog; Irene
   relies on their availability and just actuates them like any other device.
-- **Refresh:** Irene subscribes to retained **`bridge/catalog/version`** (content hash, bumped on
-  bridge config change / `/reload`) and re-pulls `/system/catalog` when it changes.
+- **Refresh: lazy (ARCH-26, 2026-07-01).** Irene pulls the catalog at startup and **re-pulls on a
+  resolution/actuation miss** (an unresolved device name, or a bridge 4xx that smells stale) — self-correcting,
+  at most one stale round-trip. Irene does **not** subscribe to `bridge/catalog/version` and runs **no MQTT
+  client**; that retained topic (still bumped by the bridge on `/reload`/config change) stays a bridge concern
+  for its other consumers. Proactive freshness — the bridge emitting the version on its existing SSE
+  `/events/system` — is a possible future optimization, **not** a correctness requirement. See §14.
 
 ### 5b. Write — canonical actuation (`POST /devices/{id}/canonical`)
 
@@ -266,11 +278,14 @@ complete and Flow 2 isn't mistaken for it. If/when a consumer appears, it lands 
 - New entry-point group `irene.providers.outputs` (`bridge` for Flow 2; `mqtt` for Flow 1 later).
 - **(§13/PR-7 note) `OutputConfig` already exists** — ARCH-15 PR-7 added `[outputs]` (`OutputConfig`:
   `console`/`console_prefix`/`web_push`). ARCH-8 must **not** create a second top-level `OutputConfig`;
-  add a **distinct bridge/actuation config** (bridge base URL, auth, request timeout, `enabled`, the
-  `bridge/catalog/version` topic) — e.g. a `BridgeConfig` (or `outputs.bridge` sub-config) — registered
-  in `auto_registry.py` (Invariant #4) and surfaced in `config-master.toml`.
-- No new heavy deps for Flow 2 (an async HTTP client; `aiohttp` is already in core). Flow 1's raw-MQTT
-  adapter would add an MQTT client lib when built.
+  add a **distinct bridge/actuation config** (bridge base URL, auth, request timeout, `enabled`) — e.g. a
+  `BridgeConfig` (or `outputs.bridge` sub-config) — registered in `auto_registry.py` (Invariant #4) and
+  surfaced in `config-master.toml`. _(ARCH-26: **no** `bridge/catalog/version` topic field — refresh is lazy,
+  §5a/§14.)_
+- **No new deps for Flow 2, and no MQTT client at all (ARCH-26).** Flow 2 uses an async HTTP client
+  (`aiohttp`, already in core); lazy refresh means Irene never subscribes to MQTT — resolving the earlier
+  §5a-vs-§8 tension in favour of no-MQTT. Flow 1's raw-MQTT adapter would add an MQTT client lib if/when
+  built (deferred, no confirmed consumer).
 
 ## 9. Failure modes (fail-loud, not fail-fatal)
 
@@ -338,9 +353,16 @@ for v1).
 ## 12. Cross-project tracking
 
 - **Irene side:** ARCH-7 (this design) → ARCH-8 (implement, §10) + QUAL-35 (device NLU + handlers).
+  **ARCH-26** (2026-07-01) settled the refresh mechanism (lazy) + the contract artifact/testing seam (§14),
+  filing **TEST-17** (the eval-commons contract bundle — openapi pin + golden catalog + real WB7 dump +
+  canonical `DeviceCommand` schema + `{utterance → canonical}` crossover fixtures + drift check) and
+  **TEST-18** (the eval-commons `device_command` capture provider + Irene producer contract tests).
 - **Bridge side:** tracked in `wb-mqtt-bridge/docs/action_plan.md`; the requirements are drafted in
   `wb-mqtt-bridge/docs/design/voice_integration_contract_draft.md` for the bridge session. ARCH-8 is blocked
-  on that work.
+  on that work. **ARCH-26 adds VWB-15** (emit the contract artifact — pin the openapi `CatalogResponse` +
+  action-request schema, generate the golden catalog + a `catalog dump` export, CI drift-check + version
+  stamp) **and VWB-16** (consumer contract test — crafted canonical `DeviceCommand` → native/echo, against
+  the shared crossover fixtures).
 
 ## 13. Reconciliation with the I/O architecture (ARCH-15) — the contract ARCH-8 builds against
 
@@ -366,8 +388,9 @@ mapped phrase; `param_invalid` → clarify). So an actuation intent emits **two*
 the bridge (awaited) + the conversational confirmation to the origin channel.
 
 **13.3 `DeviceCatalogPort` stays a read port (unchanged).** The startup catalog pull (`GET /system/catalog`, §5a)
-and `bridge/catalog/version` refresh are an **input/query** dependency, not delivery — `DeviceCatalogPort` and the
-in-memory `DeviceCatalog` are *not* OutputPorts and are untouched by this reconciliation.
+and its **lazy re-pull** (ARCH-26 — no `bridge/catalog/version` subscription) are an **input/query** dependency, not
+delivery — `DeviceCatalogPort` and the in-memory `DeviceCatalog` are *not* OutputPorts and are untouched by this
+reconciliation.
 
 **13.4 Flow 1 (content-agnostic event) = a terminal `OutputPort` (EVENT modality).** The deferred raw-MQTT
 `irene/{room}/event` sink (§7) is an ordinary OutputPort carrying `OutputModality.EVENT`, capability-routed to a
@@ -386,3 +409,49 @@ the slice **registers + designates** it on the OutputManager; **PR-4's** referen
 result and awaits the OutputManager delivery (bounded) rather than calling a bespoke port. ARCH-8 therefore builds
 on PR-2 (`OutputPort`/`DeliveryResult`), PR-5a (process-wide OutputManager), and D-2 (designated routing) — all
 already landed.
+
+## 14. Development contract artifact + bidirectional contract testing (ARCH-26, 2026-07-01)
+
+Settled interactively. Goal: let both sides build and test against the Irene↔bridge boundary **without the other
+running**, and make the contract *tested*, not just documented.
+
+**14.1 The boundary object = the canonical `DeviceCommand`.** Everything upstream of it (ASR → NLU T2/T3 →
+resolver → device handler) is Irene's; everything downstream (canonical → native → MQTT/echo) is the bridge's. The
+catalog is the shared *world* both resolve against.
+
+```
+utterance ─▶ [Irene: (ASR?) → NLU → resolver(catalog) → device handler] ─▶ canonical DeviceCommand
+                                                                                 │ captured, not sent
+        ═══════════════════════════ CONTRACT BOUNDARY ═══════════════════════════│
+                                                                                 ▼
+ crafted canonical DeviceCommand ─▶ [Bridge: canonical → native → MQTT/echo] ─▶ DeliveryResult
+```
+
+**14.2 The contract artifact (like `openapi.json`) — canonical home: `eval-commons`.** A committed bundle both
+repos pin:
+- **Schema** — the bridge's FastAPI **`/openapi.json`**, which already carries **both** `CatalogResponse` (the
+  catalog) **and** the canonical action-request body under `components/schemas` — no bespoke schema to maintain.
+- **A curated golden catalog** — "the works": multiple rooms; several device classes; **aggregate** devices
+  (`global`/`all_lights`); every capability kind (on/off, brightness, cover, climate, **sensor-read**); enum
+  values as `{wire, canonical, labels}` triplets; param schemas (numeric range / enum, best-effort per §5a);
+  **localized ru/en names + aliases** (the resolver matches surfaces). One instance that exercises every parse +
+  resolution path.
+- **A real WB7 catalog dump** alongside the golden, as a realism/coverage check.
+- Generated **bridge-side** (source of truth; pydantic `CatalogResponse` emits JSON Schema, a `catalog dump`
+  command emits the sample), kept honest by a **CI drift check + version stamp** so Irene knows which bridge
+  build it's coded against. (Bridge work = **VWB-15**.)
+
+**14.3 Bidirectional contract tests around shared `{utterance → expected canonical command}` fixtures.**
+- **Irene = producer test:** given `(utterance, golden-catalog)`, assert Irene emits the expected canonical
+  command — captured by the **capturing bridge `OutputPort`** (this *is* PR-1's fake bridge), validated against
+  the openapi schema. A new **eval-commons `device_command` provider** drives an utterance and returns the
+  emitted `DeviceCommand` JSON for promptfoo to assert; **text-input first** (isolates NLU→resolver→handler,
+  deterministic, no audio/bridge), audio→canonical later.
+- **Bridge = consumer test:** given a **crafted** canonical command from the same fixtures, assert the right
+  native action / echo — the utterance is irrelevant to it. (Bridge work = **VWB-16**.)
+- Because both resolve against the same golden catalog, device-ids/capabilities cannot drift apart.
+
+**14.4 Follow-ups.** **TEST-17** — the eval-commons bundle (schema pin + golden catalog + real dump + canonical
+schema + crossover fixtures + drift check); can land as soon as VWB-15 emits the schema+sample. **TEST-18** — the
+`device_command` capture provider + Irene producer tests; lands with ARCH-8 PR-1 (which supplies `DeviceCommand`
++ the capturing output) and TEST-17. Bridge side: **VWB-15** (emit artifact) + **VWB-16** (consumer test).

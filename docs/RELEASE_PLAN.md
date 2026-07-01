@@ -153,32 +153,9 @@ See `docs/review/phase1_architecture_map.md` §5.
       echo → spoken confirm + error-code→speech + `param_invalid`→clarify); **PR-5** sensor read (`GET /devices/{id}/state`).
       (No "everywhere" fan-out — "выключи свет везде" = an Actuate against the `global` `all_lights` aggregate device, on
       PR-4's path.) PR-2+ integrate as the bridge's slice comes online. Broad
-      device coverage + T2/T3 NLU = QUAL-35.
-- [ ] **ARCH-26** [MQTT][DESIGN] (P3) `[deferred]` — **Resolve two Irene↔bridge catalog-contract questions before
-      ARCH-8 PR-2.** Design-clarification task (deliverable = an edit to `docs/design/mqtt_integration.md`, resolving the
-      points below + filing the implementation follow-ups per `design-then-implement`). Source: the 2026-07-01 MQTT
-      status review.
-      **(1) Catalog-staleness mechanism — reconcile §5a vs §8 (currently contradictory).** §5a/PR-2 have Irene *subscribe*
-      to the retained MQTT topic **`bridge/catalog/version`** and re-pull `/system/catalog` on change; but §8 asserts Flow 2
-      "adds no MQTT dependency" (`aiohttp` only) and quarantines "raw MQTT" to the deferred Flow 1 — yet you cannot
-      subscribe to a topic with an HTTP client, so **as written Irene would need a raw MQTT client for this one nudge**,
-      contradicting the "bridge owns all MQTT" framing. (The bridge publishes the version hash *only* to the retained
-      topic — no lightweight version REST route, and SSE `/events/system` does not carry it.) Decide among: **(a)** Irene
-      runs a minimal MQTT subscriber for the single retained topic (accept one MQTT dep — narrowest per the real boundary:
-      Irene never speaks raw device *control* topics, `voice_integration_contract_draft.md:293-294`); **(b)** REST poll —
-      periodically GET `/system/catalog` and diff `.version` (no MQTT dep, but polls the whole catalog); **(c)** bridge
-      adds a cheap signal — a `GET /system/catalog/version` route and/or the version on SSE `/events/system` — so Irene
-      stays pure-REST/SSE (cross-project: needs a bridge follow-up). Record the decision in §5a/§8; file the follow-up(s).
-      **(2) A committed catalog *contract artifact* (openapi.json-style) to unblock development.** PR-1 (`DeviceCommand` +
-      `DeviceCatalog` types) and PR-3 (resolver) otherwise need a live bridge to build against. Instead, treat the bridge
-      catalog like `openapi.json`: the bridge emits a **JSON Schema of the `/system/catalog` response** (incl. the
-      `{wire, canonical, labels}` enum triplets, §P3.7 #26 / §5a) **plus a representative sample dump** (rooms/devices/
-      capabilities), committed as a **cross-project contract fixture** both repos pin — Irene builds + tests catalog
-      parsing and the entity resolver against it with no running bridge, and it doubles as the PR-1 fake-bridge payload +
-      the eval `mqtt`/`http` contract seed. Decide the artifact's format, canonical location + ownership (which repo holds
-      it / how it's shared), generation (the bridge's pydantic `CatalogResponse` can emit JSON Schema; dump a sample), and
-      refresh/version policy; file the bridge-side "emit schema + sample" task and the Irene-side "consume it" task.
-      **Gates ARCH-8 PR-2** (the `bridge/catalog/version` subscribe) and de-risks PR-1/PR-3.
+      device coverage + T2/T3 NLU = QUAL-35. **★ ARCH-26 (2026-07-01):** catalog refresh is **lazy** (no MQTT client on
+      Irene — §5a/§14); PR-1's fake bridge **is** the capturing `OutputPort` the producer contract test (TEST-18) uses;
+      PR-2/PR-3 catalog parsing builds against the committed contract artifact (**TEST-17**, gated on bridge **VWB-15**).
 - [ ] **ARCH-16** [IO] (P-deferred) — **I/O daemon multiplexer + runners→thin presets (deferred ARCH-15 PR-10).**
       The I/O hexagon (ARCH-15) is complete and every channel runs; this is the internal-cleanliness endgame, deferred
       2026-06-07 as low-incremental-value / higher-risk. Scope: (a) **remote interactive text-attach channel** (e.g.
@@ -388,6 +365,23 @@ _Trace-driven system testing (design `docs/design/trace_system_testing.md`, TEST
       improved shared rubrics into the live `eval/ws.promptfooconfig.yaml` UX cases (they still use weaker inline
       near-duplicates). Gate: mark UX verdicts CI-trustworthy only once agreement is measured against **Russian-speaker
       gold labels (the user)**, not Claude.
+- [ ] **TEST-17** [EVAL][MQTT] (P3) `[deferred]` — **The Irene↔bridge catalog contract bundle in eval-commons (ARCH-26
+      §14).** A committed, shared artifact both repos pin so each builds against the boundary with no live counterpart:
+      (a) the bridge's FastAPI **`/openapi.json`** pinned (carries **both** `CatalogResponse` and the canonical
+      action-request body — no bespoke schema); (b) a **curated golden catalog** ("the works" — rooms, device classes,
+      `global`/`all_lights` aggregates, every capability incl. sensor-read, `{wire,canonical,labels}` enum triplets,
+      param schemas, localized ru/en names/aliases); (c) a **real WB7 catalog dump** as a realism check; (d) the
+      canonical `DeviceCommand` schema + a set of **`{utterance → expected canonical command}` crossover fixtures** both
+      sides test against; (e) a **schema-validation/drift check**. Unblocks ARCH-8 PR-1/PR-3 (build the `DeviceCatalog`
+      + resolver offline). **Gated on VWB-15** (bridge emits the openapi + golden/real samples). Doubles as the eval
+      `mqtt`/`http` seed. Design §14; pairs with TEST-18.
+- [ ] **TEST-18** [EVAL][MQTT] (P3) `[deferred]` — **The `device_command` capture provider + Irene producer contract
+      tests (ARCH-26 §14).** A new eval-commons promptfoo provider that drives Irene with an utterance and returns the
+      emitted canonical `DeviceCommand` (captured by the PR-1 capturing bridge `OutputPort`, not POSTed) for assertion
+      against the TEST-17 crossover fixtures + openapi schema — the **producer** half of the bidirectional contract
+      (the bridge's consumer half = VWB-16). **Text-input first** (isolates NLU→resolver→handler, deterministic, no
+      audio/bridge); audio→canonical later. **Gated on ARCH-8 PR-1** (supplies `DeviceCommand` + the capturing output)
+      **and TEST-17.** Design §14.
 
 ### Build & CI (BUILD)
 - [ ] **BUILD-8** [BUILD][DESIGN] (P3) `[deferred]` — **Review/redesign the GitHub image-build workflow

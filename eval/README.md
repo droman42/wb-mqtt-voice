@@ -144,7 +144,10 @@ These are non-obvious and have already caused (and cost) bugs — keep them in m
 - **Next refinement:** once the WS suite has run once, the inline cases can be split into
   `tests/ws/*.yaml` (one file per scenario). Kept inline for now — only a handful of cases, and it
   avoids assumptions about promptfoo's external-test-file path resolution until verified live.
-- **Future surfaces:** the bridge smart-home path (REST via promptfoo's native `https` provider;
-  retained `bridge/catalog/version` via `eval-commons`' `mqtt_provider`) lands as an `http`/`mqtt`
-  config beside these — zero extra shared code.
+- **Future surfaces (smart-home / bridge, ARCH-26 §14):** the boundary is the canonical `DeviceCommand`,
+  so the contract is tested from both sides against shared `{utterance → canonical}` fixtures + a committed
+  golden bridge catalog (all in `eval-commons`), no live bridge needed. A new `device_command` capture
+  provider drives an utterance and returns Irene's emitted command for assertion (Irene = producer;
+  the bridge repo runs the consumer half). Full end-to-end against a running bridge (REST via promptfoo's
+  `https` provider) is a later, separate surface. Tracked as TEST-17 (contract bundle) + TEST-18 (provider).
 ```

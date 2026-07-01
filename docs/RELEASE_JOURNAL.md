@@ -13,6 +13,18 @@ newest entries near the top of each dated section.
 
 ## Action journal
 
+- **ARCH-26 DONE — Irene↔bridge catalog contract settled (interactive design session).** Both questions decided with
+  the user and recorded in `mqtt_integration.md` (banner + §5a/§8/§12/§13.3 + new **§14**). **(1)** Catalog refresh is
+  **lazy** (startup pull + re-pull on a resolution/actuation miss) — Irene runs **no MQTT client**, does not subscribe
+  to `bridge/catalog/version`, which resolves the §5a-vs-§8 contradiction in favour of no-MQTT; so "Irene never speaks
+  MQTT" is now literally true, and the retained topic stays a bridge concern. **(2)** A committed, openapi-based
+  **development contract artifact** (bridge `/openapi.json` = `CatalogResponse` + action-request body; a curated golden
+  catalog "the works" + a real WB7 dump; canonical home **eval-commons**) plus a **bidirectional contract-testing seam**:
+  the canonical `DeviceCommand` is the boundary, `{utterance → canonical}` crossover fixtures are the shared truth, Irene
+  is the producer (via PR-1's capturing fake bridge = a new eval-commons `device_command` provider, text-first) and the
+  bridge is the consumer — neither needs the other running. Filed **TEST-17** (contract bundle) + **TEST-18** (capture
+  provider + producer tests) here; **VWB-15** (emit artifact) + **VWB-16** (consumer test) added to the `wb-mqtt-bridge`
+  ledger (uncommitted there, per the user). ARCH-26 moved active→done; eval README "Future surfaces" updated.
 - **ARCH-26 filed — two Irene↔bridge catalog-contract clarifications to settle before ARCH-8 PR-2.** A multi-agent MQTT
   status review surfaced a real design gap: `mqtt_integration.md` §5a/PR-2 have Irene *subscribe* to the retained MQTT
   topic `bridge/catalog/version`, while §8 asserts Flow 2 adds no MQTT dependency — contradictory (you can't subscribe
