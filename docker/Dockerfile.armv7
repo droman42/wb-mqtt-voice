@@ -3,8 +3,17 @@
 # ============================================================
 # Debian (glibc), NOT Alpine (musl): sherpa-onnx ships a glibc-only armv7 wheel and pip has no armv7
 # onnxruntime wheel (ARCH-9), so musl cannot run the ONNX ASR path. The build analyzer installs only
-# what the config profile needs. Follows the wb-mqtt-bridge pattern: a self-contained /opt/venv copied
-# whole into the runtime, PiWheels for prebuilt ARM wheels, and a LEAN cleanup pass.
+# what the config profile needs (so this ONE recipe builds either the RU or the EN image via
+# CONFIG_PROFILE). Follows the wb-mqtt-bridge pattern: a self-contained /opt/venv copied whole into the
+# runtime, PiWheels for prebuilt ARM wheels, and a LEAN cleanup pass.
+#
+# BUG-14 — running sherpa-onnx >=1.12 on the Wirenboard 7 (armv7) needs TWO fixes, both here:
+#   1. Base = Debian BOOKWORM (not bullseye): sherpa >=1.12's C++ module needs libstdc++ GLIBCXX_3.4.30
+#      (GCC 12), which bullseye/GCC 10 lacks. (>=1.12 is required for Moonshine's merged .ort decoder.)
+#   2. Patch the bundled onnxruntime .so: its 64 KB-aligned LOAD segments are rejected by the WB7's
+#      4 KB-page loader ("ELF load command … not properly aligned"); patch_onnx_align.py drops p_align
+#      to 4 KB. (The armv7 sherpa pin is pyproject.toml `sherpa-onnx==1.12.36; platform_machine=='armv7l'`;
+#      1.12.36 serves both RU vosk and EN Moonshine.) Proven on the WB7: Moonshine RTF ~0.7, 134 MB RSS.
 #
 # Assets (donations/prompts/templates) and ML models are NOT baked — they are mounted at runtime under
 # IRENE_ASSETS_ROOT (=/app/assets). Ship them via the `irene-assets-*.tar.gz` archive (built in the
@@ -40,7 +49,7 @@ RUN python -m irene.tools.build_analyzer --config configs/${CONFIG_PROFILE}.toml
 # ============================================================
 # STAGE 2: BUILDER — build a self-contained /opt/venv (arm32v7)
 # ============================================================
-FROM arm32v7/python:3.11-slim-bullseye AS builder
+FROM arm32v7/python:3.11-slim-bookworm AS builder
 WORKDIR /build
 COPY --from=analyzer /tmp/system-packages.txt /tmp/system-packages.txt
 COPY --from=analyzer /tmp/pip-target.txt /tmp/pip-target.txt
@@ -71,12 +80,18 @@ COPY irene/ irene/
 RUN uv venv /opt/venv && . /opt/venv/bin/activate && \
     UV_COMPILE_BYTECODE=1 uv pip install $(cat /tmp/pip-target.txt) -r /tmp/pip-specs.txt
 
+# BUG-14: patch the bundled onnxruntime armv7 .so (LOAD p_align 64K -> 4K) so it loads on the WB7's
+# 4K-page kernel. Idempotent + a no-op if sherpa/onnxruntime isn't in the venv (a config without ONNX
+# ASR). /opt/venv is copied whole into runtime, so the patched .so carries over.
+COPY docker/patch_onnx_align.py /tmp/patch_onnx_align.py
+RUN python /tmp/patch_onnx_align.py /opt/venv
+
 # ============================================================
 # STAGE 3: RUNTIME — minimal armv7 image
 # ============================================================
-FROM arm32v7/python:3.11-slim-bullseye AS runtime
+FROM arm32v7/python:3.11-slim-bookworm AS runtime
 LABEL maintainer="Irene Voice Assistant Team"
-LABEL description="Irene Voice Assistant - ARMv7 Embedded Runtime (Debian)"
+LABEL description="Irene Voice Assistant - ARMv7 Embedded Runtime (Debian bookworm)"
 ARG CONFIG_PROFILE=embedded-armv7
 LABEL config.profile="${CONFIG_PROFILE}"
 LABEL platform="linux/arm/v7"

@@ -1638,6 +1638,21 @@ rationale/chronology lives in [`RELEASE_JOURNAL.md`](./RELEASE_JOURNAL.md).
       console-LLM fallback / `fallback_providers` — left as-is; not in scope here.)
 
 ### Bugs (BUG)
+- [x] **BUG-14** [ASR][BUILD] (P3) `[deferred]` — **DONE 2026-07-01 (fix implemented + proven on the WB7; full image
+      buildx validation is the remaining deploy checkpoint).** sherpa-onnx ≥1.12 (needed for Moonshine's merged `.ort`
+      decoder, EN ASR) failed to load on the WB7 two ways — the bundled onnxruntime `.so` has **64 KB-aligned LOAD
+      segments** the WB7's 4 KB-page loader rejects (`ELF load command … not properly aligned`), and sherpa's C++ module
+      needs **GLIBCXX_3.4.30** (GCC 12) which bullseye lacks. Diagnosed via SSH to root@192.168.110.250 (both fail on host
+      py3.9 + a py3.11 container, PyPI & PiWheels; onnxruntime has no armv7 wheel — sherpa bundles it). Reconciled the
+      "proven on hardware" claim: `onnx_inference_layer.md` §4 documented the ELF issue and pinned 1.10.46 (which has no
+      Moonshine support) — the pincer. **Fix (user-approved: build the libs in Docker):** (1) armv7 Docker base
+      bullseye→**bookworm** (GLIBCXX_3.4.30; +4.4 MB); (2) **`docker/patch_onnx_align.py`** rewrites the onnxruntime `.so`
+      `PT_LOAD` `p_align` 64K→4K in the built venv (idempotent; safe no-op on 64-bit / non-ONNX configs); (3) bump the
+      armv7 sherpa pin `1.10.46`→**`1.12.36`** (`pyproject.toml` + `uv.lock`; serves BOTH RU vosk `from_transducer` and
+      EN Moonshine — the ru/en split needs no per-config machinery, `CONFIG_PROFILE` already drives it). **Proven on the
+      WB7:** patched sherpa 1.12.36 on bookworm imports and runs Moonshine — RTF ~0.7, 134 MB RSS, both fixtures perfect.
+      Unblocks I18N-2 (Moonshine) + streaming + newer sherpa on armv7. aarch64/x86_64 unaffected. WB7 left clean. (Full
+      `docker buildx build` of the armv7 image is untested — as it was before this, per §4.7 — a deploy-time checkpoint.)
 - [x] **BUG-12** [EVAL][WS] (P2) `[release]` — **DONE 2026-06-30.** `make ws` reported the SUT failing ("ASR provider
       'whisper' not available") while a direct WS client succeeded — **not a hang, not the provider, not a stale SUT.**
       Root cause: **promptfoo's response cache.** An early `make ws` against a mis-launched SUT cached the "whisper"

@@ -13,6 +13,18 @@ newest entries near the top of each dated section.
 
 ## Action journal
 
+- **BUG-14 DONE — armv7 Docker fixed to run sherpa 1.12.36 + Moonshine (proven on the WB7).** Implemented the
+  user-approved "build the libs in Docker" fix in `docker/Dockerfile.armv7`: base bullseye→**bookworm** (for
+  GLIBCXX_3.4.30, which sherpa ≥1.12's C++ module needs; +4.4 MB on the WB7), a new **`docker/patch_onnx_align.py`** step
+  that rewrites the bundled onnxruntime `.so` `PT_LOAD` `p_align` 64K→4K (the ELF-alignment fix; verified: patches the
+  armv7 `.so`, idempotent, safe no-op on 64-bit / non-ONNX configs), and bumped the armv7 sherpa pin **1.10.46→1.12.36**
+  (`pyproject.toml` + `uv.lock` — scoped: only sherpa armv7 changed, 64-bit stays 1.13.3). One pin serves **both** RU
+  (vosk `from_transducer`, API-compatible) and EN (Moonshine merged `.ort`) — the ru/en split needs no per-config build
+  machinery, `CONFIG_PROFILE` already drives the analyzer. **Proven end-to-end on the WB7** (root@192.168.110.250): patched
+  sherpa 1.12.36 on bookworm imports and runs Moonshine — RTF ~0.7 (faster than RU vosk's 1.15), 134 MB RSS, both
+  fixtures perfect. Also reconciled the "proven on hardware" claim (§4 pinned 1.10.46 for this exact ELF issue — I'd
+  tested the wrong versions). Unblocks **I18N-2** (wire the Moonshine subclass). Config-validator green; the full
+  `docker buildx build` of the armv7 image stays a deploy checkpoint (untested even before, per §4.7). WB7 left clean.
 - **WB7 on-hardware test → BUG-14 filed; Moonshine is the armv7 English ASR, gated on an onnxruntime build.** SSH'd to
   the WB7 (root@192.168.110.250) and ran Moonshine in the deployment-base container. Found `import sherpa_onnx` fails at
   the native lib — `libonnxruntime.so: ELF load command address/offset not properly aligned` — for sherpa 1.13.2 (PyPI)

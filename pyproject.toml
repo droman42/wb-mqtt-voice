@@ -47,16 +47,19 @@ advanced-asr = [
     "torch>=1.13.0",  # Required by Whisper
     "torchaudio>=0.13.0"  # Required by Whisper
 ]
-# sherpa-onnx ASR (ARCH-10): the alphacep VOSK Zipformer2 ONNX family. NO torch.
+# sherpa-onnx ASR (ARCH-10): the alphacep VOSK Zipformer2 ONNX family (RU) + Moonshine (EN). NO torch.
 # Per-arch version split lives in the PEP 508 markers (uv evaluates them per build target):
-#   - armv7 (WB7): the self-contained 1.10.46 — newer wheels fail the WB7 ELF-alignment check, and it
-#     bundles its onnxruntime in the main wheel.
+#   - armv7 (WB7): 1.12.36 — the smallest sherpa that supports Moonshine's merged .ort decoder (needed
+#     for the EN ASR) and still supports the RU vosk Zipformer2. Its wheel bundles onnxruntime and self-
+#     contains the native libs. Newer sherpa wheels fail on the WB7 out of the box (ELF alignment + a
+#     GLIBCXX bump) — `docker/Dockerfile.armv7` fixes both (bookworm base + patch_onnx_align.py); see
+#     BUG-14. This one pin serves both the RU and EN armv7 images (config selects the model).
 #   - everything else (x86_64 / aarch64 / win_amd64 / macos): latest. Since 1.13 the native libraries
 #     (onnxruntime + the C-API .so) ship in a SEPARATE `sherpa-onnx-core` wheel; without it the
 #     extension can't load `libonnxruntime.so` (it is NOT bundled in the main wheel any more). Pull both
 #     with matching markers — this is what made sherpa work on 64-bit/Windows, not just armv7.
 asr-onnx = [
-    "sherpa-onnx==1.10.46; platform_machine=='armv7l'",
+    "sherpa-onnx==1.12.36; platform_machine=='armv7l'",
     "sherpa-onnx>=1.13; platform_machine!='armv7l'",
     "sherpa-onnx-core>=1.13; platform_machine!='armv7l'",
 ]

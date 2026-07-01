@@ -126,15 +126,15 @@ suite 1105, import-linter 9/9, config-validator 100%). **Residual (not blocking)
 checkbox folded into I18N-4 — it cannot flip a size/arch decision this lopsided. The ~9% WER is indicative (2 clips,
 quick harness); the real English WER measurement rides with I18N-5's English fixtures through the live provider.
 
-### 2d. armv7 English ASR = `moonshine-tiny-en-quantized-2026-02-27` (offline, 43 MB) — gated on BUG-14
-> **Decision (2026-07-01):** Moonshine is the armv7 English ASR. It's a great model (below), and the one obstacle —
-> the WB7 — is a build problem the user has chosen to solve. On hardware, sherpa **1.12+ ELF-fails to load**
-> (`libonnxruntime.so: … not properly aligned`, confirmed on host py3.9 + a py3.11 container, PyPI *and* PiWheels), and
-> the pinned-working **`sherpa-onnx==1.10.46` has no Moonshine support**. That's **BUG-14** — a documented
-> onnxruntime-armv7 alignment defect (`onnx_inference_layer.md` §4 pinned 1.10.46 as the workaround). **User-approved
-> fix: build the corrected onnxruntime in the armv7 Docker (patchelf the segment alignment, or compile with the right
-> `MAX_PAGE_SIZE`) and bump the armv7 sherpa pin to ≥1.12.** Sequence: **BUG-14 → I18N-2** (then wire the Moonshine
-> subclass + swap the config). aarch64/x86_64 are unaffected (whisper, sherpa ≥1.13).
+### 2d. armv7 English ASR = `moonshine-tiny-en-quantized-2026-02-27` (offline, 43 MB) — **BUG-14 ✓, now unblocked**
+> **Decision (2026-07-01):** Moonshine is the armv7 English ASR. The one obstacle — running sherpa ≥1.12 on the WB7 —
+> was **BUG-14**, now **fixed and proven on hardware**. Two problems: sherpa 1.12+'s onnxruntime `.so` has 64 KB-aligned
+> LOAD segments the WB7's 4 KB-page loader rejects (`… not properly aligned`), and its C++ module needs GLIBCXX_3.4.30
+> (GCC 12) which bullseye lacks. **Fix (in `docker/Dockerfile.armv7`):** base bullseye→**bookworm** (+4.4 MB, for
+> GLIBCXX) + **`patch_onnx_align.py`** (rewrites the `.so` `p_align` 64K→4K) + bump the armv7 sherpa pin to **1.12.36**
+> (`pyproject.toml`/`uv.lock`; serves both RU vosk `from_transducer` and EN Moonshine — one pin, `CONFIG_PROFILE` picks
+> the model). **Proven on the WB7:** patched sherpa 1.12.36 on bookworm runs Moonshine at RTF ~0.7, 134 MB RSS, both
+> fixtures perfect. Next: wire the Moonshine subclass + swap the EN config (I18N-2). aarch64/x86_64 unaffected.
 
 (Model evaluation:)
 The reopen needed a *small offline* English ASR. The rejection of Moonshine was against the old **123 MB** `-int8`
@@ -234,11 +234,11 @@ not a deployment.)
   armv7); acceptable for a command-oriented assistant with keyword NLU.
 
 ## 7. Implementation tasks (filed off this design)
-- **I18N-2** [ASSET] — armv7 English ASR = **`moonshine-tiny-en-quantized` (offline, 43 MB; chosen §2d)**. Subclass wiring
-  (`SherpaMoonshineASRProvider`); **gated on BUG-14** (build corrected onnxruntime in the armv7 Docker + bump sherpa pin
-  ≥1.12 — user-approved). Related: **BUG-13** (`/ws/audio` streaming branch hangs).
-- **BUG-14** [ASR][BUILD] — onnxruntime armv7 ELF-alignment pins the WB7 to sherpa 1.10.46 (no Moonshine); build the
-  corrected libs in the armv7 Docker + bump the pin. Enables I18N-2 (Moonshine) + streaming + newer sherpa.
+- **I18N-2** [ASSET] — armv7 English ASR = **`moonshine-tiny-en-quantized` (offline, 43 MB; chosen §2d)**. **BUG-14 ✓** →
+  unblocked; remaining = the `SherpaMoonshineASRProvider` subclass + catalog + swap `embedded-armv7-en` ASR. Related:
+  **BUG-13** (`/ws/audio` streaming branch hangs).
+- **BUG-14** [ASR][BUILD] ✓ DONE — armv7 Docker now runs sherpa 1.12.36 (bookworm base + `patch_onnx_align.py` for the
+  onnxruntime ELF alignment); Moonshine proven on the WB7 (RTF ~0.7, 134 MB). Full image buildx is a deploy checkpoint.
 - **I18N-3** [ASSET] ✓ — EN Piper voices (satellites): catalog generalized to a locale param, added `en_US-amy`/`lessac`/`ryan`; capabilities report per-instance language.
 - **I18N-7** [ASSET] ✓ — Silero v3 English (standalone): `silero_v3` now pulls speakers/accent/language by model (`v3_en` → `en_0…en_117`, no Russian `put_accent`). Real `v3_en` synthesis verified (57 MB, `en_0` OK).
 - **I18N-4** [CONFIG] ✓ — the three `*-en.toml` variants (§4); also made the three RU configs explicitly RU-only (symmetry: `default_language`/`supported_languages`/`auto_detect_language=false`).
