@@ -214,5 +214,90 @@ class TestCleanupAndHandlerHelpers(unittest.TestCase):
         asyncio.run(run())
 
 
+
+class TestBug19Correctness(unittest.TestCase):
+    """BUG-19 — store/status correctness (QUAL-56 F2/F3)."""
+
+    def test_false_return_is_recorded_as_failure(self):
+        # The bool convention: coroutines that swallow their own errors `return False` —
+        # this used to be recorded as SUCCESS.
+        async def run():
+            with _RegistryPatch() as reg:
+                async def swallowed_failure():
+                    return False
+                h = _handler()
+                await h.execute_fire_and_forget_action(
+                    swallowed_failure, action_name="f1", domain="audio",
+                    physical_id="kitchen", timeout=0)
+                rec = reg.get_action("kitchen", "f1")
+                await asyncio.gather(rec.task, return_exceptions=True)
+                await _settle()
+                recent = reg.get_recent_actions("kitchen")
+                self.assertFalse(recent[0]["success"])
+                self.assertIn("reported failure", recent[0]["error"])
+        asyncio.run(run())
+
+    def test_timeout_is_recorded_as_timeout_not_cancelled(self):
+        async def run():
+            with _RegistryPatch() as reg:
+                async def slow():
+                    await asyncio.sleep(30)
+                completions = []
+                metrics = SimpleNamespace(
+                    record_action_start=lambda **kw: None,
+                    record_action_completion=lambda **kw: completions.append(kw))
+                h = _handler(metrics=metrics)
+                await h.execute_fire_and_forget_action(
+                    slow, action_name="t1", domain="timers", physical_id="kitchen",
+                    timeout=0.01)
+                rec = reg.get_action("kitchen", "t1")
+                await asyncio.gather(rec.task, return_exceptions=True)
+                await _settle()
+                recent = reg.get_recent_actions("kitchen")
+                self.assertEqual(recent[0]["error"], "timeout")   # was: "cancelled"
+                self.assertTrue(completions[0]["timeout_occurred"])
+        asyncio.run(run())
+
+    def test_user_cancel_still_recorded_as_cancelled(self):
+        async def run():
+            with _RegistryPatch() as reg:
+                async def slow():
+                    await asyncio.sleep(30)
+                h = _handler()
+                await h.execute_fire_and_forget_action(
+                    slow, action_name="c1", domain="timers", physical_id="kitchen", timeout=0)
+                rec = reg.get_action("kitchen", "c1")
+                rec.task.cancel()
+                await asyncio.gather(rec.task, return_exceptions=True)
+                await _settle()
+                self.assertEqual(reg.get_recent_actions("kitchen")[0]["error"], "cancelled")
+        asyncio.run(run())
+
+    def test_displaced_records_callback_cannot_evict_successor(self):
+        # Name collision: old record displaced from the store; when its task finishes, its
+        # done-callback must NOT remove the live successor registered under the same key.
+        async def run():
+            with _RegistryPatch() as reg:
+                async def first():
+                    await asyncio.sleep(0.01)
+                async def second():
+                    await asyncio.sleep(30)
+                h = _handler()
+                await h.execute_fire_and_forget_action(
+                    first, action_name="dup", domain="timers", physical_id="kitchen", timeout=0)
+                old_rec = reg.get_action("kitchen", "dup")
+                await h.execute_fire_and_forget_action(
+                    second, action_name="dup", domain="timers", physical_id="kitchen", timeout=0)
+                new_rec = reg.get_action("kitchen", "dup")
+                self.assertIsNot(new_rec, old_rec)
+                await asyncio.gather(old_rec.task, return_exceptions=True)
+                await _settle()
+                # the successor survives the displaced record's completion callback
+                self.assertIs(reg.get_action("kitchen", "dup"), new_rec)
+                new_rec.task.cancel()
+                await asyncio.gather(new_rec.task, return_exceptions=True)
+        asyncio.run(run())
+
+
 if __name__ == "__main__":
     unittest.main()

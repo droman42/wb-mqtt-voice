@@ -235,11 +235,13 @@ def test_synthesize_unrecognized_voice_falls_back_to_default():
     assert tts.speak_calls == [{"text": "привет", "provider": None, "params": {}}]
 
 
-def test_synthesize_speak_failure_returns_false():
+def test_synthesize_speak_failure_raises():
+    """BUG-19: a failing synthesis must PROPAGATE so the F&F store records a failure —
+    the old `return False` was recorded as success."""
     tts = FakeTTS(speak_error=RuntimeError("audio device busy"))
     handler = _make_handler(tts=tts)
-    ok = asyncio.run(handler._synthesize_speech_action("привет", None, "ru", tts))
-    assert ok is False
+    with pytest.raises(RuntimeError, match="audio device busy"):
+        asyncio.run(handler._synthesize_speech_action("привет", None, "ru", tts))
 
 
 # --------------------------------------------------------------- stop / cancel actions (port set)

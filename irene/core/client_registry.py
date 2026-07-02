@@ -127,6 +127,8 @@ class ActionRecord:
     started_at: float = field(default_factory=time.time)
     expected_end: Optional[float] = None     # bounded actions (timers): started_at + duration (+grace)
     status: str = "running"
+    timed_out: bool = False                  # set by the timeout monitor before it cancels (BUG-19:
+                                             # lets the done-callback distinguish timeout from user-cancel)
     session_id: Optional[str] = None         # conversation that launched it (informational)
     room_id: Optional[str] = None
     source: Optional[str] = None             # originating channel (cli/web/ws/…) for deferred-result addressing (ARCH-15 PR-4)
@@ -457,6 +459,14 @@ class ClientRegistry:
     def add_action(self, record: ActionRecord) -> None:
         """Register a live action under its physical_id, keyed by action_name."""
         table = self._actions.setdefault(record.physical_id, {})
+        displaced = table.get(record.action_name)
+        if displaced is not None and displaced.is_live():
+            # BUG-19: a name collision used to silently drop the live record from the store while
+            # its task kept running untracked. Names are collision-proof now (uuid suffixes), so
+            # this is a caller bug — scream. The displaced task keeps its own done-callback
+            # (identity-safe removal means it can no longer evict this successor).
+            logger.error(f"Action-name collision for '{record.physical_id}/{record.action_name}': "
+                         f"a live action is being displaced from the store (caller bug)")
         table[record.action_name] = record
         # Layer 4: opportunistically reap dead entries, then enforce the hard cap.
         self._reap_identity(record.physical_id)
@@ -464,14 +474,20 @@ class ClientRegistry:
         if len(table) > self.max_actions_per_identity:
             oldest = min(table.values(), key=lambda r: r.started_at)
             table.pop(oldest.action_name, None)
+            # BUG-19: cancel the evicted task — eviction used to drop the record while the task
+            # kept running as an untracked zombie. Cancelling routes it through its own
+            # done-callback (history records "cancelled").
+            if oldest.task is not None and not oldest.task.done():
+                oldest.task.cancel()
             logger.warning(f"Action store cap ({self.max_actions_per_identity}) hit for "
-                           f"'{record.physical_id}'; evicted oldest action '{oldest.action_name}'")
+                           f"'{record.physical_id}'; evicted + cancelled oldest action "
+                           f"'{oldest.action_name}'")
 
     def get_action(self, physical_id: str, action_name: str) -> Optional[ActionRecord]:
         """Fetch a specific action, applying the read-time liveness filter (layer 2)."""
         rec = self._actions.get(physical_id, {}).get(action_name)
         if rec is not None and not rec.is_live():
-            self.remove_action(physical_id, action_name)
+            self.remove_action(physical_id, action_name, expected=rec)
             return None
         return rec
 
@@ -484,10 +500,18 @@ class ClientRegistry:
         """Live actions in a domain — the secondary index the contextual resolver uses."""
         return [r for r in self.get_live_actions(physical_id) if r.domain == domain]
 
-    def remove_action(self, physical_id: str, action_name: str) -> Optional[ActionRecord]:
-        """Remove an action (layer 1 — called from the completion callback)."""
+    def remove_action(self, physical_id: str, action_name: str,
+                      expected: Optional[ActionRecord] = None) -> Optional[ActionRecord]:
+        """Remove an action (layer 1 — called from the completion callback).
+
+        ``expected`` (BUG-19): identity guard — when given, the entry is removed only if it IS
+        that record. Without it, a displaced action's done-callback could evict a live successor
+        registered under the same name.
+        """
         table = self._actions.get(physical_id)
         if not table:
+            return None
+        if expected is not None and table.get(action_name) is not expected:
             return None
         rec = table.pop(action_name, None)
         if not table:

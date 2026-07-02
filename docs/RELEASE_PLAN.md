@@ -339,18 +339,6 @@ _Apply to every remediation task below (from the 4 review docs + QUAL-25/26). So
 _Discrete functional defects (distinct from QUAL refactors/quality work). Surfaced from any source; filed before fixing._
 
 
-- [ ] **BUG-19** [FAF] (P2) `[release]` — **Action-store correctness fixes independent of the ARCH-27 design**
-      (QUAL-56 → `faf_durable_execution_review.md` F2/F3). **(1)** `add_action` silently overwrites a live record on
-      action-name collision (`client_registry.py:457-460`; ms-timestamp names collide same-ms —
-      `audio_playback_handler.py:67`, `voice_synthesis_handler.py:77`; removal has no record-identity check so the
-      old task's done-callback later evicts the *new* record, `base.py:741` + `client_registry.py:487-495`) — make
-      names collision-proof (uuid suffix) AND make `add_action`/`remove_action` identity-safe; **(2)** the
-      32/identity cap eviction drops a record **without cancelling its task** (`client_registry.py:464-468`) —
-      cancel on evict; **(3)** TTS/audio action coroutines swallow failures as `return False` "success"
-      (`voice_synthesis_handler.py:410-413`, `audio_playback_handler.py:279-281`) — raise so the failure path runs;
-      **(4)** timeout-cancelled actions are recorded as plain `"cancelled"` and `timeout_occurred` is never set
-      (`base.py:728-729`, `metrics.py:229-231`) — distinguish timeout from user-cancel in history + metrics.
-      _Filed 2026-07-02 from QUAL-56._
 - [ ] **BUG-13** [ASR][WS] (P3) `[deferred]` — **`/ws/audio` server-authoritative *streaming* branch hangs for
       bounded (device-signalled) utterances.** When the client registers `mode="streaming"` **and** the ASR reports
       `supports_streaming()` (a real online recognizer), the handler takes the streaming branch

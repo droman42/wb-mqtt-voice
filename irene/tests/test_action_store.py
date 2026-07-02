@@ -247,3 +247,41 @@ def test_metrics_concurrent_same_domain_no_clobber():
     mc.record_action_completion("timers", "timer_2", success=True)
     assert mc.get_active_actions_summary()["count"] == 0
     assert mc._system_metrics["total_actions_completed"] == 2
+
+
+async def test_cap_eviction_cancels_the_evicted_task():
+    """BUG-19: the per-identity cap used to drop the oldest record while its task kept
+    running as an untracked zombie — eviction must cancel it."""
+    reg = ClientRegistry({"persistent_storage": False, "max_actions_per_identity": 2})
+    pid = "sess1"
+    tasks = [asyncio.create_task(asyncio.sleep(30)) for _ in range(3)]
+    try:
+        for i, t in enumerate(tasks):
+            reg.add_action(ActionRecord(f"a{i}", "timers", pid, task=t, started_at=time.time() + i))
+        await asyncio.sleep(0)
+        assert tasks[0].cancelled() or tasks[0].cancelling()  # oldest evicted AND cancelled
+        live = {r.action_name for r in reg.get_live_actions(pid)}
+        assert live == {"a1", "a2"}
+    finally:
+        for t in tasks:
+            t.cancel()
+
+
+async def test_remove_action_identity_guard():
+    """BUG-19: removal with `expected=` only evicts that exact record — a displaced record
+    cannot remove a live successor under the same key."""
+    reg = ClientRegistry({"persistent_storage": False})
+    pid = "sess1"
+    t1 = asyncio.create_task(asyncio.sleep(30))
+    t2 = asyncio.create_task(asyncio.sleep(30))
+    try:
+        old = ActionRecord("dup", "timers", pid, task=t1)
+        new = ActionRecord("dup", "timers", pid, task=t2)
+        reg.add_action(old)
+        reg.add_action(new)  # displaces old (logged as caller bug)
+        assert reg.remove_action(pid, "dup", expected=old) is None   # guard holds
+        assert reg.get_action(pid, "dup") is new
+        assert reg.remove_action(pid, "dup", expected=new) is new
+    finally:
+        t1.cancel()
+        t2.cancel()

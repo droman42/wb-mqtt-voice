@@ -13,6 +13,22 @@ newest entries near the top of each dated section.
 
 ## Action journal
 
+- **2026-07-02 — BUG-19 DONE — F&F action-store correctness (the QUAL-56 fixes that don't wait for ARCH-27).**
+  Four fixes: **(1)** audio/TTS action names are collision-proof (uuid suffix — same-millisecond launches used
+  to collide), and the store is identity-safe: `remove_action(expected=)` guard means a displaced record's
+  done-callback can no longer evict a live successor under the same key; `add_action` logs an error on live
+  displacement. **(2)** The per-identity cap eviction now cancels the evicted task instead of leaving an
+  untracked zombie. **(3)** Failure unmasking at the single choke point: the launch wraps every action coroutine
+  with a falsy-return check — the handler `return True/False` convention was ignored, so TTS/audio coroutines
+  that swallowed their own exceptions were recorded as SUCCESS; now `False` raises and the failure path runs
+  (the two swallow blocks re-raise to keep the real error text). Centralized, so all 14 current bool-convention
+  sites and every future handler inherit it. **(4)** Timeout is no longer indistinguishable from user
+  cancellation: the monitor marks `ActionRecord.timed_out` before cancelling; history says `"timeout"` and
+  metrics finally receive `timeout_occurred=True`. Gates: 1144 passed / 7 skipped (6 new regression tests; 1
+  outdated test updated to the new raise contract); pyright clean on the 4 touched files. BUG-19 moved
+  active→done. Next from QUAL-56: ARCH-27 (substrate design + handler rules), then QUAL-61 rides its
+  keep-or-cut calls.
+
 - **2026-07-02 — QUAL-56 DONE — F&F durability critique + comparative bridge persistence analysis
   (user-requested).** Deliverable frozen at `docs/review/faf_durable_execution_review.md` (two parallel
   deep-reads: the F&F subsystem across 8 durability dimensions; how `../wb-mqtt-bridge` persists device state).

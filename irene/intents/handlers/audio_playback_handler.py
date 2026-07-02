@@ -8,6 +8,7 @@ in AudioComponent. Delegates to AudioComponent for actual functionality.
 import asyncio
 import logging
 import time
+import uuid
 from pathlib import Path
 from typing import List, Dict, Optional
 
@@ -65,7 +66,7 @@ class AudioPlaybackIntentHandler(IntentHandler):
         language = context.language
         
         # Use fire-and-forget action execution for audio playback
-        playback_id = f"audio_{int(time.time() * 1000)}"
+        playback_id = f"audio_{int(time.time() * 1000)}_{uuid.uuid4().hex[:6]}"
         action_metadata = await self.execute_fire_and_forget_with_context(
             self._start_audio_playback_action,
             action_name=playback_id,
@@ -97,7 +98,7 @@ class AudioPlaybackIntentHandler(IntentHandler):
         language = context.language
         
         # Use fire-and-forget action execution for stopping audio
-        stop_id = f"audio_stop_all_{int(time.time() * 1000)}"
+        stop_id = f"audio_stop_all_{int(time.time() * 1000)}_{uuid.uuid4().hex[:6]}"
         action_metadata = await self.execute_fire_and_forget_with_context(
             self._stop_audio_playback_action,
             action_name=stop_id,
@@ -123,7 +124,7 @@ class AudioPlaybackIntentHandler(IntentHandler):
         language = context.language
         
         # Use fire-and-forget action execution for pausing audio
-        pause_id = f"audio_pause_{int(time.time() * 1000)}"
+        pause_id = f"audio_pause_{int(time.time() * 1000)}_{uuid.uuid4().hex[:6]}"
         action_metadata = await self.execute_fire_and_forget_with_context(
             self._pause_audio_playback_action,
             action_name=pause_id,
@@ -149,7 +150,7 @@ class AudioPlaybackIntentHandler(IntentHandler):
         language = context.language
         
         # Use fire-and-forget action execution for resuming audio
-        resume_id = f"audio_resume_{int(time.time() * 1000)}"
+        resume_id = f"audio_resume_{int(time.time() * 1000)}_{uuid.uuid4().hex[:6]}"
         action_metadata = await self.execute_fire_and_forget_with_context(
             self._resume_audio_playback_action,
             action_name=resume_id,
@@ -278,8 +279,8 @@ class AudioPlaybackIntentHandler(IntentHandler):
             return True
         except Exception as e:
             self.logger.error(f"Audio playback action failed: {e}")
-            return False
-    
+            raise  # BUG-19: `return False` here recorded the action as SUCCESS in the store
+
     async def _pause_audio_playback_action(self, language: str) -> bool:
         """Pause audio playback action"""
         audio_component = await self._get_audio_component()

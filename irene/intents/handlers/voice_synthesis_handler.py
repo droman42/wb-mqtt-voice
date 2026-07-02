@@ -7,6 +7,7 @@ in TTSComponent. Delegates to TTSComponent for actual functionality.
 
 import logging
 import time
+import uuid
 from typing import List, Dict, Any, Optional
 
 from .base import IntentHandler
@@ -74,7 +75,7 @@ class VoiceSynthesisIntentHandler(IntentHandler):
             return self._error_result(context, "No text to speak found")
         
         # Use fire-and-forget action execution for TTS generation
-        synthesis_id = f"tts_{int(time.time() * 1000)}"  # Unique ID based on timestamp
+        synthesis_id = f"tts_{int(time.time() * 1000)}_{uuid.uuid4().hex[:6]}"  # BUG-19: uuid suffix — same-ms launches collided
         action_metadata = await self.execute_fire_and_forget_with_context(
             self._synthesize_speech_action,
             action_name=synthesis_id,
@@ -142,7 +143,7 @@ class VoiceSynthesisIntentHandler(IntentHandler):
         language = context.language
         
         # Use fire-and-forget action execution for basic TTS
-        synthesis_id = f"tts_basic_{int(time.time() * 1000)}"
+        synthesis_id = f"tts_basic_{int(time.time() * 1000)}_{uuid.uuid4().hex[:6]}"
         action_metadata = await self.execute_fire_and_forget_with_context(
             self._synthesize_speech_action,
             action_name=synthesis_id,
@@ -207,7 +208,7 @@ class VoiceSynthesisIntentHandler(IntentHandler):
         language = context.language
         
         # Use fire-and-forget action execution for stopping synthesis
-        stop_id = f"tts_stop_all_{int(time.time() * 1000)}"
+        stop_id = f"tts_stop_all_{int(time.time() * 1000)}_{uuid.uuid4().hex[:6]}"
         action_metadata = await self.execute_fire_and_forget_with_context(
             self._stop_synthesis_action,
             action_name=stop_id,
@@ -234,7 +235,7 @@ class VoiceSynthesisIntentHandler(IntentHandler):
         language = context.language
         
         # Use fire-and-forget action execution for canceling synthesis
-        cancel_id = f"tts_cancel_all_{int(time.time() * 1000)}"
+        cancel_id = f"tts_cancel_all_{int(time.time() * 1000)}_{uuid.uuid4().hex[:6]}"
         action_metadata = await self.execute_fire_and_forget_with_context(
             self._cancel_synthesis_action,
             action_name=cancel_id,
@@ -409,8 +410,7 @@ class VoiceSynthesisIntentHandler(IntentHandler):
                 
         except Exception as e:
             self.logger.error(f"TTS synthesis action failed: {e}")
-            # TODO: Could trigger failure notification here
-            return False
+            raise  # BUG-19: `return False` here recorded the action as SUCCESS in the store
     
     # Build dependency methods (TODO #5 Phase 2)
     # Configuration metadata: No configuration needed

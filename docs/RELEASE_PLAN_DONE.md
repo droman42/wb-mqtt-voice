@@ -1715,6 +1715,22 @@ rationale/chronology lives in [`RELEASE_JOURNAL.md`](./RELEASE_JOURNAL.md).
       console-LLM fallback / `fallback_providers` — left as-is; not in scope here.)
 
 ### Bugs (BUG)
+- [x] **BUG-19** [FAF] (P2) `[release]` — **DONE 2026-07-02.** Action-store correctness fixes independent of the
+      ARCH-27 design (QUAL-56 F2/F3). **(1) Collision-proofing + identity safety:** audio/TTS action names get a
+      uuid suffix (same-ms launches used to collide); `remove_action` gained an `expected=` identity guard (the
+      done-callback passes its own record, so a displaced action's completion can no longer evict a live successor
+      under the same key); `add_action` screams on live-record displacement (caller bug). **(2)** the 32/identity
+      cap eviction now **cancels** the evicted task (was: untracked zombie). **(3) Failure unmasking at the choke
+      point:** `execute_fire_and_forget_action` wraps the coroutine with a falsy-return check — the handler
+      `return True/False` convention was IGNORED, so coroutines that swallowed their own exceptions were recorded
+      as SUCCESS; now `False` → RuntimeError → failure path. The two exception-swallow blocks
+      (`voice_synthesis_handler`, `audio_playback_handler`) re-raise to preserve the real error text. All 14
+      bool-convention sites are covered centrally — future handlers inherit it. **(4) timeout ≠ cancel:**
+      `ActionRecord.timed_out` set by the monitor before cancelling; history records `"timeout"` (was
+      indistinguishable `"cancelled"`) and metrics finally get `timeout_occurred=True`. Regression: 4 new tests in
+      `test_fire_and_forget_coverage.py` (falsy-return failure, timeout vs user-cancel ×2, displaced-callback
+      guard) + 2 in `test_action_store.py` (cap-evict cancels, identity guard); 1 outdated test updated to the new
+      contract (speak failure now raises). Full suite 1144 passed / 7 skipped; pyright clean.
 - [x] **BUG-18** [INTENTS][LLM][MEM] (P2) `[release]` — **DONE 2026-07-02.** LLM conversation store was unbounded —
       `max_context_length` was config-read and never applied, so `handler_contexts["conversation"]["messages"]` and
       domain-thread lists grew per turn for the session's life (days, for stable room-scoped sessions), and each turn

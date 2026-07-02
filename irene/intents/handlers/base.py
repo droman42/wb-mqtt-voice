@@ -660,13 +660,22 @@ class IntentHandler(EntryPointMetadata, ABC):
             timeout = 300.0
         if physical_id is None:
             physical_id = resolve_physical_id(None, None, owner_session_id or action_name)
+        # BUG-19: the handler action-coroutine convention is `return True/False`, but the return
+        # value used to be IGNORED — a coroutine that caught its own exception and returned False
+        # was recorded as a SUCCESS. Enforce the convention centrally: False → failure.
+        async def _checked_action(**kw):
+            result = await action_func(**kw)
+            if result is False:
+                raise RuntimeError(f"Action '{action_name}' reported failure (returned False)")
+            return result
+
         try:
             if max_retries > 0:
                 task = asyncio.create_task(self._execute_with_retry(
-                    action_func, action_name, domain, max_retries, retry_delay, **kwargs
+                    _checked_action, action_name, domain, max_retries, retry_delay, **kwargs
                 ))
             else:
-                task = asyncio.create_task(action_func(**kwargs))
+                task = asyncio.create_task(_checked_action(**kwargs))
 
             record = ActionRecord(
                 action_name=action_name,
@@ -700,7 +709,7 @@ class IntentHandler(EntryPointMetadata, ABC):
             if timeout and timeout > 0:
                 timeout_key = f"{physical_id}:{action_name}"
                 self._timeout_tasks[timeout_key] = asyncio.create_task(
-                    self._monitor_action_timeout(task, action_name, timeout_key, timeout)
+                    self._monitor_action_timeout(record, timeout_key, timeout)
                 )
 
             self.logger.info(f"Started fire-and-forget action: {action_name} "
@@ -726,7 +735,8 @@ class IntentHandler(EntryPointMetadata, ABC):
         """Done-callback: reap the action from the store and fire metrics/notifications off the record."""
         try:
             if task.cancelled():
-                success, error = False, "cancelled"
+                # BUG-19: a timeout-cancel is a failure of the action, not a user decision.
+                success, error = False, ("timeout" if record.timed_out else "cancelled")
             elif task.exception() is not None:
                 success, error = False, str(task.exception())
             else:
@@ -738,7 +748,7 @@ class IntentHandler(EntryPointMetadata, ABC):
         # (the single completion chokepoint, so history is recorded exactly once).
         try:
             registry = get_client_registry()
-            registry.remove_action(record.physical_id, record.action_name)
+            registry.remove_action(record.physical_id, record.action_name, expected=record)
             registry.record_completed_action(record, success, error)
         except Exception as e:
             self.logger.error(f"Failed to reap/record completed action {record.action_name}: {e}")
@@ -751,7 +761,8 @@ class IntentHandler(EntryPointMetadata, ABC):
         if self._metrics_collector:
             try:
                 self._metrics_collector.record_action_completion(
-                    domain=record.domain, action_name=record.action_name, success=success, error=error)
+                    domain=record.domain, action_name=record.action_name, success=success, error=error,
+                    timeout_occurred=record.timed_out)
             except Exception as me:
                 self.logger.error(f"Failed to record action completion metrics: {me}")
 
@@ -792,23 +803,29 @@ class IntentHandler(EntryPointMetadata, ABC):
         except Exception as e:
             self.logger.error(f"Failed to send action notification for {record.action_name}: {e}")
 
-    async def _monitor_action_timeout(self, task: asyncio.Task, action_name: str,
+    async def _monitor_action_timeout(self, record: 'ActionRecord',
                                       timeout_key: str, timeout: float) -> None:
         """Cancel an action that overruns its timeout; the done-callback then reaps it from the store.
 
         Uses ``wait_for`` (not a flat ``sleep(timeout)``) so a normally-completing action ends the
-        monitor immediately instead of leaving a zombie sleeper for the full timeout.
+        monitor immediately instead of leaving a zombie sleeper for the full timeout. Marks the
+        record ``timed_out`` BEFORE cancelling (BUG-19) so the done-callback records "timeout"
+        rather than a plain "cancelled" (indistinguishable from user cancellation otherwise).
         """
+        task = record.task
+        if task is None:
+            return
         try:
             await asyncio.wait_for(asyncio.shield(task), timeout=timeout)
         except asyncio.TimeoutError:
             if not task.done():
-                self.logger.warning(f"Action {action_name} timed out after {timeout}s — cancelling")
+                self.logger.warning(f"Action {record.action_name} timed out after {timeout}s — cancelling")
+                record.timed_out = True
                 task.cancel()
         except asyncio.CancelledError:
             pass
         except Exception as e:
-            self.logger.error(f"Error in timeout monitoring for action {action_name}: {e}")
+            self.logger.error(f"Error in timeout monitoring for action {record.action_name}: {e}")
         finally:
             self._timeout_tasks.pop(timeout_key, None)
 
