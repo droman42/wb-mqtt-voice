@@ -9,6 +9,19 @@ rationale/chronology lives in [`RELEASE_JOURNAL.md`](./RELEASE_JOURNAL.md).
 ---
 
 ### Architecture & Refactor (ARCH)
+- [x] **ARCH-27** [FAF][DESIGN] (P2) `[release]` — **DONE 2026-07-02 (design agreed, interactive session).**
+      Durable-action substrate + handler-authoring rules designed and recorded at `docs/design/durable_actions.md`
+      (D-1…D-10, all user-confirmed): explicit opt-in durability (`durable=True`; timer = only consumer today,
+      future smart-home handlers required it — user scope statement), atomic-JSON store behind
+      `DurableActionStorePort` (SQLite = later swap behind the same port), re-arm-by-relaunch startup reconciler
+      with fire-with-apology (≤1h grace) / expiry-announcement for missed deadlines, failure notifications
+      announced by default (success sub-30s stays quiet), handler-declared `redeliver_on_reconnect` (at-least-once
+      for flagged durable actions, drained on client re-registration), retry machinery CUT (unblocks QUAL-61 —
+      all three cuts confirmed), BUG-19 naming = the identity contract (re-arm reuses the persisted name),
+      minimal read-only `/monitoring/actions[/history]`, rules bind via a new `howto-new-intent.md` section +
+      `CLAUDE.md` `durable-actions` invariant (both land with the implementation). Bridge comparative lessons
+      baked in: delete-at-completion atomically (anti stale-intent resurrection), persist+restore+restart-test
+      ship together (anti persist-without-restore rot). Implementation follow-up filed: **ARCH-28** (7 slices).
 - [x] **ARCH-0** (P1) — Architecture MAP & document (Goal 1 doc-sync findings + Goal 2 pattern). → `docs/review/phase1_architecture_map.md`
 - [x] **ARCH-1** (P0) — Split the `intents/models.py` god-module (in-degree 67). **DONE 2026-06-01** (`cdf8a81`
       audio, `a996dba` context). (1) `AudioData`/`WakeWordResult` → **`irene/utils/audio_data.py`** (zero-dep

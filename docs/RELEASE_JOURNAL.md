@@ -13,6 +13,24 @@ newest entries near the top of each dated section.
 
 ## Action journal
 
+- **2026-07-02 — ARCH-27 DONE — durable-action substrate designed (interactive session, all decisions
+  user-confirmed).** Recorded at `docs/design/durable_actions.md` (D-1…D-10 + the §3 handler-authoring
+  contract). The decisions, both rounds: durability is an **explicit per-launch opt-in** (`durable=True`; timer
+  is the only consumer today — confirmed — TTS/audio stay ephemeral); store = **atomic JSON file**
+  (`cache/durable_actions.json`, temp+rename) behind a `DurableActionStorePort` (SQLite stays a drop-in swap);
+  recovery = **re-arm by relaunch** through the normal launch path with the remaining duration (reconcile-by-diff,
+  not log replay), missed deadlines **fire-with-apology** within a 1h grace window, expiry-announcement beyond it;
+  **failures announced by default** (flip `critical_only`; sub-30s success suppression stays); redelivery of
+  offline completions is a **handler-declared flag** (`redeliver_on_reconnect` — timer sets it; at-least-once for
+  flagged, best-effort otherwise); the dead **retry machinery is cut** (QUAL-61 annotated UNBLOCKED — all three
+  cuts confirmed, incl. `AsyncTimerManager`: the store + reconciler IS the scheduler); naming/identity rides
+  BUG-19 (re-arm reuses the persisted action_name); observability = **minimal read-only**
+  `/monitoring/actions[/history]`; rules bind via a new **`howto-new-intent.md` durability section +
+  a `CLAUDE.md` `durable-actions` invariant**, both landing with the implementation. Bridge lessons baked in:
+  delete-at-completion atomic with the in-memory clear (anti stale-intent resurrection), persist+restore+restart
+  test ship together (anti persist-without-restore rot), ephemeral-field filter, shutdown discipline. Per
+  `design-then-implement`: ARCH-27 moved active→done; **ARCH-28** filed (7 implementation slices, `[release]`).
+
 - **2026-07-02 — BUG-19 DONE — F&F action-store correctness (the QUAL-56 fixes that don't wait for ARCH-27).**
   Four fixes: **(1)** audio/TTS action names are collision-proof (uuid suffix — same-millisecond launches used
   to collide), and the store is identity-safe: `remove_action(expected=)` guard means a displaced record's

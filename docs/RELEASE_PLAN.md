@@ -42,6 +42,7 @@ Living findings behind the tasks (`read-at-start-record-at-completion`). `[x]` =
 
 | Doc (`docs/review/` unless noted) | Covers | Backs |
 |---|---|---|
+| `docs/design/durable_actions.md` `[x]` (AGREED 2026-07-02, interactive) | ARCH-27 — durable-action substrate: opt-in `durable=` launches, atomic-JSON store behind a port, re-arm-by-relaunch reconciler, fire-with-apology ≤1h grace, failures announced by default, handler-declared redelivery, retry machinery cut, minimal read-only actions API, handler-authoring rules (§3) → howto-new-intent + CLAUDE.md invariant | ARCH-27 ✓ → ARCH-28, QUAL-61 |
 | `faf_durable_execution_review.md` `[x]` (2026-07-02) | QUAL-56 — F&F vs the durable-execution reference model (8 dimensions, all zero by design; delivery = at-most-once with 5 drop points; retry machinery dead) + comparative `wb-mqtt-bridge` persistence analysis (patterns to borrow + persist-without-restore / stale-intent pitfalls) | QUAL-56 ✓, ARCH-27, BUG-19, QUAL-61, VWB-18 (bridge, uncommitted) |
 | `arch_memory_review_2026-07-02.md` `[x]` (2026-07-02) | QUAL-57 — general architecture assessment (SOTA gaps A1–A7) + memory-overconsumption audit (M1–M8, ranked) + F&F QUAL-8 re-verification (all 10 resolved) + `create_task` census + verified-fine list | QUAL-57 ✓, BUG-16/17/18, QUAL-58/59, QUAL-56 (premise confirmed) |
 | `phase0_static_baseline.md` `[x]` | static baseline: phantom refs, hidden type debt, dead code, layering | QUAL-1/2 ✓, QUAL-3/4/5/6, TEST-1 |
@@ -132,26 +133,20 @@ and the structural refactors **move code** — so blind refactoring/fixing is th
 Target pattern: **Hexagonal (Ports & Adapters)** — SIGNED OFF 2026-06-01. Code is already ~80% there
 (interfaces=ports, providers=adapters, components=app services, entry-points=registry).
 See `docs/review/phase1_architecture_map.md` §5.
-- [ ] **ARCH-27** [FAF][DESIGN] (P2) `[release]` — **Design: durable-action substrate + handler-authoring
-      durability rules** (`design-then-implement`; from QUAL-56 → `docs/review/faf_durable_execution_review.md` F1/F4/
-      F6/F8). User scope statement (2026-07-02): only timers need it today, but **future intent handlers (smart-home
-      arc) will require durability** — so this is a platform substrate at the existing single choke point
-      (`execute_fire_and_forget_with_context` + the done-callback), NOT a timer patch. Deliverable = a design doc
-      under `docs/design/` covering: **(1) persistence** — persisted action records (candidate: the bridge's pattern,
-      tiny key→JSON SQLite store behind a hexagonal port, dirty-write at launch, **delete atomically with in-memory
-      removal at completion** — the bridge's stale-`active_scenario` resurrection bug is the cautionary tale), with an
-      ephemeral-field filter (no task refs on disk); **(2) recovery** — startup reconciliation: re-arm timers from
-      stored deadlines, fire-with-apology or expire-with-announcement for missed deadlines, per-domain re-arm hooks
-      for future device actions (reconcile-by-diff, not command-log replay); **ships persist + restore + a restart
-      test together** (anti persist-without-restore rot); **(3) delivery guarantees** — decide the completion/failure
-      notification policy end-to-end (today: at-most-once, 5 silent-drop points, failure notifications suppressed by
-      default, prefs lost on eviction — QUAL-56 §D4/D5); **(4) idempotency** — launch-key scheme replacing colliding
-      ms-timestamp/counter names (BUG-19 fixes the overwrite; the design owns the naming contract); **(5) the
-      handler-authoring RULES** — the durability contract every new handler declares against (durability class,
-      re-arm hook, no hand-rolled `asyncio.sleep` schedules outside the substrate), destined for the handler-authoring
-      docs so ARCH-8's device handlers land on it; **(6) observability** — REST enumeration of in-flight actions +
-      per-identity history (QUAL-56 §D7); **(7) keep-or-cut** the dead retry machinery (§D5). On design completion,
-      file the implementation task(s). _Filed 2026-07-02 from QUAL-56._
+- [ ] **ARCH-28** [FAF] (P2) `[release]` — **Implement the durable-action substrate** per
+      `docs/design/durable_actions.md` (ARCH-27, decisions D-1…D-10 user-agreed 2026-07-02). Slices (§4 of the
+      design, each green): **(1)** `DurableActionStorePort` + atomic-JSON adapter (`cache/durable_actions.json`,
+      temp+rename) + record schema v1 + unit tests; **(2)** launch/completion wiring — keyword-only
+      `durable=False` / `redeliver_on_reconnect=False` params, persist-at-launch, **delete-at-completion in the
+      same operation** as the in-memory removal; timer sets both flags; **(3)** startup reconciler + handler
+      `rearm(record)` hook + fire-with-apology (≤1h grace) / expiry-announcement (localized ru/en) + **the
+      restart test** (persist+restore+test ship together — anti persist-without-restore rot); **(4)** redelivery
+      drain on client registration (TTL = grace window); **(5)** notification-policy flip — failures announced by
+      default, sub-30s success suppression stays; **(6)** read-only `/monitoring/actions` +
+      `/monitoring/actions/history` endpoints; **(7)** docs — new durability section in
+      `docs/guides/howto-new-intent.md` (user-doc prose, the §3 contract) + `durable-actions` invariant in
+      `CLAUDE.md` + architecture-doc touch-ups (`user-facing-docs-are-done`). QUAL-61 (cuts) runs any time after
+      slice 2. _Filed 2026-07-02 on ARCH-27 completion (`design-then-implement`)._
 - [ ] **ARCH-8** [MQTT] (P-TBD) — **★ ARCH-22 (2026-06-14):** the **voice-confirmation of actuation** feature (T-B,
       `docs/design/esp32_satellite.md` §10) rides this task — a sequenced `DEVICE_COMMAND → bridge rich DeliveryResult →
       derive text → SPEECH to the origin device` (opt-in `confirm_actuation_by_voice`; device-transparent, reply via
@@ -223,7 +218,9 @@ See `docs/review/phase1_architecture_map.md` §5.
       `/debug` endpoint); **(3)** `NotificationMessage.retry_count`/`max_retries` — never read
       (`notifications.py:66-67`) — remove unless ARCH-27 decides to wire notification redelivery. All three gated on
       the ARCH-27 design's keep-or-cut calls — do this task right after that design lands. _Filed 2026-07-02 from
-      QUAL-56._
+      QUAL-56._ **★ UNBLOCKED 2026-07-02 — ARCH-27 design agreed (`durable_actions.md` D-7): cut ALL THREE** (the
+      substrate re-arms by relaunch, so `AsyncTimerManager` has no role; retries are handler-owned if ever needed;
+      redelivery uses the durable store, not the notification retry fields). Runnable any time after ARCH-28 slice 2.
 - [ ] **QUAL-60** [INTENTS][LLM] (P3) `[deferred]` — **Summarize-then-truncate for the LLM conversation window
       (BUG-18 follow-up; user chose "window now + file summarization" 2026-07-02).** BUG-18 bounds the conversation
       store with a plain rolling window (last `max_context_length` turns; seed system prompt pinned) — older context
