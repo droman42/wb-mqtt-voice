@@ -13,6 +13,24 @@ newest entries near the top of each dated section.
 
 ## Action journal
 
+- **2026-07-02 — BUG-16 + BUG-17 DONE — the two high-severity QUAL-57 memory leaks fixed same-day (user: "fix
+  BUG-16 and BUG-17 right away").** **BUG-16 (metrics session leak):** `record_session_end` now completes the
+  session action under its real QUAL-9 key (`"session_{sid}:session"` — the old bare-domain check never matched)
+  and **removes** the per-session `DomainMetrics` entry instead of retaining it forever; ended sessions leave a
+  compact summary in a bounded `_recent_sessions` deque(100) + a lifetime counter; `get_session_analytics`
+  active-check fixed to the real key and aggregates fold in the recent ring. Eviction now closes metrics through
+  one seam: `ContextManager.remove_context` calls `record_session_end`, and the lazy sweep + `get_context` expiry
+  both route through it (the sweep previously skipped metrics entirely). Side benefit: `current_concurrent_actions`
+  is no longer permanently inflated by zombie session actions. **BUG-17 (`/ws/audio` unbounded batch buffer):**
+  the batch-floor utterance loop is now capped at `WS_MAX_UTTERANCE_SECONDS = 60` (bytes derived from the
+  registered sample rate); on overflow the utterance is **force-finalized** (processed, `metadata.overflow=true`,
+  warning logged) and the loop continues — VAD-path max-duration semantics; a stuck client is bounded at ~1.9 MB
+  instead of ~115 MB/h. Constant, not config, by design (safety net, not a tunable — avoids dragging
+  CoreConfig/config-ui along). Gates: full suite 1128 passed / 7 skipped (incl. 8 new regression tests:
+  `test_metrics_sessions.py`, 2 eviction-seam tests, 1 WS overflow e2e); pyright clean on the 3 touched files;
+  `/monitoring/sessions` REST contract unchanged (built from system metrics) → config-ui unaffected;
+  `dataflow.md` updated (`user-facing-docs-are-done`). Both moved active→done.
+
 - **2026-07-02 — QUAL-57 DONE — general architecture review + memory-overconsumption audit (user-requested).**
   Deliverable frozen at `docs/review/arch_memory_review_2026-07-02.md`. Ran as 3 parallel deep-reads (architecture
   map / multi-turn memory / F&F re-verification + `create_task` census); the 3 headline memory findings were then

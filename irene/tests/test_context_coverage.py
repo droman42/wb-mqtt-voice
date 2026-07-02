@@ -280,6 +280,30 @@ def test_cleanup_expired_sessions_removes_only_stale_ones():
     assert "fresh" in cm.sessions
 
 
+def test_cleanup_expired_sessions_closes_session_metrics():
+    """BUG-16: bulk eviction must close out session metrics (the sweep used to skip
+    record_session_end entirely, leaking one collector entry per session forever)."""
+    cm = _make_manager(session_timeout=1)
+    stale = asyncio.run(cm.get_or_create_context("stale"))
+    old = time.time() - 10_000
+    stale.last_activity = old
+    stale.last_updated = old
+
+    cm.last_cleanup = time.time() - cm.cleanup_interval - 1
+    asyncio.run(cm._cleanup_expired_sessions())
+
+    assert cm.metrics_collector.ended == ["stale"]
+
+
+def test_remove_context_closes_session_metrics():
+    """BUG-16: the background loop evicts via remove_context — same close-out seam."""
+    cm = _make_manager()
+    asyncio.run(cm.get_or_create_context("bg"))
+    asyncio.run(cm.remove_context("bg"))
+    assert cm.metrics_collector.ended == ["bg"]
+    assert "bg" not in cm.sessions
+
+
 def test_cleanup_skips_when_interval_not_elapsed():
     cm = _make_manager(session_timeout=1)
     stale = asyncio.run(cm.get_or_create_context("stale"))

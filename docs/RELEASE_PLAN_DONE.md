@@ -1664,6 +1664,29 @@ rationale/chronology lives in [`RELEASE_JOURNAL.md`](./RELEASE_JOURNAL.md).
       console-LLM fallback / `fallback_providers` — left as-is; not in scope here.)
 
 ### Bugs (BUG)
+- [x] **BUG-17** [WS][MEM] (P2) `[release]` — **DONE 2026-07-02.** `/ws/audio` batch floor accumulated per-utterance
+      PCM without any bound — a client that never sends `{"type":"end"}` (buggy satellite firmware) grew ~115 MB/h per
+      connection (QUAL-57 §M2). Fix: `WS_MAX_UTTERANCE_SECONDS = 60` module constant; the utterance loop computes
+      `max_utterance_bytes` from the registered sample rate and **force-finalizes** on overflow (the VAD path's
+      `max_segment_duration_s` semantics — the accumulated audio is processed as an utterance, `metadata.overflow=true`,
+      warning logged, loop continues; deliberately a constant, not config — a new config key would drag CoreConfig +
+      config-ui along for a safety net no user should tune). Regression: `test_ws_audio_batch_overflow_force_finalizes`
+      (overflow finalizes without an end frame + the connection stays usable). `dataflow.md` sentence updated
+      (`user-facing-docs-are-done`). Evidence: `docs/review/arch_memory_review_2026-07-02.md` §M2.
+- [x] **BUG-16** [METRICS][MEM] (P2) `[release]` — **DONE 2026-07-02.** Metrics session leak: `record_session_end`
+      checked `domain in _active_actions` while entries are keyed `"{domain}:{action_name}"` (QUAL-9 shape) — never a
+      match, so every session ever seen left a permanent `ActionMetric` + `DomainMetrics` entry in the singleton
+      collector, growing on every REST call/WS connection (QUAL-57 §M1). Fix (metrics.py): complete the session action
+      under the real `"{domain}:session"` key, **pop** the per-session `DomainMetrics` entry, keep a compact summary in
+      a bounded `_recent_sessions` deque(100) + lifetime `_total_sessions_started` scalar; `get_session_analytics`
+      active-check fixed to the real key, aggregates now = live sessions + recent ring, `total_sessions` = lifetime
+      scalar (response gains additive `recent_sessions`; the `/monitoring/sessions` REST model is built from system
+      metrics — unchanged, config-ui unaffected). Fix (context.py): eviction closes metrics via ONE seam —
+      `remove_context` now calls `record_session_end`, and both the lazy sweep and `get_context` expiry route through
+      it (previously the sweep skipped metrics entirely). Idempotent double-end safe. Regression:
+      `test_metrics_sessions.py` (5 tests: drop-on-end, idempotency, bounded footprint across 150 sessions, real-key
+      active check, reset) + 2 eviction-seam tests in `test_context_coverage.py`. Evidence:
+      `docs/review/arch_memory_review_2026-07-02.md` §M1.
 - [x] **BUG-15** [ASSET] (P2) `[release]` — **DONE 2026-07-01.** `AssetManager.download_model` treated a model path's
       mere existence as a completed download (`if model_path.exists()`), so an **interrupted or failed extraction** left a
       **broken-but-present** pack that was never re-downloaded — a permanently-wedged model recoverable only by a manual

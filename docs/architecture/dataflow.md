@@ -37,7 +37,8 @@ Step 1 hides a small pipeline of its own — how raw audio becomes that transcri
   utterances; each utterance is checked for the wake word, then transcribed. The pre-roll (audio kept *before*
   the trigger) is sized from the active VAD engine's detection latency so the onset is never clipped.
 - **Pre-segmented inputs skip VAD and wake.** An **ESP32 satellite** does VAD and the wake word *on-device* and
-  streams a finished utterance (`/ws/audio`, bounded by an end frame); an uploaded file (`/asr/transcribe`) is
+  streams a finished utterance (`/ws/audio`, bounded by an end frame — with a hard per-utterance length cap as
+  a safety net, so a device that never signals the end can't grow the server's buffer); an uploaded file (`/asr/transcribe`) is
   one utterance by definition. Both still flow through the negotiator (so they're conformed), then go straight
   to ASR — VAD and wake are exactly the work the device already did.
 - **Output is the mirror.** A reply's audio (TTS) is conformed **down** to the playback **sink** — the device's

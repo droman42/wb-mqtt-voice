@@ -112,11 +112,17 @@ class MetricsCollector:
         self.max_history_size = max_history_size
         
         # Action tracking
-        self._active_actions: Dict[str, ActionMetric] = {}  # key: domain
+        self._active_actions: Dict[str, ActionMetric] = {}  # key: "{domain}:{action_name}" (QUAL-9)
         self._completed_actions: Deque[ActionMetric] = deque(maxlen=max_history_size)
-        
+
         # Domain-specific metrics
         self._domain_metrics: Dict[str, DomainMetrics] = {}
+
+        # Session tracking (BUG-16): per-session DomainMetrics entries are REMOVED on session end —
+        # a process-lifetime collector must not keep an entry for every session ever seen. Ended
+        # sessions leave only a compact summary in this bounded ring; the lifetime count is a scalar.
+        self._recent_sessions: Deque[Dict[str, Any]] = deque(maxlen=100)
+        self._total_sessions_started = 0
         
         # System-wide metrics
         self._system_metrics = {
@@ -438,6 +444,8 @@ class MetricsCollector:
         self._domain_metrics.clear()
         self._performance_history.clear()
         self._error_patterns.clear()
+        self._recent_sessions.clear()
+        self._total_sessions_started = 0
         
         self._system_metrics = {
             "total_actions_started": 0,
@@ -714,7 +722,8 @@ class MetricsCollector:
     def record_session_start(self, session_id: str) -> None:
         """Record conversation session start"""
         domain = f"session_{session_id}"
-        
+        self._total_sessions_started += 1
+
         # Track as fire-and-forget action
         self.record_action_start(domain, "session", "intent_system", session_id)
         
@@ -738,21 +747,40 @@ class MetricsCollector:
         self.logger.debug(f"Session started: {session_id}")
     
     def record_session_end(self, session_id: str, user_satisfaction: Optional[float] = None) -> None:
-        """Record conversation session end"""
+        """Record conversation session end.
+
+        BUG-16: the session's ActionMetric is completed under its REAL key — `"{domain}:session"`,
+        the QUAL-9 key shape; the old `domain in self._active_actions` check never matched, so the
+        entry (and the per-session DomainMetrics) leaked forever, growing on every REST call / WS
+        connection. The per-session DomainMetrics entry is now removed outright; ended sessions
+        keep only a compact summary in the bounded `_recent_sessions` ring. Idempotent.
+        """
         domain = f"session_{session_id}"
-        
-        if domain in self._domain_metrics and self._domain_metrics[domain].session_metrics:
-            session_metrics = self._domain_metrics[domain].session_metrics
-            session_metrics['last_activity'] = time.time()
-            
-            if user_satisfaction is not None:
-                session_metrics['user_satisfaction_score'] = user_satisfaction
-            
-            # Complete the session action
-            if domain in self._active_actions:
-                self.record_action_completion(domain, "session", success=True)
-            
-            self.logger.debug(f"Session ended: {session_id}")
+
+        # Complete the session action first — completion re-touches _domain_metrics[domain] —
+        # then drop the per-session domain entry entirely.
+        if f"{domain}:session" in self._active_actions:
+            self.record_action_completion(domain, "session", success=True)
+        entry = self._domain_metrics.pop(domain, None)
+        session_metrics = entry.session_metrics if entry else None
+        if not session_metrics:
+            return  # unknown or already-ended session
+
+        end_time = time.time()
+        if user_satisfaction is not None:
+            session_metrics['user_satisfaction_score'] = user_satisfaction
+        start_time = session_metrics.get('start_time', end_time)
+        self._recent_sessions.append({
+            'session_id': session_id,
+            'start_time': start_time,
+            'end_time': end_time,
+            'duration': end_time - start_time,
+            'intent_count': session_metrics.get('intent_count', 0),
+            'success_rate': self._calculate_session_success_rate(session_metrics),
+            'user_satisfaction_score': session_metrics.get('user_satisfaction_score', 0.8),
+            'domains_used': sorted(session_metrics.get('domains_used', set())),
+        })
+        self.logger.debug(f"Session ended: {session_id}")
 
     def record_session_cleanup(self, expired_count: int) -> None:
         """Record cleanup of expired conversation sessions"""
@@ -841,62 +869,51 @@ class MetricsCollector:
         }
     
     def get_session_analytics(self) -> Dict[str, Any]:
-        """Get comprehensive session analytics"""
-        session_domains = {domain: metrics for domain, metrics in self._domain_metrics.items() 
+        """Get comprehensive session analytics.
+
+        BUG-16: `_domain_metrics` now holds only LIVE sessions (ended ones are summarized into the
+        bounded `_recent_sessions` ring), so aggregates combine both; the active-session check uses
+        the real `"{domain}:session"` action key (the bare-domain check never matched).
+        """
+        session_domains = {domain: metrics for domain, metrics in self._domain_metrics.items()
                           if domain.startswith("session_")}
-        
-        if not session_domains:
-            return {
-                "overview": {
-                    "active_sessions": 0,
-                    "total_sessions": 0,
-                    "peak_concurrent_sessions": 0,
-                    "average_session_duration": 0.0,
-                    "average_intents_per_session": 0.0,
-                    "average_user_satisfaction": 0.8
-                },
-                "active_sessions": [],
-                "session_details": {}
-            }
-        
+
         # Active sessions (those with ongoing actions)
         active_sessions = []
         current_time = time.time()
-        
+
         for domain, metrics in session_domains.items():
-            if domain in self._active_actions:
+            if f"{domain}:session" in self._active_actions:
                 session_metrics = getattr(metrics, 'session_metrics', {})
                 session_id = session_metrics.get('session_id', domain.replace('session_', ''))
-                
+
                 active_sessions.append({
                     "session_id": session_id,
                     "duration": current_time - session_metrics.get('start_time', current_time),
                     "intent_count": session_metrics.get('intent_count', 0),
                     "success_rate": self._calculate_session_success_rate(session_metrics)
                 })
-        
-        # Calculate overall statistics
-        total_sessions = len(session_domains)
-        avg_duration = 0.0
-        avg_intents = 0.0
-        avg_satisfaction = 0.0
-        
-        if total_sessions > 0:
-            durations = []
-            intent_counts = []
-            satisfactions = []
-            
-            for metrics in session_domains.values():
-                session_metrics = getattr(metrics, 'session_metrics', {})
-                start_time = session_metrics.get('start_time', current_time)
-                last_activity = session_metrics.get('last_activity', start_time)
-                durations.append(last_activity - start_time)
-                intent_counts.append(session_metrics.get('intent_count', 0))
-                satisfactions.append(session_metrics.get('user_satisfaction_score', 0.8))
-            
-            avg_duration = statistics.mean(durations) if durations else 0.0
-            avg_intents = statistics.mean(intent_counts) if intent_counts else 0.0
-            avg_satisfaction = statistics.mean(satisfactions) if satisfactions else 0.8
+
+        # Overall statistics over live sessions + the recent-ended ring
+        durations = []
+        intent_counts = []
+        satisfactions = []
+
+        for metrics in session_domains.values():
+            session_metrics = getattr(metrics, 'session_metrics', {})
+            start_time = session_metrics.get('start_time', current_time)
+            last_activity = session_metrics.get('last_activity', start_time)
+            durations.append(last_activity - start_time)
+            intent_counts.append(session_metrics.get('intent_count', 0))
+            satisfactions.append(session_metrics.get('user_satisfaction_score', 0.8))
+        for ended in self._recent_sessions:
+            durations.append(ended['duration'])
+            intent_counts.append(ended['intent_count'])
+            satisfactions.append(ended['user_satisfaction_score'])
+
+        avg_duration = statistics.mean(durations) if durations else 0.0
+        avg_intents = statistics.mean(intent_counts) if intent_counts else 0.0
+        avg_satisfaction = statistics.mean(satisfactions) if satisfactions else 0.8
         
         # Session details
         session_details = {}
@@ -918,14 +935,15 @@ class MetricsCollector:
         return {
             "overview": {
                 "active_sessions": len(active_sessions),
-                "total_sessions": total_sessions,
+                "total_sessions": self._total_sessions_started,
                 "peak_concurrent_sessions": self._system_metrics.get("peak_concurrent_actions", 0),
                 "average_session_duration": avg_duration,
                 "average_intents_per_session": avg_intents,
                 "average_user_satisfaction": avg_satisfaction
             },
             "active_sessions": active_sessions,
-            "session_details": session_details
+            "session_details": session_details,
+            "recent_sessions": list(self._recent_sessions)
         }
     
     def _calculate_session_success_rate(self, session_metrics: Dict[str, Any]) -> float:

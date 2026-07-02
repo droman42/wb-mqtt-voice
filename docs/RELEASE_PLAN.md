@@ -334,24 +334,6 @@ _Apply to every remediation task below (from the 4 review docs + QUAL-25/26). So
 _Discrete functional defects (distinct from QUAL refactors/quality work). Surfaced from any source; filed before fixing._
 
 
-- [ ] **BUG-16** [METRICS][MEM] (P2) `[release]` — **Metrics session leak: every session permanently grows the
-      process-lifetime `MetricsCollector`.** `record_session_start` (called per new session, `context.py:101`) stores
-      `_active_actions["session_{sid}:session"]` + a `_domain_metrics["session_{sid}"]` entry (~1-1.5 KB);
-      `record_session_end` checks `if domain in self._active_actions` (`metrics.py:752`) but keys are
-      `"{domain}:{action_name}"` → **always false**, completion never fires, and nothing ever deletes the
-      `_domain_metrics` session entries (eviction paths don't even call `record_session_end`). Amplifier: REST mints a
-      fresh session **per request** (`webapi_router.py:223,283`), `/ws/audio` per connection (`:779`) → permanent
-      growth on every API call; `current_concurrent_actions` permanently inflated; dashboards iterate ever-growing
-      dicts. Fix shape: complete/remove the session action with the real key, delete (or ring-buffer) session domain
-      metrics on eviction, and call `record_session_end` from the eviction paths. Evidence:
-      `docs/review/arch_memory_review_2026-07-02.md` §M1 (QUAL-57). _Filed 2026-07-02._
-- [ ] **BUG-17** [WS][MEM] (P2) `[release]` — **`/ws/audio` batch floor accumulates PCM without any cap.** The
-      utterance loop `frames = bytearray()` grows per binary frame until `{"type":"end"}` or disconnect
-      (`webapi_router.py:852-861`) — no max-bytes/max-duration bound, no backpressure: a client that never sends "end"
-      (buggy satellite firmware) grows ~32 KB/s ≈ 115 MB/h per connection on a 1 GB box, +2× peak at `bytes(frames)`.
-      The mic/VAD path is bounded (`audio_processor.py:331-340`); only this floor isn't. Fix shape: cap by
-      max-utterance bytes/duration (reuse the VAD path's `max_segment_duration_s` notion), force-finalize or close on
-      overflow. Evidence: `docs/review/arch_memory_review_2026-07-02.md` §M2 (QUAL-57). _Filed 2026-07-02._
 - [ ] **BUG-18** [INTENTS][LLM][MEM] (P2) `[release]` — **LLM conversation store unbounded; `max_context_length` is
       dead config.** `handler_contexts["conversation"]["messages"]` appends system/user/assistant entries every turn
       (`conversation.py:423-447`) and domain threads likewise (`context_models.py:664-679`); `max_context_length` is

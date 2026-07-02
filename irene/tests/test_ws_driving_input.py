@@ -112,3 +112,62 @@ def test_ws_audio_adapter_handshake_and_pipeline():
     assert captured["client_context"]["client_id"] == "kitchen_node"
     assert captured["client_context"]["room_name"] == "Кухня"
     assert captured["client_context"]["skip_wake_word"] is True
+
+
+def test_ws_audio_batch_overflow_force_finalizes(monkeypatch):
+    """BUG-17: the batch floor caps per-utterance PCM accumulation. A client that never sends
+    {"type":"end"} gets force-finalized at the cap (VAD-path max-duration semantics) instead of
+    growing the accumulator without limit, and the utterance loop keeps working afterwards."""
+    fastapi = pytest.importorskip("fastapi")
+    from fastapi import FastAPI
+    from fastapi.testclient import TestClient
+    from irene.runners import webapi_router as wr
+
+    # cap = sample_rate * 2 bytes * 1 s = 32000 bytes
+    monkeypatch.setattr(wr, "WS_MAX_UTTERANCE_SECONDS", 1)
+
+    calls = []
+
+    class _WM:
+        async def process_audio_input(self, audio_data, session_id=None, wants_audio=False,
+                                      client_context=None, trace_context=None):
+            calls.append({"len": len(audio_data.data), "metadata": dict(audio_data.metadata or {})})
+
+            class _R:
+                text = "готово"
+                success = True
+                metadata = {"ok": True}
+            return _R()
+
+    class _Core:
+        def __init__(self):
+            self.workflow_manager = _WM()
+            self.config = None
+            self.component_manager = None
+            self.plugin_manager = None
+
+    router = wr.create_webapi_router(_Core(), asset_loader=None, web_input=None, start_time=0.0)
+    app = FastAPI()
+    app.include_router(router)
+
+    with TestClient(app).websocket_connect("/ws/audio") as ws:
+        ws.send_text(json.dumps({"type": "register", "client_id": "flood_node",
+                                 "room_name": "Кухня", "sample_rate": 16000}))
+        assert ws.receive_json()["type"] == "registered"
+
+        # 2 × 16000-byte chunks reach the 32000-byte cap with NO {"type":"end"} ever sent
+        chunk = b"\x00\x01" * 8000
+        ws.send_bytes(chunk)
+        ws.send_bytes(chunk)
+        resp = ws.receive_json()  # force-finalized response arrives without an end frame
+        assert resp["type"] == "response" and resp["text"] == "готово"
+
+        # the connection stays usable: a normal end-terminated utterance still round-trips
+        ws.send_bytes(b"\x00\x01" * 320)
+        ws.send_text(json.dumps({"type": "end"}))
+        assert ws.receive_json()["type"] == "response"
+
+    assert calls[0]["len"] == 32000
+    assert calls[0]["metadata"].get("overflow") is True
+    assert calls[1]["len"] == 640
+    assert "overflow" not in calls[1]["metadata"]

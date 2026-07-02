@@ -24,6 +24,12 @@ from fastapi import APIRouter  # type: ignore
 
 logger = logging.getLogger(__name__)
 
+# BUG-17: hard per-utterance bound for the /ws/audio batch floor. A client that never sends
+# {"type":"end"} (buggy satellite firmware) must not grow the PCM accumulator without limit
+# (~115 MB/h at 16 kHz). Generous for a voice command; on overflow the utterance is
+# force-finalized (the VAD path's `max_segment_duration_s` semantics) and the loop continues.
+WS_MAX_UTTERANCE_SECONDS = 60
+
 
 async def _generate_asyncapi_spec(core: AsyncVACore) -> Dict[str, Any]:
     """Generate combined AsyncAPI specification from all components"""
@@ -847,22 +853,36 @@ def create_webapi_router(
                     await _route_reply(result)
                 return
 
-            # Step 2 (batch floor) — utterance loop: accumulate binary PCM until an {"type":"end"} frame.
+            # Step 2 (batch floor) — utterance loop: accumulate binary PCM until an {"type":"end"}
+            # frame, bounded by WS_MAX_UTTERANCE_SECONDS (BUG-17: force-finalize on overflow so a
+            # client that never signals end can't grow the accumulator without limit).
+            max_utterance_bytes = sample_rate * 2 * WS_MAX_UTTERANCE_SECONDS  # 16-bit mono PCM
             while True:
                 frames = bytearray()
+                overflow = False
                 while True:
                     msg = await websocket.receive()
                     if msg.get("type") == "websocket.disconnect":
                         return
                     if msg.get("bytes") is not None:
                         frames.extend(msg["bytes"])
+                        if len(frames) >= max_utterance_bytes:
+                            overflow = True
+                            logger.warning(
+                                f"/ws/audio utterance exceeded the {WS_MAX_UTTERANCE_SECONDS}s cap "
+                                f"({len(frames)} bytes) for client {registration.client_id} "
+                                f"(session {session_id}) — force-finalizing (BUG-17)")
+                            break
                     elif msg.get("text") is not None:
                         if (json.loads(msg["text"]) or {}).get("type") == "end":
                             break
                 if not frames:
                     continue
+                _audio_meta: Dict[str, Any] = {"source": "ws_audio", "client_id": registration.client_id}
+                if overflow:
+                    _audio_meta["overflow"] = True
                 audio = AudioData(data=bytes(frames), timestamp=time.time(), sample_rate=sample_rate,
-                                  channels=1, metadata={"source": "ws_audio", "client_id": registration.client_id})
+                                  channels=1, metadata=_audio_meta)
                 result = await core.workflow_manager.process_audio_input(
                     audio_data=audio, session_id=session_id, wants_audio=False,
                     client_context=client_context)

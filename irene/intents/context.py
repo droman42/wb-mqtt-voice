@@ -76,8 +76,7 @@ class ContextManager:
         if context is None:
             return None
         if time.time() - self._effective_last_active(context) > self.session_timeout:
-            self.metrics_collector.record_session_end(session_id)
-            del self.sessions[session_id]
+            await self.remove_context(session_id)  # BUG-16: one seam — metrics close-out + removal
             return None
         return context
 
@@ -239,7 +238,8 @@ class ContextManager:
                 expired_sessions.append(session_id)
         
         for session_id in expired_sessions:
-            del self.sessions[session_id]
+            # BUG-16: route through remove_context so session metrics are closed out too.
+            await self.remove_context(session_id)
             logger.info(f"Cleaned up expired session: {session_id}")
         
         self.last_cleanup = current_time
@@ -846,13 +846,18 @@ class ContextManager:
         """
         if session_id not in self.sessions:
             return
-        
+
         context = self.sessions[session_id]
-        
+
         # Clean up any active actions or resources
         if hasattr(context, 'active_actions') and context.active_actions:
             logger.debug(f"Cleaning up {len(context.active_actions)} active actions for session {session_id}")
-        
+
+        # BUG-16: close out the session's metrics (completes the "{domain}:session" action and
+        # drops the per-session DomainMetrics entry) — eviction paths used to skip this, leaking
+        # one collector entry per session forever.
+        self.metrics_collector.record_session_end(session_id)
+
         # Remove from sessions
         del self.sessions[session_id]
         logger.debug(f"Removed expired context for session {session_id}")
