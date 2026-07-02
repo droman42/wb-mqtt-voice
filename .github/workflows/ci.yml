@@ -118,6 +118,9 @@ jobs:
         with:
           src: irene
           install-extras: "all,dev"
+          # Explicit: the repo's .python-version is a gitignored LOCAL pin (absent in CI),
+          # and the action falls back to reading it when no version is given.
+          python-version: "3.11"
 
       # The lockfile is still the source of truth for reproducible installs even though
       # the gate env above is pip-resolved — verify it hasn't drifted from pyproject.
