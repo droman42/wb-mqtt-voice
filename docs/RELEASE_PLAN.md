@@ -192,6 +192,16 @@ See `docs/review/phase1_architecture_map.md` §5.
       `torch_free_armv7_voice.md`, `esp32_satellite.md` §4.4/§12, BUILD-3, ARCH-10.
 
 ### Code Quality & Review (QUAL)
+- [ ] **QUAL-60** [INTENTS][LLM] (P3) `[deferred]` — **Summarize-then-truncate for the LLM conversation window
+      (BUG-18 follow-up; user chose "window now + file summarization" 2026-07-02).** BUG-18 bounds the conversation
+      store with a plain rolling window (last `max_context_length` turns; seed system prompt pinned) — older context
+      is simply forgotten. This task adds continuity for long conversations: when the window overflows, compress the
+      dropped turns into a pinned summary message via one LLM call. Needs: a Russian-capable summarization prompt
+      (localized, prompt-asset-driven like the handler's other prompts), a fallback to plain windowing when the LLM
+      call fails/times out, and a decision on re-summarization cadence (every overflow vs. every K overflows). Seam:
+      `ConversationIntentHandler._trim_llm_context` / `UnifiedConversationContext.trim_handler_messages` — the trim
+      call is already the single choke point, so summarization slots in front of it without touching call sites.
+      _Filed 2026-07-02 from BUG-18._
 - [ ] **QUAL-58** [MEM][QUAL] (P3) `[deferred]` — **Memory-hygiene sweep (QUAL-57 M4–M8).** Bundle of small bounded-
       but-wasteful / slow-growth items from `docs/review/arch_memory_review_2026-07-02.md`: **(M4)**
       `AudioTranscoder._resampling_cache` retains up to 100 full audio blobs at ~0% hit rate on live audio
@@ -334,15 +344,6 @@ _Apply to every remediation task below (from the 4 review docs + QUAL-25/26). So
 _Discrete functional defects (distinct from QUAL refactors/quality work). Surfaced from any source; filed before fixing._
 
 
-- [ ] **BUG-18** [INTENTS][LLM][MEM] (P2) `[release]` — **LLM conversation store unbounded; `max_context_length` is
-      dead config.** `handler_contexts["conversation"]["messages"]` appends system/user/assistant entries every turn
-      (`conversation.py:423-447`) and domain threads likewise (`context_models.py:664-679`); `max_context_length` is
-      read (`conversation.py:44-85`, `config/models.py:574`, `config-master.toml:508`) and **never applied** — no trim
-      exists; each turn ships the **full** history to the LLM (`conversation.py:596`) → unbounded prompt growth
-      (latency + token cost). Room-scoped sessions have stable ids (`session_manager.py:37-39`), so the primary
-      household use-case grows for days. Fix shape: enforce `max_context_length` on messages + threads at append time
-      (window or summarize); config key finally becomes real. Evidence:
-      `docs/review/arch_memory_review_2026-07-02.md` §M3 (QUAL-57). _Filed 2026-07-02._
 - [ ] **BUG-13** [ASR][WS] (P3) `[deferred]` — **`/ws/audio` server-authoritative *streaming* branch hangs for
       bounded (device-signalled) utterances.** When the client registers `mode="streaming"` **and** the ASR reports
       `supports_streaming()` (a real online recognizer), the handler takes the streaming branch

@@ -189,7 +189,24 @@ class UnifiedConversationContext:
             context["messages"] = [system_msg]
         else:
             context["messages"] = []
-    
+
+    def trim_handler_messages(self, handler_name: str, max_messages: int) -> None:
+        """Window a handler's LLM message list to the last ``max_messages`` entries (BUG-18).
+
+        The seed system prompt at index 0 (the ``clear_handler_context(keep_system=True)``
+        convention) is pinned and does not count toward the window. Without this bound the
+        list grew per turn for the life of the session — for stable room-scoped sessions,
+        effectively forever.
+        """
+        if max_messages <= 0:
+            return
+        context = self.get_handler_context(handler_name)
+        messages = context.get("messages") or []
+        pinned = messages[:1] if messages and messages[0].get("role") == "system" else []
+        tail = messages[len(pinned):]
+        if len(tail) > max_messages:
+            context["messages"] = pinned + tail[-max_messages:]
+
     def _restore_conversation_history_to_handler_context(self, handler_name: str):
         """Convert general conversation_history to LLM message format"""
         messages = []
@@ -661,20 +678,28 @@ class UnifiedConversationContext:
         
         return handler_context["threads"][domain]
     
-    def add_to_thread(self, domain: str, role: str, content: str, context: Optional[Dict[str, Any]] = None) -> None:
-        """Add a message to a domain-specific conversation thread"""
+    def add_to_thread(self, domain: str, role: str, content: str, context: Optional[Dict[str, Any]] = None,
+                      max_messages: Optional[int] = None) -> None:
+        """Add a message to a domain-specific conversation thread.
+
+        ``max_messages`` (BUG-18): when given, the thread is windowed to the last
+        ``max_messages`` entries after the append — thread message lists grew per
+        turn without bound otherwise.
+        """
         thread = self.get_conversation_thread(domain)
-        
+
         message = {
             "role": role,
             "content": content,
             "timestamp": time.time()
         }
-        
+
         if context:
             message["context"] = context
-        
+
         thread["messages"].append(message)
+        if max_messages and len(thread["messages"]) > max_messages:
+            thread["messages"] = thread["messages"][-max_messages:]
         thread["last_activity"] = time.time()
         self.last_activity = time.time()
     

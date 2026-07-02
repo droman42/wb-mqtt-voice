@@ -1664,6 +1664,20 @@ rationale/chronology lives in [`RELEASE_JOURNAL.md`](./RELEASE_JOURNAL.md).
       console-LLM fallback / `fallback_providers` — left as-is; not in scope here.)
 
 ### Bugs (BUG)
+- [x] **BUG-18** [INTENTS][LLM][MEM] (P2) `[release]` — **DONE 2026-07-02.** LLM conversation store was unbounded —
+      `max_context_length` was config-read and never applied, so `handler_contexts["conversation"]["messages"]` and
+      domain-thread lists grew per turn for the session's life (days, for stable room-scoped sessions), and each turn
+      shipped the full history to the LLM (QUAL-57 §M3). Fix (user chose **window now + file summarization**, →
+      QUAL-60): **(1)** `UnifiedConversationContext.trim_handler_messages(handler, max)` — rolling window over the
+      message list, seed system prompt at index 0 pinned (the existing `clear_handler_context(keep_system=True)`
+      convention) and not counted; **(2)** `add_to_thread(..., max_messages=)` windows domain threads at append;
+      **(3)** `ConversationIntentHandler` enforces via `_trim_llm_context` at both append seams (after the user
+      append — BEFORE the LLM call, capping prompt size — and after the assistant append) and passes the bound to
+      both thread sites. Semantics: `max_context_length` = TURNS kept (×2 messages); config descriptions clarified in
+      `config/models.py` + `config-master.toml` (shape unchanged; config-ui `npm run check` + `build` pass).
+      Regression: `test_conversation_window.py` (4 tests: pin+window, no-op under limit, thread windowing,
+      8-turn e2e with LLM stub proving messages ≤ window and per-turn prompt size stops growing). Full suite 1132
+      passed / 7 skipped; pyright clean. Evidence: `docs/review/arch_memory_review_2026-07-02.md` §M3.
 - [x] **BUG-17** [WS][MEM] (P2) `[release]` — **DONE 2026-07-02.** `/ws/audio` batch floor accumulated per-utterance
       PCM without any bound — a client that never sends `{"type":"end"}` (buggy satellite firmware) grew ~115 MB/h per
       connection (QUAL-57 §M2). Fix: `WS_MAX_UTTERANCE_SECONDS = 60` module constant; the utterance loop computes

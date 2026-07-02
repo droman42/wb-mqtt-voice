@@ -13,6 +13,20 @@ newest entries near the top of each dated section.
 
 ## Action journal
 
+- **2026-07-02 — BUG-18 DONE — LLM conversation store bounded; `max_context_length` finally real (user chose
+  "window now + file summarization").** The config key was read and never applied — the conversation handler's
+  message store and domain threads grew per turn for the session's life, and every turn shipped the full history
+  to the LLM. Now: `UnifiedConversationContext.trim_handler_messages` windows the store to the last
+  `max_context_length` **turns** (×2 messages) with the seed system prompt pinned (reusing the
+  `clear_handler_context(keep_system=True)` convention); `add_to_thread` gained a `max_messages` bound applied at
+  both handler thread sites; the handler trims at both append seams — after the user append (before the LLM call,
+  so the prompt is capped too) and after the assistant append. Config descriptions clarified (turns kept in the
+  window) in `config/models.py` + `config-master.toml` — shape unchanged, config-ui `check` + `build` pass. Filed
+  **QUAL-60** `[deferred]` for the summarize-then-truncate continuity enhancement (the trim call is the single
+  choke point, so it slots in cleanly later). Gates: full suite 1132 passed / 7 skipped (4 new tests in
+  `test_conversation_window.py`, incl. an 8-turn e2e proving the per-turn LLM prompt stops growing); pyright
+  clean. BUG-18 moved active→done. All three QUAL-57 `[release]` memory findings are now fixed.
+
 - **2026-07-02 — BUG-16 + BUG-17 DONE — the two high-severity QUAL-57 memory leaks fixed same-day (user: "fix
   BUG-16 and BUG-17 right away").** **BUG-16 (metrics session leak):** `record_session_end` now completes the
   session action under its real QUAL-9 key (`"session_{sid}:session"` — the old bare-domain check never matched)

@@ -505,7 +505,7 @@ validate_json_schema = true        # Validate JSON schema compliance
 [intent_system.handlers.conversation]
 session_timeout = 1800             # Session timeout in seconds (30 minutes)
 max_sessions = 50                  # Maximum concurrent sessions
-max_context_length = 10            # Maximum conversation context length
+max_context_length = 10            # Conversation turns kept in the LLM context window (older dropped; system prompt kept)
 default_conversation_confidence = 0.6  # Default confidence threshold
 
 

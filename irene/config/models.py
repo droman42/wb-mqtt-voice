@@ -571,7 +571,7 @@ class ConversationHandlerConfig(BaseModel):
     """Configuration for conversation intent handler"""
     session_timeout: int = Field(default=1800, ge=60, description="Session timeout in seconds")
     max_sessions: int = Field(default=50, ge=1, le=1000, description="Maximum concurrent sessions")
-    max_context_length: int = Field(default=10, ge=1, le=100, description="Maximum conversation context length")
+    max_context_length: int = Field(default=10, ge=1, le=100, description="Conversation turns kept in the LLM context window (older turns are dropped; the system prompt is kept)")
     default_conversation_confidence: float = Field(default=0.6, ge=0.0, le=1.0, description="Default confidence threshold")
 
 

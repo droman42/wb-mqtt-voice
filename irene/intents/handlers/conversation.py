@@ -427,7 +427,8 @@ class ConversationIntentHandler(IntentHandler):
             
             # Add user message to handler context (LLM-specific conversation management)
             handler_context["messages"].append({"role": "user", "content": intent.raw_text})
-            
+            self._trim_llm_context(context)  # BUG-18: bound BEFORE the LLM call (caps prompt size too)
+
             # Prepare LLM context with smart contextual information injection
             messages = self._prepare_llm_context(intent, context, handler_context)
             
@@ -445,7 +446,8 @@ class ConversationIntentHandler(IntentHandler):
 
             # Add assistant response to handler context
             handler_context["messages"].append({"role": "assistant", "content": response})
-            
+            self._trim_llm_context(context)  # BUG-18: re-bound after the assistant append
+
             # Phase 3: Save response to domain thread if applicable
             if target_domain:
                 self._save_assistant_response_to_thread(target_domain, response, context)
@@ -583,6 +585,17 @@ class ConversationIntentHandler(IntentHandler):
             topic = " " + self._get_prompt("fallback_topic", language).format(domain=likely_domain)
         return self._get_prompt("fallback_context", language).format(topic=topic)
     
+    def _max_context_messages(self) -> int:
+        """BUG-18: `max_context_length` counts conversation TURNS kept in the rolling window;
+        a turn is a user+assistant message pair, hence ×2. The seed system prompt is pinned
+        on top of this by `trim_handler_messages`."""
+        return self.max_context_length * 2
+
+    def _trim_llm_context(self, context: UnifiedConversationContext) -> None:
+        """Enforce the rolling window on the LLM message store (BUG-18 — `max_context_length`
+        was config-read but never applied, so messages grew per turn for the session's life)."""
+        context.trim_handler_messages("conversation", self._max_context_messages())
+
     def _prepare_llm_context(self, intent: Intent, context: UnifiedConversationContext, handler_context: Dict[str, Any]) -> List[Dict[str, str]]:
         """Prepare contextually appropriate information for LLM"""
         # Phase 3: Detect if this is a domain-specific conversation
@@ -910,8 +923,9 @@ class ConversationIntentHandler(IntentHandler):
         else:
             combined_messages = domain_context
         
-        # Add current user message to domain thread
-        context.add_to_thread(domain, "user", intent.raw_text, {"intent": intent.name})
+        # Add current user message to domain thread (windowed — BUG-18)
+        context.add_to_thread(domain, "user", intent.raw_text, {"intent": intent.name},
+                              max_messages=self._max_context_messages())
         
         # Include the current user message in the context
         combined_messages.append({
@@ -946,9 +960,10 @@ class ConversationIntentHandler(IntentHandler):
         return " | ".join(context_parts) if context_parts else ""
     
     def _save_assistant_response_to_thread(self, domain: str, response: str, context: UnifiedConversationContext) -> None:
-        """Save assistant response to the appropriate domain thread"""
+        """Save assistant response to the appropriate domain thread (windowed — BUG-18)"""
         if domain:
-            context.add_to_thread(domain, "assistant", response, {"response_type": "threaded"})
+            context.add_to_thread(domain, "assistant", response, {"response_type": "threaded"},
+                                  max_messages=self._max_context_messages())
     
     def _build_progressive_context_summary(self, intent: Intent, context: UnifiedConversationContext, domain: Optional[str] = None) -> str:
         """Build a short human-readable context summary for the LLM, assembled directly from the
