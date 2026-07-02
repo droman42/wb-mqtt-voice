@@ -15,6 +15,23 @@ newest entries near the top of each dated section.
 
 ## Action journal
 
+- **2026-07-02 — BUILD-8 DONE — build/release redesigned bridge-style (interactive; design at
+  `docs/design/build_release_process.md`).** Requirements finalized with the user: organize the build the way
+  `wb-mqtt-bridge` does. Two comparative maps showed we already share the tagging/GHCR/3-stage-lean-venv DNA
+  (and are AHEAD on the analyzer-driven minimal deps + buildx caching), but diverge on organization: three
+  disconnected workflows (an image can publish from a red tree), no CI ledger-guard, no `ops/` deploy story,
+  gates inlined instead of the shared `py-dev-gates` action, one-target-per-dispatch (6 dispatches once EN
+  lands). Decisions (all user-confirmed): one gated `ci.yml` with changes-filtering; **manual dispatch drives
+  the full targets×languages matrix** gated on green health; **RU images keep unsuffixed names, EN adds
+  `-en`**; **config-ui ships as a multi-arch nginx image** (`wb-mqtt-voice-ui`) but is not deployed to the
+  controller yet; **`ops/` deploy-by-pull** with assets synced from a controller-side `git pull` (replaces the
+  manual GHA-artifact download). **User hard requirement audited: model files are NOT baked into images** —
+  runtime stages ship only code+venv, `/app/assets` is empty, models download at runtime; the one deliberate
+  exception is the profile's spaCy NLU wheel, and the perceived image bulk is dependency weight (torch on
+  standalone). Guards specified (empty-assets assertion + size budgets in the publish workflow). Stale
+  `docker_build_review.md` annotated obsolete (pre-BUG-14 findings). BUILD-8 moved active→done; **BUILD-9**
+  (ci.yml/matrix/guards/UI image) + **BUILD-10** (`ops/`) filed `[release]` per `design-then-implement`.
+
 - **2026-07-02 — VWB-18 accepted + fixed bridge-side; cross-repo loop closed.** The bridge maintainer verified
   the QUAL-56-filed restart-durability triad against live code at intake (per their `cross-repo-source-of-truth`),
   confirmed all three findings, found one aggravation our review missed (boot persisted default device state

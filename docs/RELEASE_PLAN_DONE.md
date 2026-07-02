@@ -2327,6 +2327,22 @@ rationale/chronology lives in [`RELEASE_JOURNAL.md`](./RELEASE_JOURNAL.md).
       parity with Russian; no donation changes needed. No code/asset change. Design §2.
 
 ### Build & CI (BUILD)
+- [x] **BUILD-8** [BUILD][DESIGN] (P3) `[deferred]` — **DONE 2026-07-02 (design agreed, interactive).** The
+      "additional asks" arrived: organize this repo's build the way `../wb-mqtt-bridge` does. Two comparative
+      maps (voice vs bridge build machinery) fed the design at `docs/design/build_release_process.md`; four
+      decisions user-confirmed: **(D-2)** RU images keep unsuffixed names, EN adds `-en` (6 backend packages);
+      **(D-4)** config-ui ships as a bridge-style nginx image (`wb-mqtt-voice-ui`, one multi-arch manifest) but
+      is NOT deployed to the controller yet; **(D-3)** publishing stays manual — one dispatch drives the whole
+      targets×languages matrix, gated on green health jobs (today's `build-images.yml` can publish from a red
+      tree); **(D-5)** `ops/` deploy-by-pull with assets arriving by `git pull` + rsync (replaces the manual
+      GHA-artifact download), state subtrees never touched. **User hard requirement audited (D-6): ML model
+      files are NOT baked into images** (runtime stages copy only code+venv; `/app/assets` empty; models
+      download at runtime) — the one deliberate exception is the profile's spaCy NLU wheel (~15–45MB, one per
+      language); image bulk is dependency weight (torch on standalone). Guards specified: empty-`/app/assets`
+      assertion + per-image size budgets in the publish workflow. Also: adopt `py-dev-gates@v0.1.1`, run
+      `check_scope.py` in CI, keep the analyzer stage + buildx caching (voice is ahead of the bridge there).
+      Stale `docker_build_review.md` annotated obsolete (pre-BUG-14 reality). Follow-ups filed: **BUILD-9**
+      (ci.yml + matrix + guards + UI image) and **BUILD-10** (`ops/`), both `[release]`.
 - [x] **BUILD-1** (P0) — Verify clean `uv sync` + CLI and WebAPI boot at v15. **DONE 2026-06-01** (`bab6f97`):
       `uv sync --extra all` clean; `--check-deps` 5/5; **WebAPI** boots (workflow READY, 10 routers) and
       `POST /execute/command "привет"` → `greeting.hello` end-to-end; **CLI** boots and (after fix) headless

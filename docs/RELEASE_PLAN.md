@@ -42,6 +42,7 @@ Living findings behind the tasks (`read-at-start-record-at-completion`). `[x]` =
 
 | Doc (`docs/review/` unless noted) | Covers | Backs |
 |---|---|---|
+| `docs/design/build_release_process.md` `[x]` (AGREED 2026-07-02, interactive) | BUILD-8 — bridge-aligned build/release: one gated `ci.yml` (changes-filter, CI ledger-guard, py-dev-gates), manual dispatch targets×languages matrix (RU unsuffixed / EN `-en`), config-ui nginx image (multi-arch, not on controller yet), `ops/` deploy-by-pull + git-pull assets sync, models-not-baked audit + guards | BUILD-8 ✓ → BUILD-9, BUILD-10 |
 | `docs/design/durable_actions.md` `[x]` (AGREED 2026-07-02, interactive) | ARCH-27 — durable-action substrate: opt-in `durable=` launches, atomic-JSON store behind a port, re-arm-by-relaunch reconciler, fire-with-apology ≤1h grace, failures announced by default, handler-declared redelivery, retry machinery cut, minimal read-only actions API, handler-authoring rules (§3) → howto-new-intent + CLAUDE.md invariant | ARCH-27 ✓ → ARCH-28, QUAL-61 |
 | `faf_durable_execution_review.md` `[x]` (2026-07-02) | QUAL-56 — F&F vs the durable-execution reference model (8 dimensions, all zero by design; delivery = at-most-once with 5 drop points; retry machinery dead) + comparative `wb-mqtt-bridge` persistence analysis (patterns to borrow + persist-without-restore / stale-intent pitfalls) | QUAL-56 ✓, ARCH-27 ✓, BUG-19 ✓, QUAL-61 ✓, VWB-18 ✓ (bridge — accepted, verified + fixed 2026-07-02, incl. one aggravation found at intake) |
 | `arch_memory_review_2026-07-02.md` `[x]` (2026-07-02) | QUAL-57 — general architecture assessment (SOTA gaps A1–A7) + memory-overconsumption audit (M1–M8, ranked) + F&F QUAL-8 re-verification (all 10 resolved) + `create_task` census + verified-fine list | QUAL-57 ✓, BUG-16/17/18, QUAL-58/59, QUAL-56 (premise confirmed) |
@@ -383,17 +384,31 @@ _Trace-driven system testing (design `docs/design/trace_system_testing.md`, TEST
       **and TEST-17.** Design §14.
 
 ### Build & CI (BUILD)
-- [ ] **BUILD-8** [BUILD][DESIGN] (P3) `[deferred]` — **Review/redesign the GitHub image-build workflow
-      (`.github/workflows/build-images.yml`).** Today it's **manual (`workflow_dispatch`), one target at a time**, and
-      **RU-only** — it maps `armv7`/`aarch64`/`standalone` to the Russian `CONFIG_PROFILE`s (`embedded-armv7`,
-      `embedded-aarch64`, `standalone-x86_64`) → GHCR. **Known need: add English image builds** (the new `*-en`
-      `CONFIG_PROFILE`s — `embedded-armv7-en`, `embedded-aarch64-en`, `standalone-x86_64-en`; the Dockerfiles already
-      parameterize on `CONFIG_PROFILE`, so this is a workflow/matrix change, not a Dockerfile one) with a language
-      dimension in the tags/image names. **The user has additional asks** — this is a **design task**: gather the full
-      requirements at task start, then produce the redesign (e.g. a language × arch matrix, tagging scheme, when it
-      triggers, whether to keep it manual). Deliverable = the design + follow-up implementation task(s). Downstream of
-      I18N-4 (the `*-en` configs exist) and BUG-14 (the armv7 image now builds on bookworm + the onnxruntime patch).
-      _Filed 2026-07-01 at user request; scope to be finalized with the user (additional asks pending)._
+- [ ] **BUILD-9** [BUILD] (P2) `[release]` — **Implement the bridge-aligned CI/publish workflow** per
+      `docs/design/build_release_process.md` (BUILD-8, D-1…D-4/D-6/D-7). **(1)** merge `backend-health` +
+      `frontend-health` + `build-images` into one **`ci.yml`**: `changes` path-filter job → `ledger-guard`
+      (`check_scope.py` finally runs in CI) + `backend-health` (adopt `droman42/py-dev-gates@v0.1.1` for the
+      lint-imports/no-type-checking/pyright trio; keep the voice-specific gates + pytest verbatim) +
+      `frontend-health`; **(2)** dispatch-only publish job with a **targets × languages matrix** (default all
+      6): RU images keep unsuffixed names, EN adds `-en` (`wb-mqtt-voice-armv7-en` …), tag triple unchanged,
+      buildx cache scope `<target>-<language>`, `needs:` green health jobs (today an image can publish from a
+      red tree — closes); **(3)** **D-6 guards**: publish step fails if the built image's `/app/assets` is
+      non-empty + per-image size budgets (measure current sizes, add headroom) printed to the job summary;
+      **(4)** `config-ui` nginx image `wb-mqtt-voice-ui` (bridge proxy pattern, ONE multi-arch manifest
+      amd64+arm64+armv7, `build_ui` dispatch toggle, `needs: frontend-health`) — NOT deployed to the controller
+      for now (D-4); **(5)** drop the assets GHA artifact (BUILD-10 replaces it); delete the three superseded
+      workflows; update `docs/guides/build-docker.md` (dispatch UX, 7-package table, EN images)
+      (`user-facing-docs-are-done`). _Filed 2026-07-02 on BUILD-8 completion (`design-then-implement`)._
+- [ ] **BUILD-10** [BUILD][OPS] (P2) `[release]` — **`ops/` deploy story** per `build_release_process.md` D-5
+      (bridge "deploy = pull, not build" pattern): `ops/docker-compose.yml` (Irene `:6000`, assets volume,
+      mem limits, log caps; UI service present but disabled per D-4), `ops/update.sh` (rsync the repo
+      checkout's git-owned `assets/` subdirs — donations/templates/prompts/localization, enumerated explicitly
+      — into the writable assets root, **never touching** `models/ cache/ state/ traces/ credentials/`; then
+      `compose pull && up -d && image prune -f`), `ops/wb-mqtt-voice.service` systemd oneshot, `ops/INSTALL.md`
+      (install/update/rollback walkthrough, bridge style). Deploy loop on the WB = `git pull` + `./ops/update.sh`
+      — replaces the manual assets-artifact download. Rewrite `build-docker.md`'s deployment section around it.
+      **After BUILD-9** (compose references the new image names); final on-WB7 `update.sh` run folds into
+      ARCH-25 bring-up. _Filed 2026-07-02 on BUILD-8 completion._
 
 ### Internationalization (I18N)
 _Real English deployment across all three Docker arches (armv7/aarch64/x86_64) + English eval. Design

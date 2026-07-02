@@ -1,5 +1,11 @@
 # Docker build review
 
+> **⚠️ OBSOLETE FINDINGS (annotated 2026-07-02, BUILD-8).** This doc describes the pre-BUG-14 build: the
+> armv7 image was still Alpine-based and the two "build-blocking" defects below were live. All of that is
+> resolved — the Dockerfiles migrated to Debian bookworm/bullseye, the defects are gone, and the armv7 build
+> is proven on the WB7 (BUG-14). Still-live remainder: the BUILD-5 analyzer extras-vs-specs cleanup. The
+> current build design is `docs/design/build_release_process.md` (BUILD-8).
+
 **Status:** complete (2026-06-08). **Backs:** BUILD-5 (verify `build_analyzer` against the real Dockerfiles),
 BUILD-3 (Docker image build/boot). **Scope:** `Dockerfile.x86_64`, `Dockerfile.armv7`, and their alignment
 with the current tooling.
