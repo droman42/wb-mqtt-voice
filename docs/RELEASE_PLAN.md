@@ -135,8 +135,11 @@ Target pattern: **Hexagonal (Ports & Adapters)** — SIGNED OFF 2026-06-01. Code
 See `docs/review/phase1_architecture_map.md` §5.
 - [ ] **ARCH-28** [FAF] (P2) `[release]` — **Implement the durable-action substrate** per
       `docs/design/durable_actions.md` (ARCH-27, decisions D-1…D-10 user-agreed 2026-07-02). Slices (§4 of the
-      design, each green): **(1)** `DurableActionStorePort` + atomic-JSON adapter (`cache/durable_actions.json`,
-      temp+rename) + record schema v1 + unit tests; **(2)** launch/completion wiring — keyword-only
+      design, each green): **(1)** new `AssetConfig.state_root` (`<assets_root>/state/` — asset-managed, volume-
+      mounted, survives container replacement; NOT deletable `cache/`) + `DurableActionStorePort` + atomic-JSON
+      adapter (`state/durable_actions.json`, temp+rename) + record schema v1 + unit tests + **relocate
+      `client_registry.json` default** to `state/` with old-path read-fallback (same container-lifetime flaw —
+      registrations currently die with the container); **(2)** launch/completion wiring — keyword-only
       `durable=False` / `redeliver_on_reconnect=False` params, persist-at-launch, **delete-at-completion in the
       same operation** as the in-memory removal; timer sets both flags; **(3)** startup reconciler + handler
       `rearm(record)` hook + fire-with-apology (≤1h grace) / expiry-announcement (localized ru/en) + **the

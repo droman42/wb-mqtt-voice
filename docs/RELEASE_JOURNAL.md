@@ -30,6 +30,13 @@ newest entries near the top of each dated section.
   delete-at-completion atomic with the in-memory clear (anti stale-intent resurrection), persist+restore+restart
   test ship together (anti persist-without-restore rot), ephemeral-field filter, shutdown discipline. Per
   `design-then-implement`: ARCH-27 moved active→done; **ARCH-28** filed (7 implementation slices, `[release]`).
+  _Corrected same day (user review of the design): the store must live under the **asset-managed tree**, not
+  `cache/` — new `<assets_root>/state/` folder (`AssetConfig.state_root`), because `assets_root`
+  (`IRENE_ASSETS_ROOT`) is what's volume-mounted outside the Docker container; a redeploy must not wipe the
+  records that exist to survive restarts, and `cache/` semantics (deletable) are wrong for durable state.
+  Verification also surfaced that `client_registry.json` defaults to cwd-relative `cache/` (= `/app/cache`
+  **inside** the container) — registrations already don't survive a container replacement; its relocation to
+  `state/` (with old-path read-fallback) folded into ARCH-28 slice 1. D-2 + §4 amended._
 
 - **2026-07-02 — BUG-19 DONE — F&F action-store correctness (the QUAL-56 fixes that don't wait for ARCH-27).**
   Four fixes: **(1)** audio/TTS action names are collision-proof (uuid suffix — same-millisecond launches used

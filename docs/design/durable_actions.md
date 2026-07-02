@@ -26,12 +26,22 @@ The timer handler sets `durable=True`. **Rule:** *an action promising effects be
 declare `durable=True`* (binding via D-10). Rejected alternatives: persist-everything (flash churn for useless
 records), duration-threshold auto (implicit; short-timeout actions with lasting effects silently escape).
 
-### D-2 — Store: one atomic JSON file behind a port
+### D-2 — Store: one atomic JSON file behind a port, under the ASSET-MANAGED root
 A **`DurableActionStorePort`** (hexagonal, `irene/core/` interfaces) with a default adapter writing
-**`cache/durable_actions.json`** (sibling of `client_registry.json`) via **temp-file + `os.rename`** on every
-mutation. Zero new dependencies, human-debuggable, and at voice scale (a handful of concurrent durable records;
-writes only at launch/completion/redelivery) single-process asyncio makes races a non-issue. SQLite (the bridge's
-`aiosqlite` pattern) remains the drop-in upgrade behind the same port if device actions ever raise the write rate.
+**`<assets_root>/state/durable_actions.json`** via **temp-file + `os.rename`** on every mutation. Zero new
+dependencies, human-debuggable, and at voice scale (a handful of concurrent durable records; writes only at
+launch/completion/redelivery) single-process asyncio makes races a non-issue. SQLite (the bridge's `aiosqlite`
+pattern) remains the drop-in upgrade behind the same port if device actions ever raise the write rate.
+
+**Location is load-bearing (user correction 2026-07-02).** The store lives under the **asset-management tree**
+— a new **`state/` folder** exposed as `AssetConfig.state_root` (sibling of `models_root`/`cache_root`/
+`traces_root`, created by `_create_directories`, path resolved through the asset config, root controlled by
+`IRENE_ASSETS_ROOT`) — because `assets_root` is what gets **volume-mounted outside the Docker container**: a
+container redeploy must not wipe the very records that exist to survive restarts. `state/` is deliberately NOT
+`cache/`: cache is deletable by definition; durable action records are not. **Corollary fixed in the same
+slice:** `client_registry.json`'s default path is cwd-relative `cache/` today (i.e. `/app/cache` **inside** the
+container) — client registrations silently don't survive a container replacement either. Its default moves to
+`<assets_root>/state/client_registry.json` (read-fallback to the old path for migration).
 
 **Write discipline (the bridge's lessons, both directions):**
 - *Persist at launch, delete at completion — in the same operation as the in-memory store mutation.* The bridge's
@@ -126,8 +136,10 @@ on every future task, pattern as `cross-repo-source-of-truth`: rule always in co
 
 ## 4. Implementation plan (→ ARCH-28)
 
-Slices, each leaving the tree green: **(1)** `DurableActionStorePort` + atomic-JSON adapter + record schema +
-unit tests; **(2)** launch/completion wiring (`durable`/`redeliver_on_reconnect` params, persist-at-launch,
+Slices, each leaving the tree green: **(1)** `AssetConfig.state_root` (`<assets_root>/state/`, added to
+`_create_directories`) + `DurableActionStorePort` + atomic-JSON adapter + record schema + unit tests, **and the
+`client_registry.json` default relocation** to `state/` with old-path read-fallback (same container-lifetime
+flaw, same fix); **(2)** launch/completion wiring (`durable`/`redeliver_on_reconnect` params, persist-at-launch,
 delete-at-completion) + timer opts in; **(3)** startup reconciler + `rearm` hook + fire-with-apology/expiry
 messages (localized ru/en) + **the restart test** (launch durable timer → new store instance + reconcile →
 asserts re-arm and both missed-deadline behaviors); **(4)** redelivery drain on client registration + TTL;
