@@ -47,7 +47,7 @@ async def _settle():
 class _RegistryPatch:
     """Context manager: a fresh ClientRegistry visible to handlers/base get_client_registry()."""
     def __enter__(self):
-        self.reg = ClientRegistry()
+        self.reg = ClientRegistry({"persistent_storage": False})  # hermetic (ARCH-28 path default)
         self._p = patch("irene.intents.handlers.base.get_client_registry", return_value=self.reg)
         self._p.start()
         return self.reg

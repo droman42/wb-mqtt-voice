@@ -216,11 +216,31 @@ class MonitoringComponent(Component, WebAPIPlugin):
                 AnalyticsReportResponse, PerformanceValidationResponse,
                 SessionSatisfactionRequest, SessionSatisfactionResponse,
                 IntentAnalyticsResponse, SessionAnalyticsResponse,
-                PerformanceAnalyticsResponse
+                PerformanceAnalyticsResponse, LiveActionsResponse, ActionHistoryResponse
             )
+            from ..core.client_registry import get_client_registry
 
             router = APIRouter()
-            
+
+            # ARCH-28 (D-9): minimal read-only observability for fire-and-forget actions —
+            # answers "what's running?" and "what just happened here?" over REST.
+            @router.get("/actions", response_model=LiveActionsResponse)
+            async def get_live_actions():
+                """Snapshot of live fire-and-forget actions across all identities"""
+                actions = get_client_registry().get_all_live_actions()
+                return LiveActionsResponse(success=True, actions=actions, count=len(actions))
+
+            @router.get("/actions/history", response_model=ActionHistoryResponse)
+            async def get_action_history(physical_id: str):
+                """Per-identity completed/failed action history (capped, runtime-only)"""
+                registry = get_client_registry()
+                return ActionHistoryResponse(
+                    success=True,
+                    physical_id=physical_id,
+                    recent=registry.get_recent_actions(physical_id),
+                    failed=registry.get_failed_actions(physical_id),
+                    error_counts=registry.get_action_error_count(physical_id))
+
             # Monitoring status endpoint
             @router.get("/status", response_model=MonitoringStatusResponse)
             async def get_monitoring_status():

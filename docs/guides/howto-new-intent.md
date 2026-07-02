@@ -134,6 +134,54 @@ weather = "irene.intents.handlers.weather:WeatherIntentHandler"
 
 After editing entry-points, reinstall (`uv sync`) so the new handler is picked up.
 
+## Long-running actions — fire-and-forget and durability
+
+If a handler needs to do something *after* replying — ring in ten minutes, finish a long playback — it
+launches a **fire-and-forget action** instead of blocking:
+
+```python
+await self.execute_fire_and_forget_with_context(
+    self._do_it_later,                     # your coroutine
+    action_name=my_id, domain="weather", context=context,
+    timeout=duration + 5.0,
+    completion_message="Готово: ...",      # announced when it finishes, in the user's language
+    city=city,                             # your coroutine's own kwargs
+)
+```
+
+The machinery tracks the action, announces its completion — and, by default, its failure — back to the room
+that asked, and lets a later «стоп» find it.
+
+**If the action is a promise** — it changes or reports something *beyond the current exchange* — declare it
+durable:
+
+```python
+    durable=True,                  # the promise survives a restart
+    redeliver_on_reconnect=True,   # ...and a briefly-offline speaker
+```
+
+A durable action's record is persisted (under the assets tree, outside any container), and at startup Irene
+re-arms it with the remaining time — or, if the moment passed while she was down, announces it late with an
+apology (up to an hour) or as expired after that. Two obligations come with the flag:
+
+- **your launch kwargs must be JSON-serializable** — they are exactly what re-arms the action (a
+  non-serializable launch fails immediately, on purpose);
+- **override `rearm_durable_action(record)`**: recompute what remains and relaunch through the same launch
+  call, reusing `record.action_name`. `TimerIntentHandler.rearm_durable_action` is the reference
+  implementation.
+
+Set `redeliver_on_reconnect=True` when a missed announcement loses real value (a timer's ring: yes; "playback
+started": no) — the completion is then kept for up to an hour and spoken when the room's device reconnects.
+
+Three rules, whatever you launch:
+
+- **don't schedule future work outside this launch** (no bare `asyncio.sleep` promises, no ad-hoc
+  `create_task` timers) — it would be invisible to «стоп» and listing, and would die silently in a restart;
+- **fail loudly** — raise on failure (or return `False`; it's converted). Failures are announced to the user
+  by default: don't route around that;
+- **action names are minted per launch** — never reuse one (restart re-arm is the only legitimate reuse, and
+  the machinery does that for you).
+
 ## Try it
 
 ```

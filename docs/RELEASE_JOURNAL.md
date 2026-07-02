@@ -13,6 +13,28 @@ newest entries near the top of each dated section.
 
 ## Action journal
 
+- **2026-07-02 — ARCH-28 DONE — durable-action substrate implemented (all 7 design slices, same-day as the
+  design).** A timer is now literally restart-proof end-to-end: launch persists a schema-v1 intent record to
+  `<assets_root>/state/durable_actions.json` (new `AssetConfig.state_root`, asset-managed + volume-mounted;
+  atomic temp+rename writes; corrupt-file-safe), completion deletes it inside the done-callback, and
+  `engine.start()` reconciles at boot — future deadlines re-arm via the handler's `rearm_durable_action` hook
+  (timer relaunches with remaining time, reuses the persisted name, bumps its counter past it), deadlines missed
+  ≤1h fire with a localized apology, older ones announce as expired. Completions flagged
+  `redeliver_on_reconnect` survive an offline satellite: queued (TTL 1h, `created_at` preserved) and drained
+  when `/ws/audio/reply` re-attaches. Failure notifications now announced by default (D-5). Read-only
+  `/monitoring/actions` + `/monitoring/actions/history` shipped (contract regenerated, config-ui green).
+  `client_registry.json` re-homed to `state/` with legacy `cache/` read-fallback (its registrations used to die
+  with the container). Docs: `howto-new-intent.md` gained the "Long-running actions" authoring section, CLAUDE.md
+  gained the **`durable-actions` invariant**, `client-registry.md` documents the durable twin (+ corrected its
+  stale auto-expiry claim from QUAL-58). The restart test shipped WITH the substrate (12 tests in
+  `test_durable_actions.py`) and immediately earned its keep: the reconciler's future-deadline-with-missing-
+  handler branch mis-classified as fire-late and was fixed to announce-expired. Gates: 1156 passed / 7 skipped;
+  pyright clean on 11 touched files; import-linter 9/9; openapi 108 paths + config-ui `check`/`build` green.
+  _Note: `test_smoke_e2e.py::test_conversation_offline_degrades_gracefully` flaked twice under heavy machine
+  load during this work (59s full-suite runs), passing in isolation and in two consecutive normal-load full
+  runs — watched, not chased; file a task if it recurs._ QUAL-61 (cuts) is now fully unblocked. ARCH-28 moved
+  active→done.
+
 - **2026-07-02 — ARCH-27 DONE — durable-action substrate designed (interactive session, all decisions
   user-confirmed).** Recorded at `docs/design/durable_actions.md` (D-1…D-10 + the §3 handler-authoring
   contract). The decisions, both rounds: durability is an **explicit per-launch opt-in** (`durable=True`; timer

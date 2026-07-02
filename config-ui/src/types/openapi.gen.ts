@@ -1185,6 +1185,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/monitoring/actions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Live Actions
+         * @description Snapshot of live fire-and-forget actions across all identities
+         */
+        get: operations["get_live_actions_monitoring_actions_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/monitoring/actions/history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Action History
+         * @description Per-identity completed/failed action history (capped, runtime-only)
+         */
+        get: operations["get_action_history_monitoring_actions_history_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/monitoring/status": {
         parameters: {
             query?: never;
@@ -2372,6 +2412,48 @@ export interface components {
              * @description Configured language
              */
             language: string | null;
+        };
+        /**
+         * ActionHistoryResponse
+         * @description Response for per-identity completed-action history (ARCH-28 D-9, read-only)
+         */
+        ActionHistoryResponse: {
+            /**
+             * Success
+             * @description Whether the operation was successful
+             */
+            success: boolean;
+            /**
+             * Timestamp
+             * @description Snapshot timestamp
+             */
+            timestamp?: number;
+            /**
+             * Physical Id
+             * @description Identity the history belongs to
+             */
+            physical_id: string;
+            /**
+             * Recent
+             * @description Recently completed actions (capped)
+             */
+            recent: {
+                [key: string]: unknown;
+            }[];
+            /**
+             * Failed
+             * @description Recently failed actions (capped)
+             */
+            failed: {
+                [key: string]: unknown;
+            }[];
+            /**
+             * Error Counts
+             * @description Failure count per domain
+             */
+            error_counts: {
+                [key: string]: number;
+            };
         };
         /**
          * AnalyticsReportResponse
@@ -5320,6 +5402,34 @@ export interface components {
              * @description Types of validation performed
              */
             validation_types: string[];
+        };
+        /**
+         * LiveActionsResponse
+         * @description Response for the live fire-and-forget action snapshot (ARCH-28 D-9, read-only)
+         */
+        LiveActionsResponse: {
+            /**
+             * Success
+             * @description Whether the operation was successful
+             */
+            success: boolean;
+            /**
+             * Timestamp
+             * @description Snapshot timestamp
+             */
+            timestamp?: number;
+            /**
+             * Actions
+             * @description Live actions across all identities
+             */
+            actions: {
+                [key: string]: unknown;
+            }[];
+            /**
+             * Count
+             * @description Number of live actions
+             */
+            count: number;
         };
         /**
          * LocalizationContentResponse
@@ -10957,6 +11067,57 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SectionToTomlResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_live_actions_monitoring_actions_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LiveActionsResponse"];
+                };
+            };
+        };
+    };
+    get_action_history_monitoring_actions_history_get: {
+        parameters: {
+            query: {
+                physical_id: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ActionHistoryResponse"];
                 };
             };
             /** @description Validation Error */

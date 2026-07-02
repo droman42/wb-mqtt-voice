@@ -1048,6 +1048,14 @@ def create_webapi_router(
         output = RemoteAudioOutput(client_id, channel, tts, negotiator)
         await output_manager.add_output(client_id, output)
         await websocket.send_json({"type": "registered", "client_id": client_id})
+
+        # ARCH-28 (D-6): the reply channel just came up — deliver any completion notices that
+        # fired while this client was offline (e.g. a timer that rang during a satellite reboot).
+        try:
+            from ..core.notifications import get_notification_service
+            await (await get_notification_service()).drain_undelivered([client_id])
+        except Exception as e:
+            logger.error(f"Undelivered-notice drain failed for {client_id}: {e}")
         try:
             while True:
                 msg = await websocket.receive()

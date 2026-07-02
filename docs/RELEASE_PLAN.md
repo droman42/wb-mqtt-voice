@@ -133,23 +133,6 @@ and the structural refactors **move code** — so blind refactoring/fixing is th
 Target pattern: **Hexagonal (Ports & Adapters)** — SIGNED OFF 2026-06-01. Code is already ~80% there
 (interfaces=ports, providers=adapters, components=app services, entry-points=registry).
 See `docs/review/phase1_architecture_map.md` §5.
-- [ ] **ARCH-28** [FAF] (P2) `[release]` — **Implement the durable-action substrate** per
-      `docs/design/durable_actions.md` (ARCH-27, decisions D-1…D-10 user-agreed 2026-07-02). Slices (§4 of the
-      design, each green): **(1)** new `AssetConfig.state_root` (`<assets_root>/state/` — asset-managed, volume-
-      mounted, survives container replacement; NOT deletable `cache/`) + `DurableActionStorePort` + atomic-JSON
-      adapter (`state/durable_actions.json`, temp+rename) + record schema v1 + unit tests + **relocate
-      `client_registry.json` default** to `state/` with old-path read-fallback (same container-lifetime flaw —
-      registrations currently die with the container); **(2)** launch/completion wiring — keyword-only
-      `durable=False` / `redeliver_on_reconnect=False` params, persist-at-launch, **delete-at-completion in the
-      same operation** as the in-memory removal; timer sets both flags; **(3)** startup reconciler + handler
-      `rearm(record)` hook + fire-with-apology (≤1h grace) / expiry-announcement (localized ru/en) + **the
-      restart test** (persist+restore+test ship together — anti persist-without-restore rot); **(4)** redelivery
-      drain on client registration (TTL = grace window); **(5)** notification-policy flip — failures announced by
-      default, sub-30s success suppression stays; **(6)** read-only `/monitoring/actions` +
-      `/monitoring/actions/history` endpoints; **(7)** docs — new durability section in
-      `docs/guides/howto-new-intent.md` (user-doc prose, the §3 contract) + `durable-actions` invariant in
-      `CLAUDE.md` + architecture-doc touch-ups (`user-facing-docs-are-done`). QUAL-61 (cuts) runs any time after
-      slice 2. _Filed 2026-07-02 on ARCH-27 completion (`design-then-implement`)._
 - [ ] **ARCH-8** [MQTT] (P-TBD) — **★ ARCH-22 (2026-06-14):** the **voice-confirmation of actuation** feature (T-B,
       `docs/design/esp32_satellite.md` §10) rides this task — a sequenced `DEVICE_COMMAND → bridge rich DeliveryResult →
       derive text → SPEECH to the origin device` (opt-in `confirm_actuation_by_voice`; device-transparent, reply via

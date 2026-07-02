@@ -14,6 +14,8 @@ from typing import Dict, Any, List, Optional
 from dataclasses import dataclass, field, asdict
 from pathlib import Path
 
+from ..config.models import AssetConfig  # ARCH-28: state_root for persisted registrations
+
 logger = logging.getLogger(__name__)
 
 
@@ -129,6 +131,8 @@ class ActionRecord:
     status: str = "running"
     timed_out: bool = False                  # set by the timeout monitor before it cancels (BUG-19:
                                              # lets the done-callback distinguish timeout from user-cancel)
+    durable: bool = False                    # ARCH-28: a persisted record exists; completion must delete it
+    redeliver: bool = False                  # ARCH-28 D-6: completion notice survives an offline reply channel
     session_id: Optional[str] = None         # conversation that launched it (informational)
     room_id: Optional[str] = None
     source: Optional[str] = None             # originating channel (cli/web/ws/…) for deferred-result addressing (ARCH-15 PR-4)
@@ -177,7 +181,17 @@ class ClientRegistry:
         # Configuration
         self.registration_timeout = self.config.get('registration_timeout', 3600)  # 1 hour
         self.persistent_storage = self.config.get('persistent_storage', True)
-        self.storage_path = Path(self.config.get('storage_path', 'cache/client_registry.json'))
+        # ARCH-28: registrations live under the asset-managed state tree (volume-mounted —
+        # survives container replacement). The old default was cwd-relative `cache/`, i.e.
+        # INSIDE the container: registrations silently died with it. Legacy files are
+        # migrated on first load (see _load_registrations).
+        explicit_path = self.config.get('storage_path')
+        if explicit_path:
+            self.storage_path = Path(explicit_path)
+        elif self.persistent_storage:
+            self.storage_path = AssetConfig().state_root / 'client_registry.json'
+        else:
+            self.storage_path = Path('client_registry.json')  # inert (persistence disabled)
         self.max_actions_per_identity = self.config.get('max_actions_per_identity', 32)
 
         # Load existing registrations
@@ -530,6 +544,27 @@ class ClientRegistry:
             self._actions.pop(physical_id, None)
         return len(dead)
 
+    def get_all_live_actions(self) -> List[Dict[str, Any]]:
+        """Snapshot of every live action across identities (ARCH-28 D-9 — the observability
+        surface: /monitoring/actions). Read-only; dead entries reaped per identity first."""
+        snapshot: List[Dict[str, Any]] = []
+        for physical_id in list(self._actions.keys()):
+            for rec in self.get_live_actions(physical_id):
+                snapshot.append({
+                    "action_name": rec.action_name,
+                    "domain": rec.domain,
+                    "physical_id": rec.physical_id,
+                    "room_id": rec.room_id,
+                    "session_id": rec.session_id,
+                    "source": rec.source,
+                    "started_at": rec.started_at,
+                    "deadline": rec.expected_end,
+                    "durable": rec.durable,
+                    "redeliver": rec.redeliver,
+                    "handler": (rec.metadata or {}).get("handler"),
+                })
+        return snapshot
+
     def reap_dead_actions(self) -> int:
         """Periodic sweep across all identities (layer 3); returns count reaped."""
         total = 0
@@ -613,15 +648,24 @@ class ClientRegistry:
             logger.error(f"Failed to save client registrations: {e}")
     
     def _load_registrations(self):
-        """Load registrations from persistent storage"""
+        """Load registrations from persistent storage (with legacy-path migration, ARCH-28)."""
         try:
-            if not self.storage_path.exists():
-                logger.info("No existing client registrations found")
-                return
-            
-            with open(self.storage_path, 'r', encoding='utf-8') as f:
+            load_path = self.storage_path
+            migrating = False
+            if not load_path.exists():
+                # Legacy home: cwd-relative cache/ (pre-ARCH-28) — read it once and re-home
+                # the file under <assets_root>/state/ so it survives container replacement.
+                legacy = Path('cache/client_registry.json')
+                if legacy.exists() and legacy.resolve() != self.storage_path.resolve():
+                    load_path = legacy
+                    migrating = True
+                else:
+                    logger.info("No existing client registrations found")
+                    return
+
+            with open(load_path, 'r', encoding='utf-8') as f:
                 data = json.load(f)
-            
+
             # Convert dict data back to registration objects
             for client_id, registration_data in data.items():
                 try:
@@ -629,9 +673,12 @@ class ClientRegistry:
                     self.clients[client_id] = registration
                 except Exception as e:
                     logger.warning(f"Failed to load registration for client '{client_id}': {e}")
-            
-            logger.info(f"Loaded {len(self.clients)} client registrations from {self.storage_path}")
-            
+
+            logger.info(f"Loaded {len(self.clients)} client registrations from {load_path}")
+            if migrating and self.clients:
+                logger.info(f"Migrating client registrations {load_path} → {self.storage_path}")
+                self._save_registrations()
+
         except Exception as e:
             logger.error(f"Failed to load client registrations: {e}")
 

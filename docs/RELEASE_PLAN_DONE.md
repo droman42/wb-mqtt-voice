@@ -9,6 +9,30 @@ rationale/chronology lives in [`RELEASE_JOURNAL.md`](./RELEASE_JOURNAL.md).
 ---
 
 ### Architecture & Refactor (ARCH)
+- [x] **ARCH-28** [FAF] (P2) `[release]` — **DONE 2026-07-02.** Durable-action substrate implemented per
+      `docs/design/durable_actions.md`, all 7 slices: **(1)** `AssetConfig.state_root` (`<assets_root>/state/`,
+      auto-created) + `DurableActionStorePort` + `JsonFileDurableActionStore` (atomic temp+rename, corrupt-file-safe)
+      + schema-v1 records + `client_registry.json` default relocated to `state/` with legacy `cache/` read-fallback
+      migration; **(2)** launch choke point takes `durable=`/`redeliver_on_reconnect=` (keyword-only), persists at
+      launch (JSON-validates re-arm kwargs BEFORE task creation — fail loud), deletes at completion inside the
+      done-callback (same operation as the in-memory removal); timer launches `durable=True, redeliver=True`;
+      **(3)** `engine.start()` runs `reconcile_durable_actions` after components / before inputs: future deadline →
+      handler `rearm_durable_action` (timer override relaunches with remaining time, reuses the persisted name,
+      bumps `timer_counter` past it), missed ≤1h → fire-with-apology (ru/en), older / unknown handler / re-arm
+      failure → expiry announcement; old record always deleted; **(4)** redeliver-flagged completions that drop on
+      an offline output are queued as `UndeliveredNotice` (TTL = 1h grace, `created_at` preserved so re-drops don't
+      extend it) and drained on `/ws/audio/reply` re-attach; **(5)** failure notifications announced by default
+      (`critical_only` → False; sub-30s success suppression kept); **(6)** read-only `/monitoring/actions` +
+      `/monitoring/actions/history` (new `LiveActionsResponse`/`ActionHistoryResponse`; contract regenerated —
+      108 paths, config-ui `gen:api-types` + `check` + `build` green); **(7)** docs — `howto-new-intent.md`
+      "Long-running actions" section (the §3 contract in prose), `durable-actions` **CLAUDE.md invariant**,
+      `client-registry.md` durable-actions paragraph (+ corrected its stale auto-expiry claim from QUAL-58).
+      **The restart test ships with it** (`test_durable_actions.py`, 12 tests: store roundtrip/corruption, persist-
+      at-launch + delete-at-completion, ephemeral-never-touches-disk, fail-loud unserializable launch, restart →
+      re-arm with fresh store instance, fire-late apology, expiry, unknown-handler safety, timer remaining-time +
+      counter bump, undelivered TTL/matching). The reconciler's future-deadline-with-missing-handler branch was
+      caught wrong by these tests and fixed (announce-expired, not fire-early). Gates: 1156 passed / 7 skipped;
+      pyright clean (11 files); import-linter 9/9. QUAL-61 now fully unblocked.
 - [x] **ARCH-27** [FAF][DESIGN] (P2) `[release]` — **DONE 2026-07-02 (design agreed, interactive session).**
       Durable-action substrate + handler-authoring rules designed and recorded at `docs/design/durable_actions.md`
       (D-1…D-10, all user-confirmed): explicit opt-in durability (`durable=True`; timer = only consumer today,

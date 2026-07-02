@@ -1830,6 +1830,22 @@ class SessionAnalyticsResponse(BaseAPIResponse):
     timestamp: float = Field(default_factory=time.time, description="Analytics timestamp")
 
 
+class LiveActionsResponse(BaseAPIResponse):
+    """Response for the live fire-and-forget action snapshot (ARCH-28 D-9, read-only)"""
+    actions: List[Dict[str, Any]] = Field(description="Live actions across all identities")
+    count: int = Field(description="Number of live actions")
+    timestamp: float = Field(default_factory=time.time, description="Snapshot timestamp")
+
+
+class ActionHistoryResponse(BaseAPIResponse):
+    """Response for per-identity completed-action history (ARCH-28 D-9, read-only)"""
+    physical_id: str = Field(description="Identity the history belongs to")
+    recent: List[Dict[str, Any]] = Field(description="Recently completed actions (capped)")
+    failed: List[Dict[str, Any]] = Field(description="Recently failed actions (capped)")
+    error_counts: Dict[str, int] = Field(description="Failure count per domain")
+    timestamp: float = Field(default_factory=time.time, description="Snapshot timestamp")
+
+
 class PerformanceAnalyticsResponse(BaseAPIResponse):
     """Response for performance analytics"""
     system: Dict[str, Any] = Field(description="System performance metrics")

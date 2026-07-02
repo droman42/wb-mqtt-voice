@@ -2727,6 +2727,71 @@
         }
       }
     },
+    "/monitoring/actions": {
+      "get": {
+        "tags": [
+          "Monitoring"
+        ],
+        "summary": "Get Live Actions",
+        "description": "Snapshot of live fire-and-forget actions across all identities",
+        "operationId": "get_live_actions_monitoring_actions_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LiveActionsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/monitoring/actions/history": {
+      "get": {
+        "tags": [
+          "Monitoring"
+        ],
+        "summary": "Get Action History",
+        "description": "Per-identity completed/failed action history (capped, runtime-only)",
+        "operationId": "get_action_history_monitoring_actions_history_get",
+        "parameters": [
+          {
+            "name": "physical_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Physical Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActionHistoryResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/monitoring/status": {
       "get": {
         "tags": [
@@ -4797,6 +4862,61 @@
         ],
         "title": "ASRConfigureResponse",
         "description": "Response for ASR configuration using unified TOML schema"
+      },
+      "ActionHistoryResponse": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success",
+            "description": "Whether the operation was successful"
+          },
+          "timestamp": {
+            "type": "number",
+            "title": "Timestamp",
+            "description": "Snapshot timestamp"
+          },
+          "physical_id": {
+            "type": "string",
+            "title": "Physical Id",
+            "description": "Identity the history belongs to"
+          },
+          "recent": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Recent",
+            "description": "Recently completed actions (capped)"
+          },
+          "failed": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Failed",
+            "description": "Recently failed actions (capped)"
+          },
+          "error_counts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Error Counts",
+            "description": "Failure count per domain"
+          }
+        },
+        "type": "object",
+        "required": [
+          "success",
+          "physical_id",
+          "recent",
+          "failed",
+          "error_counts"
+        ],
+        "title": "ActionHistoryResponse",
+        "description": "Response for per-identity completed-action history (ARCH-28 D-9, read-only)"
       },
       "AnalyticsReportResponse": {
         "properties": {
@@ -8823,6 +8943,42 @@
         ],
         "title": "LanguageDonationValidationResponse",
         "description": "Response for language-specific donation validation operation"
+      },
+      "LiveActionsResponse": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success",
+            "description": "Whether the operation was successful"
+          },
+          "timestamp": {
+            "type": "number",
+            "title": "Timestamp",
+            "description": "Snapshot timestamp"
+          },
+          "actions": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Actions",
+            "description": "Live actions across all identities"
+          },
+          "count": {
+            "type": "integer",
+            "title": "Count",
+            "description": "Number of live actions"
+          }
+        },
+        "type": "object",
+        "required": [
+          "success",
+          "actions",
+          "count"
+        ],
+        "title": "LiveActionsResponse",
+        "description": "Response for the live fire-and-forget action snapshot (ARCH-28 D-9, read-only)"
       },
       "LocalizationContentResponse": {
         "properties": {

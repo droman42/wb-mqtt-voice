@@ -172,6 +172,8 @@ class TimerIntentHandler(IntentHandler):
                 context=context,
                 timeout=duration_seconds + 5.0,
                 completion_message=message,   # BUG-4/F&F: announced (in the request language) when the timer fires
+                durable=True,                  # ARCH-28: a timer is a promise — it survives a restart
+                redeliver_on_reconnect=True,   # D-6: the ring survives a briefly-offline satellite too
                 duration_seconds=duration_seconds,
                 message=message,
                 session_id=context.session_id,
@@ -384,6 +386,49 @@ class TimerIntentHandler(IntentHandler):
         await asyncio.sleep(duration_seconds)
         logger.info(f"🔔 Timer {timer_id} completed: {message}")
         return timer_id
+
+    async def rearm_durable_action(self, record) -> bool:
+        """ARCH-28 D-3: re-arm a persisted timer after a restart with its REMAINING time.
+
+        The persisted `rearm.params` are the original launch kwargs; the fire moment is
+        `started_at + duration_seconds` (the record's deadline minus the +5s monitor grace).
+        Relaunches through the normal F&F path reusing the persisted action_name (D-8), and
+        bumps `timer_counter` past the re-armed name so new timers can't collide with it.
+        """
+        params = dict((record.rearm or {}).get("params") or {})
+        original_duration = int(params.get("duration_seconds", 0))
+        if original_duration <= 0:
+            return False
+        remaining = int(record.started_at + original_duration - time.time())
+        if remaining < 1:
+            return False  # deadline effectively passed — reconciler handles fire-late/expiry
+
+        # Post-restart the counter starts at 0 again; keep minted names ahead of re-armed ones.
+        try:
+            suffix = int(record.action_name.rsplit("_", 1)[1])
+            self.timer_counter = max(self.timer_counter, suffix)
+        except (IndexError, ValueError):
+            pass
+
+        params["duration_seconds"] = remaining
+        metadata = record.metadata or {}
+        await self.execute_fire_and_forget_action(
+            self._run_timer,
+            action_name=record.action_name,
+            domain=record.domain,
+            physical_id=record.physical_id,
+            owner_session_id=record.session_id,
+            room_id=record.room_id,
+            source=record.source,
+            timeout=remaining + 5.0,
+            language=metadata.get("language"),
+            completion_message=metadata.get("completion_message"),
+            durable=True,
+            redeliver_on_reconnect=record.redeliver,
+            **params
+        )
+        logger.info(f"Re-armed timer {record.action_name}: {remaining}s remaining after restart")
+        return True
 
     async def cleanup(self) -> None:
         """No local timer state to clean up — running timers are store-owned tasks (QUAL-28)."""

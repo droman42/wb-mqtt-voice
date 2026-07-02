@@ -34,7 +34,8 @@ a satellite is a pure voice terminal that knows nothing about lights or switches
 single device authority (see [MQTT](mqtt.md)) — and *that* is what NLU resolves "the kitchen light" against.
 (A registration can technically still carry a `ClientDevice` list; it's a holdover from the early handshake,
 not the catalogue.) Registrations themselves are queryable — `get_client`, `get_clients_by_room`,
-`get_all_rooms` — and expire on inactivity (`last_seen` → `cleanup_expired_clients`).
+`get_all_rooms` — and can be pruned of stale entries on request (`cleanup_expired_clients`, an
+administrative action: a quiet-but-still-connected satellite is never expired automatically).
 
 ## Physical identity
 
@@ -56,3 +57,11 @@ This store is what makes the deferred half of fire-and-forget work, and what let
 running action by the same physical scope (see [data flow](dataflow.md)). Because it is keyed on the room or
 device rather than the conversation, a result still finds home after the session is gone — the same identity
 the [smart-home layer](mqtt.md) and the [ESP32 satellites](esp32.md) address by.
+
+**Durable actions.** An action launched as *durable* — today that's timers — also writes an **intent
+record** to a small state file under the assets tree: no task reference, just what is needed to relaunch. On
+startup Irene reconciles it: a timer whose moment is still ahead is re-armed with its remaining time; one
+missed by less than an hour rings late with an apology; older ones are announced as expired. If the room's
+speaker happens to be offline right when a durable action fires, the announcement is kept and spoken when the
+device reconnects. The live store above stays runtime-only — it is the persisted *intent* that crosses a
+restart, never the task.

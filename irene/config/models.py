@@ -944,6 +944,14 @@ class AssetConfig(BaseModel):
         # ARCH-19: default home for saved utterance traces (overridable via [trace] traces_dir)
         return self.assets_root / "traces"
 
+    @property
+    def state_root(self) -> Path:
+        # ARCH-28: durable runtime state (durable-action records, client registrations).
+        # Lives under assets_root because that is the volume-mounted tree — a container
+        # redeploy must not wipe records that exist to survive restarts. Deliberately NOT
+        # cache/: cache is deletable by definition; state is not.
+        return self.assets_root / "state"
+
     def model_post_init(self, __context):
         """Create directories after initialization if auto_create_dirs is True"""
         if self.auto_create_dirs:
@@ -957,7 +965,8 @@ class AssetConfig(BaseModel):
             self.cache_root,
             self.credentials_root,
             self.temp_root,
-            self.temp_audio_dir
+            self.temp_audio_dir,
+            self.state_root
         ]
         
         for directory in directories:

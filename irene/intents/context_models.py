@@ -94,7 +94,10 @@ class UnifiedConversationContext:
         },
         "action_failure": {
             "enabled": True,
-            "critical_only": True,
+            # ARCH-28 (D-5): failures are announced by DEFAULT — the user asked for something
+            # and it didn't happen; that is never below the notification threshold. (Was
+            # critical-only, which silently swallowed ordinary F&F failures.)
+            "critical_only": False,
             "delivery_methods": ["tts", "log"],
             "retry_notifications": False
         },

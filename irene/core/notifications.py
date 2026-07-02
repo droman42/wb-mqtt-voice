@@ -14,6 +14,8 @@ from enum import Enum
 from pathlib import Path
 from typing import Dict, Any, List, Optional, Callable
 
+from .durable_actions import get_durable_action_store, UndeliveredNotice
+
 logger = logging.getLogger(__name__)
 
 
@@ -65,6 +67,10 @@ class NotificationMessage:
     delivery_status: Dict[DeliveryMethod, bool] = field(default_factory=dict)
     retry_count: int = 0
     max_retries: int = 3
+    # ARCH-28 (D-6): durable-action completions flagged for redelivery survive an offline
+    # reply channel — on drop they are queued in the durable store (TTL = grace window) and
+    # drained when the owning client's output re-attaches.
+    redeliver: bool = False
 
 
 class NotificationService:
@@ -193,6 +199,7 @@ class NotificationService:
         room_name: Optional[str] = None,
         language: Optional[str] = None,
         completion_message: Optional[str] = None,
+        redeliver: bool = False,
     ) -> bool:
         """Send notification for completed fire-and-forget action.
 
@@ -249,7 +256,8 @@ class NotificationService:
             source=source,
             physical_id=physical_id,
             room_name=room_name,
-            language=language
+            language=language,
+            redeliver=redeliver
         )
 
         return await self.send_notification(notification)
@@ -375,6 +383,24 @@ class NotificationService:
         if self.output_manager is not None:
             if await self._deliver_via_output_manager(notification):
                 successful_deliveries += 1
+            elif notification.redeliver and notification.physical_id:
+                # ARCH-28 (D-6): a redeliver-flagged completion (durable action, e.g. a timer
+                # ring) survives the offline reply channel — queue it in the durable store
+                # (TTL = grace window; created_at preserved so re-drops don't extend it) and
+                # drain it when the client's output re-attaches.
+                get_durable_action_store().add_undelivered(UndeliveredNotice(
+                    physical_id=notification.physical_id,
+                    action_name=(notification.details or {}).get("action_name", ""),
+                    domain=notification.domain or "",
+                    message=notification.message,
+                    language=notification.language,
+                    session_id=notification.session_id,
+                    room_id=notification.room_name,
+                    source=notification.source,
+                    created_at=notification.created_at))
+                self.logger.info(
+                    f"Notification queued for redelivery (output offline for "
+                    f"id={notification.physical_id}): {notification.message!r}")
             else:
                 self.logger.info(
                     f"Notification not delivered (no output for source={notification.source} "
@@ -412,6 +438,34 @@ class NotificationService:
             self._metrics["failed_deliveries"] += 1
             self.logger.error(f"Failed to deliver notification via any method")
     
+    async def drain_undelivered(self, physical_ids: List[str]) -> int:
+        """Re-enqueue stored completion notices for identities whose output just re-attached
+        (ARCH-28 D-6). Called from the WS reply-channel/output registration paths. Notices keep
+        their original ``created_at``, so a notice that drops again re-queues WITHOUT extending
+        its TTL. Returns the number of notices re-enqueued."""
+        notices = get_durable_action_store().pop_undelivered([pid for pid in physical_ids if pid])
+        for notice in notices:
+            await self.send_notification(NotificationMessage(
+                type=NotificationType.ACTION_COMPLETION,
+                priority=NotificationPriority.NORMAL,
+                title="Action Completed",
+                message=notice.message,
+                details={"domain": notice.domain, "action_name": notice.action_name,
+                         "redelivered": True},
+                delivery_methods=[DeliveryMethod.TTS, DeliveryMethod.LOG],
+                session_id=notice.session_id,
+                domain=notice.domain,
+                source=notice.source,
+                physical_id=notice.physical_id,
+                room_name=notice.room_id,
+                language=notice.language,
+                created_at=notice.created_at,
+                redeliver=True))
+        if notices:
+            self.logger.info(f"Re-enqueued {len(notices)} undelivered completion notice(s) "
+                             f"for {physical_ids}")
+        return len(notices)
+
     async def _deliver_via_output_manager(self, notification: NotificationMessage) -> bool:
         """Deliver a deferred result through the OutputManager, addressed by the action's identity.
 

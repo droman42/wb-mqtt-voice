@@ -15,6 +15,8 @@ from .timers import AsyncTimerManager
 from .components import ComponentManager
 from .workflow_manager import WorkflowManager
 from .metrics import MetricsCollector
+from .durable_actions import get_durable_action_store, reconcile_durable_actions
+from .notifications import get_notification_service
 
 # NOTE (ARCH-11 / S3): the delivery-layer InputManager (inputs) is intentionally
 # NOT imported here — `core` must not depend outward. It is constructed by the
@@ -112,6 +114,12 @@ class AsyncVACore:
             # Initialize metrics collector (Phase 2: unified analytics)
             logger.info("Metrics collector initialized for unified analytics")
 
+            # ARCH-28 (D-3): reconcile persisted durable actions — re-arm future deadlines,
+            # fire recently-missed ones with an apology, announce older ones as expired.
+            # After components (handlers + notification service) are up, BEFORE inputs
+            # accept traffic. Never blocks startup.
+            await self._reconcile_durable_actions()
+
             await self.input_manager.initialize()
             
             self._running = True
@@ -128,6 +136,20 @@ class AsyncVACore:
 
 
         
+    async def _reconcile_durable_actions(self) -> None:
+        """ARCH-28: recover persisted durable actions at startup (best-effort, never fatal)."""
+        try:
+            handlers_by_class = {}
+            intent_component = self.component_manager.get_component('intent_system')
+            handler_manager = getattr(intent_component, 'handler_manager', None)
+            if handler_manager is not None:
+                handlers_by_class = {h.__class__.__name__: h
+                                     for h in handler_manager.get_handlers().values()}
+            service = await get_notification_service()
+            await reconcile_durable_actions(get_durable_action_store(), handlers_by_class, service)
+        except Exception as e:
+            logger.error(f"Durable-action reconciliation failed (continuing startup): {e}")
+
     async def stop(self) -> None:
         """Graceful shutdown"""
         logger.info("Stopping Irene Voice Assistant...")

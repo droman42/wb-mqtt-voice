@@ -1,6 +1,7 @@
 """Base intent handler class."""
 
 import asyncio
+import json
 import logging
 import time
 from abc import ABC, abstractmethod
@@ -9,6 +10,7 @@ from typing import Dict, Any, List, Optional, Callable, Coroutine
 from ..models import Intent, IntentResult
 from ..context_models import UnifiedConversationContext
 from ...core.client_registry import get_client_registry, resolve_physical_id, ActionRecord
+from ...core.durable_actions import get_durable_action_store, DurableActionRecord
 from ...core.metadata import EntryPointMetadata
 from ...core.notifications import get_notification_service, NotificationService
 from ...core.metrics import get_metrics_collector, MetricsCollector
@@ -85,6 +87,19 @@ class IntentHandler(EntryPointMetadata, ABC):
         if self._metrics_collector:
             self._metrics_collector.record_session_end(session_id, user_satisfaction)
     
+    async def rearm_durable_action(self, record: DurableActionRecord) -> bool:
+        """Re-launch a persisted durable action after a restart (ARCH-28 D-3).
+
+        A handler that launches with ``durable=True`` MUST override this: recompute what
+        remains (e.g. a timer's remaining seconds from the record's deadline), then relaunch
+        through the normal F&F path REUSING ``record.action_name`` (stable identity, D-8) with
+        ``durable=True`` again. Return True on successful re-arm; the default refuses, which
+        makes the reconciler announce the action as expired rather than silently drop it.
+        """
+        self.logger.error(f"{self.__class__.__name__} launched durable action "
+                          f"'{record.action_name}' but does not implement rearm_durable_action")
+        return False
+
     async def execute_fire_and_forget_with_context(
         self,
         action_func: Callable[..., Coroutine[Any, Any, Any]],
@@ -95,10 +110,19 @@ class IntentHandler(EntryPointMetadata, ABC):
         max_retries: int = 0,
         retry_delay: float = 1.0,
         completion_message: Optional[str] = None,
+        durable: bool = False,
+        redeliver_on_reconnect: bool = False,
         **kwargs
     ) -> Dict[str, Any]:
         """
         Launch a fire-and-forget action, registered in the runtime action store (QUAL-28).
+
+        ``durable=True`` (ARCH-28): the launch also persists a `DurableActionRecord` so the
+        promise survives a restart — declare it iff the action promises effects beyond the
+        current interaction, and implement :meth:`rearm_durable_action`. ``kwargs`` must then
+        be JSON-serializable (they are the persisted re-arm params). ``redeliver_on_reconnect``
+        additionally queues the completion notice for redelivery if the owning reply channel is
+        offline when it fires (D-6). See docs/design/durable_actions.md §3 for the full contract.
 
         `completion_message` (optional) is the text to announce when the action completes, already
         rendered in the REQUEST language by the handler. It is captured with `context.language` into
@@ -124,6 +148,8 @@ class IntentHandler(EntryPointMetadata, ABC):
             retry_delay=retry_delay,
             language=getattr(context, "language", None),
             completion_message=completion_message,
+            durable=durable,
+            redeliver_on_reconnect=redeliver_on_reconnect,
             **kwargs
         )
         # ARCH-19 (D-5): trace EVERY fire-and-forget launch uniformly at this choke point — covers
@@ -643,6 +669,8 @@ class IntentHandler(EntryPointMetadata, ABC):
         retry_delay: float = 1.0,
         language: Optional[str] = None,
         completion_message: Optional[str] = None,
+        durable: bool = False,
+        redeliver_on_reconnect: bool = False,
         **kwargs
     ) -> Dict[str, Any]:
         """
@@ -670,6 +698,12 @@ class IntentHandler(EntryPointMetadata, ABC):
             return result
 
         try:
+            rearm_params: Dict[str, Any] = {}
+            if durable:
+                # ARCH-28: fail LOUD at launch, not at recovery — the kwargs are the persisted
+                # re-arm params and must round-trip JSON. Raises before the task is created.
+                rearm_params = json.loads(json.dumps(kwargs))
+
             if max_retries > 0:
                 task = asyncio.create_task(self._execute_with_retry(
                     _checked_action, action_name, domain, max_retries, retry_delay, **kwargs
@@ -685,6 +719,8 @@ class IntentHandler(EntryPointMetadata, ABC):
                 started_at=time.time(),
                 expected_end=(time.time() + timeout) if timeout and timeout > 0 else None,
                 status="running",
+                durable=durable,
+                redeliver=redeliver_on_reconnect,
                 session_id=owner_session_id,
                 room_id=room_id,
                 source=source,
@@ -695,6 +731,26 @@ class IntentHandler(EntryPointMetadata, ABC):
                           "language": language, "completion_message": completion_message},
             )
             get_client_registry().add_action(record)
+
+            if durable:
+                # ARCH-28 (D-2): persist the intent so it survives a restart. kwargs are the
+                # re-arm params — they MUST be JSON-serializable (fail loud at launch, not at
+                # recovery). Completion deletes this record in _on_action_done.
+                get_durable_action_store().save(DurableActionRecord(
+                    action_name=action_name,
+                    domain=domain,
+                    handler=self.__class__.__name__,
+                    physical_id=physical_id,
+                    started_at=record.started_at,
+                    deadline=record.expected_end,
+                    session_id=owner_session_id,
+                    room_id=room_id,
+                    source=source,
+                    redeliver=redeliver_on_reconnect,
+                    rearm={"method": getattr(action_func, "__name__", ""),
+                           "params": rearm_params},
+                    metadata={"language": language, "completion_message": completion_message},
+                ))
 
             if self._metrics_collector:
                 self._metrics_collector.record_action_start(
@@ -750,6 +806,10 @@ class IntentHandler(EntryPointMetadata, ABC):
             registry = get_client_registry()
             registry.remove_action(record.physical_id, record.action_name, expected=record)
             registry.record_completed_action(record, success, error)
+            if record.durable:
+                # ARCH-28 (D-2): the persisted record dies WITH the in-memory one — a completed
+                # action must never resurrect on restart (the bridge's stale-intent lesson).
+                get_durable_action_store().delete(record.action_name)
         except Exception as e:
             self.logger.error(f"Failed to reap/record completed action {record.action_name}: {e}")
 
@@ -793,7 +853,8 @@ class IntentHandler(EntryPointMetadata, ABC):
                     session_id=session_id, domain=record.domain,
                     action_name=record.action_name, duration=duration, success=True,
                     source=record.source, physical_id=record.physical_id, room_name=record.room_id,
-                    language=language, completion_message=completion_message)
+                    language=language, completion_message=completion_message,
+                    redeliver=record.redeliver)  # ARCH-28 D-6: survives an offline reply channel
             else:
                 await service.send_action_failure_notification(
                     session_id=session_id, domain=record.domain,

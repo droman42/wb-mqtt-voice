@@ -92,6 +92,13 @@ but these rules apply to any task). **Single source of truth** (relocated here f
   import cycle, and a cycle is an architecture smell (dependencies not pointing inward — `hexagonal-architecture`). The
   fix is to **break the cycle** (move the shared type to a lower layer / use a port), not hide it from the runtime.
   When touching a file that has such a block, remove it. _(QUAL-32 tracks the residual sweep; new code complies from the start.)_
+- **`durable-actions`** — A fire-and-forget action that **promises effects beyond the current interaction**
+  (fires later, changes/reports something later) MUST be launched with `durable=True`, and its handler MUST
+  override `rearm_durable_action` (JSON-serializable launch kwargs; re-arm reuses the record's `action_name`).
+  Never hand-roll future scheduling (`asyncio.sleep` promises / ad-hoc `create_task` timers) outside the F&F
+  launch — invisible to stop/listing, dies silently on restart. Full contract: `docs/design/durable_actions.md`
+  §3 (design) + `docs/guides/howto-new-intent.md` (authoring prose). The substrate persists to
+  `<assets_root>/state/` — asset-managed and volume-mounted, **never** the deletable `cache/`.
 - **`user-facing-docs-are-done`** — The user-facing docs — `docs/architecture/*`, `docs/guides/*`,
   `docs/QUICKSTART.md`, and top-level `README*` — are narrative explanations for a reader who does **not** know the
   codebase or the release plan. **A non-root `README*`** (e.g. `eval/README.md`) is also in scope, **but only when the
