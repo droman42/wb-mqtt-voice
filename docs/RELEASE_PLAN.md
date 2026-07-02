@@ -202,15 +202,6 @@ See `docs/review/phase1_architecture_map.md` §5.
       `ConversationIntentHandler._trim_llm_context` / `UnifiedConversationContext.trim_handler_messages` — the trim
       call is already the single choke point, so summarization slots in front of it without touching call sites.
       _Filed 2026-07-02 from BUG-18._
-- [ ] **QUAL-59** [API][QUAL] (P3) `[deferred]` — **Capability drift + dead code (QUAL-57 A6/A7).**
-      **(A6)** `/system/capabilities` hardcodes provider/workflow lists diverging from entry-point reality
-      (`webapi_router.py:716-719` advertises `continuous_listening`; only `unified_voice_assistant` exists) — derive
-      from discovery; **(A7)** delete-or-fix the domain-keyed dead Phase-3.5 action-management methods
-      (`handlers/base.py:963-975,1114-1115,1228-1252` — would mis-cancel/double-record if wired; REST stubs
-      `intent_component.py:532-559`), the zero-caller `get_context_for_intent_processing` machinery
-      (`context.py:274-343`), cwd-dependent hardcoded paths in NLU donation conversion (`nlu_component.py:641,
-      661-671`), stale `metrics.py:115` key comment. Evidence: `docs/review/arch_memory_review_2026-07-02.md`.
-      _Filed 2026-07-02 from QUAL-57._
 - [ ] **QUAL-56** [QUAL][REVIEW][ARCH] (P3) `[deferred]` — **Review + critique the fire-and-forget (F&F) action design &
       implementation through the "durable"-execution pattern lens.** F&F = long-running intent actions (timers, etc.)
       launched by handlers, tracked as `active_actions` on the conversation context, with **deferred completion

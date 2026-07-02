@@ -724,6 +724,25 @@ rationale/chronology lives in [`RELEASE_JOURNAL.md`](./RELEASE_JOURNAL.md).
       Dependabot alerts (commits 05aa763/4e05a38) — no risky major bumps. **No code until scheduled + green-lit.**
 
 ### Code Quality & Review (QUAL)
+- [x] **QUAL-59** [API][QUAL] (P3) `[deferred]` — **DONE 2026-07-02.** Capability drift + dead code (QUAL-57 A6/A7);
+      user directive: dead code **removed**, not repaired. **(A6)** `/system/capabilities` now derives
+      `nlu/voice_trigger/text_processing` provider lists from the loaded components' `providers` dicts and
+      `workflows` from `workflow_manager.workflows` (the hardcoded lists advertised the long-gone
+      `continuous_listening` workflow and missed the `llm` NLU provider); regression
+      `test_capabilities_endpoint.py`. **(A7) deleted outright:** the domain-keyed dead Phase-3.5 action-management
+      interface in `handlers/base.py` (`cancel_action`, `get_active_actions`, `get_action_status`,
+      `list_all_actions`, `cancel_all_actions`, `inspect_action`, `get_action_management_capabilities` — would
+      mis-cancel/double-record if ever wired; −300 LOC) plus the handler-side action-debugger wiring
+      (`set_action_debugger`, attr, import; monitoring keeps its own debugger endpoints); the two `/intents/actions/*`
+      REST stubs ("Full implementation requires session context") + their 3 orphaned schema classes; the zero-caller
+      ContextManager introspection machinery (`get_context_for_intent_processing`, `get_recent_intent_patterns`,
+      `get_dominant_domain`, `get_session_statistics`, `cleanup_session` — which also bypassed the BUG-16 metrics
+      seam — `get_active_session_count`); the 2 tests that only exercised deleted methods. **Fixed (live code):**
+      cwd-dependent paths in `nlu_component` now package-relative (handler dir from `handlers_pkg.__file__`, assets
+      root from module parents). Stale `metrics.py` key comment was already fixed in BUG-16. **Contract artifacts
+      regenerated** (endpoints removed → `scripts/dump_openapi.py` + config-ui `npm run gen:api-types`; apiClient
+      never used the stubs). Gates: 1138 passed / 7 skipped; pyright clean on all 7 touched files; import-linter
+      9/9 kept; config-ui `check` + `build` pass. Evidence: `docs/review/arch_memory_review_2026-07-02.md` §A6/A7.
 - [x] **QUAL-58** [MEM][QUAL] (P3) `[deferred]` — **DONE 2026-07-02.** Memory-hygiene sweep (QUAL-57 M4–M8), all five
       items: **(M4)** `AudioTranscoder._resampling_cache` now bounded by BYTES too — 4 MB total budget + 1 MB
       per-entry bypass (full TTS replies / long utterances are never cached; they were the tens-of-MB retention),

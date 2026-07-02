@@ -13,6 +13,24 @@ newest entries near the top of each dated section.
 
 ## Action journal
 
+- **2026-07-02 — QUAL-59 DONE — capability drift fixed + dead code deleted (user directive: "I prefer dead code
+  to be removed").** **(A6)** `/system/capabilities` now derives its provider/workflow lists from what is actually
+  loaded (components' `providers` dicts + `workflow_manager.workflows`) instead of hardcoded lists that advertised
+  the long-gone `continuous_listening` workflow and missed the `llm` NLU provider; regression test added.
+  **(A7)** deleted outright rather than repaired: the entire dead Phase-3.5 action-management interface in
+  `handlers/base.py` (7 zero-caller methods incl. the domain-keyed `cancel_all_actions`/`get_action_status` that
+  would mis-cancel/double-record if ever wired — ~300 LOC, `base.py` 1350→1043 lines), the handler-side
+  action-debugger wiring it existed for, the two `/intents/actions/*` REST stubs + their 3 orphaned schema
+  classes, the zero-caller ContextManager introspection machinery (`get_context_for_intent_processing` +
+  4 siblings incl. `cleanup_session`, which bypassed the BUG-16 metrics seam), and the 2 tests that only
+  exercised deleted methods. Live-but-fragile code fixed instead: `nlu_component`'s cwd-dependent
+  `Path("irene/...")`/`Path("assets")` are now package-relative. Because REST endpoints were removed, the
+  committed contract was regenerated end-to-end: `scripts/dump_openapi.py` (106 paths) → config-ui
+  `npm run gen:api-types` → `check` + `build` green (apiClient never used the stubs;
+  `config-ui-stays-functional` upheld). Gates: 1138 passed / 7 skipped; pyright clean on all 7 touched files;
+  import-linter 9/9 kept. QUAL-59 moved active→done — the QUAL-57 review's filed follow-ups are now ALL closed
+  except QUAL-60 (deferred summarization enhancement).
+
 - **2026-07-02 — QUAL-58 DONE — memory-hygiene sweep (QUAL-57 M4–M8), all five items, user-requested same-day.**
   **(M4)** the resampling cache is now byte-bounded: 4 MB total budget + 1 MB per-entry bypass (full synthesized
   TTS replies are never cached — that was the tens-of-MB retention), FIFO on either bound, `cache_bytes` surfaced

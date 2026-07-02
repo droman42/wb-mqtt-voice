@@ -1512,37 +1512,6 @@ class IntentHandlersResponse(BaseAPIResponse):
     handlers: Dict[str, IntentHandlerInfo] = Field(description="Available handlers information")
 
 
-class IntentActionCancelRequest(BaseAPIRequest):
-    """Request to cancel an active action"""
-    domain: str = Field(description="Domain of the action to cancel")
-    reason: str = Field(
-        default="User requested cancellation",
-        description="Reason for cancellation"
-    )
-    session_id: Optional[str] = Field(
-        default=None,
-        description="Session ID for targeted cancellation"
-    )
-
-
-class IntentActionResponse(BaseAPIResponse):
-    """Response for action operations"""
-    message: str = Field(description="Operation result message")
-    domain: Optional[str] = Field(description="Action domain")
-    reason: Optional[str] = Field(description="Action reason")
-    note: Optional[str] = Field(description="Additional notes")
-
-
-class IntentActiveActionsResponse(BaseAPIResponse):
-    """Response for active actions listing"""
-    message: str = Field(description="Response message")
-    active_actions: Optional[List[Dict[str, Any]]] = Field(
-        default=None,
-        description="List of active actions"
-    )
-    note: Optional[str] = Field(description="Additional notes")
-
-
 class IntentRegistryResponse(BaseAPIResponse):
     """Response for intent registry patterns"""
     patterns: Dict[str, Dict[str, Any]] = Field(description="Registry patterns information")

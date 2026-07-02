@@ -244,46 +244,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/intents/actions/cancel": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Cancel Action Endpoint
-         * @description Cancel an active fire-and-forget action
-         */
-        post: operations["cancel_action_endpoint_intents_actions_cancel_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/intents/actions/active": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get Active Actions Endpoint
-         * @description Get list of active fire-and-forget actions
-         */
-        get: operations["get_active_actions_endpoint_intents_actions_active_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/intents/registry": {
         parameters: {
             query?: never;
@@ -3616,7 +3576,7 @@ export interface components {
             max_sessions: number;
             /**
              * Max Context Length
-             * @description Maximum conversation context length
+             * @description Conversation turns kept in the LLM context window (older turns are dropped; the system prompt is kept)
              * @default 10
              */
             max_context_length: number;
@@ -4504,97 +4464,6 @@ export interface components {
             microphone_config?: components["schemas"]["MicrophoneInputConfig"];
             web_config?: components["schemas"]["WebInputConfig"];
             cli_config?: components["schemas"]["CLIInputConfig"];
-        };
-        /**
-         * IntentActionCancelRequest
-         * @description Request to cancel an active action
-         */
-        IntentActionCancelRequest: {
-            /**
-             * Domain
-             * @description Domain of the action to cancel
-             */
-            domain: string;
-            /**
-             * Reason
-             * @description Reason for cancellation
-             * @default User requested cancellation
-             */
-            reason: string;
-            /**
-             * Session Id
-             * @description Session ID for targeted cancellation
-             */
-            session_id?: string | null;
-        };
-        /**
-         * IntentActionResponse
-         * @description Response for action operations
-         */
-        IntentActionResponse: {
-            /**
-             * Success
-             * @description Whether the operation was successful
-             */
-            success: boolean;
-            /**
-             * Timestamp
-             * @description Unix timestamp when response was generated
-             */
-            timestamp?: number;
-            /**
-             * Message
-             * @description Operation result message
-             */
-            message: string;
-            /**
-             * Domain
-             * @description Action domain
-             */
-            domain: string | null;
-            /**
-             * Reason
-             * @description Action reason
-             */
-            reason: string | null;
-            /**
-             * Note
-             * @description Additional notes
-             */
-            note: string | null;
-        };
-        /**
-         * IntentActiveActionsResponse
-         * @description Response for active actions listing
-         */
-        IntentActiveActionsResponse: {
-            /**
-             * Success
-             * @description Whether the operation was successful
-             */
-            success: boolean;
-            /**
-             * Timestamp
-             * @description Unix timestamp when response was generated
-             */
-            timestamp?: number;
-            /**
-             * Message
-             * @description Response message
-             */
-            message: string;
-            /**
-             * Active Actions
-             * @description List of active actions
-             */
-            active_actions?: {
-                [key: string]: unknown;
-            }[] | null;
-            /**
-             * Note
-             * @description Additional notes
-             */
-            note: string | null;
         };
         /**
          * IntentAnalyticsResponse
@@ -9507,59 +9376,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["IntentHandlersResponse"];
-                };
-            };
-        };
-    };
-    cancel_action_endpoint_intents_actions_cancel_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["IntentActionCancelRequest"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["IntentActionResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    get_active_actions_endpoint_intents_actions_active_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["IntentActiveActionsResponse"];
                 };
             };
         };

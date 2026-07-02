@@ -638,7 +638,10 @@ class NLUComponent(Component, NLUPlugin, WebAPIPlugin):
         """
         try:
             from pathlib import Path
-            handler_dir = Path("irene/intents/handlers")
+            import irene.intents.handlers as handlers_pkg
+            # QUAL-59: derive from the package location, not the cwd — Path("irene/...") only
+            # resolved when the process happened to start at the repo root.
+            handler_dir = Path(handlers_pkg.__file__).resolve().parent
             handler_paths = self._discover_handler_files(handler_dir)
             handler_names = [path.stem for path in handler_paths]
             logger.info(f"Discovered all available handlers as fallback: {handler_names}")
@@ -661,9 +664,12 @@ class NLUComponent(Component, NLUPlugin, WebAPIPlugin):
             from ..core.intent_asset_loader import IntentAssetLoader, AssetLoaderConfig
             from pathlib import Path
             
-            # Use the unified asset loader's conversion method
+            # Use the unified asset loader's conversion method. The loader instance exists only
+            # for convert_to_keyword_donations (donations are injected below, nothing is read from
+            # disk here) — but give it a real root anyway: package-relative, not cwd-relative
+            # (QUAL-59; Path("assets") only resolved from the repo root).
             asset_config = AssetLoaderConfig()
-            assets_root = Path("assets")
+            assets_root = Path(__file__).resolve().parents[2] / "assets"
             asset_loader = IntentAssetLoader(assets_root, asset_config)
             
             # Set the donations directly and convert

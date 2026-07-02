@@ -715,14 +715,27 @@ def create_webapi_router(
     async def get_system_capabilities():
         """Get comprehensive system capabilities"""
         try:
+            # QUAL-59: derive provider/workflow lists from what is actually loaded — the old
+            # hardcoded lists drifted (they advertised a "continuous_listening" workflow that no
+            # longer exists and missed the llm NLU provider).
+            def _provider_names(component_name: str) -> List[str]:
+                comp = core.component_manager.get_component(component_name) \
+                    if core and getattr(core, "component_manager", None) else None
+                providers = getattr(comp, "providers", None)
+                return sorted(providers.keys()) if isinstance(providers, dict) else []
+
+            workflows: List[str] = []
+            if core and getattr(core, "workflow_manager", None):
+                workflows = sorted(core.workflow_manager.workflows.keys())
+
             capabilities = {
                 "version": __version__,
                 "components": {},
                 "intent_handlers": [],
-                "nlu_providers": ["hybrid_keyword_matcher", "spacy_nlu"],
-                "voice_trigger_providers": ["openwakeword"],
-                "text_processing_providers": ["unified", "number"],
-                "workflows": ["voice_assistant", "continuous_listening"]
+                "nlu_providers": _provider_names("nlu"),
+                "voice_trigger_providers": _provider_names("voice_trigger"),
+                "text_processing_providers": _provider_names("text_processor"),
+                "workflows": workflows
             }
             
             # Get component status if available

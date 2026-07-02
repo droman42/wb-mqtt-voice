@@ -436,7 +436,6 @@ class IntentComponent(Component, WebAPIPlugin):
             from fastapi import APIRouter, HTTPException, Body
             from ..api.schemas import (
                 IntentSystemStatusResponse, IntentHandlersResponse, IntentHandlerInfo,
-                IntentActionCancelRequest, IntentActionResponse, IntentActiveActionsResponse,
                 IntentRegistryResponse, IntentReloadResponse,
                 # Language-aware donation management schemas (Phase 3)
                 DonationContractResponse, DonationContractUpdateResponse,
@@ -530,35 +529,6 @@ class IntentComponent(Component, WebAPIPlugin):
                     handlers=handlers_info
                 )
             
-            @router.post("/actions/cancel", response_model=IntentActionResponse)
-            async def cancel_action_endpoint(request: IntentActionCancelRequest):
-                """Cancel an active fire-and-forget action"""
-                try:
-                    # This would need session_id parameter or session management
-                    # For now, return method availability info
-                    return IntentActionResponse(
-                        success=True,
-                        message="Action cancellation endpoint available",
-                        domain=request.domain,
-                        reason=request.reason,
-                        note="Full implementation requires session context"
-                    )
-                except Exception as e:
-                    raise HTTPException(500, f"Error cancelling action: {str(e)}")
-            
-            @router.get("/actions/active", response_model=IntentActiveActionsResponse)
-            async def get_active_actions_endpoint():
-                """Get list of active fire-and-forget actions"""
-                try:
-                    # This would need session context to be useful
-                    return IntentActiveActionsResponse(
-                        success=True,
-                        message="Active actions endpoint available",
-                        note="Full implementation requires session context"
-                    )
-                except Exception as e:
-                    raise HTTPException(500, f"Error getting active actions: {str(e)}")
-
             @router.get("/registry", response_model=IntentRegistryResponse)
             async def get_intent_registry():
                 """Get intent registry patterns"""

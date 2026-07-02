@@ -196,10 +196,6 @@ class MonitoringComponent(Component, WebAPIPlugin):
                     if hasattr(handler, 'set_metrics_collector'):
                         handler.set_metrics_collector(self.metrics_collector)
                     
-                    # Inject action debugger
-                    if hasattr(handler, 'set_action_debugger'):
-                        handler.set_action_debugger(self.action_debugger)
-                    
                     self.logger.debug(f"Integrated Phase 3 services with handler: {handler_name}")
                     
                 except Exception as e:

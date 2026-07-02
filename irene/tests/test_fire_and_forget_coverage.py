@@ -213,26 +213,6 @@ class TestCleanupAndHandlerHelpers(unittest.TestCase):
             self.assertTrue(all(t.cancelled() for t in tasks))
         asyncio.run(run())
 
-    def test_cancel_action_true_and_false(self):
-        async def run():
-            h = _handler()
-            ctx_yes = SimpleNamespace(cancel_action=lambda d, r: True,
-                                      remove_completed_action=lambda d, **k: None)
-            self.assertTrue(await h.cancel_action("timers", ctx_yes))
-            ctx_no = SimpleNamespace(cancel_action=lambda d, r: False)
-            self.assertFalse(await h.cancel_action("timers", ctx_no))
-        asyncio.run(run())
-
-    def test_get_active_actions_maps_context_view(self):
-        h = _handler()
-        ctx = SimpleNamespace(active_actions={
-            "timers": {"action": "timer_1", "handler": "Timer", "started_at": 5,
-                       "status": "running", "retry_count": 0}})
-        out = h.get_active_actions(ctx)
-        self.assertEqual(len(out), 1)
-        self.assertEqual(out[0]["domain"], "timers")
-        self.assertEqual(out[0]["action"], "timer_1")
-
 
 if __name__ == "__main__":
     unittest.main()
