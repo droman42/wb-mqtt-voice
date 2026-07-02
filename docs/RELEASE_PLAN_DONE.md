@@ -2339,6 +2339,21 @@ rationale/chronology lives in [`RELEASE_JOURNAL.md`](./RELEASE_JOURNAL.md).
       parity with Russian; no donation changes needed. No code/asset change. Design §2.
 
 ### Build & CI (BUILD)
+- [x] **BUILD-10** [BUILD][OPS] (P2) `[release]` — **DONE 2026-07-02.** The `ops/` deploy story per
+      `build_release_process.md` D-5 (bridge "deploy = pull, not build"): **`ops/docker-compose.yml`** (Irene on
+      `:6000`, `../.assets` mount — gitignored — mem 800m/1.5 cpu with tune-at-bring-up note, log caps; the
+      config-ui service behind a compose **profile** `ui` so D-4's "not on the controller" is one
+      `--profile ui up` away); **`ops/update.sh`** — syncs the git-owned assets subtrees (donations/localization/
+      prompts/templates/web + the two contract schemas, enumerated explicitly with `rsync --delete` per subtree)
+      into the assets mount, then `compose pull && up -d && image prune -f`; runtime-owned subtrees
+      (models/cache/state/traces/credentials) provably untouched — **verified with a sandbox sync test** (planted
+      model + durable-action record survived); **`ops/wb-mqtt-voice.service`** systemd oneshot;
+      **`ops/INSTALL.md`** (install/update/rollback/variants/recovery, bridge style — incl. the EN-image switch
+      and the vYYYYMMDD-sha rollback pin). Deploy loop on the WB = `git pull && ./ops/update.sh` — the manual
+      assets-artifact download is fully retired. `build-docker.md` deployment section rewritten around `ops/`
+      (`user-facing-docs-are-done`). Compose YAML + script syntax validated; the on-WB7 run folds into ARCH-25
+      bring-up as designed. _Closes the BUILD-8 arc: design → BUILD-9 (CI/publish, first fully green run
+      `7e2c50b`) → BUILD-10 (ops)._
 - [x] **BUILD-9** [BUILD] (P2) `[release]` — **DONE 2026-07-02.** Bridge-aligned CI/publish workflow implemented
       per `build_release_process.md` D-1…D-4/D-6/D-7. **`ci.yml`** replaces `backend-health` + `frontend-health` +
       `build-images` (all three deleted): `changes` path-filter → `ledger-guard` (`check_scope.py` now runs in CI) +

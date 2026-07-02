@@ -384,17 +384,6 @@ _Trace-driven system testing (design `docs/design/trace_system_testing.md`, TEST
       **and TEST-17.** Design §14.
 
 ### Build & CI (BUILD)
-- [ ] **BUILD-10** [BUILD][OPS] (P2) `[release]` — **`ops/` deploy story** per `build_release_process.md` D-5
-      (bridge "deploy = pull, not build" pattern): `ops/docker-compose.yml` (Irene `:6000`, assets volume,
-      mem limits, log caps; UI service present but disabled per D-4), `ops/update.sh` (rsync the repo
-      checkout's git-owned `assets/` subdirs — donations/templates/prompts/localization, enumerated explicitly
-      — into the writable assets root, **never touching** `models/ cache/ state/ traces/ credentials/`; then
-      `compose pull && up -d && image prune -f`), `ops/wb-mqtt-voice.service` systemd oneshot, `ops/INSTALL.md`
-      (install/update/rollback walkthrough, bridge style). Deploy loop on the WB = `git pull` + `./ops/update.sh`
-      — replaces the manual assets-artifact download. Rewrite `build-docker.md`'s deployment section around it.
-      **After BUILD-9** (compose references the new image names); final on-WB7 `update.sh` run folds into
-      ARCH-25 bring-up. _Filed 2026-07-02 on BUILD-8 completion._
-
 ### Internationalization (I18N)
 _Real English deployment across all three Docker arches (armv7/aarch64/x86_64) + English eval. Design
 `docs/design/multilingual_deployment.md` (I18N-1 ✓) → the implementation slices below. English models are slim and

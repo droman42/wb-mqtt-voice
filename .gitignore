@@ -128,3 +128,4 @@ eval/results-*.json
 eval/.env
 eval/profiles/configs/custom.env
 eval/profiles/recording.env
+.assets/

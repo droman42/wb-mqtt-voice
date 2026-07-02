@@ -1,0 +1,49 @@
+# Irene on a Wirenboard controller — deploy = pull, not build (BUILD-10, design D-5).
+# Lives in a git checkout of this repo on the controller; ./update.sh keeps the assets
+# mount in sync with the checkout and pulls fresh images. See INSTALL.md.
+#
+# Rollback: pin `image:` to a vYYYYMMDD-<sha> tag (see GHCR package page) and re-run
+# `docker compose up -d`. English deployment: switch the image to the `-en` variant
+# (ghcr.io/droman42/wb-mqtt-voice-armv7-en) — the language is baked into the image.
+
+services:
+  irene:
+    image: ghcr.io/droman42/wb-mqtt-voice-armv7:latest
+    container_name: wb-mqtt-voice
+    restart: unless-stopped
+    ports:
+      - "6000:6000"
+    volumes:
+      # The single assets root: git-owned content (synced in by update.sh) + everything
+      # the assistant writes (models download here on first boot; durable state lives in
+      # state/). Gitignored — `git pull` never touches it.
+      - ../.assets:/app/assets
+    # WB7 has 1 GB RAM shared with the bridge and system services; the ASR/TTS models are
+    # the big consumers. Tune on hardware bring-up.
+    mem_limit: 800m
+    cpus: 1.5
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # The configuration editor (donation/config editing). Deliberately NOT part of the
+  # standard controller deployment (design D-4) — enable on demand:
+  #   docker compose --profile ui up -d
+  ui:
+    image: ghcr.io/droman42/wb-mqtt-voice-ui:latest
+    container_name: wb-mqtt-voice-ui
+    profiles: ["ui"]
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      # Empty = the app talks to Irene on the same host the page is served from, :6000.
+      API_BASE_URL: ""
+    mem_limit: 64m
+    logging:
+      driver: json-file
+      options:
+        max-size: "5m"
+        max-file: "2"

@@ -50,9 +50,10 @@ Assets — donation phrasings, prompts, templates, and the downloaded speech mod
 image under a single assets root, so they survive upgrades and can be shared between containers. Mount a host
 directory at `/app/assets`:
 
-- The donations / prompts / templates tree lives in this repository under `assets/` — copy it from a checkout
-  into your host assets directory (`rsync -a assets/ /path/to/assets/`), and refresh it the same way after a
-  `git pull`. (A small `ops/` update script automating this on the controller is on its way.)
+- The donations / prompts / templates tree lives in this repository under `assets/` and travels by
+  `git pull`: on a controller, `ops/update.sh` syncs it from the checkout into the assets directory as part of
+  every update (see [`ops/INSTALL.md`](../../ops/INSTALL.md)); elsewhere, copy it once with
+  `rsync -a assets/ /path/to/assets/` and refresh after pulling.
 - Speech models are **not** in the image; they download into the same directory on first boot and stay there.
 - Runtime state the assistant writes (`models/`, `cache/`, `state/`, `traces/`) lives under the same root —
   never delete it as part of an assets refresh.
@@ -85,7 +86,12 @@ docker run --rm -p 6000:6000 \
 
 Both serve the full web API on 6000 alongside their primary input.
 
-## Compose
+## Compose and controller deployment
+
+The repository ships a ready deployment under [`ops/`](../../ops/INSTALL.md): a compose file (Irene plus the
+optional configuration editor behind a compose profile), a ten-line update script that syncs assets and pulls
+images, and a systemd unit — on a Wirenboard the whole loop is `git pull && ./ops/update.sh`. For a quick
+ad-hoc compose elsewhere:
 
 ```yaml
 services:

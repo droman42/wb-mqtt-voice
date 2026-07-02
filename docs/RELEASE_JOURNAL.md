@@ -15,6 +15,19 @@ newest entries near the top of each dated section.
 
 ## Action journal
 
+- **2026-07-02 — BUILD-10 DONE — the `ops/` deploy story lands; the BUILD-8 arc closes.** First: CI run 5
+  (`7e2c50b`) is **fully green** — the new `ci.yml` gate side is validated end to end after the four-defect
+  shakeout. Then the bridge's "deploy = pull, not build" pattern arrived here: `ops/docker-compose.yml` (Irene
+  `:6000`, gitignored `../.assets` mount, 800m/1.5cpu with a tune-at-bring-up note; config-ui behind a compose
+  `ui` profile per D-4), `ops/update.sh` (explicit per-subtree `rsync --delete` of the git-owned assets —
+  donations/localization/prompts/templates/web + the contract schemas — then compose pull/up/prune; a sandbox
+  test proved a planted model file and a durable-action record survive the sync), a systemd oneshot unit, and
+  `ops/INSTALL.md` (install/update/rollback/EN-variant/recovery). The controller loop is now
+  `git pull && ./ops/update.sh`, and the manual assets-artifact download is fully retired.
+  `build-docker.md` deployment section rewritten around `ops/`. Remaining from the arc: the first real publish
+  **dispatch** (validates the matrix + D-6 guards, yields actual sizes to tighten the budgets) and the on-WB7
+  `update.sh` run (folds into ARCH-25 bring-up).
+
 - **2026-07-02 — BUG-21 DONE + BUILD-9 CI shakeout — four live runs, four real defects, none of them the
   workflow's logic.** Greening the new `ci.yml` on real pushes surfaced, in order: **(1)** `.python-version` is a
   gitignored local pin → py-dev-gates needs an explicit `python-version: "3.11"`; **(2)** the `all` extra wasn't
