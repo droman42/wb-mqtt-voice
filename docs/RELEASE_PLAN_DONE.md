@@ -2928,3 +2928,17 @@ rationale/chronology lives in [`RELEASE_JOURNAL.md`](./RELEASE_JOURNAL.md).
       `KeyValueEditor` (the deleted `KeyValueOfStringArray` from UI-8 was a different, string-array variant). DoD met:
       `cd config-ui && npm run check` (type-check + lint 0-warn + orphan guard) + `npm run build` green. Refs: UI-5/UI-8.
 
+
+### Release Readiness (REL)
+- [x] **REL-1** (P0) `[release]` — **DONE 2026-07-04 (interactive session). Definition-of-release SIGNED OFF.**
+      Decisions: **(1) release artifact** = version tag **+ first real GHCR publish** (backend
+      `standalone-x86_64`/`embedded-aarch64`/`embedded-armv7` RU-at-minimum + config-ui image), boot-validated
+      where hardware allows → filed **BUILD-11** (dispatch + boot-check + real size budgets; the Docker clause
+      was unproven — no `workflow_dispatch` had ever run); **(2) explicit scope tags** on all previously
+      untagged open tasks — ARCH-8, QUAL-18, DOC-8, REL-2, REL-3 all `[release]` (user kept QUAL-18 and DOC-8
+      in scope); **(3) coverage criterion** replaced with the three named nets (unit suite + smoke e2e + eval
+      `make cli`) — no coverage-%; **(4) target** = milestone "scope-complete" (release when every `[release]`
+      task is `[x]`), no calendar date. Criteria reconciled against reality at sign-off: 6 of 8 already met and
+      checked with evidence (uv sync/boots, CI green, pyright **0 errors** standard mode, 10 import-linter
+      contracts, three nets green, live model URLs); remaining open: docs/quickstart (REL-2), config-ui
+      functional pass + Docker boot (REL-3 + BUILD-11). Checklist rewritten in `RELEASE_PLAN.md` header.

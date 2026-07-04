@@ -15,6 +15,21 @@ newest entries near the top of each dated section.
 
 ## Action journal
 
+- **2026-07-04 — REL-1 DONE — the Definition of Release is signed off; the road to release is now a closed,
+  explicit list.** Interactive session. The checklist was reconciled criterion-by-criterion against current
+  reality first: 6 of 8 exit criteria are already met with evidence (clean `uv sync` + CLI/WebAPI boots via the
+  hermetic smoke suite; CI green since BUILD-9; pyright standard mode at 0 errors with an empty suppression
+  list; 10 import-linter contracts; the test nets green; live model URLs re-verified this week by ASSET-4/5).
+  The reconciliation surfaced one real gap: **no publish dispatch has ever run — no Docker image has ever been
+  built for real**, so the Docker-boot clause was unproven → filed **BUILD-11** (first GHCR publish + boot
+  validation + replace placeholder size budgets with real-size-derived ones). User decisions: the release
+  artifact is a tag + published GHCR images (RU backends + config-ui); QUAL-18 and DOC-8 both STAY in release
+  scope (all previously untagged tasks now carry explicit tags — the implicit-default ambiguity is gone);
+  the vague "coverage understood" criterion replaced by the three named nets (unit + smoke e2e + eval CLI), no
+  coverage-%; the target is the "scope-complete" milestone, not a calendar date. Remaining to release, in
+  full: ARCH-8 (5 PRs) + QUAL-35 + QUAL-55 + QUAL-18 + DOC-8 (code/docs), ARCH-25 (hardware validation),
+  BUILD-11 + REL-2 + REL-3 (release mechanics).
+
 - **2026-07-04 — ARCH-29 + ASSET-5 DONE — «Ирина» lives in the server: wake-word model acquisition designed
   (interactive) and implemented; the training factory's first handoff consumed.** The user announced the first
   validated RU microWakeWord model (HF `droman42/microwakeword-irina-ru`, trained in

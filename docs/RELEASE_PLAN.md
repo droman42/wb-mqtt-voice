@@ -3,27 +3,40 @@
 The single active tracker for the road to release. Supersedes the legacy `docs/TODO.md` +
 `docs/TODO/TODO0x` (refactor-era, mostly complete — to be archived under DOC-2).
 
-**Target:** _TBD_ · **Status:** reviving (paused ~Sep 2025, restarted May 2026) · **Version:** 15.0.0
+**Target:** milestone — **scope-complete** (release when every `[release]` task is `[x]`; no calendar date; the gate
+is `scripts/check_scope.py` clean) · **Status:** active · **Version:** 15.0.0
 
 > **Completed tasks** (`[x]`) live in the frozen archive **[`RELEASE_PLAN_DONE.md`](./RELEASE_PLAN_DONE.md)** —
 > split out to keep this file the *active* working set (open tasks + structure). IDs are preserved there; grep it
 > when a reference or reconciliation (`task-start-reconciliation`) needs the detail of a closed task.
 
-## Definition of release (exit criteria) — _draft, refine_
+## Definition of release (exit criteria) — **SIGNED OFF 2026-07-04 (REL-1, interactive)**
 
 > **Scope gate (`single-task-ledger`):** release ships only when **every task tagged `[release]` is `[x]`**. Tasks default to
-> `[release]` unless explicitly marked `[deferred]` (post-release). Run `scripts/check_scope.py` at each gate to prove
-> nothing has drifted (orphan findings, dead links, contradictory status). The exit criteria below are the
-> human-readable summary of that gate.
+> `[release]` unless explicitly marked `[deferred]` (post-release); as of the sign-off every open task carries an
+> **explicit** tag. Run `scripts/check_scope.py` at each gate to prove nothing has drifted (orphan findings, dead
+> links, contradictory status). The exit criteria below are the human-readable summary of that gate.
+>
+> **The release artifact** = a version tag **+ the first real publish dispatch to GHCR** (backend images
+> `standalone-x86_64` / `embedded-aarch64` / `embedded-armv7`, RU at minimum, + the config-ui image), each
+> boot-validated where the hardware allows (x86_64 locally; ARM boot rides ARCH-25) — owned by **BUILD-11** + **REL-3**.
 
-- [ ] Clean `uv sync`; boots in CLI **and** WebAPI modes on x86_64, and as a Docker image.
-- [ ] CI green (re-enabled, current action versions).
-- [ ] No phantom-reference / runtime `NameError` bugs; pyright (standard) at/under an agreed threshold.
-- [ ] Import layering honored: no real cycles, no backwards cross-layer imports per an agreed contract.
-- [ ] Test suite runs and passes; coverage understood.
-- [ ] Models point to current versions with live download URLs.
-- [ ] Docs accurate at the release version; quickstart works end-to-end.
-- [ ] **`config-ui` builds (`tsc && vite build`), type-checks clean, and is functional against the release backend.**
+- [x] Clean `uv sync` (CI: `uv lock --check` + install); boots in CLI **and** WebAPI modes on x86_64
+      (smoke e2e, BUG-20-hermetic). _Docker-image boot → **BUILD-11** (never published yet; images build in CI only)._
+- [x] CI green — BUILD-9's gated `ci.yml` (changes-filter, py-dev-gates, config-validator, build-analyzer,
+      D-6 no-models guards), green on every push since 2026-07-02.
+- [x] No phantom-reference / runtime `NameError` bugs; **pyright (standard) = 0 errors, empty suppression list**
+      (QUAL-4 ratchet complete; CI-enforced — the "agreed threshold" is 0).
+- [x] Import layering honored — **10 import-linter contracts** (hexagon gate incl. ARCH-28 durable-store seam),
+      CI-enforced.
+- [x] Test suite green — **the three named nets**: unit suite (1173 pass) + smoke e2e (6, offline-hermetic) +
+      eval `make cli`. _No coverage-% criterion (decided 2026-07-04): the layered nets are the safety story._
+- [x] Models point to current versions with live download URLs (ASSET-2 sweep; ASSET-4 VAD + ASSET-5 wake-word
+      re-homed through the AssetManager with live-download verification 2026-07-04).
+- [ ] Docs accurate at the release version; quickstart works end-to-end → **REL-2** (curated `config-example.toml`,
+      README pointer, friendlier config-validation failure message).
+- [ ] **`config-ui` builds + type-checks clean** (CI-gated ✓) **and is functional against the release backend** —
+      the functional pass is a manual check at release time (**REL-3** checklist item).
 
 ---
 
@@ -135,7 +148,7 @@ and the structural refactors **move code** — so blind refactoring/fixing is th
 Target pattern: **Hexagonal (Ports & Adapters)** — SIGNED OFF 2026-06-01. Code is already ~80% there
 (interfaces=ports, providers=adapters, components=app services, entry-points=registry).
 See `docs/review/phase1_architecture_map.md` §5.
-- [ ] **ARCH-8** [MQTT] (P-TBD) — **★ ARCH-22 (2026-06-14):** the **voice-confirmation of actuation** feature (T-B,
+- [ ] **ARCH-8** [MQTT] (P-TBD) `[release]` — **★ ARCH-22 (2026-06-14):** the **voice-confirmation of actuation** feature (T-B,
       `docs/design/esp32_satellite.md` §10) rides this task — a sequenced `DEVICE_COMMAND → bridge rich DeliveryResult →
       derive text → SPEECH to the origin device` (opt-in `confirm_actuation_by_voice`; device-transparent, reply via
       ARCH-21). Implement it with ARCH-8's rich `DeliveryResult`. **★ Catalog contract amended 2026-06-15:** the bridge's
@@ -206,7 +219,7 @@ See `docs/review/phase1_architecture_map.md` §5.
       `ConversationIntentHandler._trim_llm_context` / `UnifiedConversationContext.trim_handler_messages` — the trim
       call is already the single choke point, so summarization slots in front of it without touching call sites.
       _Filed 2026-07-02 from BUG-18._
-- [ ] **QUAL-18** [STREAMAPI] (P-TBD) — Act on QUAL-17 (per `streaming_api_review.md` §5): **(1)** vendor + wire the
+- [ ] **QUAL-18** [STREAMAPI] (P-TBD) `[release]` — Act on QUAL-17 (per `streaming_api_review.md` §5): **(1)** vendor + wire the
       official `@asyncapi/web-component` at `/asyncapi`, delete the bespoke renderer (≈ −900 LOC); **(2)** fix the
       lossy `_clean_property_for_asyncapi` union/nullable handling; **(3, scoped separately)** emit AsyncAPI 3.0 +
       binary message bindings for ESP32 frames; **(4)** retire/repoint the docstring `x-` extension parser.
@@ -354,7 +367,17 @@ _Trace-driven system testing (design `docs/design/trace_system_testing.md`, TEST
       **and TEST-17.** Design §14.
 
 ### Build & CI (BUILD)
-### Internationalization (I18N)
+- [ ] **BUILD-11** [BUILD][DOCKER] (P1) `[release]` — **First real publish dispatch + image boot validation**
+      (filed at the REL-1 sign-off 2026-07-04 — the release artifact is tag + GHCR images, and **no
+      `workflow_dispatch` has ever run**, so criterion 1's Docker clause is unproven). Scope: **(1)** run the
+      BUILD-9 publish matrix for the backend targets (`standalone-x86_64`, `embedded-aarch64`, `embedded-armv7`
+      — RU at minimum; EN variants optional) + the config-ui image; **(2)** confirm the D-6 guards fire for real
+      (empty `/app/assets` assertion by digest; size budgets) and **replace the placeholder budgets
+      (3.5/4.5/10 GB) with real-size-derived ones**; **(3)** boot-validate `standalone-x86_64` locally via
+      `ops/docker-compose.yml` (web API on :6000, mounted assets root resolves, a model downloads into the
+      volume on first use); ARM images get structural checks here — their on-device boot is ARCH-25's item (1);
+      **(4)** record real image sizes in the journal. Rides the existing BUILD-9 workflow — this is an
+      *operation + verification* task, not new build code (any defect it surfaces gets its own BUG).
 _Real English deployment across all three Docker arches (armv7/aarch64/x86_64) + English eval. Design
 `docs/design/multilingual_deployment.md` (I18N-1 ✓) → the implementation slices below. English models are slim and
 size-matched to the Russian stack; language is a per-config/deployment choice (auto-detect is NOT wired to ASR/TTS)._
@@ -362,7 +385,7 @@ size-matched to the Russian stack; language is a per-config/deployment choice (a
 ### Models & Assets (ASSET)
 
 ### Documentation (DOC)
-- [ ] **DOC-8** (P1) — **Data & context-models map** → `docs/guides/DATA_MODELS.md`. **Downstream of QUAL-25
+- [ ] **DOC-8** (P1) `[release]` — **Data & context-models map** → `docs/guides/DATA_MODELS.md`. **Downstream of QUAL-25
       [DFLOW]** (re-categorized 2026-06-02): this is the *write-up* that distills the dataflow **review** into a
       concise developer reference; the investigation/findings now live in QUAL-25 → `docs/review/dataflow_review.md`.
       Do this **after** QUAL-25 lands, consuming its map + confirmed model lifecycle. A concise reference for how
@@ -411,15 +434,14 @@ Governed by `config-ui-stays-functional` (config-ui must stay functional).
       `code.toUpperCase()`; the `DonationsPage` `['en','ru']` fallback is a defensible default for a rare miss._
 
 ### Release Readiness (REL)
-- [ ] **REL-1** (P0) — Sign off the Definition-of-release checklist above (fill target + criteria).
-- [ ] **REL-2** (P1) — `config-example.toml` + quickstart finalization (the release-time config story).
+- [ ] **REL-2** (P1) `[release]` — `config-example.toml` + quickstart finalization (the release-time config story).
       _Progress 2026-06-07 (tester-handover prep):_ drafted **`docs/QUICKSTART.md`** (install → config → run CLI/WebAPI/
       config-ui → in/out-of-scope → reporting), and **fixed the `env-example.txt` template** (the quickstart's `.env`
       source crashed a fresh run: it enabled TTS but used the wrong field `AUDIO_OUTPUT`, leaving Audio off → invalid
       config). Recommends the lightweight `minimal`/`api-only` profiles for first run. **Remaining for release:** a curated
       `config-example.toml` (vs the heavy `config-master.toml`), final README pointer, and a friendlier runner message on
       config-validation failure.
-- [ ] **REL-3** (P1) — Version bump / changelog / tag.
+- [ ] **REL-3** (P1) `[release]` — Version bump / changelog / tag.
 
 ---
 
