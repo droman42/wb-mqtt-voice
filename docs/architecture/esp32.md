@@ -5,7 +5,8 @@ A voice satellite is a cheap microphone-and-speaker node in a room. It does the 
 Irene can serve a house full of them.
 
 > **Status: Irene's side built, firmware pending.** The WebSocket transport, the identity handshake, *and*
-> the spoken reply back to the device all exist today (`/ws/audio` in, `/ws/audio/reply` out). What's left is
+> the spoken reply back to the device all exist today (`/ws/audio` in, `/ws/audio/reply` out — frame-by-frame
+> reference: the [WebSocket API guide](../guides/websocket-api.md)). What's left is
 > the **ESP32 firmware**: mic capture, the on-device wake word (a per-satellite microWakeWord model, loaded at
 > runtime from a flash partition so a new word doesn't need a reflash), and playing the reply. The whole
 > satellite — wire protocol, provisioning, models, OTA — is laid out in the

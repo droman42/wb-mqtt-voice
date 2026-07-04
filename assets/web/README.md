@@ -7,8 +7,7 @@ This directory contains web-related assets for the Irene Voice Assistant WebAPI 
 ```
 assets/web/
 ├── templates/          # HTML templates
-│   ├── index.html      # Main web interface
-│   └── asyncapi.html   # AsyncAPI documentation page
+│   └── index.html      # Main web interface
 ├── static/             # Static assets (for future use)
 │   ├── css/           # CSS stylesheets
 │   └── js/            # JavaScript files
@@ -31,7 +30,6 @@ The web asset loader automatically handles safe variable substitution without in
 ### Available Templates
 
 - **index.html**: Main web interface with command input form
-- **asyncapi.html**: Interactive AsyncAPI WebSocket documentation
 
 ## Integration
 

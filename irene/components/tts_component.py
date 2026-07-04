@@ -833,7 +833,8 @@ class TTSComponent(Component, TTSPlugin, WebAPIPlugin, TTSPort):
 
     # ARCH-21 PR-4: the /tts/stream + /tts/binary WebSocket endpoints were removed (untested
     # request/response synthesis API that contradicts reply-to-device delivery). No WS endpoints
-    # remain, so get_websocket_spec falls back to the WebAPIPlugin default (None).
+    # remain. (QUAL-18 later retired the AsyncAPI machinery those endpoints were documented with;
+    # the live WS protocols are documented in docs/guides/websocket-api.md.)
 
     # Build dependency methods (TODO #5 Phase 2)
     @classmethod

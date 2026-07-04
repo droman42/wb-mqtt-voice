@@ -7,17 +7,10 @@ API endpoints (REST, WebSocket, etc.) across Irene components.
 
 from .schemas import (
     # Base schemas
-    BaseAPIMessage,
     BaseAPIRequest,
     BaseAPIResponse,
     ErrorResponse,
     # ASR schemas
-    AudioChunkMessage,
-    TranscriptionResultMessage,
-    TranscriptionErrorMessage,
-    BinaryAudioSessionMessage,
-    BinaryAudioStreamMessage,
-    BinaryWebSocketProtocol,
     ASRTranscribeRequest,
     ASRTranscribeResponse,
     ASRProvidersResponse,
@@ -49,17 +42,10 @@ from .schemas import (
 
 __all__ = [
     # Base schemas
-    "BaseAPIMessage",
     "BaseAPIRequest", 
     "BaseAPIResponse",
     "ErrorResponse",
     # ASR schemas
-    "AudioChunkMessage",
-    "TranscriptionResultMessage",
-    "TranscriptionErrorMessage",
-    "BinaryAudioSessionMessage",
-    "BinaryAudioStreamMessage",
-    "BinaryWebSocketProtocol",
     "ASRTranscribeRequest",
     "ASRTranscribeResponse", 
     "ASRProvidersResponse",

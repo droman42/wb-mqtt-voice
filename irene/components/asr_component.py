@@ -22,7 +22,6 @@ from ..intents.models import AudioData
 from ..intents.ports import ASRPort  # QUAL-24: domain capability port (application implements it)
 from ..core.metrics import get_metrics_collector
 from ..utils.audio_helpers import AudioTranscoder
-from ..api.asyncapi import extract_websocket_specs_from_router
 
 
 # Import ASR provider base class and dynamic loader
@@ -693,21 +692,6 @@ class ASRComponent(MetricsPushMixin, Component, ASRPlugin, WebAPIPlugin, ASRPort
     def get_api_tags(self) -> List[str]:
         """Get OpenAPI tags for ASR endpoints"""
         return ["Speech Recognition"]
-    
-    def get_websocket_spec(self) -> Optional[dict]:
-        """Get AsyncAPI specification for ASR WebSocket endpoints"""
-        try:
-            router = self.get_router()
-            if router:
-                return extract_websocket_specs_from_router(
-                    router=router,
-                    component_name="asr",
-                    api_prefix=self.get_api_prefix()
-                )
-            return None
-        except Exception as e:
-            logger.error(f"Error generating AsyncAPI spec for ASR component: {e}")
-            return None
     
     # Build dependency methods (TODO #5 Phase 2)
     @classmethod

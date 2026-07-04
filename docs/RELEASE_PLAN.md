@@ -225,11 +225,6 @@ See `docs/review/phase1_architecture_map.md` §5.
       `ConversationIntentHandler._trim_llm_context` / `UnifiedConversationContext.trim_handler_messages` — the trim
       call is already the single choke point, so summarization slots in front of it without touching call sites.
       _Filed 2026-07-02 from BUG-18._
-- [ ] **QUAL-18** [STREAMAPI] (P-TBD) `[release]` — Act on QUAL-17 (per `streaming_api_review.md` §5): **(1)** vendor + wire the
-      official `@asyncapi/web-component` at `/asyncapi`, delete the bespoke renderer (≈ −900 LOC); **(2)** fix the
-      lossy `_clean_property_for_asyncapi` union/nullable handling; **(3, scoped separately)** emit AsyncAPI 3.0 +
-      binary message bindings for ESP32 frames; **(4)** retire/repoint the docstring `x-` extension parser.
-
 
 #### Cross-cutting systemic remediation — principles (the Gate 2 lens)
 _Apply to every remediation task below (from the 4 review docs + QUAL-25/26). Source: `dataflow_reconciliation.md`._

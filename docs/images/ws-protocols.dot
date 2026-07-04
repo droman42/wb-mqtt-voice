@@ -1,0 +1,27 @@
+// Irene — the four WebSocket channels. Render:
+//   dot -Tpng docs/images/ws-protocols.dot -o docs/images/ws-protocols.png
+digraph ws_protocols {
+  rankdir=LR; bgcolor="white"; splines=spline; nodesep=0.6; ranksep=1.3;
+  fontname="Helvetica"; labelloc=t; fontsize=14;
+  label="Four sockets: the satellite pair carries voice in and speech out; the operator pair pushes text and taps events";
+  node [fontname="Helvetica", fontsize=10, shape=box, style="filled,rounded", penwidth=1.4];
+  edge [fontname="Helvetica", fontsize=9, color="#616161", arrowsize=0.7];
+
+  subgraph cluster_sat {
+    label="voice satellite (ESP32 / any mic client)"; fontsize=12; color="#ce93d8"; style=rounded; margin=12;
+    sat [label="microphone + speaker\nwake word on-device", fillcolor="#f3e5f5", color="#7b1fa2"];
+  }
+
+  irene [label="Irene\n(ASR · NLU · intents · TTS)", fillcolor="#e8f5e8", color="#388e3c"];
+
+  subgraph cluster_ops {
+    label="text clients / operator"; fontsize=12; color="#90caf9"; style=rounded; margin=12;
+    web [label="web app / scripts", fillcolor="#e3f2fd", color="#1976d2"];
+    dbg [label="debug observer", fillcolor="#e3f2fd", color="#1976d2"];
+  }
+
+  sat -> irene [label="/ws/audio — voice in\nregister → registered\nPCM frames · end\n← partial · response", dir=both];
+  irene -> sat [label="/ws/audio/reply — speech out\nregister-reply → registered\nspeak_begin · PCM · speak_end\n+ missed announcements on reconnect"];
+  web -> irene [label="/ws/output — pushed text\nconnected · message\n(deferred results)", dir=both];
+  irene -> dbg [label="/ws/observe — event tap\ntoken-gated · subscribed\nevent stream", style=dashed];
+}

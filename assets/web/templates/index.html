@@ -19,8 +19,9 @@
         </div>
         
         <p><strong>REST API Documentation:</strong> <a href="/docs">/docs</a></p>
-        <p><strong>WebSocket API Documentation:</strong> <a href="/asyncapi">/asyncapi</a></p>
-        <p><strong>Component WebSockets:</strong> /asr/stream (speech recognition), /asr/binary (optimized for ESP32)</p>
+        <p><strong>WebSockets:</strong> /ws/audio (voice input), /ws/audio/reply (spoken replies),
+           /ws/output (pushed text), /ws/observe (event tap) &mdash; protocol reference:
+           <code>docs/guides/websocket-api.md</code> in the repository</p>
         <p><strong>REST API:</strong> POST /execute/command (text), POST /execute/audio (audio files)</p>
     </div>
     

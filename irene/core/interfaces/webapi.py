@@ -84,44 +84,12 @@ class WebAPIPlugin(EntryPointMetadata):
         """
         return None
         
-    def get_websocket_spec(self) -> Optional[dict]:
-        """
-        Get AsyncAPI specification fragment for WebSocket endpoints.
-        
-        This method should return an AsyncAPI specification fragment
-        containing channels and message definitions for WebSocket endpoints
-        exposed by this plugin.
-        
-        Returns:
-            AsyncAPI spec fragment dict or None if no WebSocket endpoints
-            
-        Example:
-            {
-                "channels": {
-                    "/stream": {
-                        "description": "Real-time data streaming",
-                        "subscribe": {
-                            "message": {"$ref": "#/components/messages/InputMessage"}
-                        },
-                        "publish": {
-                            "message": {"$ref": "#/components/messages/OutputMessage"}
-                        }
-                    }
-                },
-                "messages": {
-                    "InputMessage": {...},
-                    "OutputMessage": {...}
-                }
-            }
-        """
-        return None
-
 
 def web_api_components(core: Any) -> List[Tuple[str, "WebAPIPlugin"]]:
     """Return ``(name, component)`` for every component implementing :class:`WebAPIPlugin`.
 
     Single source of the "iterate the component manager, filter ``WebAPIPlugin``" walk used by router
-    mounting and AsyncAPI/OpenAPI spec generation. Degrades gracefully — returns ``[]`` (logging a
+    mounting and OpenAPI spec generation. Degrades gracefully — returns ``[]`` (logging a
     warning) when there is no component manager or the lookup fails, so callers never crash on it.
     """
     cm = getattr(core, "component_manager", None) if core else None

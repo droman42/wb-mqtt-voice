@@ -45,7 +45,8 @@ Run with **`make cli`** — no service, no key, no fixtures.
 
 ## A WS system case (speech → transcript / intent)
 
-These stream an audio fixture at the live `/ws/audio` endpoint and assert on the result. The `audio` var is the
+These stream an audio fixture at the live `/ws/audio` endpoint (protocol: the
+[WebSocket API guide](websocket-api.md)) and assert on the result. The `audio` var is the
 fixture; `reference` is what was spoken.
 
 Transcript accuracy (word error rate, scored by `jiwer`):

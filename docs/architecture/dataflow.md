@@ -45,7 +45,7 @@ Step 1 hides a small pipeline of its own — how raw audio becomes that transcri
   capability, CD by default — through the same machinery: any device plays lower, so it's never upsampled.
 
 See [VAD](../guides/vad.md), [voice trigger](../guides/voice-trigger.md) and [audio](../guides/audio.md) for
-the knobs.
+the knobs, and the [WebSocket API](../guides/websocket-api.md) for the wire protocols a device speaks.
 
 ## Fire-and-forget, and deferred results
 

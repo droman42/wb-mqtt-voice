@@ -771,6 +771,26 @@ rationale/chronology lives in [`RELEASE_JOURNAL.md`](./RELEASE_JOURNAL.md).
       Dependabot alerts (commits 05aa763/4e05a38) — no risky major bumps. **No code until scheduled + green-lit.**
 
 ### Code Quality & Review (QUAL)
+- [x] **QUAL-18** [STREAMAPI] (P-TBD) `[release]` — **DONE 2026-07-04, RE-SCOPED at task start (user, interactive)
+      from "swap renderer, keep generator" to "retire the AsyncAPI subsystem, replace with a user-facing protocol
+      guide".** Reconciliation killed the original plan's premise: the live `/asyncapi.json` emitted
+      **`channels: {}`** (verified against a running server) — every documented channel (`/asr/stream|binary`,
+      `/tts/stream|binary`) had been deleted by later work (ARCH-21 PR-4, ARCH-10) while the four REAL WS
+      endpoints (`/ws/audio`, `/ws/audio/reply`, `/ws/observe`, `/ws/output`) were never in the spec; the
+      "code-first can't drift" premise self-refuted (decorators document claims, not `send_json` reality).
+      2026 ecosystem re-check: renderer solved (`@asyncapi/react-component` v3.1.3, offline-vendorable) but NO
+      maintained FastAPI-WS→AsyncAPI introspector exists (fastws dead since 2023); user chose retirement over
+      spec-as-artifact/rebuild. **Deleted (~2,000 LOC):** `irene/api/asyncapi.py` (474), `irene/web_api/`,
+      bespoke renderer (`asyncapi.html`/`.js`/`.css`, 923), 7 dead WS message models in `api/schemas.py` (343),
+      `get_websocket_spec` interface + ASR override, `_generate_asyncapi_spec` + 4 routes
+      (`/asyncapi{,.json,.yaml}`, `/debug/asyncapi`), `irene.web_api` refs in import-linter contracts.
+      **Replaced by:** `docs/guides/websocket-api.md` — all four live WS protocols frame-by-frame (register
+      handshake, streaming/batch utterance loops + BUG-13/17 bounds, canonical QUAL-55 response frame,
+      `speak_begin/PCM/speak_end`, missed-announcement redelivery, `/ws/output` client_id pairing,
+      `/ws/observe` token gate + filters, a runnable Python example) + `docs/images/ws-protocols.{dot,png}`
+      (house style) + links from `dataflow.md`/`esp32.md`/`howto-new-test.md`; web index page repointed
+      (it also listed the deleted `/asr/stream|binary`). Verified live: `/asyncapi*` → 404, index renders the
+      guide pointer. Suite 1180 green; 10 import contracts kept; smoke green.
 - [x] **QUAL-61** [QUAL][FAF] (P3) `[deferred]` — **DONE 2026-07-02.** Dead-capability removal, all three cuts per
       ARCH-27 D-7 (user preference: dead code removed). **(1)** Retry machinery: `_execute_with_retry` +
       `_is_transient_failure` deleted (−98 LOC), `max_retries`/`retry_delay` launch params removed from both F&F

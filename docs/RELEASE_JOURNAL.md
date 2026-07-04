@@ -15,6 +15,24 @@ newest entries near the top of each dated section.
 
 ## Action journal
 
+- **2026-07-04 — QUAL-18 DONE (re-scoped) — the AsyncAPI subsystem is retired; the WebSocket protocols
+  finally have accurate documentation.** The user asked for a deep dig before implementation, and the dig
+  changed everything: the live `/asyncapi.json` emitted **zero channels** (verified against a running
+  server) — all four documented endpoints had been deleted by ARCH-21/ARCH-10 while the four real ones
+  (`/ws/audio`, `/ws/audio/reply`, `/ws/observe`, `/ws/output`) were never in the spec. ~1,400 LOC of
+  bespoke generator+renderer were rendering an empty page, and the "code-first docs can't drift" premise
+  had self-refuted (decorators document claims, not what `send_json` does). The 2026 ecosystem check found
+  the renderer side solved (`@asyncapi/react-component` v3.1.3, offline-vendorable) but still no maintained
+  FastAPI-WS→AsyncAPI introspector (fastws dead since 2023; FastStream still broker-shaped). Presented
+  spec-as-artifact / code-first-rebuild / retire; **user chose retire + a user-facing guide.** Deleted
+  ~2,000 LOC (generator, renderer, `irene/web_api/`, 7 dead WS message models, the interface method, 4
+  routes, contract refs); wrote `docs/guides/websocket-api.md` — all four protocols frame-by-frame, the
+  QUAL-55 canonical response frame, the reply channel's `speak_begin/PCM/speak_end` brackets,
+  missed-announcement redelivery, a runnable Python example — plus a house-style diagram
+  (`ws-protocols.dot/png`) and links from dataflow/esp32/howto-new-test. The web index page was also lying
+  (linked `/asyncapi` and listed the deleted `/asr/stream|binary`) — repointed. Verified live: `/asyncapi*`
+  404, index shows the guide pointer. Suite 1180 + smoke + 10 contracts green.
+
 - **2026-07-04 — QUAL-55 DONE — the five execution surfaces speak one result shape.** The review's root
   cause (`api_result_contract_review.md`: no shared serializer, five hand-built dicts drifting apart) is
   closed with `irene/api/serializers.py::serialize_intent_result` — canonical
