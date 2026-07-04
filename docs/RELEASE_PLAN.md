@@ -148,7 +148,13 @@ and the structural refactors **move code** — so blind refactoring/fixing is th
 Target pattern: **Hexagonal (Ports & Adapters)** — SIGNED OFF 2026-06-01. Code is already ~80% there
 (interfaces=ports, providers=adapters, components=app services, entry-points=registry).
 See `docs/review/phase1_architecture_map.md` §5.
-- [ ] **ARCH-8** [MQTT] (P-TBD) `[release]` — **★ ARCH-22 (2026-06-14):** the **voice-confirmation of actuation** feature (T-B,
+- [ ] **ARCH-8** [MQTT] (P-TBD) `[release]` — **BLOCKED (2026-07-04, user): wait for bridge `SCN-4` + `VWB-15`.**
+      `VWB-15` supplies the committed catalog/openapi contract artifact (→ TEST-17 pins it; PR-2/PR-3 build
+      against it offline), and `SCN-4` (the bridge's mandatory scenario↔Wirenboard redesign) can reshape what
+      the catalog exposes as actuation targets (scenario/aggregate semantics) — starting the `DeviceCatalog`
+      consumer before it settles risks building against a contract about to change. Do not start (incl. PR-1)
+      until both land bridge-side; when `VWB-15` lands, un-defer **TEST-17** first (pin the artifact), then
+      open PR-1. _Orig:_ **★ ARCH-22 (2026-06-14):** the **voice-confirmation of actuation** feature (T-B,
       `docs/design/esp32_satellite.md` §10) rides this task — a sequenced `DEVICE_COMMAND → bridge rich DeliveryResult →
       derive text → SPEECH to the origin device` (opt-in `confirm_actuation_by_voice`; device-transparent, reply via
       ARCH-21). Implement it with ARCH-8's rich `DeliveryResult`. **★ Catalog contract amended 2026-06-15:** the bridge's
