@@ -361,12 +361,24 @@ _Trace-driven system testing (design `docs/design/trace_system_testing.md`, TEST
 (TEST-12/13/14/15) done; see `RELEASE_PLAN_DONE.md`._
 
 - [ ] **TEST-18** [EVAL][MQTT] (P3) `[deferred]` — **The `device_command` capture provider + Irene producer contract
-      tests (ARCH-26 §14).** A new eval-commons promptfoo provider that drives Irene with an utterance and returns the
-      emitted canonical `DeviceCommand` (captured by the PR-1 capturing bridge `OutputPort`, not POSTed) for assertion
-      against the TEST-17 crossover fixtures + openapi schema — the **producer** half of the bidirectional contract
-      (the bridge's consumer half = VWB-16). **Text-input first** (isolates NLU→resolver→handler, deterministic, no
-      audio/bridge); audio→canonical later. **Gated on ARCH-8 PR-1** (supplies `DeviceCommand` + the capturing output)
-      **and TEST-17.** Design §14.
+      tests (ARCH-26 §14).** Two slices (fixtures-first fold, user 2026-07-05):
+      • **Slice A — crossover fixtures (UNGATED — startable now, pure data against the TEST-17 pin).** Author the
+        `{utterance → expected canonical command}` set into `eval-commons/contracts/` next to the pinned golden:
+        every parse+resolution path the golden exercises — power on/off via alias («включи свет в детской»),
+        ranged setters with units («поставь 22 градуса в спальне» → `climate.set_setpoint {temp: 22}`), percent
+        («яркость на 30»), cover, aggregates («выключи свет везде» → `all_lights`), scenario enums by ru label
+        («кино с видеокассеты» → `scenario.set {value: movie_vhs}`), room-alias forms («в зале»), sensor read.
+        Immediately consumable by the bridge's VWB-16 consumer half; voice-side they are the **acceptance spec
+        PR-3/PR-4 build toward** (test-first — the resolver meets a pre-existing failing suite, not post-hoc
+        assertions). NO input-switching fixtures (bridge VWB-19 gate, per QUAL-35 note).
+      • **Slice B — the capture provider + executable producer tests (gated on ARCH-8 PR-1).** A new eval-commons
+        promptfoo provider drives Irene with an utterance and returns the emitted canonical `DeviceCommand`
+        (captured by the PR-1 capturing bridge `OutputPort`, not POSTed) for assertion against the Slice-A
+        fixtures + the pinned openapi schema — the **producer** half of the bidirectional contract (the bridge's
+        consumer half = VWB-16). **Text-input first** (isolates NLU→resolver→handler, deterministic, no
+        audio/bridge); audio→canonical later (recorded RU fixtures, WS-suite pattern). The full suite turns
+        EXECUTABLE at ARCH-8 PR-4 + the QUAL-35 T1 donation baseline. ~~Gated on TEST-17~~ (pinned 2026-07-05).
+        Design §14.
 
 ### Build & CI (BUILD)
 - [ ] **BUILD-11** [BUILD][DOCKER] (P1) `[release]` — **First real publish dispatch + image boot validation**
