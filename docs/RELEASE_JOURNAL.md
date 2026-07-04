@@ -15,6 +15,18 @@ newest entries near the top of each dated section.
 
 ## Action journal
 
+- **2026-07-05 — TEST-17 DONE — the contract is pinned; both repos now test against the same committed
+  boundary.** The bridge's v1.1 artifacts (bridge `59f4f46`, catalog `7a1149c7`) copied byte-identical into
+  `eval-commons/contracts/` with a voice-side `PIN.json` and a consumer README (bridge generates, voice
+  re-pins, both suites read this copy — no cross-repo writes, §14 publish boundary). The pin is load-bearing,
+  not decorative: 8 new eval-commons tests validate the golden against the pinned `CatalogResponse` schema
+  itself (the two halves of the pin cannot disagree), check STAMP↔PIN↔golden version agreement, and assert
+  the v1.1 shape guarantees (authored aliases, ru enum labels, °C/% units, `values`-XOR-`options_from`, no
+  empty capability husks) — so accidentally re-pinning a pre-patch artifact fails in seconds. Deliberately
+  sequenced pin-after-patch: the first pin is the only pin. Carve-outs recorded in the ledger entry: the
+  real WB7 dump rides the bridge's controller cutover; the crossover fixtures co-develop with ARCH-8
+  PR-1/TEST-18. The MQTT arc's opening move is done — ARCH-8 PR-1 is next.
+
 - **2026-07-05 — The bridge contract is voice-ready; ARCH-8's gate is met and the conclusions are in the
   ledger.** Closes the loop opened 2026-07-04, when the user asked how smart-home intents get their donations
   before starting ARCH-8. The analysis of the freshly committed bridge `contracts/` established the story —

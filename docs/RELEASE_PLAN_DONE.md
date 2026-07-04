@@ -2096,6 +2096,20 @@ rationale/chronology lives in [`RELEASE_JOURNAL.md`](./RELEASE_JOURNAL.md).
       runner overriding component config is its own smell — relevant to the `--set` work, worth a future look._
 
 ### Tests (TEST)
+- [x] **TEST-17** [EVAL][MQTT] (P2) `[release]` — **DONE 2026-07-05. The Irene↔bridge contract pinned into
+      `eval-commons/contracts/`** (ARCH-26 §14 one-way inward sync; eval-commons `e571241`). Pinned byte-identical
+      from `wb-mqtt-bridge/contracts/` @ bridge `59f4f46` / catalog `7a1149c7` (contract patch **v1.1** + alias
+      vocabulary — pinning deliberately waited for VWB-20 so the first pin is the only pin): (a)
+      `openapi.json` (CatalogResponse + typed `CatalogParam` + canonical action shapes); (b) `catalog.golden.json`
+      (11 rooms + `global` aggregates + scenario managers, aliases, ru/en enum labels, units); plus the bridge
+      `STAMP.json`, a voice-side `PIN.json` (commit/version/date of the pin), and a consumer-story
+      `contracts/README.md` (re-pin procedure). (e) **The pin is load-bearing**: `tests/test_contracts_pin.py`
+      (8) validates the golden against the pinned `CatalogResponse` JSON Schema (the two halves can't disagree),
+      checks STAMP↔PIN↔golden version agreement, and asserts the v1.1 shape guarantees (aliases authored, ru
+      enum labels, °C/% units, `values`-XOR-`options_from`, no empty husks) — re-pinning a pre-patch artifact
+      fails loudly. **Carve-outs:** (c) the real WB7 dump joins when the bridge's `ops/` cutover happens (its
+      own README tracks it); (d) the `{utterance → canonical command}` crossover fixtures co-develop with
+      ARCH-8 PR-1 / TEST-18 (recorded there). `jsonschema` added to eval-commons dev extra.
 - [x] **TEST-16** [EVAL][UX] (P3) `[deferred]` — **DONE 2026-07-02 (user suspected obsolete; reconciliation
       showed it was blocked on the user's own gold labels — completed interactively in-session).** The DeepSeek
       Russian UX judge is now **calibrated against native-Russian-speaker gold labels**: a regenerated 20-case set

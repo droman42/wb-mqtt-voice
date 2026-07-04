@@ -360,25 +360,6 @@ _Discrete functional defects (distinct from QUAL refactors/quality work). Surfac
 _Trace-driven system testing (design `docs/design/trace_system_testing.md`, TEST-11 ✓) — all implementation slices
 (TEST-12/13/14/15) done; see `RELEASE_PLAN_DONE.md`._
 
-- [ ] **TEST-17** [EVAL][MQTT] (P2) `[release]` — **UNBLOCKED + re-tagged 2026-07-05** (was `[deferred]` P3,
-      gated on VWB-15): the bridge landed VWB-15 **and** the VWB-20 v1.1 contract patch **and** the VWB-21
-      alias vocabulary — pinning waited for v1.1 by design (pin once, never re-pin days later). **Pin target:
-      bridge commit `59f4f46` / catalog version `7a1149c7`** (`contracts/{catalog.golden.json, openapi.json,
-      STAMP.json}`). Re-tagged `[release]` because the recorded ARCH-8 sequencing makes this the first step of
-      the release-scoped MQTT arc (TEST-17 pin → ARCH-8 PR-1). Items (a)–(c)+(e) are ready now; item (d) — the
-      `{utterance → expected canonical command}` crossover fixtures — co-develops with ARCH-8 PR-1/QUAL-35.
-      _Orig:_ **The Irene↔bridge catalog contract bundle in eval-commons (ARCH-26
-      §14).** A committed, shared artifact both repos pin so each builds against the boundary with no live counterpart:
-      (a) the bridge's FastAPI **`/openapi.json`** pinned (carries **both** `CatalogResponse` and the canonical
-      action-request body — no bespoke schema); (b) a **curated golden catalog** ("the works" — rooms, device classes,
-      `global`/`all_lights` aggregates, every capability incl. sensor-read, `{wire,canonical,labels}` enum triplets,
-      param schemas, localized ru/en names/aliases); (c) a **real WB7 catalog dump** as a realism check; (d) the
-      canonical `DeviceCommand` schema + a set of **`{utterance → expected canonical command}` crossover fixtures** both
-      sides test against; (e) a **schema-validation/drift check**. **This task owns the one-way sync:** it pins a copy of
-      the bridge's committed reference artifacts into `eval-commons/contracts/` (with a version stamp naming the bridge
-      commit) — the bridge does **not** write into eval-commons (§14 publish boundary). Unblocks ARCH-8 PR-1/PR-3 (build
-      the `DeviceCatalog` + resolver offline). **Gated on VWB-15** (bridge emits + commits the openapi + golden/real
-      samples in its own repo). Doubles as the eval `mqtt`/`http` seed. Design §14; pairs with TEST-18.
 - [ ] **TEST-18** [EVAL][MQTT] (P3) `[deferred]` — **The `device_command` capture provider + Irene producer contract
       tests (ARCH-26 §14).** A new eval-commons promptfoo provider that drives Irene with an utterance and returns the
       emitted canonical `DeviceCommand` (captured by the PR-1 capturing bridge `OutputPort`, not POSTed) for assertion
