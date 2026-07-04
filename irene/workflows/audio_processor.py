@@ -203,9 +203,35 @@ class VoiceSegmenter:
             logger.warning(f"VAD provider '{default}' not found; falling back to 'energy'")
         provider_cfg = (all_cfg.get("providers") or {}).get(name, {})
         self._provider_cfg = provider_cfg  # the active provider's block (energy params for calibration)
+        self._all_provider_cfg = all_cfg.get("providers") or {}  # kept for the energy fallback (ASSET-4)
         provider = provider_cls(provider_cfg)
         logger.info(f"VAD provider: {provider.get_provider_name()}")
         return provider
+
+    async def initialize(self) -> None:
+        """Async provider warmup (ASSET-4). Providers that need assets fetch them HERE — through the
+        AssetManager (lock, temp+rename, partial-download healing) — never on the per-frame hot path.
+        If the configured provider can't come up (model download failed, optional dep missing), fall
+        back to `energy` (always available, no assets) so voice detection keeps working instead of
+        silently reporting silence every frame."""
+        provider = self.vad_engine
+        try:
+            if await provider.is_available():
+                await provider.initialize()
+                return
+            reason = "provider reports unavailable (missing optional dependency?)"
+        except Exception as e:
+            reason = str(e)
+        if provider.get_provider_name() == "energy":
+            raise RuntimeError(f"energy VAD failed to initialize: {reason}")
+        logger.error(
+            f"VAD provider '{provider.get_provider_name()}' failed to initialize ({reason}); "
+            f"falling back to 'energy'"
+        )
+        classes = dynamic_loader.discover_providers("irene.providers.vad", ["energy"])
+        self._provider_cfg = self._all_provider_cfg.get("energy", {})
+        self.vad_engine = classes["energy"](self._provider_cfg)
+        await self.vad_engine.initialize()
 
     def set_voice_segment_callback(self, callback: Callable[[VoiceSegment], None]):
         """
@@ -755,7 +781,11 @@ class AudioProcessorInterface:
         """
         self.processor = VoiceSegmenter(vad_config, collect_vad_frames=collect_vad_frames)
         self.vad_config = vad_config  # Store config for normalization settings
-        
+
+    async def initialize(self) -> None:
+        """Warm up the VAD provider (asset download / fallback) — see VoiceSegmenter.initialize (ASSET-4)."""
+        await self.processor.initialize()
+
     async def process_audio_pipeline(self, 
                                    audio_stream: AsyncIterator[AudioData],
                                    context: Any,  # RequestContext
@@ -962,50 +992,10 @@ class AudioProcessorInterface:
         return await self.processor.calibrate_threshold(calibration_audio)
 
 
-# Utility functions for audio processor integration
-
-def create_audio_processor(vad_config: VADConfig) -> VoiceSegmenter:
-    """
-    Factory function to create VoiceSegmenter with validated config.
-    
-    Args:
-        vad_config: VAD configuration object
-        
-    Returns:
-        Configured VoiceSegmenter instance
-    """
-    return VoiceSegmenter(vad_config)
-
-
-async def process_audio_with_vad(audio_stream: AsyncIterator[AudioData], 
-                                vad_config: VADConfig,
-                                segment_callback: Optional[Callable] = None) -> AsyncIterator[VoiceSegment]:
-    """
-    Convenience function to process audio stream with VAD.
-    
-    Args:
-        audio_stream: Input audio stream
-        vad_config: VAD configuration
-        segment_callback: Optional callback for voice segments
-        
-    Yields:
-        VoiceSegment objects when complete voice segments are detected
-    """
-    processor = create_audio_processor(vad_config)
-    
-    if segment_callback:
-        processor.set_voice_segment_callback(segment_callback)
-    
-    async for voice_segment in processor.process_audio_stream(audio_stream):
-        yield voice_segment
-
-
 # Export public interface - Phase 4: ProcessingMetrics removed, metrics now unified in MetricsCollector
 __all__ = [
     'VoiceActivityState',
-    'VoiceSegment', 
+    'VoiceSegment',
     'VoiceSegmenter',
     'AudioProcessorInterface',
-    'create_audio_processor',
-    'process_audio_with_vad'
 ]

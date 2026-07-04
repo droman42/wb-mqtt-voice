@@ -2602,6 +2602,25 @@ rationale/chronology lives in [`RELEASE_JOURNAL.md`](./RELEASE_JOURNAL.md).
       (stub feature-extraction; a TF *demo* model, not a real wakeword model), so it's the ESP32/wakeword review's
       keep-fix-cut call, not a URL patch. **Caveat honored:** network is fake-IP mode (all hosts → `198.18.0.0/15`,
       normal); judged on bytes-served vs stall, not the IP. **Torch.hub hedge:** unneeded — `models.silero.ai` is healthy.
+- [x] **ASSET-4** [VAD][ASSET] (P2) `[release]` — **DONE 2026-07-04. Silero VAD model download moved into the
+      AssetManager; engine never downloads.** (Chat-surfaced VAD review 2026-07-04; findings were inline in this
+      entry — no review doc.) Was: `SileroVADEngine._ensure()` ran a raw synchronous `urllib.request.urlretrieve`
+      on the **first audio frame** — no temp+rename/partial healing (a truncated `silero_vad.onnx` passed the
+      `size > 0` guard forever), blocked the event loop with no timeout, retried the blocking download every
+      frame on failure while VAD silently reported silence, and the `"vad"` pseudo-provider fell to AssetManager's
+      generic-defaults fallback (WARNING at startup; `silero` collides with silero **TTS** in
+      `provider_namespace_map`). Fix: asset identity **`silero_vad`** → `('irene.providers.vad', 'silero')` tuple
+      mapping in `provider_namespace_map` (+ `irene.providers.vad` in the search namespaces);
+      `SileroVADProvider` declares `_get_default_model_urls/_directory/_extension` (on-disk path unchanged:
+      `models/vad/silero_vad.onnx`) and downloads in async `_do_initialize` via
+      `AssetManager.download_model(..., url_override=)` (new param — TOML `model_url` override rides the robust
+      path); new `VoiceSegmenter.initialize()` warmup seam (called from the workflow's async init) **falls back
+      to `energy`** if the configured provider can't come up; engine raises loud `FileNotFoundError` if the model
+      is missing. Stale docstrings fixed (`utils/vad.py` port, `vad_silero.py`); `docs/guides/vad.md` updated;
+      dead `create_audio_processor`/`process_audio_with_vad` deleted. microVAD needs no asset work — model is
+      compiled into the `pymicro-vad` wheel (`micro_vad_cpp.abi3.so`); energy has no model. Tests:
+      `test_vad_assets.py` (10). Verified live: real GitHub download through AssetManager + dead-URL → energy
+      fallback.
 - [x] **ASSET-3** (P2) — **DONE 2026-06-03 (with QUAL-13 Stage 1).** Migrated `lingua-franca` (abandoned MycroftAI git
       pin) → **`ovos-number-parser>=0.5.1`** (maintained OVOS successor, on PyPI, pure-Python → no armv7 wheel concern).
       Investigation found irene's real usage was tiny (`pronounce_number` + the stateless successor needs `lang=` per

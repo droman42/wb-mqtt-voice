@@ -15,6 +15,24 @@ newest entries near the top of each dated section.
 
 ## Action journal
 
+- **2026-07-04 — ASSET-4 DONE — silero VAD model download re-homed into the AssetManager; VAD warmup moved
+  off the audio hot path.** A user-requested deep review of the VAD code ("where does the microVAD model come
+  from?") answered the question two ways: **microVAD's model is compiled into the `pymicro-vad` wheel**
+  (`micro_vad_cpp.abi3.so` — nothing to download, correctly outside asset management), but **silero VAD was
+  self-downloading** — a synchronous, timeout-less `urllib.urlretrieve` fired on the *first audio frame*,
+  blocking the event loop, retrying every frame when offline, and able to strand a truncated model file that
+  its `size > 0` guard would trust forever. Root cause of the bypass: the AssetManager had no identity for the
+  VAD family (`silero` is claimed by silero TTS in `provider_namespace_map`). Fixed by introducing the
+  `silero_vad` asset name via a `(namespace, entry-point)` tuple mapping, declaring the model URL on
+  `SileroVADProvider`, downloading in the provider's async `_do_initialize` through
+  `download_model(..., url_override=)` (TOML `model_url` override kept), and adding a
+  `VoiceSegmenter.initialize()` warmup seam that falls back to `energy` when the configured provider can't
+  come up — so a fresh offline install degrades to working energy VAD instead of going silently deaf. On-disk
+  path unchanged (`models/vad/silero_vad.onnx` — deployed volumes unaffected). Dead
+  `create_audio_processor`/`process_audio_with_vad` deleted; stale VADEngine/vad_silero docstrings and
+  `docs/guides/vad.md` updated. Suite 1162 green + `test_vad_assets.py` (10 new); verified live both ways
+  (real download through the AssetManager; dead URL → energy fallback with the reason logged).
+
 - **2026-07-02 — TEST-16 DONE — the Russian UX judge is calibrated against the user's own gold labels
   (κ = 1.0 in-sample).** The user suspected the task obsolete; reconciliation showed the opposite — it was
   blocked on exactly one thing only they could provide, so it was finished interactively: a regenerated 20-case

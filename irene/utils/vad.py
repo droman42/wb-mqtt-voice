@@ -301,9 +301,12 @@ def calculate_zcr_optimized(audio_data: bytes, cache: Optional[object] = None) -
 class VADEngine(ABC):
     """Port for voice-activity engines (PR-4 seam).
 
-    Implementations are mutually exclusive and selected by `VADConfig.default_provider`:
-    - `energy` → `SimpleVAD` / `AdvancedVAD` (built-in, dependency-light)
-    - `silero` → `SileroVADEngine` (SileroVAD-ONNX via sherpa-onnx; 64-bit only)
+    Engines are wrapped by the `irene.providers.vad` provider family (ARCH-18 PR-2) and
+    selected by `[vad] default_provider`:
+    - `energy` → `SimpleVAD` / `AdvancedVAD` (built-in, dependency-light, no model)
+    - `silero` → `SileroVADEngine` (SileroVAD-ONNX via sherpa-onnx; 64-bit only; model
+      fetched by the adapter through the AssetManager at startup — ASSET-4)
+    - `microvad` → `MicroVADEngine` (pymicro-vad; model compiled into the wheel)
 
     `VoiceSegmenter` calls `process_frame` per audio chunk and drives its own
     onset/offset state machine off `VADResult.is_voice`, so the contract is intentionally

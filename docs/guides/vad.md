@@ -27,7 +27,9 @@ at the input boundary, and from there VAD, wake word and ASR all see the same ca
   sub-millisecond per chunk. Setting `use_zero_crossing_rate` or `adaptive_threshold` upgrades the simple
   detector to an adaptive one that tracks the noise floor.
 - **`silero`** — the Silero VAD ONNX model (run via sherpa-onnx, 64-bit only; reuses the `asr-onnx`
-  dependency). More robust in noise; the model downloads on first use.
+  dependency). More robust in noise; the model is fetched into the assets folder once at startup, like
+  any other model. If it can't come up (no network on a fresh install, missing dependency), Irene logs
+  the reason and falls back to `energy` so voice detection keeps working.
 - **`microvad`** — `pymicro-vad` (64-bit only; the `vad-tflite` extra). Self-contained — bundles its model
   and runtime, nothing to download — and shares its frontend with the microWakeWord trigger, so the two are
   one stack and match what the ESP32 runs on-device. Pick whichever runtime your build already loads:

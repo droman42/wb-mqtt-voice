@@ -7,12 +7,13 @@ delegates VAD to the ESP32, §11). So this reuses sherpa-onnx (already present v
 sherpa-onnx's VAD is segment-oriented; this wraps it into the per-frame `VADEngine`
 port via `is_speech_detected()`, so it's a drop-in alternative to the energy engine.
 The `silero_vad.onnx` model is downloaded once into the asset/models folder (a mounted
-volume in production), like the ASR model packs.
+volume in production) by the ADAPTER (`providers/vad/silero.py`) through the
+AssetManager at provider initialization (ASSET-4) — this engine only loads the file
+(utils must not import core, ARCH-12 contract #9) and fails loudly if it's missing.
 """
 
 import logging
 import time
-import urllib.request
 from pathlib import Path
 
 from .vad import VADEngine, VADResult
@@ -31,24 +32,26 @@ class SileroVADEngine(VADEngine):
     def __init__(self, vad_config, model_path):
         self.sample_rate = 16000
         self.threshold = float(getattr(vad_config, "silero_threshold", 0.5))
-        self.model_url = getattr(vad_config, "silero_model_url", DEFAULT_SILERO_URL) or DEFAULT_SILERO_URL
         self.min_speech_s = getattr(vad_config, "voice_duration_ms", 100) / 1000.0
         self.min_silence_s = getattr(vad_config, "silence_duration_ms", 200) / 1000.0
-        # The asset path is injected by the caller (workflows layer) — utils must not
-        # import core (ARCH-12 contract #9).
+        # The asset path is injected by the adapter (providers/vad/silero.py), which also
+        # downloads the model via the AssetManager before first use (ASSET-4) — utils must
+        # not import core (ARCH-12 contract #9).
         self._model_path = Path(model_path)
-        self._vad = None  # lazy: built on first frame (downloads model, inits onnxruntime)
+        self._vad = None  # lazy: built on first frame (inits onnxruntime)
 
     def _ensure(self):
         if self._vad is not None:
             return self._vad
+        if not (self._model_path.exists() and self._model_path.stat().st_size > 0):
+            # No download here: the adapter's _do_initialize owns that (with the AssetManager's
+            # lock/atomicity/partial-healing). Reaching this means init was skipped or failed.
+            raise FileNotFoundError(
+                f"SileroVAD model missing: {self._model_path} — provider initialization "
+                f"did not run or its download failed (see startup log)"
+            )
         import sherpa_onnx
         from .inference_policy import InferencePolicy
-
-        if not (self._model_path.exists() and self._model_path.stat().st_size > 0):
-            self._model_path.parent.mkdir(parents=True, exist_ok=True)
-            logger.info(f"Downloading silero_vad.onnx -> {self._model_path}")
-            urllib.request.urlretrieve(self.model_url, str(self._model_path))
 
         cfg = sherpa_onnx.VadModelConfig()
         cfg.silero_vad.model = str(self._model_path)

@@ -19,7 +19,6 @@ from pydantic import ValidationError
 from irene.workflows.audio_processor import (
     VoiceActivityState, VoiceSegment,
     VoiceSegmenter, AudioProcessorInterface,
-    create_audio_processor,
 )
 from irene.config.models import VADConfig
 from irene.intents.models import AudioData
@@ -155,7 +154,7 @@ def test_vad_config_validation_bounds():
 
 def test_segmenter_initial_state_and_metrics_shape():
     """A fresh segmenter is in SILENCE and exposes dict-shaped metrics (not an object)."""
-    processor = create_audio_processor(make_vad_config())
+    processor = VoiceSegmenter(make_vad_config())
 
     assert isinstance(processor, VoiceSegmenter)
     assert processor.vad_state == VoiceActivityState.SILENCE
@@ -167,7 +166,7 @@ def test_segmenter_initial_state_and_metrics_shape():
 
 async def test_segmenter_detects_voice_segment():
     """silence → speech → silence yields a complete VoiceSegment and bumps dict metrics."""
-    processor = create_audio_processor(make_vad_config())
+    processor = VoiceSegmenter(make_vad_config())
 
     before = processor.get_processing_metrics()["total_chunks_processed"]
 
@@ -197,7 +196,7 @@ async def test_voice_segment_timeout_records_dict_counter():
     # naturally — the 1s wall-clock timeout is what must force completion.
     config = make_vad_config(voice_frames_required=1, silence_frames_required=50)
     config.max_segment_duration_s = 1  # short timeout
-    processor = create_audio_processor(config)
+    processor = VoiceSegmenter(config)
 
     before = processor.get_processing_metrics()["timeout_events"]
 
@@ -216,7 +215,7 @@ async def test_buffer_overflow_records_dict_counter():
     config = make_vad_config(voice_frames_required=1, silence_frames_required=20)
     config.buffer_size_frames = 10
     config.max_segment_duration_s = 30
-    processor = create_audio_processor(config)
+    processor = VoiceSegmenter(config)
 
     before = processor.get_processing_metrics()["buffer_overflow_count"]
 

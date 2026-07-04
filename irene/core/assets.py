@@ -57,10 +57,14 @@ class AssetManager:
         # Discover provider class and get asset config
         from ..utils.loader import dynamic_loader
         
-        # Map provider names to namespaces
+        # Map asset names to namespaces. A tuple value maps an asset name to a DIFFERENT
+        # entry-point name — needed when two provider families share an entry-point name
+        # (e.g. 'silero' is silero TTS here; the silero VAD provider's assets live under
+        # the distinct asset name 'silero_vad'). ASSET-4.
         provider_namespace_map = {
             'whisper': 'irene.providers.asr',
             'silero': 'irene.providers.tts',
+            'silero_vad': ('irene.providers.vad', 'silero'),
             'vosk': 'irene.providers.asr',
             'openwakeword': 'irene.providers.voice_trigger',
             'microwakeword': 'irene.providers.voice_trigger',
@@ -71,20 +75,22 @@ class AssetManager:
             'sounddevice': 'irene.providers.audio',
             'console': 'irene.providers.audio',
         }
-        
+
         # Try to find the provider in appropriate namespace
         provider_class = None
         if provider in provider_namespace_map:
-            namespace = provider_namespace_map[provider]
-            provider_class = dynamic_loader.get_provider_class(namespace, provider)
+            entry = provider_namespace_map[provider]
+            namespace, ep_name = entry if isinstance(entry, tuple) else (entry, provider)
+            provider_class = dynamic_loader.get_provider_class(namespace, ep_name)
         else:
             # Search across all provider namespaces
             namespaces = [
                 'irene.providers.tts',
-                'irene.providers.asr', 
+                'irene.providers.asr',
                 'irene.providers.audio',
                 'irene.providers.llm',
                 'irene.providers.voice_trigger',
+                'irene.providers.vad',
                 'irene.providers.nlu',
                 'irene.providers.text_processor'
             ]
@@ -427,17 +433,23 @@ class AssetManager:
             except OSError:
                 pass
 
-    async def download_model(self, provider: str, model_id: str, force: bool = False) -> Path:
-        """Download model if not cached, return path"""
+    async def download_model(self, provider: str, model_id: str, force: bool = False,
+                             url_override: Optional[str] = None) -> Path:
+        """Download model if not cached, return path.
+
+        `url_override` replaces the class-declared model URL (a TOML per-provider `model_url`
+        override, ASSET-4) while keeping the whole robust path — lock, temp+rename, partial healing.
+        """
         # Get download lock to prevent concurrent downloads of same model
         lock_key = f"{provider}:{model_id}"
         if lock_key not in self._download_locks:
             self._download_locks[lock_key] = asyncio.Lock()
-        
+
         async with self._download_locks[lock_key]:
-            return await self._download_model_impl(provider, model_id, force)
-    
-    async def _download_model_impl(self, provider: str, model_id: str, force: bool) -> Path:
+            return await self._download_model_impl(provider, model_id, force, url_override)
+
+    async def _download_model_impl(self, provider: str, model_id: str, force: bool,
+                                   url_override: Optional[str] = None) -> Path:
         """Internal download implementation"""
         model_path = self.get_model_path(provider, model_id)
 
@@ -454,12 +466,12 @@ class AssetManager:
         
         # Get model info from provider configuration (replaces model_registry)
         model_info = self.get_model_info(provider, model_id)
-        if not model_info:
+        if not model_info and not url_override:
             raise ValueError(f"No model configuration found for {provider}/{model_id}")
-        
-        # Extract URL from model info
-        model_url = model_info.get("url")
-        
+
+        # Extract URL from model info (a caller-supplied override wins — ASSET-4)
+        model_url = url_override or model_info.get("url")
+
         # Generic URL validation - no provider-specific logic
         if not model_url:
             raise ValueError(f"No download URL configured for {provider}/{model_id}")

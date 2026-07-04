@@ -197,7 +197,11 @@ class UnifiedVoiceAssistantWorkflow(Workflow):
                 self._raw_buffer_max_s = vad_config.max_segment_duration_s + 2.0
                 self.audio_processor_interface = AudioProcessorInterface(
                     vad_config, collect_vad_frames=collect_vad_frames)
-                self.logger.info(f"VAD audio processor initialized: provider={vad_config.default_provider}, "
+                # ASSET-4: async warmup — model download via AssetManager (silero), or fallback to
+                # energy — happens HERE at startup, never on the per-frame audio hot path.
+                await self.audio_processor_interface.initialize()
+                active = self.audio_processor_interface.processor.vad_engine.get_provider_name()
+                self.logger.info(f"VAD audio processor initialized: provider={active}, "
                                f"max_segment={vad_config.max_segment_duration_s}s"
                                + (f", trace capture_level={level}" if level else ""))
             elif mic_enabled:
