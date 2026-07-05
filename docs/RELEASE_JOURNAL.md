@@ -15,6 +15,19 @@ newest entries near the top of each dated section.
 
 ## Action journal
 
+- **2026-07-05 — QUAL-35 Slice 2 Part A DONE (`bedc867`) — device suite 33/35; all eight new
+  fixtures green on the first live run.** Wired per the interactive decisions: volume
+  up/down/set/mute_toggle (the processor's dB range −96..0 honestly enforced by the shared catalog
+  range pre-validation), playback play/stop/next/previous + a seek CHOICE (ff/rewind) with
+  `play_pause` fallback for split-action-less devices (the Zappiti), cover.set_position in both
+  address forms («наполовину»→50; the room form rides VWB-23 `params`), and the power-verb
+  fallback — «включи обогрев» → climate.on, «включи вытяжку» → fan.set(2) — closing the census gap
+  where climate/fan devices ignored on/off verbs. The routing-risk fixture (F62 «выключи звук на
+  телеке» vs the power_off phrase) routed correctly. +10 donation methods; one extractor trap
+  re-learned: target regexes must keep a SINGLE capture group. Part B
+  (tracks/screen/menu-nav/presence/cleaning/water-alarm) follows; scope already in the ledger.
+
+
 - **2026-07-05 — QUAL-35 Slice 2 scope decided (interactive, capability-by-capability from the
   pinned-golden census).** Eleven decisions: volume all-four; playback everything incl. ff/rewind
   (play_pause only as the fallback for split-action-less devices); cover.set_position in both
