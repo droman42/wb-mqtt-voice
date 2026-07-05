@@ -945,6 +945,25 @@ rationale/chronology lives in [`RELEASE_JOURNAL.md`](./RELEASE_JOURNAL.md).
       (same "is this turn about the prior context or a fresh request?" question). Done when a new-command answer routes
       to the new command (not the garbled combine) with a regression test, and the legitimate slot-answer path stays
       green. Refs: QUAL-31, QUAL-30, Q7.
+- [x] **QUAL-64** `[deferred]` [NLU] (P2) — **DONE 2026-07-05 (interactive). Keyword-matcher scoring tune** (filed from the first TEST-18
+      device-suite run, 2026-07-05 — the matcher was NEVER tuned; user decision: leave the affected fixtures
+      red and tune deliberately). **Evidence:** short verb phrases beat longer specific ones — «включи кино с
+      видеокассеты» → `smart_home.power_on` 0.70 (should be `scenario_start`, phrase «включи кино»); «выключи
+      кино» → `power_off` 0.72 despite `scenario_stop` carrying that EXACT phrase with boost 1.3 (boost does
+      not overcome the short-phrase preference); both then dip under the 0.7 confidence threshold in the live
+      cascade → `conversation.general`/LLM. **Scope:** phrase-length/specificity weighting + boost semantics in
+      `hybrid_keyword_matcher` scoring; acceptance = TEST-18 fixtures F40/F42 green (`make device-auto`) with
+      NO regression across the other handlers' routing (the suite + the WS suite are the safety net).
+      Pairs with QUAL-53 (trace-driven improvement process — this is its first concrete, pre-collected case).
+      **RESOLUTION (user chose specificity+boost):** the disease was a TIE, not weighting — every
+      pattern hit in a method tier scored an identical constant, the stable sort broke ties by
+      donation LOAD ORDER («выключи кино»: bare «выключи» beat the exact «выключи кино» by loading
+      first), and the donation `boost` was never consulted in the pattern stage. New score:
+      `pattern_conf × method_boost × (1+0.1×(tokens−1), cap 1.3) × donation_boost`; `intent_boosts`
+      stored at load. F70's phrase workaround retired (fixture restored to «переключи субтитры» as a
+      permanent regression). 15-case routing test over the full 14-donation set. **Acceptance
+      exceeded: `make device-auto` 43/43 (100%)**; suite 1329, pyright 0. Bonus fence: the
+      device-auto pkill needed the `[e]` bracket trick (it was killing its own recipe shell).
 - [x] **QUAL-65** [PEX][MQTT] (P2) `[release]` — **DONE 2026-07-05 (filed + completed same day; user-requested
       intake: bridge VWB-19 landed input/app canonical routing — consume it before QUAL-35).**
       **Input switching + app launch by voice**, against the re-pinned contract @ bridge `3bed556` /

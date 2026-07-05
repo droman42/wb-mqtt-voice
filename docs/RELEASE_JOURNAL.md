@@ -15,6 +15,18 @@ newest entries near the top of each dated section.
 
 ## Action journal
 
+- **2026-07-05 — QUAL-64 DONE (interactive) — device suite 43/43 (100%) for the first time.**
+  Diagnosis: not a weighting preference but a TIE broken by accident — identical per-tier
+  constants + stable sort = donation load-order routing, and the per-method `boost` (authored
+  since QUAL-29, docstring promising "pattern strength multiplier") was never read by the pattern
+  stage. User picked the specificity+boost score; with the RIGHT winner chosen, the coverage
+  factor lifts confidence to 0.98–1.00 on the exhibits. F70's workaround retired («переключи
+  субтитры» now wins on merit; fixture restored as regression). 15-case routing test pins
+  exhibits + bread-and-butter over all 14 donations. The stale-mock pkill needed the `[e]`
+  bracket trick — it was killing its own recipe shell. Suite 1329, pyright 0, 11/11 contracts.
+  QUAL-35 Slice 3 is now unblocked on a tuned first tier.
+
+
 - **2026-07-05 — QUAL-35 Slice 2a DONE — VWB-24 consumed same-day; device suite 41/43.** The bridge
   typed the HVAC params (v1.3): full ru/en/de triplets, and for the first time wire ≠ canonical
   ("COOL"/"cool") — the fixture guard now validates the CANONICAL set, which is what Irene sends

@@ -370,17 +370,6 @@ _Apply to every remediation task below (from the 4 review docs + QUAL-25/26). So
       Builds on the QUAL-35 resolver (note 6); fixture impact = NEW priority-variant fixtures beside
       F20/F21, not edits. Any config surface added → the `config-ui-stays-functional` gate applies.
 
-- [ ] **QUAL-64** `[deferred]` [NLU] (P2) — **Keyword-matcher scoring tune** (filed from the first TEST-18
-      device-suite run, 2026-07-05 — the matcher was NEVER tuned; user decision: leave the affected fixtures
-      red and tune deliberately). **Evidence:** short verb phrases beat longer specific ones — «включи кино с
-      видеокассеты» → `smart_home.power_on` 0.70 (should be `scenario_start`, phrase «включи кино»); «выключи
-      кино» → `power_off` 0.72 despite `scenario_stop` carrying that EXACT phrase with boost 1.3 (boost does
-      not overcome the short-phrase preference); both then dip under the 0.7 confidence threshold in the live
-      cascade → `conversation.general`/LLM. **Scope:** phrase-length/specificity weighting + boost semantics in
-      `hybrid_keyword_matcher` scoring; acceptance = TEST-18 fixtures F40/F42 green (`make device-auto`) with
-      NO regression across the other handlers' routing (the suite + the WS suite are the safety net).
-      Pairs with QUAL-53 (trace-driven improvement process — this is its first concrete, pre-collected case).
-
 ### Bugs (BUG)
 _Discrete functional defects (distinct from QUAL refactors/quality work). Surfaced from any source; filed before fixing._
 
