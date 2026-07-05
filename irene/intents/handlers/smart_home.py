@@ -52,7 +52,7 @@ _QUANTITY_FIELDS = {
 
 # capability each method actuates, in preference order when a device carries several
 _METHOD_CAPABILITY = {
-    "power": ("power",),
+    "power": ("power", "climate", "fan"),
     "cover": ("cover",),
     "climate": ("climate",),
     "brightness": ("brightness",),
@@ -311,12 +311,20 @@ class SmartHomeIntentHandler(IntentHandler):
                 should_speak=True, success=False,
                 error=f"{catalog_device.id} lacks {kind} capability")
 
+        # power-verb fallback (Slice 2): «включи обогрев» → climate.on, «включи вытяжку» →
+        # fan.set(level=2) — devices without a power capability still obey on/off verbs
+        if kind == "power" and capability == "climate":
+            device_action, params = device_action, params  # climate has real on/off
+        elif kind == "power" and capability == "fan":
+            if device_action == "on":
+                device_action, params = "set", {"level": 2}
+            else:
+                device_action, params = "off", None
         command = DeviceCommand(device_id=catalog_device.id, capability=capability,
                                 action=device_action, params=params)
         delivery = await self._deliver(command, context)
         ok_text = self._get_template(ok_key_device, language,
-                                     name=self._device_name(catalog_device, language),
-                                     **(params or {}))
+                                     name=self._device_name(catalog_device, language))
         return await self._speak_outcome(delivery, ok_text, language, catalog,
                                    clarify_intent=intent, context=context)
 
@@ -717,3 +725,170 @@ class SmartHomeIntentHandler(IntentHandler):
         return await self._select_value(intent, context, capability="apps", action="launch",
                                         param="app", spoken=str(spoken), device=device,
                                         ok_key="confirm_app")
+
+
+    # --- Slice 2 Part A: volume / playback / cover position ---------------------------------------
+
+    async def _simple_capability_action(self, intent: Intent,
+                                        context: UnifiedConversationContext, *,
+                                        capability: str, action: str, ok_key: str,
+                                        params: Optional[Dict[str, Any]] = None,
+                                        fallback_action: Optional[str] = None) -> IntentResult:
+        """Shared tail for single-action commands (volume up, playback stop, …): pick the
+        target (named or the room's single capable device, else clarify), translate to the
+        device's actual action (`fallback_action` covers e.g. `play_pause`-only devices),
+        deliver, speak."""
+        language = self._lang(context)
+        device, error = await self._single_capable_or_clarify(intent, context, capability)
+        if error is not None:
+            return error
+        assert device is not None
+        cap = device.capability(capability)
+        effective = action
+        if cap is not None and cap.action(action) is None:
+            if fallback_action is not None and cap.action(fallback_action) is not None:
+                effective = fallback_action
+            else:
+                return IntentResult(text=self._get_template("err_action", language),
+                                    should_speak=True, success=False,
+                                    error=f"{device.id}.{capability} lacks {action}")
+        command = DeviceCommand(device_id=device.id, capability=capability,
+                                action=effective, params=params)
+        delivery = await self._deliver(command, context)
+        ok_text = self._get_template(ok_key, language,
+                                     name=self._device_name(device, language),
+                                     **(params or {}))
+        return await self._speak_outcome(delivery, ok_text, language, self._catalog(),
+                                         clarify_intent=intent, context=context)
+
+    def _range_error(self, intent: Intent, context: UnifiedConversationContext,
+                     device: CatalogDevice, capability: str, action: str, param: str,
+                     value: Any) -> Optional[IntentResult]:
+        """Catalog-backed pre-validation (§5b): out-of-range → clarify, never a round-trip."""
+        cap = device.capability(capability)
+        act = cap.action(action) if cap else None
+        spec = act.param(param) if act else None
+        if spec is None:
+            return None
+        if (spec.min is not None and value < spec.min) or \
+           (spec.max is not None and value > spec.max):
+            language = self._lang(context)
+            context.set_pending_clarification(intent.name, param, intent.raw_text)
+            return IntentResult(
+                text=self._get_template("err_param_range", language,
+                                        min=spec.min, max=spec.max, unit=spec.unit or ""),
+                should_speak=True,
+                metadata={"clarification": True, "clarification_reason": "out_of_range"})
+        return None
+
+    async def _handle_volume_up(self, intent, context):
+        return await self._simple_capability_action(intent, context, capability="volume",
+                                                    action="up", ok_key="confirm_volume_up")
+
+    async def _handle_volume_down(self, intent, context):
+        return await self._simple_capability_action(intent, context, capability="volume",
+                                                    action="down", ok_key="confirm_volume_down")
+
+    async def _handle_volume_mute(self, intent, context):
+        return await self._simple_capability_action(intent, context, capability="volume",
+                                                    action="mute_toggle", ok_key="confirm_mute")
+
+    async def _handle_volume_set(self, intent: Intent,
+                                 context: UnifiedConversationContext) -> IntentResult:
+        level = self.get_param(intent, "level", None)
+        if level is None:
+            return await self._ask_slot(intent, context, "level")
+        device, error = await self._single_capable_or_clarify(intent, context, "volume")
+        if error is not None:
+            return error
+        assert device is not None
+        range_error = self._range_error(intent, context, device, "volume", "set",
+                                        "level", level)
+        if range_error is not None:
+            return range_error
+        command = DeviceCommand(device_id=device.id, capability="volume", action="set",
+                                params={"level": level})
+        delivery = await self._deliver(command, context)
+        language = self._lang(context)
+        ok_text = self._get_template("confirm_volume_set", language, level=level,
+                                     name=self._device_name(device, language))
+        return await self._speak_outcome(delivery, ok_text, language, self._catalog(),
+                                         clarify_intent=intent, context=context)
+
+    async def _handle_playback_play(self, intent, context):
+        return await self._simple_capability_action(intent, context, capability="playback",
+                                                    action="play", ok_key="confirm_play",
+                                                    fallback_action="play_pause")
+
+    async def _handle_playback_stop(self, intent, context):
+        return await self._simple_capability_action(intent, context, capability="playback",
+                                                    action="stop", ok_key="confirm_stop")
+
+    async def _handle_playback_next(self, intent, context):
+        return await self._simple_capability_action(intent, context, capability="playback",
+                                                    action="next", ok_key="confirm_next")
+
+    async def _handle_playback_previous(self, intent, context):
+        return await self._simple_capability_action(intent, context, capability="playback",
+                                                    action="previous", ok_key="confirm_previous")
+
+    async def _handle_playback_seek(self, intent: Intent,
+                                    context: UnifiedConversationContext) -> IntentResult:
+        direction = self.get_param(intent, "direction", None)
+        if direction not in ("ff", "rewind"):
+            return await self._ask_slot(intent, context, "direction")
+        ok_key = "confirm_ff" if direction == "ff" else "confirm_rewind"
+        return await self._simple_capability_action(intent, context, capability="playback",
+                                                    action=direction, ok_key=ok_key)
+
+    async def _handle_cover_position(self, intent: Intent,
+                                     context: UnifiedConversationContext) -> IntentResult:
+        """«шторы наполовину» / «открой жалюзи на 30 процентов» — set_position in either
+        address form (VWB-23: the room endpoint accepts params)."""
+        language = self._lang(context)
+        catalog = self._catalog()
+        if catalog is None:
+            return self._no_catalog_result(language)
+        pct = self.get_param(intent, "pct", None)
+        if pct is None and re.search(r"половин", intent.raw_text.lower()):
+            pct = 50
+        if pct is None:
+            return await self._ask_slot(intent, context, "pct")
+
+        group = self._verified_group_noun(intent)
+        if group == "cover":
+            room_id, room_error = self._requested_room(intent, context, catalog)
+            if room_error is not None:
+                return room_error
+            if room_id is None:
+                return await self._ask_slot(intent, context, "room")
+            if not catalog.group_members(room_id, "cover"):
+                return IntentResult(
+                    text=self._get_template("err_no_group_in_room", language,
+                                            noun=self._group_noun_surface(intent, "cover", language),
+                                            room=self._room_spoken_name(catalog, room_id, language)),
+                    should_speak=True, success=False, error="no cover members")
+            scope = GroupScope.ALL if _ALL_SCOPE_RE.search(intent.raw_text) else GroupScope.AUTO
+            command = RoomGroupCommand(room_id=room_id, group="cover", action="set_position",
+                                       scope=scope, params={"pct": pct})
+            delivery = await self._deliver(command, context)
+            ok_text = self._get_template("confirm_position_room", language, pct=pct,
+                                         noun=self._group_noun_surface(intent, "cover", language))
+            return await self._speak_outcome(delivery, ok_text, language, catalog,
+                                             clarify_intent=intent, context=context)
+
+        device, error = await self._single_capable_or_clarify(intent, context, "cover")
+        if error is not None:
+            return error
+        assert device is not None
+        range_error = self._range_error(intent, context, device, "cover", "set_position",
+                                        "pct", pct)
+        if range_error is not None:
+            return range_error
+        command = DeviceCommand(device_id=device.id, capability="cover",
+                                action="set_position", params={"pct": pct})
+        delivery = await self._deliver(command, context)
+        ok_text = self._get_template("confirm_position", language, pct=pct,
+                                     name=self._device_name(device, language))
+        return await self._speak_outcome(delivery, ok_text, language, catalog,
+                                         clarify_intent=intent, context=context)

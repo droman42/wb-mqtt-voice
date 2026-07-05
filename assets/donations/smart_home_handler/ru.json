@@ -515,6 +515,362 @@
           "description": "Название приложения (как его сообщает устройство)"
         }
       ]
+    },
+    {
+      "method_name": "_handle_volume_up",
+      "intent_suffix": "volume_up",
+      "description": "Сделать громче",
+      "phrases": [
+        "сделай громче",
+        "громче",
+        "прибавь звук",
+        "прибавь громкость"
+      ],
+      "lemmas": [
+        "громкий",
+        "звук",
+        "громкость"
+      ],
+      "examples": [
+        {
+          "text": "сделай громче",
+          "parameters": {}
+        }
+      ],
+      "parameters": [
+        {
+          "name": "target",
+          "description": "Название устройства"
+        },
+        {
+          "name": "room",
+          "description": "Комната"
+        }
+      ]
+    },
+    {
+      "method_name": "_handle_volume_down",
+      "intent_suffix": "volume_down",
+      "description": "Сделать тише",
+      "phrases": [
+        "сделай тише",
+        "тише",
+        "убавь звук",
+        "убавь громкость"
+      ],
+      "lemmas": [
+        "тихий",
+        "звук",
+        "громкость"
+      ],
+      "examples": [
+        {
+          "text": "сделай тише",
+          "parameters": {}
+        }
+      ],
+      "parameters": [
+        {
+          "name": "target",
+          "description": "Название устройства"
+        },
+        {
+          "name": "room",
+          "description": "Комната"
+        }
+      ]
+    },
+    {
+      "method_name": "_handle_volume_set",
+      "intent_suffix": "volume_set",
+      "description": "Установить громкость",
+      "phrases": [
+        "громкость"
+      ],
+      "lemmas": [
+        "громкость"
+      ],
+      "examples": [
+        {
+          "text": "громкость 30",
+          "parameters": {
+            "level": 30
+          }
+        }
+      ],
+      "parameters": [
+        {
+          "name": "level",
+          "description": "Громкость в процентах"
+        },
+        {
+          "name": "target",
+          "description": "Название устройства"
+        },
+        {
+          "name": "room",
+          "description": "Комната"
+        }
+      ]
+    },
+    {
+      "method_name": "_handle_volume_mute",
+      "intent_suffix": "volume_mute",
+      "description": "Выключить звук",
+      "phrases": [
+        "выключи звук",
+        "без звука",
+        "замьють",
+        "мьют"
+      ],
+      "lemmas": [
+        "звук",
+        "мьют"
+      ],
+      "examples": [
+        {
+          "text": "выключи звук",
+          "parameters": {}
+        }
+      ],
+      "parameters": [
+        {
+          "name": "target",
+          "description": "Название устройства"
+        },
+        {
+          "name": "room",
+          "description": "Комната"
+        }
+      ]
+    },
+    {
+      "method_name": "_handle_playback_play",
+      "intent_suffix": "playback_play",
+      "description": "Продолжить воспроизведение",
+      "phrases": [
+        "продолжи",
+        "играй",
+        "воспроизведи",
+        "продолжи воспроизведение"
+      ],
+      "lemmas": [
+        "играть",
+        "продолжить"
+      ],
+      "examples": [
+        {
+          "text": "продолжи",
+          "parameters": {}
+        }
+      ],
+      "parameters": [
+        {
+          "name": "target",
+          "description": "Название устройства"
+        },
+        {
+          "name": "room",
+          "description": "Комната"
+        }
+      ]
+    },
+    {
+      "method_name": "_handle_playback_stop",
+      "intent_suffix": "playback_stop",
+      "description": "Остановить воспроизведение",
+      "phrases": [
+        "останови",
+        "останови воспроизведение",
+        "стоп"
+      ],
+      "lemmas": [
+        "остановить",
+        "стоп"
+      ],
+      "examples": [
+        {
+          "text": "останови",
+          "parameters": {}
+        }
+      ],
+      "parameters": [
+        {
+          "name": "target",
+          "description": "Название устройства"
+        },
+        {
+          "name": "room",
+          "description": "Комната"
+        }
+      ]
+    },
+    {
+      "method_name": "_handle_playback_next",
+      "intent_suffix": "playback_next",
+      "description": "Следующий трек",
+      "phrases": [
+        "следующий трек",
+        "следующая песня",
+        "дальше",
+        "следующий"
+      ],
+      "lemmas": [
+        "следующий",
+        "трек"
+      ],
+      "examples": [
+        {
+          "text": "следующий трек",
+          "parameters": {}
+        }
+      ],
+      "parameters": [
+        {
+          "name": "target",
+          "description": "Название устройства"
+        },
+        {
+          "name": "room",
+          "description": "Комната"
+        }
+      ]
+    },
+    {
+      "method_name": "_handle_playback_previous",
+      "intent_suffix": "playback_previous",
+      "description": "Предыдущий трек",
+      "phrases": [
+        "предыдущий трек",
+        "предыдущая песня",
+        "предыдущий"
+      ],
+      "lemmas": [
+        "предыдущий",
+        "трек"
+      ],
+      "examples": [
+        {
+          "text": "предыдущий трек",
+          "parameters": {}
+        }
+      ],
+      "parameters": [
+        {
+          "name": "target",
+          "description": "Название устройства"
+        },
+        {
+          "name": "room",
+          "description": "Комната"
+        }
+      ]
+    },
+    {
+      "method_name": "_handle_playback_seek",
+      "intent_suffix": "playback_seek",
+      "description": "Перемотка",
+      "phrases": [
+        "перемотай вперёд",
+        "перемотай назад",
+        "перемотай"
+      ],
+      "lemmas": [
+        "перемотать"
+      ],
+      "examples": [
+        {
+          "text": "перемотай вперёд",
+          "parameters": {
+            "direction": "ff"
+          }
+        }
+      ],
+      "parameters": [
+        {
+          "name": "direction",
+          "description": "Направление перемотки",
+          "choice_surfaces": {
+            "ff": [
+              "вперёд",
+              "вперед"
+            ],
+            "rewind": [
+              "назад"
+            ]
+          }
+        },
+        {
+          "name": "target",
+          "description": "Название устройства"
+        },
+        {
+          "name": "room",
+          "description": "Комната"
+        }
+      ]
+    },
+    {
+      "method_name": "_handle_cover_position",
+      "intent_suffix": "cover_position",
+      "description": "Положение штор/жалюзи в процентах",
+      "phrases": [
+        "наполовину",
+        "процентов открой",
+        "процентов закрой",
+        "шторы на",
+        "жалюзи на"
+      ],
+      "lemmas": [
+        "процент",
+        "половина",
+        "штора",
+        "жалюзи"
+      ],
+      "examples": [
+        {
+          "text": "шторы наполовину",
+          "parameters": {
+            "group_noun": "cover"
+          }
+        },
+        {
+          "text": "открой жалюзи на 30 процентов",
+          "parameters": {
+            "group_noun": "cover",
+            "pct": 30
+          }
+        }
+      ],
+      "parameters": [
+        {
+          "name": "pct",
+          "description": "Положение в процентах"
+        },
+        {
+          "name": "group_noun",
+          "description": "Существительное группы",
+          "choice_surfaces": {
+            "light": [
+              "свет"
+            ],
+            "cover": [
+              "шторы",
+              "жалюзи",
+              "занавески",
+              "тюль"
+            ]
+          }
+        },
+        {
+          "name": "target",
+          "description": "Название устройства"
+        },
+        {
+          "name": "room",
+          "description": "Комната"
+        }
+      ]
     }
   ]
 }

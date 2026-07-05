@@ -441,6 +441,249 @@
           "description": "App name (as the device reports it)"
         }
       ]
+    },
+    {
+      "method_name": "_handle_volume_up",
+      "intent_suffix": "volume_up",
+      "description": "volume up",
+      "phrases": [
+        "louder",
+        "volume up"
+      ],
+      "lemmas": [],
+      "examples": [],
+      "parameters": [
+        {
+          "name": "target",
+          "description": "Device"
+        },
+        {
+          "name": "room",
+          "description": "Room"
+        }
+      ]
+    },
+    {
+      "method_name": "_handle_volume_down",
+      "intent_suffix": "volume_down",
+      "description": "volume down",
+      "phrases": [
+        "quieter",
+        "volume down"
+      ],
+      "lemmas": [],
+      "examples": [],
+      "parameters": [
+        {
+          "name": "target",
+          "description": "Device"
+        },
+        {
+          "name": "room",
+          "description": "Room"
+        }
+      ]
+    },
+    {
+      "method_name": "_handle_volume_set",
+      "intent_suffix": "volume_set",
+      "description": "volume set",
+      "phrases": [
+        "volume"
+      ],
+      "lemmas": [],
+      "examples": [],
+      "parameters": [
+        {
+          "name": "level",
+          "description": "Volume percent"
+        },
+        {
+          "name": "target",
+          "description": "Device"
+        },
+        {
+          "name": "room",
+          "description": "Room"
+        }
+      ]
+    },
+    {
+      "method_name": "_handle_volume_mute",
+      "intent_suffix": "volume_mute",
+      "description": "volume mute",
+      "phrases": [
+        "mute",
+        "sound off"
+      ],
+      "lemmas": [],
+      "examples": [],
+      "parameters": [
+        {
+          "name": "target",
+          "description": "Device"
+        },
+        {
+          "name": "room",
+          "description": "Room"
+        }
+      ]
+    },
+    {
+      "method_name": "_handle_playback_play",
+      "intent_suffix": "playback_play",
+      "description": "playback play",
+      "phrases": [
+        "resume",
+        "play"
+      ],
+      "lemmas": [],
+      "examples": [],
+      "parameters": [
+        {
+          "name": "target",
+          "description": "Device"
+        },
+        {
+          "name": "room",
+          "description": "Room"
+        }
+      ]
+    },
+    {
+      "method_name": "_handle_playback_stop",
+      "intent_suffix": "playback_stop",
+      "description": "playback stop",
+      "phrases": [
+        "stop playback",
+        "stop"
+      ],
+      "lemmas": [],
+      "examples": [],
+      "parameters": [
+        {
+          "name": "target",
+          "description": "Device"
+        },
+        {
+          "name": "room",
+          "description": "Room"
+        }
+      ]
+    },
+    {
+      "method_name": "_handle_playback_next",
+      "intent_suffix": "playback_next",
+      "description": "playback next",
+      "phrases": [
+        "next track",
+        "next song"
+      ],
+      "lemmas": [],
+      "examples": [],
+      "parameters": [
+        {
+          "name": "target",
+          "description": "Device"
+        },
+        {
+          "name": "room",
+          "description": "Room"
+        }
+      ]
+    },
+    {
+      "method_name": "_handle_playback_previous",
+      "intent_suffix": "playback_previous",
+      "description": "playback previous",
+      "phrases": [
+        "previous track"
+      ],
+      "lemmas": [],
+      "examples": [],
+      "parameters": [
+        {
+          "name": "target",
+          "description": "Device"
+        },
+        {
+          "name": "room",
+          "description": "Room"
+        }
+      ]
+    },
+    {
+      "method_name": "_handle_playback_seek",
+      "intent_suffix": "playback_seek",
+      "description": "playback seek",
+      "phrases": [
+        "fast forward",
+        "rewind"
+      ],
+      "lemmas": [],
+      "examples": [],
+      "parameters": [
+        {
+          "name": "direction",
+          "description": "Seek direction",
+          "choice_surfaces": {
+            "ff": [
+              "forward"
+            ],
+            "rewind": [
+              "back",
+              "backwards"
+            ]
+          }
+        },
+        {
+          "name": "target",
+          "description": "Device"
+        },
+        {
+          "name": "room",
+          "description": "Room"
+        }
+      ]
+    },
+    {
+      "method_name": "_handle_cover_position",
+      "intent_suffix": "cover_position",
+      "description": "cover position",
+      "phrases": [
+        "halfway",
+        "percent open"
+      ],
+      "lemmas": [],
+      "examples": [],
+      "parameters": [
+        {
+          "name": "pct",
+          "description": "Position percent"
+        },
+        {
+          "name": "group_noun",
+          "description": "Group noun",
+          "choice_surfaces": {
+            "light": [
+              "light",
+              "lights"
+            ],
+            "cover": [
+              "curtains",
+              "blinds"
+            ]
+          }
+        },
+        {
+          "name": "target",
+          "description": "Device"
+        },
+        {
+          "name": "room",
+          "description": "Room"
+        }
+      ]
     }
   ]
 }

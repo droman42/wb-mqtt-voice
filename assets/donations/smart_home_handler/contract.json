@@ -15,7 +15,17 @@
     "smart_home.scenario_stop",
     "smart_home.read_state",
     "smart_home.input_select",
-    "smart_home.app_launch"
+    "smart_home.app_launch",
+    "smart_home.volume_up",
+    "smart_home.volume_down",
+    "smart_home.volume_set",
+    "smart_home.volume_mute",
+    "smart_home.playback_play",
+    "smart_home.playback_stop",
+    "smart_home.playback_next",
+    "smart_home.playback_previous",
+    "smart_home.playback_seek",
+    "smart_home.cover_position"
   ],
   "domain_patterns": [
     "smart_home"
@@ -319,6 +329,260 @@
           "required": false,
           "pattern": "(?:запусти(?:ть)?|открой|launch|start)\\s+(?:приложение\\s+|app\\s+)?([\\wа-яё .+-]+?)(?:\\s+(?:на|on)\\s+\\S+)?\\s*$",
           "entity_type": "generic"
+        }
+      ]
+    },
+    {
+      "method_name": "_handle_volume_up",
+      "intent_suffix": "volume_up",
+      "boost": 1.2,
+      "room_context": "none",
+      "parameters": [
+        {
+          "name": "target",
+          "type": "string",
+          "required": false,
+          "pattern": "(?:сделай\\s+)?([а-яёa-z][а-яёa-z ]{2,}?)\\s+(?:громче|louder)\\s*$",
+          "entity_type": "device"
+        },
+        {
+          "name": "room",
+          "type": "string",
+          "required": false,
+          "pattern": "(?:\\bв|\\bна|\\bin)\\s+([а-яёa-z_]+)\\s*$",
+          "entity_type": "room"
+        }
+      ]
+    },
+    {
+      "method_name": "_handle_volume_down",
+      "intent_suffix": "volume_down",
+      "boost": 1.2,
+      "room_context": "none",
+      "parameters": [
+        {
+          "name": "target",
+          "type": "string",
+          "required": false,
+          "pattern": "(?:сделай\\s+)?([а-яёa-z][а-яёa-z ]{2,}?)\\s+(?:тише|quieter)\\s*$",
+          "entity_type": "device"
+        },
+        {
+          "name": "room",
+          "type": "string",
+          "required": false,
+          "pattern": "(?:\\bв|\\bна|\\bin)\\s+([а-яёa-z_]+)\\s*$",
+          "entity_type": "room"
+        }
+      ]
+    },
+    {
+      "method_name": "_handle_volume_set",
+      "intent_suffix": "volume_set",
+      "boost": 1.25,
+      "room_context": "none",
+      "parameters": [
+        {
+          "name": "level",
+          "type": "integer",
+          "required": false,
+          "entity_type": "generic"
+        },
+        {
+          "name": "target",
+          "type": "string",
+          "required": false,
+          "pattern": "громкость\\s+(?:на\\s+)?([а-яёa-z][а-яёa-z ]{2,}?)(?=\\s+\\d|\\s*$)",
+          "entity_type": "device"
+        },
+        {
+          "name": "room",
+          "type": "string",
+          "required": false,
+          "pattern": "(?:\\bв|\\bна|\\bin)\\s+([а-яёa-z_]+)\\s*$",
+          "entity_type": "room"
+        }
+      ]
+    },
+    {
+      "method_name": "_handle_volume_mute",
+      "intent_suffix": "volume_mute",
+      "boost": 1.25,
+      "room_context": "none",
+      "parameters": [
+        {
+          "name": "target",
+          "type": "string",
+          "required": false,
+          "pattern": "(?:звук|zvuk|sound)\\s+(?:на\\s+)?([а-яёa-z][а-яёa-z ]{2,}?)\\s*$",
+          "entity_type": "device"
+        },
+        {
+          "name": "room",
+          "type": "string",
+          "required": false,
+          "pattern": "(?:\\bв|\\bна|\\bin)\\s+([а-яёa-z_]+)\\s*$",
+          "entity_type": "room"
+        }
+      ]
+    },
+    {
+      "method_name": "_handle_playback_play",
+      "intent_suffix": "playback_play",
+      "boost": 1.15,
+      "room_context": "none",
+      "parameters": [
+        {
+          "name": "target",
+          "type": "string",
+          "required": false,
+          "pattern": "(?:продолжи|играй|воспроизведи|resume|play)\\s+(?:на\\s+)?([а-яёa-z][а-яёa-z ]{2,}?)\\s*$",
+          "entity_type": "device"
+        },
+        {
+          "name": "room",
+          "type": "string",
+          "required": false,
+          "pattern": "(?:\\bв|\\bна|\\bin)\\s+([а-яёa-z_]+)\\s*$",
+          "entity_type": "room"
+        }
+      ]
+    },
+    {
+      "method_name": "_handle_playback_stop",
+      "intent_suffix": "playback_stop",
+      "boost": 1.15,
+      "room_context": "none",
+      "parameters": [
+        {
+          "name": "target",
+          "type": "string",
+          "required": false,
+          "pattern": "(?:останови|стоп|stop)\\s+(?:на\\s+)?([а-яёa-z][а-яёa-z ]{2,}?)\\s*$",
+          "entity_type": "device"
+        },
+        {
+          "name": "room",
+          "type": "string",
+          "required": false,
+          "pattern": "(?:\\bв|\\bна|\\bin)\\s+([а-яёa-z_]+)\\s*$",
+          "entity_type": "room"
+        }
+      ]
+    },
+    {
+      "method_name": "_handle_playback_next",
+      "intent_suffix": "playback_next",
+      "boost": 1.2,
+      "room_context": "none",
+      "parameters": [
+        {
+          "name": "target",
+          "type": "string",
+          "required": false,
+          "pattern": "(?:следующ\\w+|next)\\s+(?:трек|песн\\w+|track|song)?\\s*(?:на\\s+([а-яёa-z][а-яёa-z ]{2,}?))?\\s*$",
+          "entity_type": "device"
+        },
+        {
+          "name": "room",
+          "type": "string",
+          "required": false,
+          "pattern": "(?:\\bв|\\bна|\\bin)\\s+([а-яёa-z_]+)\\s*$",
+          "entity_type": "room"
+        }
+      ]
+    },
+    {
+      "method_name": "_handle_playback_previous",
+      "intent_suffix": "playback_previous",
+      "boost": 1.2,
+      "room_context": "none",
+      "parameters": [
+        {
+          "name": "target",
+          "type": "string",
+          "required": false,
+          "pattern": "(?:предыдущ\\w+|previous)\\s+(?:трек|песн\\w+|track|song)?\\s*(?:на\\s+([а-яёa-z][а-яёa-z ]{2,}?))?\\s*$",
+          "entity_type": "device"
+        },
+        {
+          "name": "room",
+          "type": "string",
+          "required": false,
+          "pattern": "(?:\\bв|\\bна|\\bin)\\s+([а-яёa-z_]+)\\s*$",
+          "entity_type": "room"
+        }
+      ]
+    },
+    {
+      "method_name": "_handle_playback_seek",
+      "intent_suffix": "playback_seek",
+      "boost": 1.2,
+      "room_context": "none",
+      "parameters": [
+        {
+          "name": "direction",
+          "type": "choice",
+          "required": true,
+          "choices": [
+            "ff",
+            "rewind"
+          ],
+          "entity_type": "generic"
+        },
+        {
+          "name": "target",
+          "type": "string",
+          "required": false,
+          "pattern": "перемотай\\s+(?:вперёд|вперед|назад)\\s+(?:на\\s+)?([а-яёa-z][а-яёa-z ]{2,}?)\\s*$",
+          "entity_type": "device"
+        },
+        {
+          "name": "room",
+          "type": "string",
+          "required": false,
+          "pattern": "(?:\\bв|\\bна|\\bin)\\s+([а-яёa-z_]+)\\s*$",
+          "entity_type": "room"
+        }
+      ]
+    },
+    {
+      "method_name": "_handle_cover_position",
+      "intent_suffix": "cover_position",
+      "boost": 1.25,
+      "room_context": "none",
+      "parameters": [
+        {
+          "name": "pct",
+          "type": "integer",
+          "required": false,
+          "min_value": 0,
+          "max_value": 100,
+          "entity_type": "generic"
+        },
+        {
+          "name": "group_noun",
+          "type": "choice",
+          "required": false,
+          "choices": [
+            "light",
+            "cover"
+          ],
+          "entity_type": "generic"
+        },
+        {
+          "name": "target",
+          "type": "string",
+          "required": false,
+          "pattern": "(?:открой|закрой|поставь|open|set)\\s+(?!шторы\\b|жалюзи\\b|занавески\\b)([а-яёa-z][а-яёa-z ]{2,}?)\\s+на\\s+",
+          "entity_type": "device"
+        },
+        {
+          "name": "room",
+          "type": "string",
+          "required": false,
+          "pattern": "(?:\\bв|\\bна|\\bin)\\s+([а-яёa-z_]+)\\s*$",
+          "entity_type": "room"
         }
       ]
     }

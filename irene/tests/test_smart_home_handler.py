@@ -34,6 +34,7 @@ CATALOG_PAYLOAD = {
         {"id": "living_room", "names": {"ru": "Гостиная"}, "aliases": {"ru": ["зал"]},
          "devices": [], "group_defaults": {"light": "living_room_spots"}},
         {"id": "cabinet", "names": {"ru": "Кабинет"}, "devices": []},
+        {"id": "kitchen", "names": {"ru": "Кухня"}, "devices": []},
         {"id": "shower", "names": {"ru": "Душевая"}, "devices": []},
         {"id": "global", "names": {"ru": "Весь дом"}, "aliases": {"ru": ["квартира"]},
          "devices": []},
@@ -133,11 +134,22 @@ CATALOG_PAYLOAD = {
         {"id": "all_plugs", "room": "global", "names": {"ru": "Розетки"},
          "capabilities": [
              {"name": "power", "group": "power", "actions": [{"name": "on"}, {"name": "off"}]}]},
+        {"id": "kitchen_hood", "room": "kitchen", "names": {"ru": "Вытяжка"},
+         "capabilities": [
+             {"name": "fan", "group": "fan",
+              "actions": [{"name": "set", "params": [
+                  {"name": "level", "type": "range", "required": True,
+                   "min": 0.0, "max": 4.0}]}, {"name": "off"}]}]},
         {"id": "shower_sauna_sensors", "room": "shower", "names": {"ru": "Сенсоры сауны"},
          "capabilities": [
              {"name": "sensor", "group": "sensor",
               "fields": [{"name": "temperature", "unit": "°C"},
                          {"name": "humidity", "unit": "%"}]}]},
+        {"id": "video", "room": "living_room", "names": {"ru": "Заппити"},
+         "aliases": {"ru": ["заппити"]},
+         "capabilities": [
+             {"name": "playback", "group": "playback",
+              "actions": [{"name": "play_pause"}, {"name": "stop"}, {"name": "next"}]}]},
         {"id": "scenario_manager", "room": "living_room", "names": {"ru": "Сценарии"},
          "capabilities": [
              {"name": "scenario", "group": "scenario",
@@ -545,3 +557,45 @@ async def test_f41_scenario_label_with_latin_name(harness):
                          "capability": "scenario", "action": "set",
                          "params": {"value": "movie_appletv"}}]
     assert "Apple TV" in result.text
+
+
+# --- Slice 2 Part A ------------------------------------------------------------------------------
+
+async def test_power_verb_reaches_climate(harness):
+    result, captured = await harness.run("power_on", "включи обогрев",
+                                         {"target": "обогрев"}, room="Спальня")
+    assert captured == [{"kind": "actuate", "device_id": "bedroom_heating",
+                         "capability": "climate", "action": "on", "params": None}]
+
+
+async def test_power_verb_reaches_hood_fan(harness):
+    result, captured = await harness.run("power_on", "включи вытяжку",
+                                         {"target": "вытяжку"}, room="Кухня")
+    assert captured == [{"kind": "actuate", "device_id": "kitchen_hood",
+                         "capability": "fan", "action": "set", "params": {"level": 2}}]
+    result, captured2 = await harness.run("power_off", "выключи вытяжку",
+                                          {"target": "вытяжку"}, room="Кухня")
+    assert captured2[-1] == {"kind": "actuate", "device_id": "kitchen_hood",
+                             "capability": "fan", "action": "off", "params": None}
+
+
+async def test_volume_set_with_range_validation(harness):
+    result, captured = await harness.run("volume_set", "громкость 30 на телеке",
+                                         {"level": 30, "target": "телеке"}, room="Детская")
+    assert captured == [{"kind": "actuate", "device_id": "children_room_tv",
+                         "capability": "volume", "action": "set", "params": {"level": 30}}]
+
+
+async def test_playback_play_falls_back_to_play_pause(harness):
+    result, captured = await harness.run("playback_play", "продолжи на заппити",
+                                         {"target": "заппити"}, room="Гостиная")
+    assert captured == [{"kind": "actuate", "device_id": "video",
+                         "capability": "playback", "action": "play_pause", "params": None}]
+
+
+async def test_cover_position_room_form_halfway(harness):
+    result, captured = await harness.run("cover_position", "шторы наполовину",
+                                         {"group_noun": "cover"}, room="Гостиная")
+    assert captured == [{"kind": "room-group", "room_id": "living_room", "group": "cover",
+                         "action": "set_position", "scope": "auto"}]
+    assert "50" in result.text

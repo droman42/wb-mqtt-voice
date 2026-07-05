@@ -189,23 +189,23 @@
     fixture: F40
     tier: "1"
     kind: actuate
-- description: "F41 (t2, actuate): включи кино с эппл ти ви"
+- description: "F41 (t1, actuate): включи кино с эппл ти ви"
   vars:
     utterance: "включи кино с эппл ти ви"
     room: "living_room"
     expect: {"kind": "actuate", "device_id": "scenario_manager_living_room", "capability": "scenario", "action": "set", "params": {"value": "movie_appletv"}}
   metadata:
     fixture: F41
-    tier: "2"
+    tier: "1"
     kind: actuate
-- description: "F42 (t2, actuate): выключи кино"
+- description: "F42 (t1, actuate): выключи кино"
   vars:
     utterance: "выключи кино"
     room: "living_room"
     expect: {"kind": "actuate", "device_id": "scenario_manager_living_room", "capability": "scenario", "action": "off", "params": null}
   metadata:
     fixture: F42
-    tier: "2"
+    tier: "1"
     kind: actuate
 - description: "F50 (t1, actuate): переключи усилитель на cd"
   vars:
@@ -234,12 +234,84 @@
     fixture: F52
     tier: "1"
     kind: actuate
-- description: "F53 (t2, actuate): запусти ютуб на телеке"
+- description: "F53 (t1, actuate): запусти ютуб на телеке"
   vars:
     utterance: "запусти ютуб на телеке"
     room: "children_room"
     expect: {"kind": "actuate", "device_id": "children_room_tv", "capability": "apps", "action": "launch", "params": {"app": "YouTube"}}
   metadata:
     fixture: F53
-    tier: "2"
+    tier: "1"
+    kind: actuate
+- description: "F60 (t1, actuate): сделай телек громче"
+  vars:
+    utterance: "сделай телек громче"
+    room: "children_room"
+    expect: {"kind": "actuate", "device_id": "children_room_tv", "capability": "volume", "action": "up", "params": null}
+  metadata:
+    fixture: F60
+    tier: "1"
+    kind: actuate
+- description: "F61 (t1, actuate): громкость на телеке 30"
+  vars:
+    utterance: "громкость на телеке 30"
+    room: "children_room"
+    expect: {"kind": "actuate", "device_id": "children_room_tv", "capability": "volume", "action": "set", "params": {"level": 30}}
+  metadata:
+    fixture: F61
+    tier: "1"
+    kind: actuate
+- description: "F62 (t1, actuate): выключи звук на телеке"
+  vars:
+    utterance: "выключи звук на телеке"
+    room: "children_room"
+    expect: {"kind": "actuate", "device_id": "children_room_tv", "capability": "volume", "action": "mute_toggle", "params": null}
+  metadata:
+    fixture: F62
+    tier: "1"
+    kind: actuate
+- description: "F63 (t1, actuate): продолжи на эппл"
+  vars:
+    utterance: "продолжи на эппл"
+    room: "children_room"
+    expect: {"kind": "actuate", "device_id": "appletv_children", "capability": "playback", "action": "play", "params": null}
+  metadata:
+    fixture: F63
+    tier: "1"
+    kind: actuate
+- description: "F64 (t1, actuate): включи обогрев"
+  vars:
+    utterance: "включи обогрев"
+    room: "bedroom"
+    expect: {"kind": "actuate", "device_id": "bedroom_heating", "capability": "climate", "action": "on", "params": null}
+  metadata:
+    fixture: F64
+    tier: "1"
+    kind: actuate
+- description: "F65 (t1, actuate): включи вытяжку"
+  vars:
+    utterance: "включи вытяжку"
+    room: "kitchen"
+    expect: {"kind": "actuate", "device_id": "kitchen_hood", "capability": "fan", "action": "set", "params": {"level": 2}}
+  metadata:
+    fixture: F65
+    tier: "1"
+    kind: actuate
+- description: "F66 (t1, room-group): шторы наполовину"
+  vars:
+    utterance: "шторы наполовину"
+    room: "living_room"
+    expect: {"kind": "room-group", "room_id": "living_room", "group": "cover", "action": "set_position", "scope": "auto"}
+  metadata:
+    fixture: F66
+    tier: "1"
+    kind: room-group
+- description: "F67 (t1, actuate): перемотай вперёд на телеке"
+  vars:
+    utterance: "перемотай вперёд на телеке"
+    room: "children_room"
+    expect: {"kind": "actuate", "device_id": "children_room_tv", "capability": "playback", "action": "ff", "params": null}
+  metadata:
+    fixture: F67
+    tier: "1"
     kind: actuate
