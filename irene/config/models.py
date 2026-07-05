@@ -395,8 +395,12 @@ class TextProcessorConfig(BaseModel):
     normalizers: Dict[str, Dict[str, Any]] = Field(
         default_factory=lambda: {
             "numbers": {
+                # TTS-only (BUG-23): converts digits→WORDS (the synthesis direction). On asr_output
+                # it fought the BUG-1 words→digits pre-NLU normalization and corrupted alphanumeric
+                # values («hdmi1»→«hdmiодин»; «25»→«двадцать пять»→mis-reparsed). Same lesson as
+                # prepare/BUG-3 below.
                 "enabled": True,
-                "stages": ["asr_output", "tts_input"]
+                "stages": ["tts_input"]
             },
             "prepare": {
                 # TTS-only (BUG-3): this normalizer spells symbols out ("$"→"доллар") and phonetically

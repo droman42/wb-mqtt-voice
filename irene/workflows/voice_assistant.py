@@ -503,17 +503,38 @@ class UnifiedVoiceAssistantWorkflow(Workflow):
         # THIS turn as the answer: prepend the original utterance so the full understanding pipeline
         # (text-processing + NLU + extraction + coercion) runs on the combined text — no separate
         # slot-extractor. If the handler clarifies again, `_clarify` re-arms with the combined text,
-        # so successive answers append; if the user instead issued a new command, the combined text
-        # still routes through NLU (the answer dominates) and the one-shot pending is already cleared.
+        # so successive answers append.
+        #
+        # QUAL-44: BEFORE combining, arbitrate answer-vs-new-command. A user who abandons the
+        # clarification and issues a fresh command must not get their utterance glued onto the old
+        # one («поставь на паузу переключи телек на hdmi1» — the TEST-18 device suite caught this
+        # bleeding across turns). Deterministic rule: run NLU on the BARE new utterance first; if it
+        # independently recognizes as a confident, non-fallback intent — a complete command in its
+        # own right — drop the pending clarification and process it fresh. A bare slot answer
+        # («22», «на кухне», «телек») recognizes as nothing/fallback/low-confidence and combines as
+        # before. Cost: one extra NLU pass, only on clarifying turns (rare).
         effective_input = input_data
         pending = conversation_context.take_pending_clarification()
         if pending is not None:
-            original = pending.get("original_text") or ""
-            effective_input = f"{original} {input_data}".strip()
-            self.logger.info(
-                f"QUAL-31: resuming '{pending.get('intent_name')}' (slot "
-                f"'{pending.get('missing_param')}') with answer → '{effective_input[:60]}'"
-            )
+            bare_intent = await self.nlu.process(input_data, conversation_context, None,
+                                                 original_text=input_data)
+            fallback_name = getattr(self.nlu, "fallback_intent", "conversation.general")
+            threshold = getattr(self.nlu, "confidence_threshold", 0.7)
+            is_new_command = (bare_intent.name != fallback_name
+                              and bare_intent.confidence >= threshold)
+            if is_new_command:
+                self.logger.info(
+                    f"QUAL-44: pending clarification for '{pending.get('intent_name')}' dropped — "
+                    f"the new turn independently recognizes as '{bare_intent.name}' "
+                    f"(conf={bare_intent.confidence:.2f}); processing it fresh"
+                )
+            else:
+                original = pending.get("original_text") or ""
+                effective_input = f"{original} {input_data}".strip()
+                self.logger.info(
+                    f"QUAL-31: resuming '{pending.get('intent_name')}' (slot "
+                    f"'{pending.get('missing_param')}') with answer → '{effective_input[:60]}'"
+                )
 
         processed_text = effective_input
 

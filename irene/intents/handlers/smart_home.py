@@ -656,7 +656,7 @@ class SmartHomeIntentHandler(IntentHandler):
                                         options=", ".join(str(o) for o in options[:6])),
                 should_speak=True,
                 metadata={"clarification": True, "clarification_reason": "unknown_option",
-                          "options": options})
+                          "options": options, "spoken": spoken})
         command = DeviceCommand(device_id=device.id, capability=capability,
                                 action=action, params={param: matched})
         delivery = await self._deliver(command, context)

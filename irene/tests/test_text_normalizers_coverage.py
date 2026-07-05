@@ -110,5 +110,27 @@ class TestComponentLiveMethods(unittest.TestCase):
         self.assertEqual(_arun(c.convert_numbers_to_words("no digits", "ru")), "no digits")
 
 
+class TestDeviceSuiteRegressions(unittest.TestCase):
+    """BUG-23/BUG-24 — input corruption caught live by the TEST-18 device suite."""
+
+    def test_bug24_standalone_pol_is_the_floor_not_a_half(self):
+        from irene.utils.text_processing import normalize_numbers_to_digits
+        # «пол» = the FLOOR device reference; must survive words→digits normalization
+        self.assertEqual(normalize_numbers_to_digits("тёплый пол на двадцать пять градусов", "ru"),
+                         "тёплый пол на 25 градусов")
+        # ... while «пол» before a measure word is still "half"
+        self.assertEqual(normalize_numbers_to_digits("пол часа", "ru"), "0.5 часа")
+        # alphanumeric values pass through untouched
+        self.assertEqual(normalize_numbers_to_digits("переключи телек на hdmi1", "ru"),
+                         "переключи телек на hdmi1")
+
+    def test_bug23_numbers_normalizer_defaults_to_tts_only(self):
+        from irene.config.models import TextProcessorConfig
+        # the digits→words converter is SYNTHESIS-direction: it must never run before NLU
+        # (asr_output), where it corrupted «hdmi1»→«hdmiодин» and «25»→«двадцать пять»
+        stages = TextProcessorConfig().normalizers["numbers"]["stages"]
+        self.assertEqual(stages, ["tts_input"])
+
+
 if __name__ == "__main__":
     unittest.main()

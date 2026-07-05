@@ -917,6 +917,34 @@ rationale/chronology lives in [`RELEASE_JOURNAL.md`](./RELEASE_JOURNAL.md).
       Dependabot alerts (commits 05aa763/4e05a38) — no risky major bumps. **No code until scheduled + green-lit.**
 
 ### Code Quality & Review (QUAL)
+- [x] **QUAL-44** `[release]` — **DONE 2026-07-05** _(un-deferred same day, user — the TEST-18 device suite
+      made the defect reproducible: an armed clarification consumed the next same-room command as its
+      answer, poisoning F51–F53 in cascade)_. **Implemented exactly as scoped:** the resume pre-check
+      (`voice_assistant.py`) now runs NLU on the BARE new utterance first; a confident (≥ the NLU
+      component's threshold), non-fallback recognition is a fresh command — the pending clarification is
+      dropped (logged) and the utterance processes clean; anything else (bare fragment / low-confidence /
+      fallback) combines as before. Trade-off settled per the entry's own lean: one extra NLU pass on
+      clarifying turns only; abandonment is silent (no spoken acknowledgment — the fresh command's own
+      reply is the acknowledgment). Regression tests: new-command abandons, low-confidence still combines,
+      bare-answer path stays green (the fakes became text-aware — an everything-recognizes-at-0.9 fake
+      would have defeated the arbitration silently). Live proof: F52 flipped green; F42 stopped producing
+      combine-garbage. [DFLOW] (P2, enhancement; split from QUAL-31) — _Orig:_ **Answer-vs-new-command arbitration on a
+      clarifying turn.** QUAL-31's resume pre-check (`workflows/voice_assistant.py` `_process_pipeline`, the
+      `take_pending_clarification` branch) **unconditionally** treats the turn that follows a clarification as the answer:
+      it prepends the original utterance and re-runs NLU on the combined text. That is the intended flow ("answer with
+      just the missing value"), but if the user instead **abandons the clarification and barks a new command** ("какая
+      погода?" after being asked a timer duration), the combine yields a garbled utterance ("поставь таймер какая
+      погода?") that can misroute or no-op. Today this is bounded only by one-shot consumption (the bad turn clears the
+      marker) + idle-window expiry — acceptable for the P2 feature, but not robust. **Scope:** add deterministic
+      arbitration before combining — e.g. run NLU on the **bare answer first**; if it independently recognizes as a
+      **confident, non-fallback** intent (a real, different command), drop the pending clarification and process the
+      answer **fresh**; otherwise (bare fragment / low-confidence / fallback) treat it as the slot answer and combine as
+      today. **Trade-off to settle:** an extra NLU pass on clarifying turns only (cheap, rare) vs. a lighter
+      confidence/phrase heuristic; also decide whether a brand-new command should *cancel* the pending intent silently or
+      acknowledge the abandonment. Pairs with QUAL-31 (this is its known limitation) and the F&F `contextual` resolution
+      (same "is this turn about the prior context or a fresh request?" question). Done when a new-command answer routes
+      to the new command (not the garbled combine) with a regression test, and the legitimate slot-answer path stays
+      green. Refs: QUAL-31, QUAL-30, Q7.
 - [x] **QUAL-65** [PEX][MQTT] (P2) `[release]` — **DONE 2026-07-05 (filed + completed same day; user-requested
       intake: bridge VWB-19 landed input/app canonical routing — consume it before QUAL-35).**
       **Input switching + app launch by voice**, against the re-pinned contract @ bridge `3bed556` /
@@ -2000,6 +2028,24 @@ rationale/chronology lives in [`RELEASE_JOURNAL.md`](./RELEASE_JOURNAL.md).
       new WS tests (multi-utterance on one socket; no-end force-finalize with patched timeout) + the legacy fake
       made sherpa-honest (empty stream finalizes to nothing). Live verification: 3 utterances on one connection
       (with end ×2, without end ×1) all answered, single model load. Suite 1158 passed / 7 skipped; pyright clean.
+- [x] **BUG-24** [NLU][TXTPROC] (P2) `[release]` — **DONE 2026-07-05 (found live by the TEST-18 device
+      suite, fixture F06).** **BUG-1's words→digits normalizer destroyed «тёплый пол»:**
+      `ovos_number_parser.numbers_to_digits(ru)` maps a STANDALONE «пол» to 0.5 («тёплый пол» → «тёплый
+      0.5») — the floor-heating device reference became unresolvable. Fix in
+      `utils/text_processing.normalize_numbers_to_digits`: standalone «пол» is guarded through the
+      conversion via a sentinel unless followed by a measure word («пол часа» still → «0.5 часа»);
+      inflections were never converted anyway. Regression-tested (incl. alphanumeric pass-through).
+- [x] **BUG-23** [TXTPROC] (P2) `[release]` — **DONE 2026-07-05 (found live by the TEST-18 device suite,
+      fixture F51: `spoken: "hdmiодин"`).** **The `numbers` normalizer (digits→WORDS — the SYNTHESIS
+      direction) ran on `asr_output`,** fighting the BUG-1 words→digits pre-NLU normalization and
+      corrupting alphanumeric values before extraction («hdmi1»→«hdmiодин»; «25»→«двадцать пять»→
+      mis-reparsed — the real cause of F06's range error, previously misattributed to T2 compound
+      numerals). Same disease `prepare` had (BUG-3). Fix: `tts_input`-only in the pydantic defaults +
+      config-master + explicit `[text_processor.normalizers.*]` blocks in all 6 docker configs.
+      **En-route (user question): the 3 `-en` configs inherited `latin_to_cyrillic: true` by default —
+      an ENGLISH deployment would transliterate its entire TTS input to Cyrillic** (unheard only because
+      on-device EN TTS validation rides ARCH-25); the `-en` blocks now set `latin_to_cyrillic = false` +
+      `language = "en"` (QUAL-38 per-normalizer deployment language). Default-stage regression test added.
 - [x] **BUG-22** [WEBAPI] (P2) `[release]` — **DONE 2026-07-05 (found + fixed during TEST-18 Slice B).**
       **`room_alias` validation on `/execute/command` NEVER worked live:** `web_server.py` built its own fresh
       `IntentAssetLoader` and loaded ONLY web templates, so the router's localization consumers saw empty data

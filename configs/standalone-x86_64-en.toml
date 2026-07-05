@@ -266,7 +266,23 @@ max_phrases_per_intent = 3
 # ============================================================
 [text_processor]
 enabled = true
-stages = ["asr_output", "tts_input", "command_input", "general"]
+stages = ["asr_output", "tts_input"]     # the two real stages (informational; chains below)
+
+[text_processor.normalizers.numbers]
+enabled = true                           # digits -> words, for SYNTHESIS
+# TTS-only (BUG-23): on asr_output this fought the words->digits pre-NLU normalization and
+# corrupted alphanumerics ("hdmi1" -> "hdmiодин", "25" -> spelled words -> mis-reparsed).
+stages = ["tts_input"]
+language = "en"                          # QUAL-38: spell numbers in the deployment language
+
+[text_processor.normalizers.prepare]
+enabled = true                           # symbol->word normalization for SYNTHESIS
+stages = ["tts_input"]                   # TTS-only (BUG-3)
+# EN deployment: NEVER transliterate — the voice is English; Latin->Cyrillic would corrupt
+# every spoken reply. (The RU profiles keep it on for Latin words inside Russian speech.)
+latin_to_cyrillic = false
+symbol_replacement = true
+language = "en"
 
 # ============================================================
 # INTENT SYSTEM (essential)

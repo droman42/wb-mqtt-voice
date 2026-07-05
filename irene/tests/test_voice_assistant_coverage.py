@@ -216,7 +216,13 @@ def _pipeline_workflow(*, text_processing=False):
 
     async def nlu_process(text, ctx, trace, original_text=None):
         wf._seen_nlu = {"text": text, "original_text": original_text}
-        return Intent(name="timer.set", entities={}, confidence=0.9, raw_text=original_text)
+        # Text-aware (QUAL-44): a full command recognizes confidently, a bare fragment
+        # («на пять минут») falls back low — else the arbitration probe would classify
+        # every clarification answer as a fresh command and never combine.
+        if "таймер" in text:
+            return Intent(name="timer.set", entities={}, confidence=0.9, raw_text=original_text)
+        return Intent(name="conversation.general", entities={}, confidence=0.3,
+                      raw_text=original_text)
 
     async def orch_execute(intent, ctx, trace):
         return IntentResult(text="готово", success=True, confidence=0.9)

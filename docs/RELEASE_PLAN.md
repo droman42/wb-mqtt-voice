@@ -281,25 +281,6 @@ _Apply to every remediation task below (from the 4 review docs + QUAL-25/26). So
         **(6) Same-room capability ambiguity: v1 CLARIFIES** (user decision 2026-07-05; TEST-18 fixtures
         F20/F21 are the spec) — don't build priority config into the v1 resolver; priority rules are
         **QUAL-63** (later release).
-- [ ] **QUAL-44** `[release]` _(un-deferred 2026-07-05, user — the TEST-18 device suite made the defect
-      reproducible: an armed clarification consumed the next same-room command as its answer, poisoning
-      F51–F53 in cascade)_ [DFLOW] (P2, enhancement; split from QUAL-31) — **Answer-vs-new-command arbitration on a
-      clarifying turn.** QUAL-31's resume pre-check (`workflows/voice_assistant.py` `_process_pipeline`, the
-      `take_pending_clarification` branch) **unconditionally** treats the turn that follows a clarification as the answer:
-      it prepends the original utterance and re-runs NLU on the combined text. That is the intended flow ("answer with
-      just the missing value"), but if the user instead **abandons the clarification and barks a new command** ("какая
-      погода?" after being asked a timer duration), the combine yields a garbled utterance ("поставь таймер какая
-      погода?") that can misroute or no-op. Today this is bounded only by one-shot consumption (the bad turn clears the
-      marker) + idle-window expiry — acceptable for the P2 feature, but not robust. **Scope:** add deterministic
-      arbitration before combining — e.g. run NLU on the **bare answer first**; if it independently recognizes as a
-      **confident, non-fallback** intent (a real, different command), drop the pending clarification and process the
-      answer **fresh**; otherwise (bare fragment / low-confidence / fallback) treat it as the slot answer and combine as
-      today. **Trade-off to settle:** an extra NLU pass on clarifying turns only (cheap, rare) vs. a lighter
-      confidence/phrase heuristic; also decide whether a brand-new command should *cancel* the pending intent silently or
-      acknowledge the abandonment. Pairs with QUAL-31 (this is its known limitation) and the F&F `contextual` resolution
-      (same "is this turn about the prior context or a fresh request?" question). Done when a new-command answer routes
-      to the new command (not the garbled combine) with a regression test, and the legitimate slot-answer path stays
-      green. Refs: QUAL-31, QUAL-30, Q7.
 - [ ] **QUAL-53** [NLU] (P3) `[deferred]` — **Trace-driven improvement of the cheap NLU tiers** (split from QUAL-51,
       2026-06-16). When an utterance falls through to the LLM classifier, that's a signal the cheap deterministic tiers
       (keyword matcher, spaCy) *should* have caught it. Build an **offline analysis process, integrated with trace

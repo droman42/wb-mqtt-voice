@@ -15,6 +15,27 @@ newest entries near the top of each dated section.
 
 ## Action journal
 
+- **2026-07-05 — QUAL-44 DONE (+ BUG-23/BUG-24 found & fixed under it) — device suite 23/27; every
+  remaining red is deliberate.** The arbitration landed exactly as the entry scoped it: on a
+  clarifying turn the pipeline now runs NLU on the BARE new utterance first — a confident,
+  non-fallback recognition is a fresh command (pending dropped, logged, processed clean); fragments
+  and low-confidence turns combine as before. One extra NLU pass, clarifying turns only; abandonment
+  is silent. The regression fakes became text-aware — an everything-recognizes-at-0.9 fake would have
+  defeated the arbitration invisibly. Chasing the residual F51 red through the live stack
+  (`spoken: "hdmiодин"` in the new clarification metadata) unearthed two real input-corruption bugs:
+  **BUG-23** — the `numbers` normalizer (digits→words, the SYNTHESIS direction) ran on `asr_output`,
+  fighting BUG-1's pre-NLU words→digits and garbling «hdmi1»/«25» (the true cause of F06's range
+  error, previously misread as a T2 compound-numeral limit); now `tts_input`-only in defaults +
+  config-master + explicit normalizer blocks in all 6 docker configs (user request). **BUG-24** —
+  ovos maps standalone «пол» to 0.5, so «тёплый пол» lost its device noun; now sentinel-guarded
+  unless a measure word follows («пол часа» still converts). A user question caught a third latent
+  one en route: the `-en` configs inherited `latin_to_cyrillic: true` — an English deployment would
+  transliterate its whole TTS input; the `-en` blocks now pin `latin_to_cyrillic = false` +
+  `language = "en"`. **Result: `make device-auto` 23/27** — F05/F06/F07 retiered to 1 in the fixtures
+  (eval-commons `3b959e0`; the "T2 compound numerals" theory is dead, it was pipeline corruption);
+  the 4 red are exactly F40/F42 (QUAL-64 matcher tune, user-parked) and F41/F53 (genuine T2
+  transliteration). Suite 1266 green, pyright 0, 11/11 contracts.
+
 - **2026-07-05 — QUAL-65 DONE — input switching + app launch by voice (bridge VWB-19 consumed);
   the options_from dance built; QUAL-44 un-deferred by what the suite caught.** Re-pinned @ bridge
   `3bed556` / catalog `dbfd2855` (select-form canonical routing, `canonical_first.md` §11): by_value

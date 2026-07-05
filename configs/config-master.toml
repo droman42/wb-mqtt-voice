@@ -460,7 +460,10 @@ stages = ["asr_output", "tts_input"]   # valid stages (informational)
 
 [text_processor.normalizers.numbers]
 enabled = true                          # number -> words (ru: dependency-free; non-ru: ovos-number-parser)
-stages = ["asr_output", "tts_input"]
+# TTS-only (BUG-23): this converter runs digits->WORDS — the synthesis direction. On asr_output it
+# fought BUG-1's words->digits normalization (before NLU) and corrupted alphanumerics:
+# «hdmi1» -> «hdmiодин», «25» -> «двадцать пять» -> mis-reparsed. Same lesson as prepare/BUG-3.
+stages = ["tts_input"]
 
 [text_processor.normalizers.prepare]
 enabled = true                          # symbol->word, Latin->Cyrillic

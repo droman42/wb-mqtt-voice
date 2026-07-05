@@ -233,6 +233,27 @@ def normalize_numbers_to_digits(text: str, language: str = "ru") -> str:
         from ovos_number_parser import numbers_to_digits  # type: ignore
         if language == "ru":
             text = _ru_oblique_to_nominative(text)  # BUG-7: oblique-case cardinals → nominative first
+            # BUG-24: ovos maps a STANDALONE «пол» to 0.5 («тёплый пол» → «тёплый 0.5»),
+            # destroying the floor-heating device reference. «пол» means "half" only before a
+            # measure word («пол часа»); anywhere else it is the FLOOR — guard it through the
+            # conversion. (Inflections «полу»/«пола» are not converted by ovos; only the exact
+            # nominative needs the guard.)
+            # A Latin token survives ovos untouched (non-word chars get stripped by it);
+            # improbable enough to never occur in speech, restored immediately after.
+            sentinel = "xxpolguardxx"
+            guarded: list = []
+
+            def _guard(match: "re.Match[str]") -> str:
+                guarded.append(match.group())
+                return sentinel
+
+            text = re.sub(
+                r"\bпол\b(?!\s+(?:час|минут|секунд|градус|процент|литр|стакан|метр|кило))",
+                _guard, text, flags=re.IGNORECASE)
+            converted = numbers_to_digits(text, lang=language)
+            for original in guarded:
+                converted = converted.replace(sentinel, original, 1)
+            return converted
         return numbers_to_digits(text, lang=language)
     except Exception:
         return text
