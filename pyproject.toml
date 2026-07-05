@@ -255,6 +255,8 @@ all = [
 irene-config-validate = "irene.tools.config_validator_cli:main"
 irene-build-analyze = "irene.tools.build_analyzer:main"
 irene-dependency-validate = "irene.tools.dependency_validator:main"
+# QUAL-67: donation schema + contract-wiring gate, warnings-as-errors (enabled by the QUAL-66 zero-baseline)
+irene-donation-validate = "irene.tools.donation_validator_cli:main"
 
 # Trace recording + replay (ARCH-19) — also covers the old VAD-recording workflow
 # (capture_level=segmenter on a mic session → read vad_frames, then replay to tune)

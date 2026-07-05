@@ -15,6 +15,16 @@ newest entries near the top of each dated section.
 
 ## Action journal
 
+- **2026-07-05 — QUAL-67 DONE (filed + completed same day) — donation validation is a CI/build
+  gate, warnings-as-errors.** The natural payoff of QUAL-66: with the wiring warnings at zero,
+  `irene-donation-validate` fails the build on ANY new one — dead params and undeclared routing
+  methods can no longer accumulate as ambient noise. The gate validates every donation directory
+  that ships (module-aware discovery; handler module names are inconsistent about the `_handler`
+  suffix), not just what some config enables, and sits in backend-health beside the
+  config/dependency/build-analyzer gates, so it fences every image publish. Proven both
+  directions: 14 handlers / 86 contract methods green, and an injected canary param turns it red.
+
+
 - **2026-07-05 — QUAL-66 DONE (filed + completed same day) — contract-wiring warnings 21 → 0.**
   The user asked what the boot-time "Contract wiring" warnings were; the answer became a sweep.
   Dead `language` globals dropped from 9 donations (request language lives on the context since

@@ -945,6 +945,16 @@ rationale/chronology lives in [`RELEASE_JOURNAL.md`](./RELEASE_JOURNAL.md).
       (same "is this turn about the prior context or a fresh request?" question). Done when a new-command answer routes
       to the new command (not the garbled combine) with a regression test, and the legitimate slot-answer path stays
       green. Refs: QUAL-31, QUAL-30, Q7.
+- [x] **QUAL-67** [QUAL][CI][DONATION] (P3) `[release]` — **DONE 2026-07-05 (filed + completed same
+      day, user-requested — the payoff of QUAL-66's zero baseline).** **Donation validation is now a
+      build + CI gate:** new `irene-donation-validate` (`irene/tools/donation_validator_cli.py`) runs
+      the exact runtime validation (schema strict + `validate_contracts`) over EVERY donation
+      directory under `assets/donations/` (module-aware discovery — handler modules are inconsistent
+      about the `_handler` suffix) with **warnings-as-errors**: a declared-but-unread param or an
+      undeclared `_handle_*` method now FAILS the build instead of scrolling past in a boot log.
+      Wired into `ci.yml` backend-health beside the config/dependency/build-analyzer gates (gates
+      every image publish = the build gate). Verified both ways: green on the clean tree
+      (14 handlers, 86 methods, 0/0), red on an injected canary param. Suite 1289 green.
 - [x] **QUAL-66** [QUAL][DONATION] (P3) `[release]` — **DONE 2026-07-05 (filed + completed same day,
       user-requested after asking what the "Contract wiring" warnings were).** **Contract-wiring
       warnings swept 21 → 0**, turning the loader's validator from ambient noise into a meaningful
