@@ -489,6 +489,7 @@ fallback_intent = "conversation.general"  # Fallback intent when recognition fai
 # Domain priorities for contextual command disambiguation (Phase 1 - TODO16)
 [intent_system.domain_priorities]
 audio = 90                          # Audio playback commands (highest priority)
+smart_home = 80                     # Smart-home actuation via the bridge (below audio, above timer)
 timer = 70                          # Timer and alarm commands (medium priority)
 voice_synthesis = 60                # TTS and speech commands (lower priority)
 system = 50                         # System commands (default priority)
@@ -504,7 +505,7 @@ latency_threshold_ms = 5.0          # Alert threshold for disambiguation latency
 
 # Intent handler configuration
 [intent_system.handlers]
-enabled = ["conversation", "greetings", "timer", "datetime", "system", "text_enhancement_handler"]  # Enabled handlers
+enabled = ["conversation", "greetings", "timer", "datetime", "system", "text_enhancement_handler", "smart_home"]  # Enabled handlers
 disabled = []                       # Disabled handlers
 auto_discover = true               # Automatically discover handlers
 discovery_paths = ["irene.intents.handlers"]  # Entry-point discovery paths

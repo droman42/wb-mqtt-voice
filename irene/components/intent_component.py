@@ -91,6 +91,17 @@ class IntentComponent(Component, WebAPIPlugin):
         # Get registry and orchestrator from manager
         self.intent_registry = self.handler_manager.get_registry()
         self.intent_orchestrator = self.handler_manager.get_orchestrator()
+
+        # ARCH-8 PR-4: inject the device-catalog port + the awaited DEVICE_COMMAND delivery seam
+        # into the smart-home handler(s). Always wired — with the bridge output disabled the
+        # dispatcher simply finds no designated target and the handler speaks the degraded path.
+        catalog_service = getattr(core, "catalog_service", None)
+        output_manager = getattr(core, "output_manager", None)
+        if catalog_service is not None:
+            from ..core.device_command_dispatcher import DeviceCommandDispatcher
+            self.handler_manager.set_device_command_services(
+                catalog_service, DeviceCommandDispatcher(output_manager))
+            logger.info("Device-command services injected into intent handlers (ARCH-8)")
         
         # NOTE: Component dependencies will be injected during post-initialization coordination
         # This ensures all components are available before dependency injection

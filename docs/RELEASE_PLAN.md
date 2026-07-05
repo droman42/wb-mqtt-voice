@@ -213,8 +213,34 @@ See `docs/review/phase1_architecture_map.md` §5.
       pinned golden (12/12 incl. every device-form fixture's resolution leg). Suite 1228 green,
       pyright 0, 11 contracts kept. **QUAL-35 remaining after this:** (a) T1 donations (PR-4), (c)
       handler-side room_context policy (PR-4 w/ QUAL-30), T2/T3 tiers + units + options_from
-      transliteration (post-suite evidence). NEXT: PR-4 (reference handler + T1 donations + noun
-      lexicon + scope mapping). **Build notes from the 2026-07-04/05 contract analysis (recorded from
+      transliteration (post-suite evidence).
+      **★ PR-4 DONE 2026-07-05 (+ QUAL-35 (a) T1 donations + the handler side of (c)) — the
+      vertical slice closes.** `intents/handlers/smart_home.py` (`SmartHomeIntentHandler`, domain
+      `smart_home`, 9 donation-routed methods: power on/off, cover open/close, set_setpoint,
+      set_brightness, playback_pause, scenario start/stop) + the T1 donation
+      (`assets/donations/smart_home_handler/` contract+ru+en — **first donation with non-generic
+      `entity_type`**: `target`=device / `room`=room, which is what activates the PR-3 Q7b swap
+      live) + templates (`assets/templates/smart_home_handler/`, feminine ru). **The noun lexicon
+      is the donation's `group_noun` CHOICE** — canonical values ARE catalog `group` names
+      (light/cover), ru surfaces свет/шторы/жалюзи/занавески — with a handler-side word-boundary
+      verification so «подсветка потолка» (a NAME containing «свет») stays device-form (depth
+      doctrine); «весь/все» → `scope: all`. Delivery: `DeviceCommandDeliveryPort` (new domain
+      port, Any-typed to stay pure) implemented by `core/device_command_dispatcher.py` over the
+      OutputManager under a 7s bound; injected with the catalog port via
+      `handler_manager.set_device_command_services` from `intent_component.initialize`. Speech:
+      §5b error enum → templates, `param_invalid` + ambiguity + missing slots → QUAL-30/31
+      clarifications (F20 playback / F21 climate encode the v1 clarify policy), catalog-backed
+      setpoint range pre-validation, per-member aggregate speech names failed members (§10.4),
+      no-bridge/no-catalog degrade paths. Handler enabled in config-master + all 6 docker configs;
+      `smart_home = 80` domain priority. **22 fixture-mirroring tests** (real resolver → real
+      handler → real OutputManager → capturing bridge; F01/02/04/05/07/08 device-form,
+      F10/11/12/14/15/16 room-form, F20/21 clarify, F40/42 scenario, partial-aggregate + error +
+      degrade paths) + **live webapi verification**: «включи свет в детской» → `smart_home.power_on`
+      through the REAL NLU cascade (greetings/timer unaffected). Suite 1250 green, pyright 0,
+      11 contracts. **TEST-18 tier-1 fixtures are now green-able** — Slice B (the eval-commons
+      capture provider) turns them executable. User-facing smart-home guide prose: deferred to
+      PR-5 (ARCH-8 completion). Side-fix: `.python-version` 3.11.4→3.11.12 (the dev-venv
+      `_bz2`/`_sqlite3` trap's root cause). NEXT: PR-5 (sensor read) or TEST-18 Slice B. **Build notes from the 2026-07-04/05 contract analysis (recorded from
       chat):** PR-2's catalog parser codes against typed `CatalogParam` — a param carries EITHER `values`
       (stable enum `{wire,canonical,labels}` triplets) OR `options_from` (a dynamic set enumerated at
       resolution time via `GET /devices/{id}/options/<kind>` — installed apps etc.); PR-3's resolver consumes

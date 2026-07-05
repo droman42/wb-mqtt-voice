@@ -229,7 +229,7 @@ confidence_threshold = 0.7
 fallback_intent = "conversation.general"
 
 [intent_system.handlers]
-enabled = ["conversation", "greetings", "timer", "datetime", "system", "text_enhancement_handler"]
+enabled = ["conversation", "greetings", "timer", "datetime", "system", "text_enhancement_handler", "smart_home"]
 disabled = []
 auto_discover = true
 discovery_paths = ["irene.intents.handlers"]

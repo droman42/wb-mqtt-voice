@@ -1,0 +1,240 @@
+{
+  "$schema": "../../donation_contract_v1.1.json",
+  "schema_version": "1.1",
+  "donation_version": "1.0.0",
+  "handler_domain": "smart_home",
+  "intent_name_patterns": [
+    "smart_home.power_on",
+    "smart_home.power_off",
+    "smart_home.cover_open",
+    "smart_home.cover_close",
+    "smart_home.set_setpoint",
+    "smart_home.set_brightness",
+    "smart_home.playback_pause",
+    "smart_home.scenario_start",
+    "smart_home.scenario_stop"
+  ],
+  "domain_patterns": ["smart_home"],
+  "action_domain_priority": 80,
+  "method_donations": [
+    {
+      "method_name": "_handle_power_on",
+      "intent_suffix": "power_on",
+      "boost": 1.0,
+      "room_context": "none",
+      "parameters": [
+        {
+          "name": "group_noun",
+          "type": "choice",
+          "required": false,
+          "choices": ["light", "cover"],
+          "entity_type": "generic"
+        },
+        {
+          "name": "target",
+          "type": "string",
+          "required": false,
+          "pattern": "(?:включи(?:ть)?|зажги|turn\\s+on)\\s+(?!(?:свет|весь|все|шторы|жалюзи|занавески|light|lights|all|curtains|blinds)\\b)(.+?)(?:\\s+(?:в|на|in)\\s+\\S+)?\\s*$",
+          "entity_type": "device"
+        },
+        {
+          "name": "room",
+          "type": "string",
+          "required": false,
+          "pattern": "(?:\\bв|\\bна|\\bin)\\s+([а-яёa-z_]+)\\s*$",
+          "entity_type": "room"
+        }
+      ]
+    },
+    {
+      "method_name": "_handle_power_off",
+      "intent_suffix": "power_off",
+      "boost": 1.0,
+      "room_context": "none",
+      "parameters": [
+        {
+          "name": "group_noun",
+          "type": "choice",
+          "required": false,
+          "choices": ["light", "cover"],
+          "entity_type": "generic"
+        },
+        {
+          "name": "target",
+          "type": "string",
+          "required": false,
+          "pattern": "(?:выключи(?:ть)?|погаси|отключи|turn\\s+off)\\s+(?!(?:свет|весь|все|шторы|жалюзи|занавески|light|lights|all|curtains|blinds)\\b)(.+?)(?:\\s+(?:в|на|in)\\s+\\S+)?\\s*$",
+          "entity_type": "device"
+        },
+        {
+          "name": "room",
+          "type": "string",
+          "required": false,
+          "pattern": "(?:\\bв|\\bна|\\bin)\\s+([а-яёa-z_]+)\\s*$",
+          "entity_type": "room"
+        }
+      ]
+    },
+    {
+      "method_name": "_handle_cover_open",
+      "intent_suffix": "cover_open",
+      "boost": 1.1,
+      "room_context": "none",
+      "parameters": [
+        {
+          "name": "group_noun",
+          "type": "choice",
+          "required": false,
+          "choices": ["light", "cover"],
+          "entity_type": "generic"
+        },
+        {
+          "name": "target",
+          "type": "string",
+          "required": false,
+          "pattern": "(?:открой|подними|раздвинь|open|raise)\\s+(?!(?:свет|шторы|жалюзи|занавески|light|curtains|blinds)\\b)(.+?)(?:\\s+(?:в|на|in)\\s+\\S+)?\\s*$",
+          "entity_type": "device"
+        },
+        {
+          "name": "room",
+          "type": "string",
+          "required": false,
+          "pattern": "(?:\\bв|\\bна|\\bin)\\s+([а-яёa-z_]+)\\s*$",
+          "entity_type": "room"
+        }
+      ]
+    },
+    {
+      "method_name": "_handle_cover_close",
+      "intent_suffix": "cover_close",
+      "boost": 1.1,
+      "room_context": "none",
+      "parameters": [
+        {
+          "name": "group_noun",
+          "type": "choice",
+          "required": false,
+          "choices": ["light", "cover"],
+          "entity_type": "generic"
+        },
+        {
+          "name": "target",
+          "type": "string",
+          "required": false,
+          "pattern": "(?:закрой|задвинь|опусти|close|lower)\\s+(?!(?:свет|шторы|жалюзи|занавески|light|curtains|blinds)\\b)(.+?)(?:\\s+(?:в|на|in)\\s+\\S+)?\\s*$",
+          "entity_type": "device"
+        },
+        {
+          "name": "room",
+          "type": "string",
+          "required": false,
+          "pattern": "(?:\\bв|\\bна|\\bin)\\s+([а-яёa-z_]+)\\s*$",
+          "entity_type": "room"
+        }
+      ]
+    },
+    {
+      "method_name": "_handle_set_setpoint",
+      "intent_suffix": "set_setpoint",
+      "boost": 1.2,
+      "room_context": "none",
+      "parameters": [
+        {
+          "name": "temp",
+          "type": "float",
+          "required": false,
+          "entity_type": "generic"
+        },
+        {
+          "name": "target",
+          "type": "string",
+          "required": false,
+          "pattern": "(?:на|у|on)\\s+([а-яёa-z][а-яёa-z\\s]{2,}?)(?=\\s+\\d|\\s*$)",
+          "entity_type": "device"
+        },
+        {
+          "name": "room",
+          "type": "string",
+          "required": false,
+          "pattern": "(?:\\bв|\\bin)\\s+([а-яёa-z_]+)\\s*$",
+          "entity_type": "room"
+        }
+      ]
+    },
+    {
+      "method_name": "_handle_set_brightness",
+      "intent_suffix": "set_brightness",
+      "boost": 1.2,
+      "room_context": "none",
+      "parameters": [
+        {
+          "name": "level",
+          "type": "integer",
+          "required": false,
+          "min_value": 0,
+          "max_value": 100,
+          "entity_type": "generic"
+        },
+        {
+          "name": "target",
+          "type": "string",
+          "required": false,
+          "pattern": "яркость\\s+(?:на\\s+)?([а-яёa-z][а-яёa-z\\s]{2,}?)(?=\\s+\\d|\\s*$)",
+          "entity_type": "device"
+        },
+        {
+          "name": "room",
+          "type": "string",
+          "required": false,
+          "pattern": "(?:\\bв|\\bin)\\s+([а-яёa-z_]+)\\s*$",
+          "entity_type": "room"
+        }
+      ]
+    },
+    {
+      "method_name": "_handle_playback_pause",
+      "intent_suffix": "playback_pause",
+      "boost": 1.2,
+      "room_context": "none",
+      "parameters": [
+        {
+          "name": "target",
+          "type": "string",
+          "required": false,
+          "pattern": "(?:поставь|поставить|put)\\s+(?!на\\b)(.+?)\\s+(?:на\\s+паузу|on\\s+pause)",
+          "entity_type": "device"
+        }
+      ]
+    },
+    {
+      "method_name": "_handle_scenario_start",
+      "intent_suffix": "scenario_start",
+      "boost": 1.3,
+      "room_context": "none",
+      "parameters": [
+        {
+          "name": "room",
+          "type": "string",
+          "required": false,
+          "pattern": "(?:\\bв|\\bin)\\s+([а-яёa-z_]+)\\s*$",
+          "entity_type": "room"
+        }
+      ]
+    },
+    {
+      "method_name": "_handle_scenario_stop",
+      "intent_suffix": "scenario_stop",
+      "boost": 1.3,
+      "room_context": "none",
+      "parameters": [
+        {
+          "name": "room",
+          "type": "string",
+          "required": false,
+          "pattern": "(?:\\bв|\\bin)\\s+([а-яёa-z_]+)\\s*$",
+          "entity_type": "room"
+        }
+      ]
+    }
+  ]
+}

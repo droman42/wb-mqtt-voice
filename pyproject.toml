@@ -343,6 +343,7 @@ unified_voice_assistant = "irene.workflows.voice_assistant:UnifiedVoiceAssistant
 conversation = "irene.intents.handlers.conversation:ConversationIntentHandler"
 greetings = "irene.intents.handlers.greetings:GreetingsIntentHandler"
 timer = "irene.intents.handlers.timer:TimerIntentHandler"
+smart_home = "irene.intents.handlers.smart_home:SmartHomeIntentHandler"
 datetime = "irene.intents.handlers.datetime:DateTimeIntentHandler"
 system = "irene.intents.handlers.system:SystemIntentHandler"
 random_handler = "irene.intents.handlers.random_handler:RandomIntentHandler"

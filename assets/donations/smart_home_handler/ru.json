@@ -1,0 +1,159 @@
+{
+  "$schema": "../../donation_language_v1.1.json",
+  "schema_version": "1.1",
+  "language": "ru",
+  "handler_domain": "умный дом",
+  "description": "Управление умным домом через мост: свет, шторы, климат, яркость, пауза, сценарии",
+  "method_donations": [
+    {
+      "method_name": "_handle_power_on",
+      "intent_suffix": "power_on",
+      "description": "Включить устройство или свет в комнате",
+      "phrases": ["включи", "включить", "зажги"],
+      "lemmas": ["включить", "зажечь", "свет"],
+      "examples": [
+        {"text": "включи свет в детской", "parameters": {"group_noun": "light", "room": "детской"}},
+        {"text": "включи телек", "parameters": {"target": "телек"}},
+        {"text": "включи печь", "parameters": {"target": "печь"}}
+      ],
+      "parameters": [
+        {
+          "name": "group_noun",
+          "description": "Существительное группы (свет/шторы) — команда на комнату, устройство выбирает мост",
+          "choice_surfaces": {"light": ["свет"], "cover": ["шторы", "жалюзи", "занавески"]}
+        },
+        {"name": "target", "description": "Название устройства"},
+        {"name": "room", "description": "Комната"}
+      ]
+    },
+    {
+      "method_name": "_handle_power_off",
+      "intent_suffix": "power_off",
+      "description": "Выключить устройство или свет в комнате",
+      "phrases": ["выключи", "выключить", "погаси", "отключи"],
+      "lemmas": ["выключить", "погасить", "отключить", "свет"],
+      "examples": [
+        {"text": "выключи весь свет в спальне", "parameters": {"group_noun": "light", "room": "спальне"}},
+        {"text": "выключи розетки", "parameters": {"target": "розетки"}}
+      ],
+      "parameters": [
+        {
+          "name": "group_noun",
+          "description": "Существительное группы (свет/шторы)",
+          "choice_surfaces": {"light": ["свет"], "cover": ["шторы", "жалюзи", "занавески"]}
+        },
+        {"name": "target", "description": "Название устройства"},
+        {"name": "room", "description": "Комната"}
+      ]
+    },
+    {
+      "method_name": "_handle_cover_open",
+      "intent_suffix": "cover_open",
+      "description": "Открыть шторы/жалюзи или названное устройство",
+      "phrases": ["открой", "подними", "раздвинь"],
+      "lemmas": ["открыть", "поднять", "раздвинуть", "штора", "жалюзи"],
+      "examples": [
+        {"text": "подними жалюзи", "parameters": {"group_noun": "cover"}}
+      ],
+      "parameters": [
+        {
+          "name": "group_noun",
+          "description": "Существительное группы",
+          "choice_surfaces": {"light": ["свет"], "cover": ["шторы", "жалюзи", "занавески"]}
+        },
+        {"name": "target", "description": "Название устройства"},
+        {"name": "room", "description": "Комната"}
+      ]
+    },
+    {
+      "method_name": "_handle_cover_close",
+      "intent_suffix": "cover_close",
+      "description": "Закрыть шторы/жалюзи или названное устройство",
+      "phrases": ["закрой", "задвинь", "опусти"],
+      "lemmas": ["закрыть", "задвинуть", "опустить", "штора", "жалюзи"],
+      "examples": [
+        {"text": "закрой шторы", "parameters": {"group_noun": "cover"}},
+        {"text": "закрой тюль слева", "parameters": {"target": "тюль слева"}}
+      ],
+      "parameters": [
+        {
+          "name": "group_noun",
+          "description": "Существительное группы",
+          "choice_surfaces": {"light": ["свет"], "cover": ["шторы", "жалюзи", "занавески"]}
+        },
+        {"name": "target", "description": "Название устройства"},
+        {"name": "room", "description": "Комната"}
+      ]
+    },
+    {
+      "method_name": "_handle_set_setpoint",
+      "intent_suffix": "set_setpoint",
+      "description": "Установить температуру",
+      "phrases": ["градуса", "градусов", "температуру", "поставь температуру"],
+      "lemmas": ["градус", "температура", "поставить"],
+      "examples": [
+        {"text": "поставь на радиаторах 22 градуса", "parameters": {"target": "радиаторах", "temp": 22}},
+        {"text": "поставь 22 градуса", "parameters": {"temp": 22}}
+      ],
+      "parameters": [
+        {"name": "temp", "description": "Температура в градусах"},
+        {"name": "target", "description": "Название устройства"},
+        {"name": "room", "description": "Комната"}
+      ]
+    },
+    {
+      "method_name": "_handle_set_brightness",
+      "intent_suffix": "set_brightness",
+      "description": "Установить яркость",
+      "phrases": ["яркость"],
+      "lemmas": ["яркость"],
+      "examples": [
+        {"text": "сделай яркость 30 процентов", "parameters": {"level": 30}}
+      ],
+      "parameters": [
+        {"name": "level", "description": "Яркость в процентах"},
+        {"name": "target", "description": "Название устройства"},
+        {"name": "room", "description": "Комната"}
+      ]
+    },
+    {
+      "method_name": "_handle_playback_pause",
+      "intent_suffix": "playback_pause",
+      "description": "Поставить воспроизведение на паузу",
+      "phrases": ["поставь на паузу", "на паузу", "пауза"],
+      "lemmas": ["пауза", "поставить"],
+      "examples": [
+        {"text": "поставь на паузу", "parameters": {}}
+      ],
+      "parameters": [
+        {"name": "target", "description": "Название устройства"}
+      ]
+    },
+    {
+      "method_name": "_handle_scenario_start",
+      "intent_suffix": "scenario_start",
+      "description": "Запустить сценарий (кино, музыка) по его названию",
+      "phrases": ["включи кино", "кино с", "запусти сценарий", "включи сценарий"],
+      "lemmas": ["кино", "сценарий", "включить", "запустить"],
+      "examples": [
+        {"text": "включи кино с видеокассеты", "parameters": {}}
+      ],
+      "parameters": [
+        {"name": "room", "description": "Комната"}
+      ]
+    },
+    {
+      "method_name": "_handle_scenario_stop",
+      "intent_suffix": "scenario_stop",
+      "description": "Остановить активный сценарий",
+      "phrases": ["выключи кино", "выключи сценарий", "останови сценарий"],
+      "lemmas": ["кино", "сценарий", "выключить", "остановить"],
+      "examples": [
+        {"text": "выключи кино", "parameters": {}}
+      ],
+      "parameters": [
+        {"name": "room", "description": "Комната"}
+      ]
+    }
+  ]
+}

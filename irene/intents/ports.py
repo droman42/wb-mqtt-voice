@@ -124,6 +124,23 @@ class DeviceCatalogPort(ABC):
         ...
 
 
+class DeviceCommandDeliveryPort(ABC):
+    """Awaited delivery of one canonical device command to the designated bridge output
+    (ARCH-8 PR-4, `mqtt_integration.md` §13.2).
+
+    The smart-home handler builds a `CanonicalCommand` and awaits the rich delivery outcome
+    to compose its spoken confirmation. The application implementation
+    (`core/device_command_dispatcher.py`) wraps the OutputManager's DEVICE_COMMAND routing
+    under a bounded timeout. Signatures are `Any`-typed on purpose: the outcome is the
+    delivery layer's rich `DeliveryResult`, which the domain must not import (this module is
+    pinned pure by the import contracts); `None` means undeliverable/timed out — the handler
+    speaks a degraded confirmation instead of blocking.
+    """
+
+    @abstractmethod
+    async def deliver_device_command(self, command: Any, context: Any) -> Any: ...
+
+
 class ComponentControlRegistryPort(ABC):
     """Lookup of controllable components by name/type.
 

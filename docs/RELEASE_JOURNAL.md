@@ -15,6 +15,34 @@ newest entries near the top of each dated section.
 
 ## Action journal
 
+- **2026-07-05 — ARCH-8 PR-4 DONE (+ QUAL-35 T1 donations & clarify policy) — «включи свет в
+  детской» now travels the whole pipeline: NLU → resolver → handler → canonical command → spoken
+  outcome.** The reference smart-home handler (`smart_home.py`, 9 donation-routed methods) closes
+  the vertical slice. The T1 donation is the first with non-generic `entity_type` declarations
+  (target=device, room=room) — the PR-3 Q7b swap now runs its declarative path in production. The
+  noun lexicon landed as donation data, not code: the `group_noun` CHOICE param's canonical values
+  ARE the catalog's semantic group names (light/cover) with the RU surfaces
+  (свет/шторы/жалюзи/занавески) as choice_surfaces — bound to catalog truth at execution (the
+  handler refuses a room-group command for a room with no such group members), guarded by a
+  word-boundary check so a device NAMED «Подсветка потолка» never false-triggers the light group.
+  «весь/все» flips `scope: auto → all`. Delivery goes through a new Any-typed domain port
+  (`DeviceCommandDeliveryPort` — pure per the import contract) implemented by
+  `DeviceCommandDispatcher` over the OutputManager with a 7-second bound; a timeout, a missing
+  bridge, or a missing catalog each get their own honest spoken degradation. The §5b error enum
+  maps to feminine-ru templates; `param_invalid`, same-room ambiguity (F20/F21 — the v1 clarify
+  decision), out-of-range setpoints (pre-validated against the pinned catalog's min/max — most
+  param_invalid never round-trips) and missing slots all arm the QUAL-30/31 one-shot
+  clarification; a partial room-group aggregate names its failed members («…, но не ответили:
+  Бра»). 22 fixture-mirroring tests drive the REAL resolver → handler → OutputManager → capturing
+  bridge and assert byte-equal fixture `expect` shapes; a live webapi run confirmed the real NLU
+  cascade routes «включи свет в детской»/«включи телек» to `smart_home.power_on` while greetings
+  and timers stay untouched. Suite 1250 green, pyright 0, 11/11 contracts. Handler enabled in
+  config-master + all 6 docker configs (domain priority 80). TEST-18's tier-1 fixtures are now
+  green-able — Slice B makes them executable. Two side-fixes: the smoke-e2e 500 was a stale
+  editable-install entry-point map (uv sync refreshes it), and the recurring dev-venv trap's root
+  cause fell out — the untracked `.python-version` pinned the broken /usr/local 3.11.4; it now
+  pins the uv-managed 3.11.12 (memory updated). Next: PR-5 (sensor read) closes ARCH-8.
+
 - **2026-07-05 — ARCH-8 PR-3 DONE (with the QUAL-35 resolver half) — spoken references now resolve
   against the real device catalog.** Three moves in `entity_resolver.py`. **The Q7b atomic swap
   (QUAL-35 b):** dispatch is declarative-first — a donation-declared `entity_type` routes the param

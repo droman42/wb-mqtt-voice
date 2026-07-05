@@ -1,0 +1,154 @@
+{
+  "$schema": "../../donation_language_v1.1.json",
+  "schema_version": "1.1",
+  "language": "en",
+  "handler_domain": "smart home",
+  "description": "Smart-home control through the bridge: lights, covers, climate, brightness, pause, scenarios",
+  "method_donations": [
+    {
+      "method_name": "_handle_power_on",
+      "intent_suffix": "power_on",
+      "description": "Turn on a device or the room's lights",
+      "phrases": ["turn on", "switch on"],
+      "lemmas": ["turn", "switch", "light"],
+      "examples": [
+        {"text": "turn on the light in the kids room", "parameters": {"group_noun": "light"}}
+      ],
+      "parameters": [
+        {
+          "name": "group_noun",
+          "description": "Group noun (light/covers) — a room-level command; the bridge picks the device",
+          "choice_surfaces": {"light": ["light", "lights"], "cover": ["curtains", "blinds"]}
+        },
+        {"name": "target", "description": "Device name"},
+        {"name": "room", "description": "Room"}
+      ]
+    },
+    {
+      "method_name": "_handle_power_off",
+      "intent_suffix": "power_off",
+      "description": "Turn off a device or the room's lights",
+      "phrases": ["turn off", "switch off"],
+      "lemmas": ["turn", "switch", "light"],
+      "examples": [
+        {"text": "turn off all lights", "parameters": {"group_noun": "light"}}
+      ],
+      "parameters": [
+        {
+          "name": "group_noun",
+          "description": "Group noun (light/covers)",
+          "choice_surfaces": {"light": ["light", "lights"], "cover": ["curtains", "blinds"]}
+        },
+        {"name": "target", "description": "Device name"},
+        {"name": "room", "description": "Room"}
+      ]
+    },
+    {
+      "method_name": "_handle_cover_open",
+      "intent_suffix": "cover_open",
+      "description": "Open curtains/blinds or a named device",
+      "phrases": ["open", "raise"],
+      "lemmas": ["open", "raise", "curtain", "blind"],
+      "examples": [
+        {"text": "open the curtains", "parameters": {"group_noun": "cover"}}
+      ],
+      "parameters": [
+        {
+          "name": "group_noun",
+          "description": "Group noun",
+          "choice_surfaces": {"light": ["light", "lights"], "cover": ["curtains", "blinds"]}
+        },
+        {"name": "target", "description": "Device name"},
+        {"name": "room", "description": "Room"}
+      ]
+    },
+    {
+      "method_name": "_handle_cover_close",
+      "intent_suffix": "cover_close",
+      "description": "Close curtains/blinds or a named device",
+      "phrases": ["close", "lower"],
+      "lemmas": ["close", "lower", "curtain", "blind"],
+      "examples": [
+        {"text": "close the curtains", "parameters": {"group_noun": "cover"}}
+      ],
+      "parameters": [
+        {
+          "name": "group_noun",
+          "description": "Group noun",
+          "choice_surfaces": {"light": ["light", "lights"], "cover": ["curtains", "blinds"]}
+        },
+        {"name": "target", "description": "Device name"},
+        {"name": "room", "description": "Room"}
+      ]
+    },
+    {
+      "method_name": "_handle_set_setpoint",
+      "intent_suffix": "set_setpoint",
+      "description": "Set a temperature",
+      "phrases": ["degrees", "set temperature"],
+      "lemmas": ["degree", "temperature", "set"],
+      "examples": [
+        {"text": "set 22 degrees", "parameters": {"temp": 22}}
+      ],
+      "parameters": [
+        {"name": "temp", "description": "Temperature in degrees"},
+        {"name": "target", "description": "Device name"},
+        {"name": "room", "description": "Room"}
+      ]
+    },
+    {
+      "method_name": "_handle_set_brightness",
+      "intent_suffix": "set_brightness",
+      "description": "Set brightness",
+      "phrases": ["brightness"],
+      "lemmas": ["brightness"],
+      "examples": [
+        {"text": "set brightness to 30 percent", "parameters": {"level": 30}}
+      ],
+      "parameters": [
+        {"name": "level", "description": "Brightness percent"},
+        {"name": "target", "description": "Device name"},
+        {"name": "room", "description": "Room"}
+      ]
+    },
+    {
+      "method_name": "_handle_playback_pause",
+      "intent_suffix": "playback_pause",
+      "description": "Pause playback",
+      "phrases": ["pause", "put on pause"],
+      "lemmas": ["pause"],
+      "examples": [
+        {"text": "pause", "parameters": {}}
+      ],
+      "parameters": [
+        {"name": "target", "description": "Device name"}
+      ]
+    },
+    {
+      "method_name": "_handle_scenario_start",
+      "intent_suffix": "scenario_start",
+      "description": "Start a scenario by its name",
+      "phrases": ["start scenario", "movie from"],
+      "lemmas": ["scenario", "movie", "start"],
+      "examples": [
+        {"text": "start the VHS movie scenario", "parameters": {}}
+      ],
+      "parameters": [
+        {"name": "room", "description": "Room"}
+      ]
+    },
+    {
+      "method_name": "_handle_scenario_stop",
+      "intent_suffix": "scenario_stop",
+      "description": "Stop the active scenario",
+      "phrases": ["stop scenario", "stop the movie"],
+      "lemmas": ["scenario", "stop"],
+      "examples": [
+        {"text": "stop the scenario", "parameters": {}}
+      ],
+      "parameters": [
+        {"name": "room", "description": "Room"}
+      ]
+    }
+  ]
+}
