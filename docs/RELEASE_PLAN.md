@@ -225,15 +225,24 @@ _Apply to every remediation task below (from the 4 review docs + QUAL-25/26). So
         F41 + F53 green live, `make device-auto` → 25/27** — the only red left is F40/F42 (QUAL-64,
         user-parked). F41/F42/F53 retiered to 1 (eval-commons `30e174c`); tier 2 now means exactly the
         Slice-3 set. 3 handler tests + hint unit coverage; suite 1269 green.
-      • **Slice 2 — capability breadth (T1-mechanical).** Wire what the catalog exposes but the handler
-        doesn't speak: `volume` (8 devices), the rest of `playback` (play/stop/ff/rewind),
-        `cover.set_position` («шторы наполовину»), `climate` on/off + HVAC `mode` (CHOICE triplets), the
-        kitchen-hood `fan` — each = donation method + handler method + new crossover fixtures (PR-4
-        pattern). **Explicitly OUT pending user decision:** `menu`/`pointer` (poor voice fit) and the
-        `global` specials (water valves / heating circuits / seasonal / home / cleaning modes —
-        consequence-heavy, per-device opt-in). **Adjudications riding along:** `set_position`'s `%` settles
-        the units-generalization question with evidence; declarative `room_context` enforcement gets a
-        keep-or-close call (the handler enforces it in code today).
+      • **Slice 2 — capability breadth — SCOPE DECIDED 2026-07-05 (interactive, item-by-item), DOING.**
+        **WIRE:** `volume` all four (up/down/set/mute_toggle); `playback` everything (play/stop/next/
+        previous/ff/rewind; `play_pause` as the fallback where a device lacks the split actions — the
+        `video` device has only the toggle); `cover.set_position` in BOTH address forms (device +
+        room-group with `params{pct}`; «наполовину»→50); `climate` on/off via power-verb fallback
+        («включи обогрев» fails today — power verbs only see `power` caps); kitchen-hood `fan` (power
+        verbs → `set(2)`/`off`; explicit levels; «на полную»→catalog max 4); `tracks` audio/subtitles
+        (no eject); `screen` aspect ratios; `menu` nav subset up/down/left/right/ok/back/home (user:
+        needed for track dialogs on some devices — exit/menu/settings excluded); `presence` home/away
+        («мы дома»/«мы уходим»); `cleaning` start + set_delay(minutes); **`water_supply` alarm on/off
+        only** (not heating_control's). **SKIP (recorded exclusions):** `pointer`, `power.toggle`,
+        `seasonal_mode` (twice-a-year deliberate act vs ASR misfire), heating_control `alarm`, **all
+        four valves — PERMANENT voice fence** (consequence-heavy plumbing, like the power-fan-out
+        fence). **CONTRACT-BLOCKED:** HVAC `set_mode`/`set_fan` — bare string params, no triplets/
+        options_from (the G5 disease, third instance) → **bridge VWB-24 filed (uncommitted)**; wire
+        after the re-pin that types them. Vanes never. Each wired item = donation method + handler
+        method + crossover fixtures (PR-4 pattern). Adjudications ride along: `set_position`'s `%`
+        settles units-generalization; `room_context` enforcement gets a keep-or-close call.
       • **Slice 3 — hard-phrasing tier, evidence-first (absorbs old T2 AND T3).** Author the fixtures for
         the genuinely hard phrasings (multi-param «яркость 30 и температуру 22», role/preposition
         «со спальни на кухню», free-text spans, negation «все кроме торшера», anaphora «сделай его поярче»),

@@ -15,6 +15,19 @@ newest entries near the top of each dated section.
 
 ## Action journal
 
+- **2026-07-05 — QUAL-35 Slice 2 scope decided (interactive, capability-by-capability from the
+  pinned-golden census).** Eleven decisions: volume all-four; playback everything incl. ff/rewind
+  (play_pause only as the fallback for split-action-less devices); cover.set_position in both
+  address forms with «наполовину»→50; climate on/off via power-verb fallback (the census showed
+  «включи обогрев» silently fails today); hood fan with «включи»→speed 2; tracks audio/subtitles +
+  screen aspects + a menu nav subset (user overrode the skip-lean: track dialogs need navigation on
+  some devices; pointer stays out); presence home/away; cleaning start+delay; water_supply alarm
+  only. Skipped with intent: power.toggle, seasonal_mode, heating_control alarm — and ALL FOUR
+  VALVES as a permanent voice fence. One contract gap found while checking facts: HVAC
+  set_mode/set_fan params are bare strings (no triplets/options_from — the G5 disease again) →
+  **bridge VWB-24 filed uncommitted**; «кондиционер на охлаждение» waits for the typing re-pin.
+  Implementation follows in this session; scope recorded first so the decisions survive it.
+
 - **2026-07-05 — QUAL-35 restructured (3 slices; the local-LLM T3 concept retired) + Slice 1 DONE —
   device suite 25/27; every red is now QUAL-64's.** Reconciliation first (user): most of QUAL-35's
   historical scope was already satisfied by today's arc — typed donations, the Q7b swap, D-15,
