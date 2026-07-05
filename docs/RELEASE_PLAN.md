@@ -247,9 +247,19 @@ _Apply to every remediation task below (from the 4 review docs + QUAL-25/26). So
         pre-validation), playback play/stop/next/previous + seek-CHOICE with `play_pause` fallback,
         `cover.set_position` both forms («наполовину»→50), power-verb fallback → climate.on/off +
         hood fan set(2)/off. Fixtures F60–F67 ALL GREEN live first run — **33/35** (red = F40/F42 =
-        QUAL-64 only). 5 handler tests; suite 1274, pyright 0. **Part B remaining:** tracks
-        audio/subtitles, screen aspects, menu nav subset, presence home/away, cleaning start+delay,
-        water_supply alarm.
+        QUAL-64 only). 5 handler tests; suite 1274, pyright 0. **Part B DONE 2026-07-05:** tracks audio/subtitles («смени» verbs — «переключи» is
+        input_select's in the matcher's scoring, QUAL-64 family), screen aspects (CHOICE + target),
+        menu nav CHOICE (7 directions), presence home/away, cleaning start + set_delay, water alarm
+        (device narrowed by the alarm+leaks capability PAIR — never an id literal). Fixtures
+        F70–F75; live **39/41** — only F40/F42 (QUAL-64) red. **Slice 2 COMPLETE.** Adjudications:
+        units-generalization SETTLED (dB volume, % position/brightness, °C setpoint all ride the one
+        catalog-range pre-validation path — no further abstraction); `room_context` declarative
+        enforcement CLOSED as satisfied-by-implementation.
+      • **Slice 2a — HVAC mode/fan (VWB-24 consumed) — DOING 2026-07-05.** The bridge accepted +
+        implemented VWB-24 (set_mode/set_fan params typed). Scope: re-pin the contract into
+        eval-commons (guards will flag stale fixtures), wire `_handle_hvac_mode` (+fan if triplets
+        landed for it) via the CHOICE path against the typed values, fixtures («кондиционер на
+        охлаждение»), vanes stay unwired.
       • **Slice 3 — hard-phrasing tier, evidence-first (absorbs old T2 AND T3).** Author the fixtures for
         the genuinely hard phrasings (multi-param «яркость 30 и температуру 22», role/preposition
         «со спальни на кухню», free-text spans, negation «все кроме торшера», anaphora «сделай его поярче»),

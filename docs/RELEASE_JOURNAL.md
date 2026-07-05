@@ -15,6 +15,20 @@ newest entries near the top of each dated section.
 
 ## Action journal
 
+- **2026-07-05 — QUAL-35 Slice 2 COMPLETE (Part B, code pushed with the guide; ledger line landed
+  one commit later) — device suite 39/41; the only red anywhere is the parked QUAL-64 pair.**
+  Part B: tracks audio/subtitles (subtitles got its own verb «смени» — «переключи» scores as
+  input_select in the untuned matcher, one more QUAL-64 exhibit), screen aspects as CHOICE+target
+  (two screen-capable devices in the living room), menu navigation as a 7-way CHOICE, presence
+  «мы дома»/«мы уходим», cleaning start + «уборка на 30 минут», and the water alarm — device found
+  by its alarm+leaks capability PAIR (never an id literal), keeping the heating alarm out per the
+  user decision. Adjudications settled: no further units abstraction needed (one catalog-range
+  path serves dB/%/°C); declarative room_context enforcement closed as satisfied-by-implementation.
+  Suite 1314 green, pyright 0, 11/11 contracts. **Immediately after: bridge accepted + implemented
+  VWB-24 (typed HVAC set_mode/set_fan) — folded in as Slice 2a** (re-pin + CHOICE wiring +
+  fixtures), starting now.
+
+
 - **2026-07-05 — QUAL-35 Slice 2 Part A DONE (`bedc867`) — device suite 33/35; all eight new
   fixtures green on the first live run.** Wired per the interactive decisions: volume
   up/down/set/mute_toggle (the processor's dB range −96..0 honestly enforced by the shared catalog
