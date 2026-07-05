@@ -103,7 +103,7 @@ device-sut-config:
 	@grep -A3 '^\[outputs.bridge\]' $(DEVICE_SUT_CONFIG) | head -4
 
 device-auto: device-tests device-sut-config  ## one-shot local run: mock bridge + SUT up → suite → teardown
-	@pkill -f "eval_commons.mock_bridge" 2>/dev/null; sleep 0.5; true  # a stale mock on the port serves a STALE GOLDEN silently
+	@pkill -f "[e]val_commons.mock_bridge" 2>/dev/null; sleep 0.5; true  # stale mock on the port = stale golden served silently ([e] keeps pkill from matching THIS shell)
 	@$(PROMPTFOO_PYTHON) -m eval_commons.mock_bridge --catalog ../../eval-commons/contracts/catalog.golden.json --port $(MOCK_BRIDGE_PORT) & MOCK=$$!; \
 	( cd .. && .venv/bin/irene-webapi -c $(DEVICE_SUT_CONFIG) --port 6000 >/tmp/irene-device-eval.log 2>&1 ) & SUT=$$!; \
 	echo ">> waiting for $(HEALTH_URL) ..."; \

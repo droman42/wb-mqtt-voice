@@ -315,9 +315,9 @@
     fixture: F67
     tier: "1"
     kind: actuate
-- description: "F70 (t1, actuate): смени субтитры на медиаплеере"
+- description: "F70 (t1, actuate): переключи субтитры на медиаплеере"
   vars:
-    utterance: "смени субтитры на медиаплеере"
+    utterance: "переключи субтитры на медиаплеере"
     room: "living_room"
     expect: {"kind": "actuate", "device_id": "video", "capability": "tracks", "action": "subtitles", "params": null}
   metadata:

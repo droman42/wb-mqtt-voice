@@ -160,7 +160,9 @@ class HybridKeywordMatcherProvider(NLUProvider):
             self.global_keyword_map = {}
         if not hasattr(self, 'parameter_specs') or self.parameter_specs is None:
             self.parameter_specs = {}
-        
+        if not hasattr(self, 'intent_boosts') or self.intent_boosts is None:
+            self.intent_boosts = {}
+
         logger.info("HybridKeywordMatcher basic initialization completed (patterns will be loaded from donations)")  
     
     async def _initialize_rapidfuzz(self):
@@ -206,7 +208,8 @@ class HybridKeywordMatcherProvider(NLUProvider):
             self.fuzzy_keywords_en = []
             
             self.parameter_specs = {}  # Phase 3: Clear parameter specs
-            
+            self.intent_boosts = {}    # QUAL-64: per-intent donation boost
+
             # Collect telemetry data
             donation_versions = set()
             handler_domains = set()
@@ -243,9 +246,12 @@ class HybridKeywordMatcherProvider(NLUProvider):
                 
                 # Store basic patterns (what hybrid provider uses) - Phase 3
                 self.exact_patterns[intent_name] = exact_patterns
-                self.flexible_patterns[intent_name] = flexible_patterns  
+                self.flexible_patterns[intent_name] = flexible_patterns
                 self.partial_patterns[intent_name] = partial_patterns
                 self.parameter_specs[intent_name] = donation.parameters  # Phase 3: Store parameter specs
+                # QUAL-64: the donation's declared pattern-strength multiplier — consulted by the
+                # pattern-stage scoring (it was authored per-method but never read before).
+                self.intent_boosts[intent_name] = getattr(donation, "boost", 1.0) or 1.0
                 total_patterns += len(exact_patterns)
                 
                 # Build fuzzy keyword lists (for similarity matching)
@@ -464,27 +470,52 @@ class HybridKeywordMatcherProvider(NLUProvider):
         logger.debug(f"No match for '{text[:30]}...' (pattern: {pattern_time:.1f}ms, total: {total_time:.1f}ms)")
         return None
     
+    @staticmethod
+    def _specificity(phrase_token_count: int) -> float:
+        """QUAL-64: a longer matched phrase is stronger evidence than a bare verb.
+
+        Before this, every match in a method tier scored an identical constant, so
+        «включи кино» (scenario) TIED with «включи» (power) and the winner was whichever
+        donation happened to load first — pure load-order accident. +10% per extra token,
+        capped, keeps the effect decisive for ties and gentle on absolute confidence."""
+        return min(1.0 + 0.1 * max(phrase_token_count - 1, 0), 1.3)
+
+    def _pattern_score(self, intent_name: str, method_boost: float,
+                       phrase_token_count: int) -> float:
+        """QUAL-64 pattern-stage score: method tier × phrase specificity × the donation's own
+        `boost` (authored per method since QUAL-29 but never consulted here before)."""
+        donation_boost = self.intent_boosts.get(intent_name, 1.0)
+        return (self.pattern_confidence * method_boost
+                * self._specificity(phrase_token_count) * donation_boost)
+
+    @staticmethod
+    def _pattern_token_count(pattern_source: str) -> int:
+        """Token count of the phrase behind a compiled pattern (spaces are escaped as '\\ ')."""
+        return pattern_source.count("\\ ") + pattern_source.count(" ") + 1
+
     async def _pattern_matching(self, text: str, context: UnifiedConversationContext) -> Optional[KeywordMatchResult]:
         """Fast regex pattern matching with enhanced confidence calculation"""
         normalized_text = self._normalize_text(text)
-        
+
         # Collect all pattern matches with their raw scores
         pattern_matches = []
-        
+
         # Try exact patterns first (highest confidence)
         for intent_name, patterns in self.exact_patterns.items():
             for pattern in patterns:
                 if pattern.search(normalized_text):
-                    raw_score = self.pattern_confidence * self.exact_match_boost
+                    raw_score = self._pattern_score(intent_name, self.exact_match_boost,
+                                                    self._pattern_token_count(pattern.pattern))
                     pattern_matches.append((intent_name, raw_score, "exact_pattern", pattern.pattern))
-        
+
         # Try flexible patterns
         for intent_name, patterns in self.flexible_patterns.items():
             for pattern in patterns:
                 if pattern.search(normalized_text):
-                    raw_score = self.pattern_confidence * self.flexible_match_boost
+                    raw_score = self._pattern_score(intent_name, self.flexible_match_boost,
+                                                    self._pattern_token_count(pattern.pattern))
                     pattern_matches.append((intent_name, raw_score, "flexible_pattern", pattern.pattern))
-        
+
         # Try partial patterns with token-based matching
         input_tokens = set(normalized_text.split())
         for intent_name, patterns in self.partial_patterns.items():
@@ -494,15 +525,17 @@ class HybridKeywordMatcherProvider(NLUProvider):
                 for phrase in intent_phrases:
                     phrase_tokens = phrase.lower().split()
                     if self._check_partial_match(input_tokens, phrase_tokens):
-                        raw_score = self.pattern_confidence * self.partial_match_boost
+                        raw_score = self._pattern_score(intent_name, self.partial_match_boost,
+                                                        len(phrase_tokens))
                         pattern_matches.append((intent_name, raw_score, "partial_pattern", phrase))
                         break  # Only need one match per intent
-            
+
             # Fallback to regex patterns if no fuzzy keywords available
             if intent_name not in pattern_matches or not self.fuzzy_keywords.get(intent_name):
                 for pattern in patterns:
                     if pattern.search(normalized_text):
-                        raw_score = self.pattern_confidence * self.partial_match_boost
+                        raw_score = self._pattern_score(intent_name, self.partial_match_boost,
+                                                        self._pattern_token_count(pattern.pattern))
                         pattern_matches.append((intent_name, raw_score, "partial_pattern", pattern.pattern))
         
         if not pattern_matches:
