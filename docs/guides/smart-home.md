@@ -8,6 +8,8 @@ hardcodes a device list.
 
 ## How it works
 
+![How a spoken command becomes a device action](../images/smart-home-flow.png)
+
 On startup (and whenever something looks stale) Irene pulls the **device catalog** from
 the bridge: every room and device with its spoken names and aliases, what each device can
 do, and which values are allowed. Your utterance is matched against that live catalog —

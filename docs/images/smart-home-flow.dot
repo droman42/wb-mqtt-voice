@@ -1,0 +1,37 @@
+// Irene — how a spoken smart-home command becomes a device action. Render:
+//   dot -Tpng docs/images/smart-home-flow.dot -o docs/images/smart-home-flow.png
+digraph smart_home_flow {
+  rankdir=LR; bgcolor="white"; splines=spline; nodesep=0.5; ranksep=0.9;
+  fontname="Helvetica"; labelloc=t; fontsize=14;
+  label="One utterance, one command: named devices go straight to the device;\nbare nouns go to the room, and the bridge picks the target";
+  node [fontname="Helvetica", fontsize=10, shape=box, style="filled,rounded", penwidth=1.4];
+  edge [fontname="Helvetica", fontsize=9, color="#616161", arrowsize=0.7];
+
+  subgraph cluster_irene {
+    label="Irene"; fontsize=12; color="#a5d6a7"; style=rounded; margin=12;
+    nlu   [label="speech → intent\n«включи свет в детской»", fillcolor="#e8f5e8", color="#388e3c"];
+    res   [label="resolver\nnames · aliases · rooms\n(matched against the catalog)", fillcolor="#e8f5e8", color="#388e3c"];
+    hand  [label="smart-home handler\nnamed device? bare noun?\nambiguous → ask back", fillcolor="#e8f5e8", color="#388e3c"];
+  }
+
+  subgraph cluster_bridge {
+    label="wb-mqtt-bridge"; fontsize=12; color="#90caf9"; style=rounded; margin=12;
+    devcmd  [label="device command\nPOST /devices/{id}\n«включи телек» — a named device", fillcolor="#e3f2fd", color="#1976d2"];
+    roomcmd [label="room command\nPOST /rooms/{room}\n«включи свет» — a bare noun\nbridge picks the device; «весь …» → all", fillcolor="#e3f2fd", color="#1976d2"];
+    state   [label="live state\nGET /devices/{id}/state\n«какая температура?»", fillcolor="#e3f2fd", color="#1976d2"];
+    catalog [label="device catalog\nrooms · devices · abilities\nallowed values · units", fillcolor="#e3f2fd", color="#1976d2"];
+  }
+
+  house [label="the house\nWirenboard devices", fillcolor="#f3e5f5", color="#7b1fa2"];
+  speak [label="spoken outcome\n«включила свет»\n«…, но не ответили: Бра»", fillcolor="#fff8e1", color="#f9a825"];
+
+  nlu -> res -> hand;
+  catalog -> res [label="pulled at startup,\nre-pulled when stale", style=dashed, constraint=false];
+  hand -> devcmd;
+  hand -> roomcmd;
+  hand -> state [style=dashed];
+  devcmd -> house [label="acts +\nconfirms"];
+  roomcmd -> house [label="fans out"];
+  house -> speak [label="what actually happened\n(echo / per-device report)", style=dashed];
+  state -> speak [label="value + unit", style=dashed];
+}
