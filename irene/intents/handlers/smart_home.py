@@ -34,6 +34,9 @@ from ..device_commands import CanonicalCommand, DeviceCommand, GroupScope, RoomG
 from ..ports import DeviceCatalogPort, DeviceCommandDeliveryPort
 from .base import IntentHandler
 from ...core.donations import MissingRequiredParameter
+# the ONE surface-normalization + RU-stem truth — shared with the catalog resolver so a value
+# matched here behaves identically to a device name matched there
+from ...core.entity_resolver import _norm, _stem_match, _MORPH_FUZZ_THRESHOLD, _STEM_MATCH_SCORE
 
 # «весь свет» / «все шторы» — the plural/total signal → scope: all (VWB-23)
 _ALL_SCOPE_RE = re.compile(r"\b(?:весь|все|всё|everywhere|all)\b", re.IGNORECASE)
@@ -595,3 +598,100 @@ class SmartHomeIntentHandler(IntentHandler):
             should_speak=True,
             metadata={"read": {"device_id": device.id, "capability": capability_name,
                                "field": field_name, "value": value}})
+
+    # --- select-form capabilities (QUAL-65, VWB-19 §11) -------------------------------------------
+
+    @staticmethod
+    def _match_option(spoken: str, options: List[str]) -> Optional[str]:
+        """Match a spoken value against an option set: normalized exact (case/ё/spacing),
+        then shared-stem, then fuzzy. Technical identifiers are self-matchable (the
+        donation-choice-surfaces rule); Cyrillic↔Latin transliteration is QUAL-35 T2."""
+        from rapidfuzz import fuzz
+        spoken_norm = _norm(spoken).replace(" ", "")
+        best, best_score = None, 0
+        for option in options:
+            option_norm = _norm(str(option)).replace(" ", "")
+            if option_norm == spoken_norm:
+                return str(option)
+            score = int(fuzz.ratio(spoken_norm, option_norm))
+            if score < _STEM_MATCH_SCORE and _stem_match(spoken_norm, option_norm):
+                score = _STEM_MATCH_SCORE
+            if score > best_score:
+                best, best_score = str(option), score
+        return best if best_score >= _MORPH_FUZZ_THRESHOLD else None
+
+    async def _selectable_options(self, device: CatalogDevice, capability_name: str,
+                                  action_name: str, param_name: str) -> Optional[List[str]]:
+        """The valid values for a select-form param: static `values` canonicals from the
+        catalog (by_value), or the runtime set via `options_from` (parametric — the
+        read port fetches + caches it)."""
+        capability = device.capability(capability_name)
+        action = capability.action(action_name) if capability else None
+        spec = action.param(param_name) if action else None
+        if spec is None:
+            return None
+        if spec.values:
+            return [v.canonical for v in spec.values]
+        if spec.options_from and self.catalog_port is not None:
+            return await self.catalog_port.read_options(device.id, spec.options_from)
+        return None
+
+    async def _select_value(self, intent: Intent, context: UnifiedConversationContext, *,
+                            capability: str, action: str, param: str, spoken: str,
+                            device: CatalogDevice, ok_key: str) -> IntentResult:
+        """Shared tail of input/app selection: enumerate the valid set, match the spoken
+        value, emit the canonical command; a miss clarifies naming what IS available."""
+        language = self._lang(context)
+        options = await self._selectable_options(device, capability, action, param)
+        if options is None:
+            return IntentResult(text=self._get_template("err_no_options", language,
+                                                        name=self._device_name(device, language)),
+                                should_speak=True, success=False,
+                                error=f"no option set for {device.id}.{capability}")
+        matched = self._match_option(spoken, options)
+        if matched is None:
+            context.set_pending_clarification(intent.name, param, intent.raw_text)
+            return IntentResult(
+                text=self._get_template("clarify_option", language,
+                                        options=", ".join(str(o) for o in options[:6])),
+                should_speak=True,
+                metadata={"clarification": True, "clarification_reason": "unknown_option",
+                          "options": options})
+        command = DeviceCommand(device_id=device.id, capability=capability,
+                                action=action, params={param: matched})
+        delivery = await self._deliver(command, context)
+        ok_text = self._get_template(ok_key, language, value=matched,
+                                     name=self._device_name(device, language))
+        return await self._speak_outcome(delivery, ok_text, language, self._catalog(),
+                                         clarify_intent=intent, context=context)
+
+    async def _handle_input_select(self, intent: Intent,
+                                   context: UnifiedConversationContext) -> IntentResult:
+        """«переключи усилитель на cd» → input.set {value} (VWB-19: `set` is the reserved
+        canonical action for select-form capabilities; by_value validates offline,
+        parametric enumerates at resolution time)."""
+        spoken = self.get_param(intent, "value", None)
+        if not spoken:
+            return await self._ask_slot(intent, context, "value")
+        device, error = await self._single_capable_or_clarify(intent, context, "input")
+        if error is not None:
+            return error
+        assert device is not None
+        return await self._select_value(intent, context, capability="input", action="set",
+                                        param="value", spoken=str(spoken), device=device,
+                                        ok_key="confirm_input")
+
+    async def _handle_app_launch(self, intent: Intent,
+                                 context: UnifiedConversationContext) -> IntentResult:
+        """«запусти youtube на телеке» → apps.launch {app} — the launchable set is
+        runtime-dynamic (installed apps), enumerated via options_from."""
+        spoken = self.get_param(intent, "app", None)
+        if not spoken:
+            return await self._ask_slot(intent, context, "app")
+        device, error = await self._single_capable_or_clarify(intent, context, "apps")
+        if error is not None:
+            return error
+        assert device is not None
+        return await self._select_value(intent, context, capability="apps", action="launch",
+                                        param="app", spoken=str(spoken), device=device,
+                                        ok_key="confirm_app")

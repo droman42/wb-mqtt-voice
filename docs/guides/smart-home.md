@@ -39,6 +39,12 @@ Sensor questions are read live from the bridge: «какая температу�
 «какая влажность?» — dedicated sensors are preferred, and on climate units Irene reads
 the measured room temperature, not the thermostat setting.
 
+Inputs and apps are voice-switchable too: «переключи усилитель на cd» validates the
+input against the device's own set, and «запусти youtube на телеке» asks the device
+for its installed apps at that moment — so a newly installed app is launchable
+immediately, with no configuration anywhere. If the name doesn't match, Irene reads
+back what *is* available.
+
 ## Enabling it
 
 Point Irene at your bridge in the configuration (`[outputs.bridge]` section, editable in
@@ -59,6 +65,6 @@ honest spoken answer («умный дом не подключён») and everyth
 
 - Ambiguous same-room requests always ask a clarifying question; configurable
   preferences (e.g. "degrees means the heater") are planned.
-- Launching apps by name on TVs («включи ютуб») and switching AV inputs are not yet
-  routable.
+- App and input names are matched as the device reports them (usually Latin —
+  "YouTube", "hdmi1"); speaking them in Cyrillic («ютуб») is planned.
 - English phrasing is supported at a basic level; the primary vocabulary is Russian.

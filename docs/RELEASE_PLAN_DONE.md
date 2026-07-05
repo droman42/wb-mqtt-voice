@@ -917,6 +917,25 @@ rationale/chronology lives in [`RELEASE_JOURNAL.md`](./RELEASE_JOURNAL.md).
       Dependabot alerts (commits 05aa763/4e05a38) — no risky major bumps. **No code until scheduled + green-lit.**
 
 ### Code Quality & Review (QUAL)
+- [x] **QUAL-65** [PEX][MQTT] (P2) `[release]` — **DONE 2026-07-05 (filed + completed same day; user-requested
+      intake: bridge VWB-19 landed input/app canonical routing — consume it before QUAL-35).**
+      **Input switching + app launch by voice**, against the re-pinned contract @ bridge `3bed556` /
+      catalog `dbfd2855` (`canonical_first.md` §11: `set` is the reserved canonical action for select-form
+      capabilities). **eval-commons (`cc1cba9`):** re-pin (ru-labels guard refined — `labels: null` legal on
+      by_value technical identifiers, non-null still requires ru); fixtures re-authored + **F50–F53**
+      (by_value input / parametric input / app launch / «ютуб» transliteration-t2); the input-switching
+      exclusion lifted; mock bridge serves `GET /devices/{id}/options/{kind}` (by_value → catalog keys,
+      parametric → deterministic stand-ins). **Voice:** `read_options(device_id, kind)` joined
+      `DeviceCatalogPort` — the QUAL-35 resolver-note-(1) `options_from` dance PULLED FORWARD
+      (`CatalogService` 30s-TTL cache; `BridgeClient.get_device_options` fail-soft; composition-wired);
+      handler `_handle_input_select` + `_handle_app_launch` share one option matcher built on the
+      resolver's OWN normalization (`_norm`/`_stem_match` — one surface-matching truth); miss → clarify
+      naming what IS available; donation methods + templates ru/en. 10 new tests (suite 1262, pyright 0,
+      11 contracts; eval-commons 40). **Live: F50 green end-to-end** (by_value, zero round-trips); suite
+      20/27 — F51–F53 red are NOT routing: the run exposed **QUAL-44 session-bleed** (an armed
+      clarification consumes the next same-room case as its answer; matcher probe routes all three
+      correctly at 0.75–0.79) → QUAL-44 un-deferred (user) + `make device` runs `-j 1` (shared per-room
+      sessions make parallel cases inherent cross-talk). Guide updated (inputs/apps section + limits).
 - [x] **QUAL-18** [STREAMAPI] (P-TBD) `[release]` — **DONE 2026-07-04, RE-SCOPED at task start (user, interactive)
       from "swap renderer, keep generator" to "retire the AsyncAPI subsystem, replace with a user-facing protocol
       guide".** Reconciliation killed the original plan's premise: the live `/asyncapi.json` emitted

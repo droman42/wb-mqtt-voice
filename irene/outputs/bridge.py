@@ -230,6 +230,20 @@ class BridgeClient(OutputPort):
         state = payload.get("state")
         return state if isinstance(state, dict) else payload
 
+    async def get_device_options(self, device_id: str, kind: str) -> Optional[list]:
+        """Runtime option set (`GET /devices/{id}/options/{kind}`, VWB-19 §11.2) — installed
+        apps, parametric inputs. Fail-soft None; the handler clarifies instead of crashing."""
+        try:
+            status, payload = await self._request_json("GET", f"/devices/{device_id}/options/{kind}")
+        except (aiohttp.ClientError, asyncio.TimeoutError, OSError) as e:
+            logger.warning(f"bridge unreachable reading options '{kind}' of '{device_id}': {e}")
+            return None
+        if status != 200 or not payload.get("success", True):
+            logger.warning(f"options read '{device_id}/{kind}' failed: HTTP {status} {payload}")
+            return None
+        data = payload.get("data")
+        return list(data) if isinstance(data, list) else None
+
     # --- identity --------------------------------------------------------------------------------
 
     async def is_available(self) -> bool:

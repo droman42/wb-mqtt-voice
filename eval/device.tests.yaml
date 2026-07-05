@@ -1,4 +1,4 @@
-# GENERATED from crossover_fixtures.json (catalog 91909b54bfb4b593) — do not edit.
+# GENERATED from crossover_fixtures.json (catalog dbfd2855dac52026) — do not edit.
 # Regenerate: python -m eval_commons.fixtures_to_tests ../../eval-commons/contracts/crossover_fixtures.json
 - description: "F01 (t1, actuate): включи телек"
   vars:
@@ -205,5 +205,41 @@
     expect: {"kind": "actuate", "device_id": "scenario_manager_living_room", "capability": "scenario", "action": "off", "params": null}
   metadata:
     fixture: F42
+    tier: "2"
+    kind: actuate
+- description: "F50 (t1, actuate): переключи усилитель на cd"
+  vars:
+    utterance: "переключи усилитель на cd"
+    room: "living_room"
+    expect: {"kind": "actuate", "device_id": "mf_amplifier", "capability": "input", "action": "set", "params": {"value": "cd"}}
+  metadata:
+    fixture: F50
+    tier: "1"
+    kind: actuate
+- description: "F51 (t1, actuate): переключи телек на hdmi1"
+  vars:
+    utterance: "переключи телек на hdmi1"
+    room: "children_room"
+    expect: {"kind": "actuate", "device_id": "children_room_tv", "capability": "input", "action": "set", "params": {"value": "hdmi1"}}
+  metadata:
+    fixture: F51
+    tier: "1"
+    kind: actuate
+- description: "F52 (t1, actuate): запусти youtube на телеке"
+  vars:
+    utterance: "запусти youtube на телеке"
+    room: "children_room"
+    expect: {"kind": "actuate", "device_id": "children_room_tv", "capability": "apps", "action": "launch", "params": {"app": "YouTube"}}
+  metadata:
+    fixture: F52
+    tier: "1"
+    kind: actuate
+- description: "F53 (t2, actuate): запусти ютуб на телеке"
+  vars:
+    utterance: "запусти ютуб на телеке"
+    room: "children_room"
+    expect: {"kind": "actuate", "device_id": "children_room_tv", "capability": "apps", "action": "launch", "params": {"app": "YouTube"}}
+  metadata:
+    fixture: F53
     tier: "2"
     kind: actuate

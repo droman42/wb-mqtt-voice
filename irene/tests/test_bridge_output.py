@@ -269,3 +269,13 @@ def test_bridge_config_defaults():
     assert cfg.enabled is False
     assert cfg.base_url == "http://localhost:8000"
     assert cfg.timeout_seconds == 5.0
+
+
+async def test_get_device_options_success_and_failure():
+    bridge = StubBridge((200, {"success": True, "data": ["cd", "aux1", "phono"]}),
+                        (404, {"success": False, "detail": "no such option set"}),
+                        aiohttp.ClientConnectionError("refused"))
+    assert await bridge.get_device_options("mf_amplifier", "inputs") == ["cd", "aux1", "phono"]
+    assert bridge.requests[0] == ("GET", "/devices/mf_amplifier/options/inputs", None)
+    assert await bridge.get_device_options("mf_amplifier", "nope") is None
+    assert await bridge.get_device_options("mf_amplifier", "inputs") is None  # transport down

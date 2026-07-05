@@ -378,6 +378,69 @@
           "description": "Room"
         }
       ]
+    },
+    {
+      "method_name": "_handle_input_select",
+      "intent_suffix": "input_select",
+      "description": "Switch a device's input",
+      "phrases": [
+        "switch to",
+        "switch input"
+      ],
+      "lemmas": [
+        "switch",
+        "input"
+      ],
+      "examples": [
+        {
+          "text": "switch the amplifier to cd",
+          "parameters": {
+            "value": "cd"
+          }
+        }
+      ],
+      "parameters": [
+        {
+          "name": "target",
+          "description": "Device name"
+        },
+        {
+          "name": "value",
+          "description": "Input value (from the device's set)"
+        }
+      ]
+    },
+    {
+      "method_name": "_handle_app_launch",
+      "intent_suffix": "app_launch",
+      "description": "Launch an app on a device",
+      "phrases": [
+        "launch",
+        "start app",
+        "open app"
+      ],
+      "lemmas": [
+        "launch",
+        "app"
+      ],
+      "examples": [
+        {
+          "text": "launch youtube on the tv",
+          "parameters": {
+            "app": "youtube"
+          }
+        }
+      ],
+      "parameters": [
+        {
+          "name": "target",
+          "description": "Device name"
+        },
+        {
+          "name": "app",
+          "description": "App name (as the device reports it)"
+        }
+      ]
     }
   ]
 }

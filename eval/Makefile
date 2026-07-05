@@ -88,8 +88,10 @@ MOCK_BRIDGE_PORT ?= 8010
 device-tests:                 ## regenerate device.tests.yaml from the pinned crossover fixtures
 	$(PROMPTFOO_PYTHON) -m eval_commons.fixtures_to_tests $(FIXTURES_JSON) > device.tests.yaml
 
+# -j 1: cases share per-room SUT sessions (room_alias → one session per room), so parallel
+# runs interleave turns of the same conversation — inherent cross-talk, not a flake.
 device: device-tests          ## producer contract suite (needs SUT + mock bridge running; see device-auto)
-	$(PROMPTFOO) eval -c device.promptfooconfig.yaml -o results-device-$(TARGET).json
+	$(PROMPTFOO) eval -c device.promptfooconfig.yaml -j 1 -o results-device-$(TARGET).json
 
 # The SUT config is DERIVED from config-master at run time (env can't override nested TOML
 # sections — pydantic-settings gives init kwargs priority), flipping [outputs.bridge] at the mock.
@@ -105,7 +107,7 @@ device-auto: device-tests device-sut-config  ## one-shot local run: mock bridge 
 	( cd .. && .venv/bin/irene-webapi -c $(DEVICE_SUT_CONFIG) --port 6000 >/tmp/irene-device-eval.log 2>&1 ) & SUT=$$!; \
 	echo ">> waiting for $(HEALTH_URL) ..."; \
 	for i in $$(seq 1 60); do curl -sf "$(HEALTH_URL)" >/dev/null 2>&1 && break; sleep 1; done; \
-	$(PROMPTFOO) eval -c device.promptfooconfig.yaml -o results-device-$(TARGET).json; code=$$?; \
+	$(PROMPTFOO) eval -c device.promptfooconfig.yaml -j 1 -o results-device-$(TARGET).json; code=$$?; \
 	kill $$SUT $$MOCK 2>/dev/null; wait $$SUT $$MOCK 2>/dev/null; exit $$code
 
 ws:                           ## streaming-ASR system tests over /ws/audio (needs a running SUT; TRACE=1 keeps failing traces)

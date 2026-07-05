@@ -13,7 +13,9 @@
     "smart_home.playback_pause",
     "smart_home.scenario_start",
     "smart_home.scenario_stop",
-    "smart_home.read_state"
+    "smart_home.read_state",
+    "smart_home.input_select",
+    "smart_home.app_launch"
   ],
   "domain_patterns": [
     "smart_home"
@@ -273,6 +275,50 @@
           "required": false,
           "pattern": "(?:\\bв|\\bin)\\s+([а-яёa-z_]+)\\s*$",
           "entity_type": "room"
+        }
+      ]
+    },
+    {
+      "method_name": "_handle_input_select",
+      "intent_suffix": "input_select",
+      "boost": 1.3,
+      "room_context": "none",
+      "parameters": [
+        {
+          "name": "target",
+          "type": "string",
+          "required": false,
+          "pattern": "переключ(?:и|ить)\\s+(?!на\\b|вход\\b)(.+?)\\s+на\\s+|switch\\s+(?!to\\b)(.+?)\\s+to\\s+",
+          "entity_type": "device"
+        },
+        {
+          "name": "value",
+          "type": "string",
+          "required": false,
+          "pattern": "(?:на|to)\\s+([\\wа-яё][\\wа-яё .+-]*?)\\s*$",
+          "entity_type": "generic"
+        }
+      ]
+    },
+    {
+      "method_name": "_handle_app_launch",
+      "intent_suffix": "app_launch",
+      "boost": 1.3,
+      "room_context": "none",
+      "parameters": [
+        {
+          "name": "target",
+          "type": "string",
+          "required": false,
+          "pattern": "(?:на|on)\\s+([а-яёa-z][а-яёa-z ]*?)\\s*$",
+          "entity_type": "device"
+        },
+        {
+          "name": "app",
+          "type": "string",
+          "required": false,
+          "pattern": "(?:запусти(?:ть)?|открой|launch|start)\\s+(?:приложение\\s+|app\\s+)?([\\wа-яё .+-]+?)(?:\\s+(?:на|on)\\s+\\S+)?\\s*$",
+          "entity_type": "generic"
         }
       ]
     }

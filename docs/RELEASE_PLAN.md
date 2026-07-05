@@ -266,8 +266,11 @@ _Apply to every remediation task below (from the 4 review docs + QUAL-25/26). So
         device-reported proper nouns ("YouTube", "Netflix") while RU ASR yields «ютуб»/«нетфликс» — the
         resolver must match Cyrillic↔Latin phonetically/transliterated, NOT by exact equality (per
         `donation-choice-surfaces-rule` the contract stays canonical; matching is Irene's job).
-        **(3) The v1 command set EXCLUDES input switching** («переключи на CD») — select-form capabilities
-        aren't canonically routable until bridge `VWB-19` lands; don't author donations that promise it.
+        **(3) ~~The v1 command set EXCLUDES input switching~~ FENCE LIFTED 2026-07-05 (bridge VWB-19 +
+        voice QUAL-65):** `input.set {value}` + `apps.launch {app}` implemented — by_value sets validate
+        offline against catalog `values`; parametric/app sets enumerate at resolution time via the
+        note-(1) `options_from` dance (now BUILT: `read_options` on the port + 30s TTL cache). Only
+        Cyrillic-spoken-Latin matching («ютуб») remains T2 — note (2).
         **(4) The depth doctrine (VWB-23, 2026-07-05):** resolve only as deep as the utterance specifies —
         a named device → device-canonical; a bare capability noun («включи свет», «закрой шторы») → a
         room-group command (`{room, group, action, scope}`); the noun lexicon binds group nouns to catalog
@@ -278,7 +281,9 @@ _Apply to every remediation task below (from the 4 review docs + QUAL-25/26). So
         **(6) Same-room capability ambiguity: v1 CLARIFIES** (user decision 2026-07-05; TEST-18 fixtures
         F20/F21 are the spec) — don't build priority config into the v1 resolver; priority rules are
         **QUAL-63** (later release).
-- [ ] **QUAL-44** `[deferred]` [DFLOW] (P2, enhancement; split from QUAL-31) — **Answer-vs-new-command arbitration on a
+- [ ] **QUAL-44** `[release]` _(un-deferred 2026-07-05, user — the TEST-18 device suite made the defect
+      reproducible: an armed clarification consumed the next same-room command as its answer, poisoning
+      F51–F53 in cascade)_ [DFLOW] (P2, enhancement; split from QUAL-31) — **Answer-vs-new-command arbitration on a
       clarifying turn.** QUAL-31's resume pre-check (`workflows/voice_assistant.py` `_process_pipeline`, the
       `take_pending_clarification` branch) **unconditionally** treats the turn that follows a clarification as the answer:
       it prepends the original utterance and re-runs NLU on the combined text. That is the intended flow ("answer with

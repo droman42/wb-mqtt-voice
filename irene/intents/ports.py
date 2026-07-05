@@ -124,6 +124,16 @@ class DeviceCatalogPort(ABC):
         ...
 
     @abstractmethod
+    async def read_options(self, device_id: str, kind: str) -> Optional[list]:
+        """Runtime enumeration of a dynamic option set (`GET /devices/{id}/options/{kind}` —
+        the `options_from` dance, VWB-20 G5 / VWB-19 §11.2). Installed apps and parametric
+        inputs change without a catalog rev, so their surfaces are fetched at RESOLUTION
+        time (short-TTL cached by the implementation — the round-trip sits inside one voice
+        command's latency budget). None = no source wired or the bridge did not answer.
+        """
+        ...
+
+    @abstractmethod
     async def read_state(self, device_id: str) -> Optional[Dict[str, Any]]:
         """Live state of one device (`GET /devices/{id}/state` — the read flow, ARCH-8 PR-5).
 

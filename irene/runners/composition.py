@@ -93,6 +93,7 @@ async def setup_bridge_output(core: AsyncVACore) -> None:
     output_manager.designate(OutputModality.DEVICE_COMMAND, bridge.get_output_type())
     core.catalog_service.set_fetcher(bridge.fetch_catalog)
     core.catalog_service.set_state_reader(bridge.get_device_state)
+    core.catalog_service.set_options_reader(bridge.get_device_options)
     logger.info(f"✅ Bridge output registered + designated for DEVICE_COMMAND ({bridge_cfg.base_url})")
 
     snapshot = await core.catalog_service.refresh()

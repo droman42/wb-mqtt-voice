@@ -441,6 +441,80 @@
           "description": "Комната"
         }
       ]
+    },
+    {
+      "method_name": "_handle_input_select",
+      "intent_suffix": "input_select",
+      "description": "Переключить вход устройства (усилитель, телевизор, процессор)",
+      "phrases": [
+        "переключи на",
+        "переключи вход",
+        "переключи"
+      ],
+      "lemmas": [
+        "переключить",
+        "вход"
+      ],
+      "examples": [
+        {
+          "text": "переключи усилитель на cd",
+          "parameters": {
+            "target": "усилитель",
+            "value": "cd"
+          }
+        },
+        {
+          "text": "переключи телек на hdmi1",
+          "parameters": {
+            "target": "телек",
+            "value": "hdmi1"
+          }
+        }
+      ],
+      "parameters": [
+        {
+          "name": "target",
+          "description": "Название устройства"
+        },
+        {
+          "name": "value",
+          "description": "Вход (значение из каталога/списка устройства)"
+        }
+      ]
+    },
+    {
+      "method_name": "_handle_app_launch",
+      "intent_suffix": "app_launch",
+      "description": "Запустить приложение на устройстве",
+      "phrases": [
+        "запусти",
+        "открой приложение",
+        "запусти приложение"
+      ],
+      "lemmas": [
+        "запустить",
+        "открыть",
+        "приложение"
+      ],
+      "examples": [
+        {
+          "text": "запусти youtube на телеке",
+          "parameters": {
+            "app": "youtube",
+            "target": "телеке"
+          }
+        }
+      ],
+      "parameters": [
+        {
+          "name": "target",
+          "description": "Название устройства"
+        },
+        {
+          "name": "app",
+          "description": "Название приложения (как его сообщает устройство)"
+        }
+      ]
     }
   ]
 }

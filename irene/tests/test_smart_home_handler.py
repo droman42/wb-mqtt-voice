@@ -44,7 +44,15 @@ CATALOG_PAYLOAD = {
          "capabilities": [
              {"name": "power", "group": "power", "actions": [{"name": "on"}, {"name": "off"}]},
              {"name": "playback", "group": "playback",
-              "actions": [{"name": "play"}, {"name": "pause"}, {"name": "stop"}]}]},
+              "actions": [{"name": "play"}, {"name": "pause"}, {"name": "stop"}]},
+             {"name": "input", "group": "input",
+              "actions": [{"name": "set", "params": [
+                  {"name": "value", "type": "string", "required": True,
+                   "options_from": "inputs"}]}]},
+             {"name": "apps", "group": "apps",
+              "actions": [{"name": "launch", "params": [
+                  {"name": "app", "type": "string", "required": True,
+                   "options_from": "apps"}]}]}]},
         {"id": "appletv_children", "room": "children_room", "names": {"ru": "Apple TV"},
          "aliases": {"ru": ["эппл"]},
          "capabilities": [
@@ -89,6 +97,14 @@ CATALOG_PAYLOAD = {
               "fields": [{"name": "temperature", "unit": "°C",
                           "labels": {"ru": "уставка"}},
                          {"name": "room_temperature", "unit": "°C"}]}]},
+        {"id": "mf_amplifier", "room": "living_room", "names": {"ru": "Усилитель"},
+         "capabilities": [
+             {"name": "input", "group": "input",
+              "actions": [{"name": "set", "params": [
+                  {"name": "value", "type": "enum", "required": True,
+                   "values": [{"wire": "cd", "canonical": "cd", "labels": None},
+                              {"wire": "aux1", "canonical": "aux1", "labels": None},
+                              {"wire": "phono", "canonical": "phono", "labels": None}]}]}]}]},
         {"id": "living_room_spots", "room": "living_room", "names": {"ru": "Споты"},
          "capabilities": [
              {"name": "power", "group": "light", "actions": [{"name": "on"}, {"name": "off"}]}]},
@@ -161,6 +177,14 @@ class Harness:
                     "room_temperature": 22.4, "setpoint": 22.0}
 
         self.catalog_service.set_state_reader(read_state)
+        self.options_reads: list = []
+
+        async def read_options(device_id: str, kind: str):
+            self.options_reads.append((device_id, kind))
+            return {"inputs": ["hdmi1", "hdmi2", "av"],
+                    "apps": ["YouTube", "Netflix", "Кинопоиск"]}.get(kind)
+
+        self.catalog_service.set_options_reader(read_options)
         self.output_manager = OutputManager()
         self.resolver = ContextualEntityResolver(loader, catalog_port=self.catalog_service)
         self.handler = SmartHomeIntentHandler()
@@ -432,3 +456,65 @@ async def test_read_state_failure_degrades(loader):
     result, _ = await h.run("read_state", "какая температура в душевой",
                             {"quantity": "temperature", "room": "душевой"})
     assert not result.success and "Не уверена" in result.text
+
+
+# --- select-form capabilities (QUAL-65, VWB-19) --------------------------------------------------
+
+async def test_f50_by_value_input_validates_offline(harness):
+    result, captured = await harness.run("input_select", "переключи усилитель на cd",
+                                         {"target": "усилитель", "value": "cd"},
+                                         room="Гостиная")
+    assert captured == [{"kind": "actuate", "device_id": "mf_amplifier",
+                         "capability": "input", "action": "set",
+                         "params": {"value": "cd"}}]
+    assert harness.options_reads == []  # by_value: static values, zero round-trips
+
+
+async def test_f51_parametric_input_enumerates_at_runtime(harness):
+    result, captured = await harness.run("input_select", "переключи телек на hdmi1",
+                                         {"target": "телек", "value": "hdmi1"},
+                                         room="Детская")
+    assert captured == [{"kind": "actuate", "device_id": "children_room_tv",
+                         "capability": "input", "action": "set",
+                         "params": {"value": "hdmi1"}}]
+    assert ("children_room_tv", "inputs") in harness.options_reads
+
+
+async def test_f52_app_launch_matches_case_insensitively(harness):
+    result, captured = await harness.run("app_launch", "запусти youtube на телеке",
+                                         {"app": "youtube", "target": "телеке"},
+                                         room="Детская")
+    assert captured == [{"kind": "actuate", "device_id": "children_room_tv",
+                         "capability": "apps", "action": "launch",
+                         "params": {"app": "YouTube"}}]
+    assert "YouTube" in result.text
+
+
+async def test_unknown_option_clarifies_naming_the_set(harness):
+    result, captured = await harness.run("input_select", "переключи усилитель на кассету",
+                                         {"target": "усилитель", "value": "кассету"},
+                                         room="Гостиная")
+    assert captured == []
+    assert result.metadata.get("clarification") is True
+    assert "cd" in result.text  # the available set is spoken
+
+
+async def test_options_fetch_failure_degrades(loader):
+    h = await Harness(loader).start()
+
+    async def broken(device_id: str, kind: str):
+        return None
+
+    h.catalog_service.set_options_reader(broken)
+    result, captured = await h.run("input_select", "переключи телек на hdmi1",
+                                   {"target": "телек", "value": "hdmi1"}, room="Детская")
+    assert captured == []
+    assert not result.success and "список" in result.text
+
+
+async def test_options_cache_avoids_refetch(harness):
+    for _ in range(2):
+        await harness.run("app_launch", "запусти netflix на телеке",
+                          {"app": "netflix", "target": "телеке"}, room="Детская")
+    apps_reads = [r for r in harness.options_reads if r[1] == "apps"]
+    assert len(apps_reads) == 1  # second command served from the 30s TTL cache

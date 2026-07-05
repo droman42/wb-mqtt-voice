@@ -15,6 +15,27 @@ newest entries near the top of each dated section.
 
 ## Action journal
 
+- **2026-07-05 — QUAL-65 DONE — input switching + app launch by voice (bridge VWB-19 consumed);
+  the options_from dance built; QUAL-44 un-deferred by what the suite caught.** Re-pinned @ bridge
+  `3bed556` / catalog `dbfd2855` (select-form canonical routing, `canonical_first.md` §11): by_value
+  inputs (mf_amplifier, upscaler) carry static value triplets with `labels: null` — technical
+  identifiers, wire=canonical=table key — so the ru-labels pin guard learned the distinction (null
+  legal, non-null still requires ru); parametric inputs + apps carry `options_from`. The QUAL-35
+  resolver-note-(1) machinery arrived ahead of schedule: `read_options(device_id, kind)` on the read
+  port, 30s TTL cache in CatalogService, fail-soft `BridgeClient.get_device_options`. Two handler
+  methods share one option matcher built on the resolver's own normalization; an unmatched value
+  clarifies by reading back what IS available. Four new fixtures (F50–F53) + mock-bridge options
+  endpoint; the input-switching exclusion is lifted from fixtures, QUAL-35 note (3), and the user
+  guide. **Live: F50 green end-to-end** («переключи усилитель на cd» — validated offline, zero
+  round-trips); 20/27. **F51–F53's red turned out to be gold:** not routing at all (the matcher probe
+  routes all three correctly, 0.75–0.79) but **QUAL-44 in the flesh** — F20's legitimately-armed
+  clarification consumed the next same-room case as its "answer" («поставь на паузу переключи телек
+  на hdmi1»), re-armed, and poisoned the cascade; the same bleed retroactively explains part of
+  F42's earlier behavior. User decision: QUAL-44 un-deferred and implemented next; the device suite
+  runs `-j 1` from now on (shared per-room sessions make parallel cases one interleaved
+  conversation, not independent tests). Suite 1262 green, pyright 0, 11/11 contracts,
+  eval-commons 40 (`cc1cba9`).
+
 - **2026-07-05 — ARCH-8 PR-5 DONE → ARCH-8 CLOSES — the whole MQTT smart-home arc landed in one day;
   device suite 19/23.** The sensor-read flow: `read_state(device_id)` joined `DeviceCatalogPort` as a
   QUERY (reads never ride the OutputManager, §13.3), `CatalogService` carries a wired state-reader,
