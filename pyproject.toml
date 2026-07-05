@@ -527,6 +527,24 @@ forbidden_modules = [
 ]
 
 [[tool.importlinter.contracts]]
+# ARCH-8 PR-1: the domain-owned ports and boundary types must stay PURE domain — they are what the
+# application layer implements/consumes (QUAL-24: components/services inherit the port and are
+# injected inward), so the port module importing irene.core would invert that direction (e.g.
+# `ports.py` importing `core.catalog_service.CatalogService`). ARCH-1 can't catch this: intents as a
+# whole has sanctioned core edges (donations, trace_event, durable seam), so the whole-package rule
+# permits core. This pins the boundary modules specifically — same shape as the SCC-2 input-port
+# contract above. (`context_models` is NOT here: it carries the sanctioned QUAL-28/ARCH-5 core edges.)
+name = "Domain ports and boundary types stay pure (ARCH-8 / QUAL-24)"
+type = "forbidden"
+source_modules = [
+    "irene.intents.ports",
+    "irene.intents.models",
+    "irene.intents.device_commands",
+    "irene.intents.device_catalog",
+]
+forbidden_modules = ["irene.core"]
+
+[[tool.importlinter.contracts]]
 # ARCH-11: core depends only on its own ports (irene.core.interfaces), never outward on the
 # application/delivery/adapter layers. This REVOKES the ARCH-5 reclassification that left the
 # core->{inputs,workflows,components} composition-root edges unenforced. The edges were inverted in

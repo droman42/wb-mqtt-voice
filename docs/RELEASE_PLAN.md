@@ -167,7 +167,10 @@ See `docs/review/phase1_architecture_map.md` §5.
       failure keeps the last good snapshot), and `outputs/device_command.py`
       (`CapturingDeviceCommandOutput` — the TEST-18 capture point; scripted responder for §5b error paths).
       No `ActuationPort` (§13.6). 15 unit tests (both forms through the OutputManager's designated
-      routing); suite 1201 green, pyright 0, all 10 import contracts kept. **Build notes from the 2026-07-04/05 contract analysis (recorded from
+      routing); suite 1201 green, pyright 0. **+ a new import-linter contract** ("Domain ports and
+      boundary types stay pure") pinning `intents/{ports,models,device_commands,device_catalog}`
+      against `irene.core` — ARCH-1 can't catch that inversion (intents-as-a-whole has sanctioned core
+      edges); all 11 contracts kept. **Build notes from the 2026-07-04/05 contract analysis (recorded from
       chat):** PR-2's catalog parser codes against typed `CatalogParam` — a param carries EITHER `values`
       (stable enum `{wire,canonical,labels}` triplets) OR `options_from` (a dynamic set enumerated at
       resolution time via `GET /devices/{id}/options/<kind>` — installed apps etc.); PR-3's resolver consumes

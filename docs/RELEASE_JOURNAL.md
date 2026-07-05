@@ -30,8 +30,13 @@ newest entries near the top of each dated section.
   `outputs/device_command.py` — `CapturingDeviceCommandOutput`, the fake bridge that IS the TEST-18
   capture point (records both address forms, returns the rich echo `DeliveryResult`, scriptable §5b
   error responder). No `ActuationPort` — the bridge is an OutputPort (§13.6). 15 new unit tests incl.
-  end-to-end designated routing through the OutputManager; suite 1201 passed, pyright 0 errors, all 10
-  import contracts kept. TEST-18 Slice B ungated. Next: PR-2 (BridgeClient adapter + catalog pull).
+  end-to-end designated routing through the OutputManager; suite 1201 passed, pyright 0 errors.
+  Follow-up hardening (user question, same session): a new import-linter contract — "Domain ports and
+  boundary types stay pure" — pins `intents/{ports,models,device_commands,device_catalog}` against
+  `irene.core`, closing a gap ARCH-1 cannot cover (intents as a whole carries sanctioned core edges:
+  donations, trace, the durable seam — so only a module-scoped rule can forbid the port→application
+  inversion, same shape as the SCC-2 input-port contract); 11/11 contracts kept.
+  TEST-18 Slice B ungated. Next: PR-2 (BridgeClient adapter + catalog pull).
 
 - **2026-07-05 — TEST-18 Slice A DONE — the crossover fixture set exists; the MQTT arc now builds against
   a failing suite.** Resumed the paused interactive session; the three open decisions closed (user):
