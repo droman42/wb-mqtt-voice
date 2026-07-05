@@ -208,7 +208,44 @@ _Apply to every remediation task below (from the 4 review docs + QUAL-25/26). So
   is a valid curated **superset**; deployment configs are minimal subsets — the check must not flag the superset.
 - **④ Data-contract integrity** — a model field means **one thing end-to-end**; no rename residue
   (`Intent.text`/`raw_text`, `WakeWordResult.word`/`wake_word`, action key `action_name`/`domain`, session scope).
-- [ ] **QUAL-35** `[release]` [PEX][MQTT] (P-TBD) — **★ ARCH-22 (2026-06-14) supplies the multi-room resolution SPEC
+- [ ] **QUAL-35** `[release]` [PEX][MQTT] (P-TBD) — **RESTRUCTURED 2026-07-05 (user, after the ARCH-8 arc
+      landed): what remains runs in THREE SLICES; the historical prose below is the record, the slices are
+      the plan.** **Already satisfied elsewhere** (task-start reconciliation): (a) typed `entity_type`
+      donations ✓ ARCH-8 PR-4; (b) the Q7b declarative swap ✓ PR-3; (c) D-15 room policy + missing-room
+      clarify ✓ PR-3/PR-4; resolver note (1) `options_from` dance ✓ QUAL-65; note (3) input fence lifted ✓;
+      the units *requirement* (catalog `unit` + range pre-validation) ✓ PR-4; **"compound numerals need T2"
+      is a dead theory** — F05/F06/F07 pass at T1 (the failures were BUG-23/24 pipeline corruption).
+      **The slices:**
+      • **Slice 1 — transliteration-tolerant matching (note 2) — DONE 2026-07-05.**
+        `utils/text_normalizers.latin_to_cyrillic_hint` (cached): Latin words through the in-house TTS
+        transcription engine ("YouTube"→«ютуб» exactly), ALL-CAPS acronyms spelled with English letter
+        names (TV→«ти ви» — the engine would expand «тэлевижен»); consumed by the handler's
+        `_match_option` (options with Latin also match their pronunciation hint) and the scenario label
+        scorer, with «э»→«е» folding so transcription variants don't lose points. **Acceptance met:
+        F41 + F53 green live, `make device-auto` → 25/27** — the only red left is F40/F42 (QUAL-64,
+        user-parked). F41/F42/F53 retiered to 1 (eval-commons `30e174c`); tier 2 now means exactly the
+        Slice-3 set. 3 handler tests + hint unit coverage; suite 1269 green.
+      • **Slice 2 — capability breadth (T1-mechanical).** Wire what the catalog exposes but the handler
+        doesn't speak: `volume` (8 devices), the rest of `playback` (play/stop/ff/rewind),
+        `cover.set_position` («шторы наполовину»), `climate` on/off + HVAC `mode` (CHOICE triplets), the
+        kitchen-hood `fan` — each = donation method + handler method + new crossover fixtures (PR-4
+        pattern). **Explicitly OUT pending user decision:** `menu`/`pointer` (poor voice fit) and the
+        `global` specials (water valves / heating circuits / seasonal / home / cleaning modes —
+        consequence-heavy, per-device opt-in). **Adjudications riding along:** `set_position`'s `%` settles
+        the units-generalization question with evidence; declarative `room_context` enforcement gets a
+        keep-or-close call (the handler enforces it in code today).
+      • **Slice 3 — hard-phrasing tier, evidence-first (absorbs old T2 AND T3).** Author the fixtures for
+        the genuinely hard phrasings (multi-param «яркость 30 и температуру 22», role/preposition
+        «со спальни на кухню», free-text spans, negation «все кроме торшера», anaphora «сделай его поярче»),
+        then measure BOTH existing mechanisms against them: the parked spaCy patterns activated as the
+        cascade fallback, and the **QUAL-50 LLM NLU tier enabled in config** (built, donation-grounded,
+        DeepSeek-through-LLMPort, abstains offline — currently NOT enabled in any deployment config). Build
+        only what the scoreboard says is missing. Sequencing: AFTER the QUAL-64 matcher tune, so the
+        fallback tiers are built against a tuned first tier. **The old T3 bullet's "local-LLM / local-only"
+        framing is OBSOLETE** (pre-dates QUAL-50/QUAL-14): the universal fallback is the configured LLM
+        provider (DeepSeek with an API key), offline = graceful degradation — no separate T3 task exists.
+      QUAL-35 CLOSES at Slice 3. _Historical spine below (kept as the record):_
+      **★ ARCH-22 (2026-06-14) supplies the multi-room resolution SPEC
       (D-15, `docs/design/esp32_satellite.md`):** no room → primary; a covered room in the utterance → that room; a known
       (catalog) room NOT covered → spoken error "this room is not managed by this device". Needs the bridge catalog
       (ARCH-8) for the global room set + RU-morphology room matching. ARCH-22 already **carries** `primary_room`/

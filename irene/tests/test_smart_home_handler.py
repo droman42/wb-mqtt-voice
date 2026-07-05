@@ -518,3 +518,30 @@ async def test_options_cache_avoids_refetch(harness):
                           {"app": "netflix", "target": "телеке"}, room="Детская")
     apps_reads = [r for r in harness.options_reads if r[1] == "apps"]
     assert len(apps_reads) == 1  # second command served from the 30s TTL cache
+
+
+# --- transliteration-tolerant matching (QUAL-35 Slice 1) -----------------------------------------
+
+async def test_f53_app_spoken_in_cyrillic(harness):
+    # «ютуб» ↔ "YouTube": the option's Cyrillic pronunciation hint closes the alphabet gap
+    result, captured = await harness.run("app_launch", "запусти ютуб на телеке",
+                                         {"app": "ютуб", "target": "телеке"}, room="Детская")
+    assert captured == [{"kind": "actuate", "device_id": "children_room_tv",
+                         "capability": "apps", "action": "launch",
+                         "params": {"app": "YouTube"}}]
+
+
+async def test_app_netflix_spoken_in_cyrillic(harness):
+    result, captured = await harness.run("app_launch", "запусти нетфликс на телеке",
+                                         {"app": "нетфликс", "target": "телеке"}, room="Детская")
+    assert captured and captured[0]["params"] == {"app": "Netflix"}
+
+
+async def test_f41_scenario_label_with_latin_name(harness):
+    # «эппл ти ви» ↔ label «Кино с Apple TV» (acronym TV spelled «ти ви» in the hint)
+    result, captured = await harness.run("scenario_start", "включи кино с эппл ти ви", {},
+                                         room="Гостиная")
+    assert captured == [{"kind": "actuate", "device_id": "scenario_manager",
+                         "capability": "scenario", "action": "set",
+                         "params": {"value": "movie_appletv"}}]
+    assert "Apple TV" in result.text

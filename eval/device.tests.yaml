@@ -36,32 +36,32 @@
     fixture: F04
     tier: "1"
     kind: actuate
-- description: "F05 (t2, actuate): поставь на радиаторах двадцать два градуса"
+- description: "F05 (t1, actuate): поставь на радиаторах двадцать два градуса"
   vars:
     utterance: "поставь на радиаторах двадцать два градуса"
     room: "bedroom"
     expect: {"kind": "actuate", "device_id": "bedroom_heating", "capability": "climate", "action": "set_setpoint", "params": {"temp": 22}}
   metadata:
     fixture: F05
-    tier: "2"
+    tier: "1"
     kind: actuate
-- description: "F06 (t2, actuate): тёплый пол на двадцать пять градусов"
+- description: "F06 (t1, actuate): тёплый пол на двадцать пять градусов"
   vars:
     utterance: "тёплый пол на двадцать пять градусов"
     room: "bathroom"
     expect: {"kind": "actuate", "device_id": "bathroom_floor", "capability": "climate", "action": "set_setpoint", "params": {"temp": 25}}
   metadata:
     fixture: F06
-    tier: "2"
+    tier: "1"
     kind: actuate
-- description: "F07 (t2, actuate): сделай яркость тридцать процентов"
+- description: "F07 (t1, actuate): сделай яркость тридцать процентов"
   vars:
     utterance: "сделай яркость тридцать процентов"
     room: "children_room"
     expect: {"kind": "actuate", "device_id": "children_room_spots", "capability": "brightness", "action": "set", "params": {"level": 30}}
   metadata:
     fixture: F07
-    tier: "2"
+    tier: "1"
     kind: actuate
 - description: "F08 (t1, actuate): закрой тюль слева"
   vars:

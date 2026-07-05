@@ -37,6 +37,7 @@ from ...core.donations import MissingRequiredParameter
 # the ONE surface-normalization + RU-stem truth — shared with the catalog resolver so a value
 # matched here behaves identically to a device name matched there
 from ...core.entity_resolver import _norm, _stem_match, _MORPH_FUZZ_THRESHOLD, _STEM_MATCH_SCORE
+from ...utils.text_normalizers import latin_to_cyrillic_hint
 
 # «весь свет» / «все шторы» — the plural/total signal → scope: all (VWB-23)
 _ALL_SCOPE_RE = re.compile(r"\b(?:весь|все|всё|everywhere|all)\b", re.IGNORECASE)
@@ -508,10 +509,17 @@ class SmartHomeIntentHandler(IntentHandler):
         values = spec.values or () if spec else ()
         best_label, best_canonical, best_score = None, None, 0
         from rapidfuzz import fuzz
-        text_norm = intent.raw_text.lower().replace("ё", "е")
+        text_norm = intent.raw_text.lower().replace("ё", "е").replace("э", "е")
         for value in values:
             label = value.labels.get(language) or value.labels.get("ru") or value.canonical
-            score = int(fuzz.partial_ratio(label.lower().replace("ё", "е"), text_norm))
+            score = int(fuzz.partial_ratio(
+                label.lower().replace("ё", "е").replace("э", "е"), text_norm))
+            if re.search(r"[a-zA-Z]", label):
+                # QUAL-35 Slice 1: a label with a Latin name («Кино с Apple TV») also matches
+                # its spoken Cyrillic form («кино с эппл ти ви») via the pronunciation hint
+                hint = await latin_to_cyrillic_hint(label)
+                score = max(score, int(fuzz.partial_ratio(
+                    hint.lower().replace("ё", "е").replace("э", "е"), text_norm)))
             if score > best_score:
                 best_label, best_canonical, best_score = label, value.canonical, score
         if best_canonical is None or best_score < 85:
@@ -602,22 +610,36 @@ class SmartHomeIntentHandler(IntentHandler):
     # --- select-form capabilities (QUAL-65, VWB-19 §11) -------------------------------------------
 
     @staticmethod
-    def _match_option(spoken: str, options: List[str]) -> Optional[str]:
-        """Match a spoken value against an option set: normalized exact (case/ё/spacing),
-        then shared-stem, then fuzzy. Technical identifiers are self-matchable (the
-        donation-choice-surfaces rule); Cyrillic↔Latin transliteration is QUAL-35 T2."""
+    def _option_score(spoken_norm: str, candidate: str) -> int:
+        """One comparison leg: exact → 100, shared-stem → 90, else fuzz.ratio.
+        «э» folds to «е» so transcription variants («эпел»/«эппл», «нэтфликс»/«нетфликс»)
+        don't lose points to a vowel-spelling choice."""
         from rapidfuzz import fuzz
-        spoken_norm = _norm(spoken).replace(" ", "")
+        candidate_norm = _norm(candidate).replace(" ", "").replace("э", "е")
+        if candidate_norm == spoken_norm:
+            return 100
+        score = int(fuzz.ratio(spoken_norm, candidate_norm))
+        if score < _STEM_MATCH_SCORE and _stem_match(spoken_norm, candidate_norm):
+            score = _STEM_MATCH_SCORE
+        return score
+
+    async def _match_option(self, spoken: str, options: List[str]) -> Optional[str]:
+        """Match a spoken value against an option set: normalized exact (case/ё/э/spacing),
+        shared-stem, fuzzy — and for Latin options ALSO against their Cyrillic pronunciation
+        hint (QUAL-35 Slice 1: «ютуб» ↔ "YouTube", «эппл ти ви» ↔ "Apple TV"). Technical
+        identifiers stay self-matchable (the donation-choice-surfaces rule)."""
+        spoken_norm = _norm(spoken).replace(" ", "").replace("э", "е")
         best, best_score = None, 0
         for option in options:
-            option_norm = _norm(str(option)).replace(" ", "")
-            if option_norm == spoken_norm:
-                return str(option)
-            score = int(fuzz.ratio(spoken_norm, option_norm))
-            if score < _STEM_MATCH_SCORE and _stem_match(spoken_norm, option_norm):
-                score = _STEM_MATCH_SCORE
+            option_str = str(option)
+            score = self._option_score(spoken_norm, option_str)
+            if re.search(r"[a-zA-Z]", option_str):
+                hint = await latin_to_cyrillic_hint(option_str)
+                score = max(score, self._option_score(spoken_norm, hint))
+            if score == 100:
+                return option_str
             if score > best_score:
-                best, best_score = str(option), score
+                best, best_score = option_str, score
         return best if best_score >= _MORPH_FUZZ_THRESHOLD else None
 
     async def _selectable_options(self, device: CatalogDevice, capability_name: str,
@@ -648,7 +670,7 @@ class SmartHomeIntentHandler(IntentHandler):
                                                         name=self._device_name(device, language)),
                                 should_speak=True, success=False,
                                 error=f"no option set for {device.id}.{capability}")
-        matched = self._match_option(spoken, options)
+        matched = await self._match_option(spoken, options)
         if matched is None:
             context.set_pending_clarification(intent.name, param, intent.raw_text)
             return IntentResult(

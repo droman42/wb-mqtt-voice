@@ -293,9 +293,65 @@ class RunormNormalizer:
             logger.debug("RUNorm normalizer cleaned up")
 
 
+# --- transliteration hints (QUAL-35 Slice 1) -----------------------------------------------------
+#
+# Dynamic option sets and enum labels carry device-reported LATIN names ("YouTube", "Apple TV")
+# while Russian ASR yields Cyrillic phonetic spellings («ютуб», «эппл ти ви»). This helper renders
+# a Latin name the way a Russian speaker SAYS it, so matchers can compare in one alphabet — reusing
+# the in-house TTS transcription engine (one truth for how Latin sounds in Cyrillic; it renders
+# "YouTube" → «ютуб» exactly). Acronym tokens (TV, HDMI, LD) are spelled letter-by-letter with the
+# English letter NAMES («ти ви») — the phonetic engine would expand them as words («тэлевижен»).
+
+_EN_LETTER_NAMES = {
+    "a": "эй", "b": "би", "c": "си", "d": "ди", "e": "и", "f": "эф", "g": "джи",
+    "h": "эйч", "i": "ай", "j": "джей", "k": "кей", "l": "эл", "m": "эм", "n": "эн",
+    "o": "оу", "p": "пи", "q": "кью", "r": "ар", "s": "эс", "t": "ти", "u": "ю",
+    "v": "ви", "w": "дабл ю", "x": "экс", "y": "уай", "z": "зед",
+}
+
+_ACRONYM_RE = re.compile(r"^[A-Z]{1,4}\d*$")
+_hint_cache: Dict[str, str] = {}
+_hint_transcriber: Optional["PrepareNormalizer"] = None
+
+
+async def latin_to_cyrillic_hint(text: str) -> str:
+    """How a Russian speaker pronounces `text`: Latin words phonetically transcribed to
+    Cyrillic, ALL-CAPS acronyms spelled with English letter names, Cyrillic left alone.
+    Cached — option sets and labels repeat across turns."""
+    global _hint_transcriber
+    cached = _hint_cache.get(text)
+    if cached is not None:
+        return cached
+    if _hint_transcriber is None:
+        # the FULL option shape (a partial dict KeyErrors on mixed-script tokens) with
+        # everything but the Latin transcription turned off
+        _hint_transcriber = PrepareNormalizer(options={
+            "changeNumbers": "no_process",
+            "changeLatin": "process",
+            "changeSymbols": "",
+            "keepSymbols": r",.?!;:()- ",
+            "deleteUnknownSymbols": False,
+        })
+    parts = []
+    for token in text.split():
+        if _ACRONYM_RE.match(token):
+            letters = "".join(ch for ch in token if ch.isalpha())
+            digits = "".join(ch for ch in token if ch.isdigit())
+            spelled = " ".join(_EN_LETTER_NAMES[ch.lower()] for ch in letters)
+            parts.append(f"{spelled}{(' ' + digits) if digits else ''}")
+        elif re.search(r"[a-zA-Z]", token):
+            parts.append(await _hint_transcriber.normalize(token))
+        else:
+            parts.append(token)
+    hint = " ".join(parts)
+    _hint_cache[text] = hint
+    return hint
+
+
 # Export normalizer classes
 __all__ = [
     'NumberNormalizer',
-    'PrepareNormalizer', 
-    'RunormNormalizer'
+    'PrepareNormalizer',
+    'RunormNormalizer',
+    'latin_to_cyrillic_hint',
 ] 

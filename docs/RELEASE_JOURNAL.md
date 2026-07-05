@@ -15,6 +15,26 @@ newest entries near the top of each dated section.
 
 ## Action journal
 
+- **2026-07-05 — QUAL-35 restructured (3 slices; the local-LLM T3 concept retired) + Slice 1 DONE —
+  device suite 25/27; every red is now QUAL-64's.** Reconciliation first (user): most of QUAL-35's
+  historical scope was already satisfied by today's arc — typed donations, the Q7b swap, D-15,
+  `options_from`, the units requirement, and the "compound numerals need T2" theory (dead — it was
+  BUG-23/24). The T3 bullet's "dependency-parse / local-LLM, opt-in local-only" framing predated
+  QUAL-50 and is retired: the third cascade tier EXISTS (the donation-grounded LLM NLU provider
+  through LLMPort — DeepSeek with an API key, abstains offline) but is not enabled in any deployment
+  config; Slice 3 measures it instead of building anything new. The plan: Slice 1 transliteration,
+  Slice 2 capability breadth (volume, playback rest, cover positions, HVAC mode, fan + two
+  adjudications; menu/pointer and the global valve/mode specials held for explicit user decision),
+  Slice 3 hard-phrasing fixtures measured against spaCy patterns + the enabled QUAL-50 tier (after
+  the QUAL-64 matcher tune, so fallback tiers aren't built against an untuned first tier).
+  **Slice 1 landed the same session:** `latin_to_cyrillic_hint` reuses the in-house TTS transcription
+  engine — "YouTube" renders as «ютуб» *exactly* — plus an acronym letter-name table (TV→«ти ви»,
+  where the engine would say «тэлевижен»); option matching and scenario-label scoring now also
+  compare against the hint, with «э»→«е» folding. One iteration bump: the hint transcriber must
+  carry the FULL PrepareNormalizer option shape (a partial dict KeyError'd on the mixed-script
+  label «Кино с LD-проигрывателя» — caught live by the suite, of course). F41 + F53 green;
+  F41/F42/F53 retiered to 1. Suite 1269 green, pyright 0, 11/11 contracts.
+
 - **2026-07-05 — QUAL-44 DONE (+ BUG-23/BUG-24 found & fixed under it) — device suite 23/27; every
   remaining red is deliberate.** The arbitration landed exactly as the entry scoped it: on a
   clarifying turn the pipeline now runs NLU on the BARE new utterance first — a confident,
