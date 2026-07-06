@@ -15,6 +15,23 @@ newest entries near the top of each dated section.
 
 ## Action journal
 
+- **2026-07-06 — ARCH-30 DONE (same-day interactive design session) — problem reporting
+  end-to-end, design AGREED.** «Сообщи о проблеме» → verbatim-captured description → support
+  bundle → private ticket → GitHub-Claude triage → fix PRs / handovers / owner escalations.
+  The session's pivotal finding: both code repos are PUBLIC, so the naive "file an issue in the
+  voice repo" would publish the household's logs and rooms — the design landed on a private
+  triage home (`wb-user-reports`, shared intake with the future bridge UI button) which then
+  SIMPLIFIED the original two-Claude choreography into one Claude with two lens process files,
+  handover by label flip on the same ticket. Alternatives weighed at the user's request (Google
+  Drive / Yandex Disk / Jira) — all lose to "the ticket must be a GitHub issue for the Claude
+  action to trigger at all". Other decisions: verbatim capture checked BEFORE QUAL-44 (a problem
+  description must never execute as a command), bundle carries the last-10 turns + action records
+  + a new always-on 5-trace ring (Q2 "is it the previous utterance?" — no, measurably), ARCH-27
+  durable spool for offline, 30-day bundle retention, leak fence, replies pre-drafted in the
+  reporter's language, `claude-fable-5` pinned for the whole triage run (D-11 — volume is
+  household-scale; capability dominates on unattended code work). Implementation filed:
+  ARCH-31/32/33 + BUILD-12 here, VWB-25 to the bridge (uncommitted).
+
 - **2026-07-06 — BUG-26 + BUG-27 + QUAL-71 DONE (one live-testing session, three fixes).**
   The user's config-example session kept paying out. **BUG-26:** «расскажи о себе» belonged to
   system.about all along (the literal phrase is authored there) but lost to conversation.reference

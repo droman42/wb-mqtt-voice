@@ -915,6 +915,21 @@ rationale/chronology lives in [`RELEASE_JOURNAL.md`](./RELEASE_JOURNAL.md).
       glibc 2.31/Cortex-A7 and exposes both `OfflineRecognizer` and `OfflineTts`/`OfflineTtsVitsModelConfig` (Piper) — the
       one-engine premise holds. Completing T1+T2 is the clean resolution for the deferred **torch ×4 / transformers ×1**
       Dependabot alerts (commits 05aa763/4e05a38) — no risky major bumps. **No code until scheduled + green-lit.**
+- [x] **ARCH-30** `[release]` [FEEDBACK][DESIGN] — **DONE 2026-07-06 (same-day interactive design session).
+      Problem reporting end-to-end — design AGREED**: `docs/design/problem_reports.md` (D-1..D-11). Key
+      decisions: private triage home **`wb-user-reports`** (both code repos are PUBLIC — bundles narrate the
+      household; shared intake with the future bridge UI button); **one Claude, two lenses** — voice→bridge
+      delegation is a label flip + structured handover comment on the SAME ticket (ping-pong guard: one bounce
+      each way, then owner); verbatim-capture dialog rides QUAL-30/31 with a pre-QUAL-44 check (a description
+      like «свет не включается» must never execute as a command; TTL 90s configurable, cancel words, no
+      re-prompt loops); bundle = last-10 turns + F&F/durable action records + always-on 5-trace ring buffer +
+      day's log + redacted config + catalog version (NOT just the previous utterance — user's Q2 answered);
+      delivery via ARCH-27 durable spool; 30-day bundle retention; leak fence for the public boundary;
+      no-registry v1 ⇒ unclear reports always escalate with the reply pre-drafted in the reporter's language;
+      D-11 model policy: `claude-fable-5` for the whole run, pinned in one env var. Implementation filed:
+      **ARCH-31/32/33 + BUILD-12** here, **VWB-25** into the bridge (uncommitted, per
+      `cross-repo-source-of-truth`). Raw audio, user registry, curated public issues = explicitly v2.
+
 
 ### Code Quality & Review (QUAL)
 - [x] **QUAL-44** `[release]` — **DONE 2026-07-05** _(un-deferred same day, user — the TEST-18 device suite

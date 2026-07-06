@@ -77,6 +77,7 @@ Living findings behind the tasks (`read-at-start-record-at-completion`). `[x]` =
 | `esp32_wakeword_review.md` `[x]` | ESP32 + wakeword keep/fix/cut + microWakeWord upstream study | QUAL-19 ✓, QUAL-20 ✓ |
 | `docker_build_review.md` `[x]` | Docker/build verification (entry-point renames, armv7 base, build-analyzer drift) | BUILD-5, BUILD-3 |
 | `docs/design/wakeword_models.md` `[x]` (AGREED 2026-07-04, interactive) | ARCH-29 — server-side wake-word model acquisition: v2 two-file packs (manifest + sibling tflite), 4-rung resolution (local path → wheel built-ins → v2 manifest URL → released catalog starting with `irina`@HF), AssetManager multi-file `files:` support, trigger layer stays semantics-free (word→room deferred to ARCH-22/QUAL-35), roster «Ирина»→«Валера»/«Наташа» («Борис» dropped) | ARCH-29 ✓ → ASSET-5 |
+| `docs/design/problem_reports.md` `[x]` (AGREED 2026-07-06, interactive) | ARCH-30 — problem reporting end-to-end: private triage home `wb-user-reports` (tickets + bundles; both code repos are public), one-Claude-two-lenses with handover-by-label + ping-pong guard, verbatim-capture dialog (pre-QUAL-44, TTL 90s, cancel words), bundle (last-10 turns + action records + 5-trace ring + day log + redacted config + catalog version), ARCH-27 durable spool, D-7 rate limits, leak fence, reply-in-reporter's-language, D-11 model policy (`claude-fable-5` pinned) | ARCH-30 ✓ → ARCH-31/32/33, BUILD-12, VWB-25 |
 | `docs/design/mqtt_integration.md` `[x]` (DONE 2026-06-06; bridge contract AGREED) | smart-home integration — bridge is the single device authority, Irene speaks canonical commands | ARCH-7/8, ARCH-26 |
 | `docs/design/ws_esp32_transport.md` `[x]` | WS streaming-input driving adapter + ESP32 satellite transport | ARCH-6 |
 | `docs/design/onnx_inference_layer.md` `[x]` (complete 2026-06-04; ASR/platform/build + VAD/wake-word all resolved) | shared sherpa-onnx inference layer — ASR-centric; WB7 armv7 feasibility proven on hardware | ARCH-9/10 |
@@ -152,28 +153,29 @@ and the structural refactors **move code** — so blind refactoring/fixing is th
 Target pattern: **Hexagonal (Ports & Adapters)** — SIGNED OFF 2026-06-01. Code is already ~80% there
 (interfaces=ports, providers=adapters, components=app services, entry-points=registry).
 See `docs/review/phase1_architecture_map.md` §5.
-- [ ] **ARCH-30** `[release]` [FEEDBACK][DESIGN] — **Problem reporting end-to-end («сообщи о проблеме») —
-      DESIGN task** (filed 2026-07-06, user; first-release scope — grows the release gate deliberately).
-      Deliverable: **`docs/design/problem_reports.md`** (interactive session, like ARCH-27/29); completion files
-      the implementation tasks. Scope of the design: **(1) the intent + two-turn dialog** — `report_problem`
-      arms a pending description slot with a **verbatim-capture mode** (QUAL-44 arbitration MUST NOT hijack a
-      description like «свет не включается» into a command; escape words + TTL, no re-prompt loops);
-      **(2) the support bundle** — day's log, redacted config, rolling last-N request traces (trace persistence
-      is off by default — needs a small always-on ring buffer), conversation window + recent/failed action
-      records (NOT just the previous utterance — retries/F&F/output-side failures), version+commit, profile,
-      arch, pinned catalog version, NLU cascade verdicts, ASR provider, language; raw audio explicitly v2
-      (privacy, opt-in); **(3) the delivery backend — OPEN, first session topic (user):** both code repos are
-      PUBLIC so bundles cannot land there; compare a dedicated private GitHub reports repo vs Google Drive /
-      Yandex Disk / Jira / other stores (criteria: Claude-on-GitHub integration, API+auth from an offline-prone
-      device, durable-spool retry fit (ARCH-27), issue lifecycle, cost); **(4) the GitHub-Claude choreography** —
-      triage process files for BOTH repos, four-outcome flow (fix→PR / delegate→bridge / ask reporter in their
-      language / escalate to owner — v1 has no user registry so unclear ⇒ always owner, reply drafted in the
-      reporter's language), the **distilled voice→bridge handover schema** (symptom, evidence, catalog version,
-      trace slice, back-links — both repos' process files consume it); **(5) local-Claude review loop** — an
-      `/inbox`-style skill (one-by-one interactive PR/issue review) + a CLAUDE.md session-start line, both repos;
-      **(6) cross-repo filings** — VWB task for the bridge's "Report a problem" UI button (same envelope,
-      bridge-side collection specifics theirs). Builds on: QUAL-30/31 (pending slot), ARCH-27/28 (durable spool
-      + retry), ARCH-19 (traces), BUG-4 (language threading).
+- [ ] **ARCH-31** `[release]` [FEEDBACK] — **Problem-report dialog + verbatim capture (voice side)** (from
+      ARCH-30 §10.1-2, design `docs/design/problem_reports.md` §2). Verbatim mode on the pending-clarification
+      state (`mode`, `expires_at`; workflow pre-check BEFORE the QUAL-44 arbitration — a description must never
+      execute as a command); new `report` handler + donation + ru/en templates (phrases per D-9); cancel words;
+      TTL per D-5 (`capture_ttl_seconds`, default 90); QUAL-64-suite routing regression cases; dialog unit tests
+      (arm → verbatim → cancel/TTL).
+- [ ] **ARCH-32** `[release]` [FEEDBACK] — **Support bundle + delivery (voice side)** (ARCH-30 §10.3-5, design
+      §3-6). Trace ring buffer (last 5 requests, always on); `ReportBundleCollector` (+ redaction pass §4 +
+      envelope §5); `ReportSinkPort` + `GitHubReportSink` (issues + contents API); `[reports]` config (enabled,
+      repo, token_env, TTL, D-7 rate limits 3/h + 10/day, D-10 tunables); offline spool via the ARCH-27 durable
+      substrate (`durable=True`, re-arm); mock-sink e2e for the bundle path. Config-master + 6 deployment
+      configs gain the section (disabled until BUILD-12 provisions the repo/token).
+- [ ] **BUILD-12** `[release]` [FEEDBACK][CI] — **`wb-user-reports` bootstrap** (ARCH-30 §10.6, design §7).
+      Private repo + labels (`problem-report`, `lens:voice/bridge`, `new`, `needs-owner`, `fix-pr-open`);
+      triage workflow (issues + issue_comment triggers, loop safety §7.5, model pinned per D-11 =
+      `claude-fable-5` in one env var); the two lens process files (four outcomes §7.2, handover schema §7.3,
+      leak fence §7.4, reply-in-reporter's-language rule); 30-day retention pruning workflow (plain script, no
+      model); **owner-action checklist** (create repo, install the Claude GitHub App on all three repos, set the
+      OAuth secret, mint the device PAT).
+- [ ] **ARCH-33** `[release]` [FEEDBACK] — **Owner review loop, voice side** (ARCH-30 §10.7, design §8).
+      `/inbox` skill: list open fix PRs on wb-mqtt-voice + `needs-owner` tickets (voice lens) in
+      wb-user-reports, then walk them one-by-one interactively; CLAUDE.md line: mention pending items at
+      session start (never auto-run). Bridge twin rides the VWB-25 filing.
 - [ ] **ARCH-16** [IO] (P-deferred) — **I/O daemon multiplexer + runners→thin presets (deferred ARCH-15 PR-10).**
       The I/O hexagon (ARCH-15) is complete and every channel runs; this is the internal-cleanliness endgame, deferred
       2026-06-07 as low-incremental-value / higher-risk. Scope: (a) **remote interactive text-attach channel** (e.g.
