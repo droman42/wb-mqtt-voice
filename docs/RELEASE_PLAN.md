@@ -189,18 +189,6 @@ See `docs/review/phase1_architecture_map.md` §5.
       coverage on aarch64 (QUAL-19/20). Absorbs the boot / on-device remainders that **ARCH-24** + **BUILD-3** point here,
       and gates **Definition-of-release item #1**. User/hardware-gated — no CI surrogate. Refs:
       `torch_free_armv7_voice.md`, `esp32_satellite.md` §4.4/§12, BUILD-3, ARCH-10.
-- [ ] **ARCH-38** `[release]` [SATELLITE] — **Satellite tracing implementation** (from ARCH-37, design
-      `docs/design/satellite_tracing.md` — T-1..T-6 AGREED 2026-07-07). Build order per design §4:
-      **(1)** `TraceConfig.allow_remote_request` (default false) + config-ui parity + config-master;
-      **(2)** server: `wants_trace` register field → explicit grant in the `registered` ack, per-utterance
-      remote-requested `TraceContext` through BOTH /ws/audio branches, `{"type":"trace"}` frame after each
-      response (never persisted controller-side unless its own [trace] enabled says so); **(3)**
-      `SatelliteLink` wants_trace + grant parse + bounded trace-frame wait; **(4)** satellite recorder —
-      raw-mic ring (--trace-raw-mic), VAD frames (collect_vad_frames), wake/uplink stages, reply audio
-      captured at the playback seam, merged envelope (`controller_trace` + `reply_audio` keys) saved under
-      <assets_root>/traces/ with the ARCH-19 rotation; single mode only (T-5); **(5)** replay tool displays
-      the nested controller section; **(6)** loopback tests (grant/decline, trace-follows-response, merged
-      file shape) + satellite/tracing guides + CHANGELOG. eval-commons: NO change (T-6 — additive default).
 
 ### Code Quality & Review (QUAL)
 

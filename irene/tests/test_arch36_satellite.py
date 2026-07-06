@@ -53,7 +53,9 @@ def test_cert_cn_parses_dn_shapes():
     assert _client_cert_cn(H({"x-client-cert-cn": "CN=hall_node"})) == "hall_node"
 
 
-def _stub_router():
+def _stub_router(allow_remote_trace: bool = False):
+    from types import SimpleNamespace
+
     from fastapi import FastAPI
     from irene.intents.models import IntentResult
     from irene.runners.webapi_router import create_webapi_router
@@ -61,11 +63,16 @@ def _stub_router():
     class _WM:
         async def process_audio_input(self, audio_data, session_id=None, wants_audio=False,
                                       client_context=None, trace_context=None):
+            if trace_context is not None:
+                trace_context.record_stage("stub_pipeline", {"in": "audio"}, {"out": "готово"},
+                                            {}, processing_time_ms=1.0)
             return IntentResult(text="готово", metadata={"ok": True})
 
     class _Core:
         workflow_manager = _WM()
-        config = None
+        config = SimpleNamespace(trace=SimpleNamespace(
+            allow_remote_request=allow_remote_trace, enabled=False,
+            max_stages=100, max_data_size_mb=10, capture_level="utterance"))
         component_manager = None
         plugin_manager = None
         output_manager = None
@@ -129,23 +136,34 @@ def _free_port() -> int:
         return s.getsockname()[1]
 
 
+class _LiveServer:
+    """The actual FastAPI /ws/audio server (stubbed pipeline) on a real TCP port."""
+
+    def __init__(self, app):
+        uvicorn = pytest.importorskip("uvicorn")
+        self.port = _free_port()
+        self.server = uvicorn.Server(uvicorn.Config(app, host="127.0.0.1", port=self.port,
+                                                    log_level="error"))
+        self.url = f"ws://127.0.0.1:{self.port}"
+        self._task = None
+
+    async def __aenter__(self):
+        self._task = asyncio.create_task(self.server.serve())
+        for _ in range(100):
+            if self.server.started:
+                return self
+            await asyncio.sleep(0.05)
+        raise AssertionError("uvicorn did not start")
+
+    async def __aexit__(self, *exc):
+        self.server.should_exit = True
+        await self._task
+
+
 @pytest.fixture()
 async def real_server():
-    """The actual FastAPI /ws/audio server (stubbed pipeline) on a real TCP port."""
-    uvicorn = pytest.importorskip("uvicorn")
-
-    port = _free_port()
-    server = uvicorn.Server(uvicorn.Config(_stub_router(), host="127.0.0.1", port=port,
-                                           log_level="error"))
-    task = asyncio.create_task(server.serve())
-    for _ in range(100):
-        if server.started:
-            break
-        await asyncio.sleep(0.05)
-    assert server.started, "uvicorn did not start"
-    yield f"ws://127.0.0.1:{port}"
-    server.should_exit = True
-    await task
+    async with _LiveServer(_stub_router()) as srv:
+        yield srv.url
 
 
 async def test_loopback_single_mode_utterance_roundtrip(real_server):
@@ -174,6 +192,103 @@ async def test_loopback_reconnect_after_server_side_registration(real_server):
         assert link.connected and link.session_id != first_session
     finally:
         await link.close()
+
+
+# --- satellite tracing (ARCH-37/38) -----------------------------------------------------------------
+
+async def test_trace_granted_frame_follows_response():
+    """wants_trace + allow_remote_request → explicit grant in the ack, trace frame per response."""
+    async with _LiveServer(_stub_router(allow_remote_trace=True)) as srv:
+        link = SatelliteLink(srv.url, "tracer", "Кухня", wants_trace=True,
+                             response_timeout_s=10.0)
+        try:
+            await link.connect()
+            assert link.trace_granted is True
+            response = await link.send_utterance(b"\x00\x01" * 2000)
+            assert response["text"] == "готово"
+            assert link.last_trace is not None
+            assert link.last_trace["type"] == "trace" and link.last_trace["request_id"]
+            stages = link.last_trace["trace"]["execution"]["pipeline_stages"]
+            assert any(s.get("stage") == "stub_pipeline" or s.get("stage_name") == "stub_pipeline"
+                       for s in stages)
+        finally:
+            await link.close()
+
+
+async def test_trace_declined_by_default(real_server):
+    """The default-off gate: wants_trace is ignored, ack says trace:false, no trace frames —
+    a second utterance's response arrives cleanly (nothing interleaved)."""
+    link = SatelliteLink(real_server, "tracer2", "Зал", wants_trace=True,
+                         response_timeout_s=10.0)
+    try:
+        await link.connect()
+        assert link.trace_granted is False
+        assert (await link.send_utterance(b"\x00\x01" * 1000))["text"] == "готово"
+        assert link.last_trace is None
+        assert (await link.send_utterance(b"\x00\x01" * 1000))["text"] == "готово"
+    finally:
+        await link.close()
+
+
+def _fake_segment():
+    from types import SimpleNamespace
+    return SimpleNamespace(
+        start_timestamp=1000.0, end_timestamp=1001.5,
+        vad_frames=[{"t_ms": 0, "is_voice": True, "energy": 0.5, "threshold": 0.1}],
+        combined_audio=SimpleNamespace(data=b"\x00\x01" * 100, sample_rate=16000, channels=1))
+
+
+def _recorder(tmp_path, **cfg_overrides):
+    from types import SimpleNamespace
+    from irene.satellite.trace import SatelliteTraceRecorder
+    cfg = SimpleNamespace(capture_raw_mic=False, max_stages=100, max_data_size_mb=10,
+                          capture_level="utterance", traces_dir=str(tmp_path), enabled=True)
+    for k, v in cfg_overrides.items():
+        setattr(cfg, k, v)
+    return SatelliteTraceRecorder(cfg, None, client_id="sat", room_name="Кухня", mode="single")
+
+
+def test_recorder_writes_merged_envelope(tmp_path):
+    rec = _recorder(tmp_path)
+    seg = _fake_segment()
+    rec.on_wake(confidence=0.98, armed_at=999.5)
+    rec.complete_utterance(segment=seg, pcm=seg.combined_audio.data, sample_rate=16000,
+                           response={"type": "response", "text": "готово", "success": True},
+                           error=None, rtt_ms=42.0, trace_granted=True,
+                           controller_trace={"type": "trace", "request_id": "abc",
+                                             "trace": {"execution": {"pipeline_stages": []}}})
+    rec.on_reply(b"\x07\x08" * 50, 22050, 1)  # reply arrives → finalize
+
+    files = list(tmp_path.glob("*.json"))
+    assert len(files) == 1
+    env = json.loads(files[0].read_text())
+    assert env["controller_trace"] == {"execution": {"pipeline_stages": []}}  # unwrapped envelope
+    assert env["reply_audio"]["rate"] == 22050
+    assert env["vad_frames"][0]["is_voice"] is True
+    names = [s.get("stage") or s.get("stage_name") for s in env["execution"]["pipeline_stages"]]
+    assert "wake_gate" in names and "uplink" in names
+    assert env["replay"]["input"]["kind"] == "audio"  # the utterance, replayable for VAD tuning
+
+
+def test_recorder_declined_and_next_utterance_finalizes(tmp_path):
+    rec = _recorder(tmp_path)
+    rec.complete_utterance(segment=_fake_segment(), pcm=b"\x00\x01" * 10, sample_rate=16000,
+                           response=None, error="uplink dropped", rtt_ms=5.0,
+                           trace_granted=False, controller_trace=None)
+    assert list(tmp_path.glob("*.json")) == []  # pending, awaiting reply/next/shutdown
+    # next utterance finalizes the previous one (T-5, no timers)
+    rec.complete_utterance(segment=_fake_segment(), pcm=b"\x00\x01" * 10, sample_rate=16000,
+                           response={"text": "ок"}, error=None, rtt_ms=5.0,
+                           trace_granted=False, controller_trace=None)
+    rec.flush()
+    files = sorted(tmp_path.glob("*.json"), key=lambda f: f.stat().st_mtime)
+    assert len(files) == 2
+    first = json.loads(files[0].read_text())
+    assert first["controller_trace"] == {"declined": True}
+    assert "reply_audio" not in first
+    uplink = next(s for s in first["execution"]["pipeline_stages"]
+                  if (s.get("stage") or s.get("stage_name")) == "uplink")
+    assert "error" in str(uplink)
 
 
 # --- reply client vs the §4 wire contract ----------------------------------------------------------

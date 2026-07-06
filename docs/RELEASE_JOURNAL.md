@@ -15,6 +15,16 @@ newest entries near the top of each dated section.
 
 ## Action journal
 
+- **2026-07-07 — ARCH-38 DONE — satellite tracing shipped, hours after its design.** `--trace` on
+  a room node now means something real: one merged file per utterance with the device story (raw
+  mic ring, VAD frames, wake-gate verdicts including the skips, the wire exchange with RTT, the
+  reply exactly as played) and the controller's execution trace nested inside — delivered as an
+  in-band trace frame after each response, granted explicitly at registration, gated by the new
+  default-off `[trace] allow_remote_request`. A missing or declined controller half is recorded,
+  not fatal. `irene-replay-trace --show-controller` prints the nested half; the captured
+  utterance stays replayable for VAD tuning. Suite 1353, pyright 0, 11/11 contracts, config-ui
+  clean. The board is back to ARCH-25 + the tag — now with the debugging kit bring-up wanted.
+
 - **2026-07-07 — ARCH-37 DONE (filed + designed same day) → ARCH-38 filed [release].** Satellite
   tracing designed in session: one utterance, one trace, two machines. The satellite gets its
   device story back (`--trace` was silently inert on a room node — raw mic, VAD frames, wake-gate

@@ -778,6 +778,31 @@ def create_webapi_router(
             await get_client_registry().register_client(registration)
             sample_rate = int(reg.get("sample_rate", 16000))
             wants_audio = bool(reg.get("wants_audio", False))
+            # ARCH-37: a satellite may ask for the execution trace back (`wants_trace`, contract
+            # default false). Honored only when the operator opted in ([trace] allow_remote_request);
+            # the grant is acknowledged explicitly in the `registered` ack. Local persistence stays
+            # governed by [trace] enabled — a remote-requested trace is shipped, not saved.
+            trace_cfg = getattr(getattr(core, "config", None), "trace", None)
+            trace_granted = (bool(reg.get("wants_trace", False))
+                             and bool(getattr(trace_cfg, "allow_remote_request", False)))
+
+            def _mint_remote_trace() -> Optional[TraceContext]:
+                if not trace_granted:
+                    return None
+                trace = TraceContext(enabled=True,
+                                     max_stages=getattr(trace_cfg, "max_stages", 100),
+                                     max_data_size_mb=getattr(trace_cfg, "max_data_size_mb", 10))
+                trace.capture_level = getattr(trace_cfg, "capture_level", "utterance")
+                return trace
+
+            async def _send_trace(trace: Optional[TraceContext]) -> None:
+                if trace is None:
+                    return
+                try:
+                    await websocket.send_json({"type": "trace", "request_id": trace.request_id,
+                                               "trace": trace.build_envelope()})
+                except Exception as e:
+                    logger.warning(f"trace frame not delivered (session {session_id}): {e}")
             # client_context flows into RequestContext → context.client_id/room_name → resolve_physical_id
             # returns the PHYSICAL origin (room/device) instead of the ephemeral session id. ARCH-6 activation.
             client_context = {
@@ -791,7 +816,7 @@ def create_webapi_router(
                      "location": d.location} for d in registration.available_devices]},
             }
             await websocket.send_json({"type": "registered", "client_id": registration.client_id,
-                                       "session_id": session_id})
+                                       "session_id": session_id, "trace": trace_granted})
 
             # ARCH-22: the SPOKEN reply goes back to the device's reply channel (/ws/audio/reply), never
             # local playback — so processing runs with wants_audio=False and we route the SPEECH modality
@@ -841,12 +866,14 @@ def create_webapi_router(
                         if not is_final:
                             await websocket.send_json({"type": "partial", "text": text})
                             continue
+                        utterance_trace = _mint_remote_trace()
                         result = await core.workflow_manager.process_text_input(
                             text=text, session_id=session_id, wants_audio=False,
-                            client_context=client_context)
+                            client_context=client_context, trace_context=utterance_trace)
                         # QUAL-55: canonical projection (supersedes the QUAL-54 metadata injection —
                         # `intent_name` is now a top-level key on every execution surface).
                         await websocket.send_json({"type": "response", **serialize_intent_result(result)})
+                        await _send_trace(utterance_trace)  # ARCH-37: trace follows its response
                         await _route_reply(result)
                     # Utterance ended (end frame / idle / disconnect) — re-arm unless the
                     # client is gone. A fresh recognizer stream is created per utterance.
@@ -882,12 +909,14 @@ def create_webapi_router(
                     _audio_meta["overflow"] = True
                 audio = AudioData(data=bytes(frames), timestamp=time.time(), sample_rate=sample_rate,
                                   channels=1, metadata=_audio_meta)
+                utterance_trace = _mint_remote_trace()
                 result = await core.workflow_manager.process_audio_input(
                     audio_data=audio, session_id=session_id, wants_audio=False,
-                    client_context=client_context)
+                    client_context=client_context, trace_context=utterance_trace)
                 # QUAL-55: canonical projection (supersedes the QUAL-54 metadata injection —
                 # `intent_name` is now a top-level key on every execution surface).
                 await websocket.send_json({"type": "response", **serialize_intent_result(result)})
+                await _send_trace(utterance_trace)  # ARCH-37: trace follows its response
                 await _route_reply(result)
         except WebSocketDisconnect:
             logger.debug(f"WS audio driving input disconnected (session {session_id})")

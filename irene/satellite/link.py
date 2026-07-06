@@ -47,7 +47,7 @@ class SatelliteLink:
 
     def __init__(self, server_url: str, client_id: str, room_name: str, *,
                  sample_rate: int = 16000, mode: str = "single",
-                 wants_audio: bool = True,
+                 wants_audio: bool = True, wants_trace: bool = False,
                  ssl_context: Optional[ssl.SSLContext] = None,
                  response_timeout_s: float = 30.0) -> None:
         self.server_url = server_url.rstrip("/")
@@ -56,6 +56,12 @@ class SatelliteLink:
         self.sample_rate = sample_rate
         self.mode = mode
         self.wants_audio = wants_audio
+        # ARCH-37: ask the controller for its execution trace after each response. The grant
+        # is explicit in the `registered` ack (`trace_granted`); when granted, `send_utterance`
+        # also consumes the trace frame into `last_trace`.
+        self.wants_trace = wants_trace
+        self.trace_granted = False
+        self.last_trace: Optional[Dict[str, Any]] = None
         self.response_timeout_s = response_timeout_s
         self._ssl = ssl_context
         self._session: Optional[aiohttp.ClientSession] = None
@@ -78,13 +84,17 @@ class SatelliteLink:
             await ws.send_json({
                 "type": "register", "client_id": self.client_id, "room_name": self.room_name,
                 "sample_rate": self.sample_rate, "wants_audio": self.wants_audio,
-                "mode": self.mode,
+                "mode": self.mode, "wants_trace": self.wants_trace,
             })
             reply = json.loads(await asyncio.wait_for(
                 ws.receive_str(), timeout=self.response_timeout_s))
             if reply.get("type") != "registered":
                 raise ConnectionError(f"registration rejected: {reply}")
             self.session_id = reply.get("session_id")
+            self.trace_granted = bool(reply.get("trace", False))
+            if self.wants_trace and not self.trace_granted:
+                logger.info("Controller declined the trace request "
+                            "([trace] allow_remote_request is off there)")
             logger.info(f"Uplink registered as '{self.client_id}' (session {self.session_id})")
         except BaseException:
             await self.close()
@@ -127,7 +137,11 @@ class SatelliteLink:
             await ws.send_json({"type": "end"})
         except (aiohttp.ClientError, ConnectionResetError) as e:
             raise ConnectionError(f"uplink dropped mid-utterance: {e}") from e
-        return await self._await_response()
+        self.last_trace = None
+        response = await self._await_response()
+        if self.trace_granted:
+            self.last_trace = await self._await_trace()
+        return response
 
     async def _await_response(self) -> Dict[str, Any]:
         ws = self._ws
@@ -151,6 +165,32 @@ class SatelliteLink:
             if kind == "error":
                 raise ConnectionError(f"server error: {payload.get('error')}")
             # partials and unknown control frames are informational in single mode
+
+    async def _await_trace(self) -> Optional[Dict[str, Any]]:
+        """The granted trace frame following a response (ARCH-37). Bounded wait; a missing
+        frame degrades to None (recorded as such in the merged file), never an error."""
+        ws = self._ws
+        if ws is None:
+            return None
+        deadline = asyncio.get_running_loop().time() + self.response_timeout_s
+        try:
+            while True:
+                remaining = deadline - asyncio.get_running_loop().time()
+                if remaining <= 0:
+                    logger.warning("Trace frame did not arrive within response_timeout_s")
+                    return None
+                msg = await asyncio.wait_for(ws.receive(), timeout=remaining)
+                if msg.type in (aiohttp.WSMsgType.CLOSED, aiohttp.WSMsgType.CLOSING,
+                                aiohttp.WSMsgType.ERROR):
+                    return None
+                if msg.type != aiohttp.WSMsgType.TEXT:
+                    continue
+                payload = json.loads(msg.data)
+                if payload.get("type") == "trace":
+                    return payload
+        except asyncio.TimeoutError:
+            logger.warning("Trace frame did not arrive within response_timeout_s")
+            return None
 
     # --- streaming mode ------------------------------------------------------------------------
 

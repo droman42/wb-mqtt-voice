@@ -102,6 +102,21 @@ the energy and the active threshold, so you can *see* exactly where VAD fired ov
 [`[vad]`](vad.md) knobs, replay the same trace with `--local`, and compare. Because the capture runs inside the
 real pipeline, VAD is measured at the production 16 kHz rate — the same audio your live system sees.
 
+## Satellite traces — one utterance, two machines
+
+A [satellite room node](satellite.md) run with `--trace` writes a *merged* trace per utterance: its own
+device story (raw mic, VAD frames, wake-gate decisions, the wire exchange, the reply as played) with the
+controller's execution trace nested inside — so a single file answers whether the failure was the room's
+hearing or the controller's understanding. The controller shares its half only when its config says
+`[trace] allow_remote_request = true`; print that nested half with:
+
+```bash
+uv run irene-replay-trace -t traces/<id>.json --show-controller
+```
+
+A satellite trace replays like any other: its captured utterance audio runs through a full local pipeline
+for VAD tuning or recognition comparison.
+
 ## Where the files live
 
 Traces land in `<assets_root>/traces/` unless you set `[trace] traces_dir`. Each is a plain JSON file with the

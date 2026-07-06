@@ -535,7 +535,7 @@ export interface BridgeOutputConfig {
   timeout_seconds: number;
 }
 
-// Trace persistence (backend TraceConfig, ARCH-19).
+// Trace persistence (backend TraceConfig, ARCH-19; allow_remote_request = ARCH-37).
 export interface TraceConfig {
   enabled: boolean;
   capture_level: 'utterance' | 'segmenter' | 'raw';
@@ -545,6 +545,7 @@ export interface TraceConfig {
   max_stages: number;
   max_data_size_mb: number;
   max_log_records: number;
+  allow_remote_request: boolean;
 }
 
 // Problem reporting (ARCH-30 — «сообщи о проблеме»); delivery fields arrive with ARCH-32

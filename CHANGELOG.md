@@ -60,7 +60,10 @@ English supported, offline by default.
   assets root on first use), sizes are budgeted in CI, and controller deployment is
   pull-based (`ops/`).
 - **Tracing & replay**: any request can be recorded to a self-contained file and replayed
-  through the pipeline for debugging or regression listening.
+  through the pipeline for debugging or regression listening. Satellites trace end to end:
+  one merged file per utterance carries the room's side (mic, voice detection, wake-word
+  decisions, the reply as played) with the controller's execution trace nested inside —
+  shared over the wire only when the controller opts in.
 - **Layered test nets**: a ~1300-case unit suite, offline-hermetic smoke end-to-end tests, and a
   declarative eval suite (CLI contracts, streaming ASR, device-command producer tests against a
   pinned bridge contract) — all CI-gated, together with pyright at zero errors and

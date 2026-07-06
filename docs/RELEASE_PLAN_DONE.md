@@ -1038,6 +1038,25 @@ rationale/chronology lives in [`RELEASE_JOURNAL.md`](./RELEASE_JOURNAL.md).
       model, no device story to trace); eval-commons unaffected (additive default-false field, and the WS
       protocol is not part of the bridge pin). `python_satellite.md` §3 amended in the same change (single
       written truth). Implementation filed as **ARCH-38** `[release]`.
+- [x] **ARCH-38** `[release]` [SATELLITE] — **DONE 2026-07-07 (same day as its ARCH-37 design). Satellite
+      tracing — the end-to-end utterance trace.** All six design-§4 stages: **(1)**
+      `TraceConfig.allow_remote_request` (default false) + config-ui parity + config-master; **(2)** server:
+      `wants_trace` register field (contract default false), grant acknowledged in the `registered` ack,
+      per-utterance remote `TraceContext` threaded through BOTH /ws/audio branches, `{"type":"trace"}` frame
+      after each response (`_send_trace`); remote traces are shipped, never saved controller-side unless its
+      own `[trace] enabled` says so; **(3)** `SatelliteLink.wants_trace` + `trace_granted` + bounded
+      `_await_trace` into `last_trace` (missing frame degrades to None, never an error); **(4)**
+      `SatelliteTraceRecorder` (`irene/satellite/trace.py`): raw-mic ring (30s bound), VAD frames
+      (segmenter `collect_vad_frames` now live under --trace), wake/gate rolling events (skips visible),
+      uplink stage with RTT + verbatim response/error, reply audio captured at the playback seam; merged
+      envelope (`controller_trace` = unwrapped remote envelope | {declined} | {missing}; `reply_audio`;
+      `raw_mic`) saved with ARCH-19 rotation; deterministic finalize (reply / next utterance / shutdown —
+      no timers, T-5); single mode only, streaming warns and continues untraced; **(5)** replay tool
+      `--show-controller` (pure display transform, the --extract-wav pattern); **(6)** satellite + tracing
+      guides, CHANGELOG. Tests +4 (grant frame-follows-response vs the REAL server over TCP, default-off
+      decline with clean second utterance, merged-envelope shape, declined+next-utterance finalize).
+      Suite 1353, pyright 0, 11/11 contracts, config-ui clean, master config validates. eval-commons
+      untouched (T-6).
 
 ### Code Quality & Review (QUAL)
 - [x] **QUAL-1** — Phase-0 static baseline (ruff/pyright/vulture/validators/import-graph). → `docs/review/phase0_static_baseline.md` (6e39886)

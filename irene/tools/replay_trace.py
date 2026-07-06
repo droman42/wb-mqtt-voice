@@ -364,11 +364,42 @@ def main() -> None:
                         help="Directory to save a second trace of the replay run (D-13)")
     parser.add_argument("--extract-wav", type=Path, default=None,
                         help="Extract the trace's captured audio to a WAV fixture and exit (D-9); no replay")
+    parser.add_argument("--show-controller", action="store_true",
+                        help="Print the nested controller_trace of a satellite trace (ARCH-38) and exit; no replay")
     parser.add_argument("--verbose", "-v", action="store_true", help="Verbose logging")
     args = parser.parse_args()
 
     logging.basicConfig(level=logging.DEBUG if args.verbose else logging.WARNING,
                         format="%(levelname)s %(name)s: %(message)s")
+
+    # --show-controller is a pure display transform (ARCH-38): a satellite's merged trace nests
+    # the controller's execution envelope — print its story and exit.
+    if args.show_controller:
+        try:
+            trace = json.loads(args.trace.read_text(encoding="utf-8"))
+            ctrl = trace.get("controller_trace")
+            if ctrl is None:
+                print("no controller_trace section — not a satellite trace, or traced without wants_trace")
+                sys.exit(1)
+            if ctrl.get("declined"):
+                print("controller declined the trace request ([trace] allow_remote_request off there)")
+                sys.exit(0)
+            if ctrl.get("missing"):
+                print(f"controller trace missing: {ctrl['missing']}")
+                sys.exit(0)
+            print(f"controller trace: request {ctrl.get('request_id')}")
+            for stage in (ctrl.get("execution") or {}).get("pipeline_stages", []):
+                name = stage.get("stage") or stage.get("stage_name") or "?"
+                print(f"  {name:<32} {stage.get('processing_time_ms', 0):>8.1f} ms")
+            out = ctrl.get("recorded_output") or {}
+            if out:
+                print(f"  → success={out.get('success')} text='{str(out.get('text', ''))[:120]}'")
+            sys.exit(0)
+        except SystemExit:
+            raise
+        except Exception as e:
+            logger.error(f"show-controller failed: {e}")
+            sys.exit(1)
 
     # --extract-wav is a pure trace→WAV transform (D-9): no core, no replay, no event loop.
     if args.extract_wav is not None:

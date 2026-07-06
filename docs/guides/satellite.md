@@ -86,6 +86,40 @@ certificate issued to the kitchen can never register as the bedroom.
 Certificates and keys live under the assets folder (`credentials/satellite/`) — they are never
 part of the configuration file and never belong in version control.
 
+## Tracing an utterance end to end
+
+When something misbehaves — «it heard me but did nothing» — run the satellite with `--trace`:
+
+```bash
+uv run irene-satellite -c configs/satellite.toml --trace
+```
+
+Every utterance the satellite sends now produces one trace file (under the satellite's assets
+folder, `traces/`) telling the whole story from both machines: what the microphone heard
+(add `--trace-raw-mic` to include the raw audio), how voice detection segmented it, what the
+wake-word gate decided (including utterances it *skipped*), what went up the wire, what came
+back — and, nested inside, **the controller's own execution trace**: the recognized text, the
+NLU verdict, the intent, every pipeline stage with its timing. The reply audio, exactly as
+the room heard it, is in there too.
+
+The controller shares its half only if its operator has opted in — set on the controller:
+
+```toml
+[trace]
+allow_remote_request = true
+```
+
+Without it the satellite still writes its own half and notes that the controller declined.
+To read the controller's section of a merged trace:
+
+```bash
+uv run irene-replay-trace -t traces/<id>.json --show-controller
+```
+
+Tracing applies to the default `single` mode (in `streaming` mode the box has no local
+decisions to record). See [tracing & replay](tracing.md) for everything else traces can do —
+including replaying the captured microphone audio to tune voice detection.
+
 ## What it doesn't do
 
 The satellite doesn't recognize speech, match intents, or talk to the smart home — that is all

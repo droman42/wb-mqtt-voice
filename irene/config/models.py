@@ -567,6 +567,9 @@ class TraceConfig(BaseModel):
     max_stages: int = Field(default=100, ge=1, description="Per-trace cap on recorded pipeline stages (safety)")
     max_data_size_mb: int = Field(default=10, ge=1, description="Per-trace cap on total sanitised stage data (safety)")
     max_log_records: int = Field(default=500, ge=1, description="Per-trace cap on captured log records (safety)")
+    allow_remote_request: bool = Field(
+        default=False,
+        description="Honor a satellite's wants_trace (ARCH-37): run per-utterance capture and send the trace back over /ws/audio. Deliberate opt-in; local persistence stays governed by 'enabled'")
 
 
 # ============================================================

@@ -179,8 +179,23 @@ room_name = "Кухня"
 
         from ..core.audio_negotiator import AudioNegotiator
         from ..workflows.audio_processor import VoiceSegmenter
+
+        # ARCH-38: --trace on a satellite = the merged end-to-end file (device story + the
+        # controller's execution trace via wants_trace). Single mode only (design T-5).
+        recorder = None
+        tracing = bool(getattr(config.trace, "enabled", False))
+        if tracing and sat.mode == "streaming":
+            logger.warning("--trace applies to single mode (streaming has no device-side "
+                           "story to trace) — continuing without satellite tracing")
+            tracing = False
+        if tracing:
+            from ..satellite.trace import SatelliteTraceRecorder
+            recorder = SatelliteTraceRecorder(config.trace, config.assets,
+                                              client_id=sat.client_id, room_name=sat.room_name,
+                                              mode=sat.mode)
+
         negotiator = AudioNegotiator.from_pipeline(config)
-        segmenter = VoiceSegmenter(config.vad)
+        segmenter = VoiceSegmenter(config.vad, collect_vad_frames=tracing)
         await segmenter.initialize()
 
         trigger = None
@@ -194,7 +209,7 @@ room_name = "Кухня"
         from ..satellite.link import SatelliteLink, SatelliteReplyClient
         link = SatelliteLink(sat.server_url, sat.client_id, sat.room_name,
                              sample_rate=negotiator.canonical.rate, mode=sat.mode,
-                             ssl_context=ssl_context)
+                             wants_trace=tracing, ssl_context=ssl_context)
 
         reply_client = None
         # Any: get_component returns the ComponentPort base; playback is the audio component's
@@ -203,6 +218,8 @@ room_name = "Кухня"
         if audio is not None:
             async def _play(pcm: bytes, rate: int, channels: int) -> None:
                 await audio.play_stream(pcm, sample_rate=rate, channels=channels, sample_width=2)
+                if recorder is not None:
+                    recorder.on_reply(pcm, rate, channels)
             reply_client = SatelliteReplyClient(sat.server_url, sat.client_id, _play,
                                                 rate=sat.audio_out_rate,
                                                 channels=sat.audio_out_channels,
@@ -224,11 +241,13 @@ room_name = "Кухня"
             if sat.mode == "streaming":
                 await self._run_streaming(mic, negotiator, link)
             else:
-                await self._run_single(mic, negotiator, segmenter, trigger, link, config)
+                await self._run_single(mic, negotiator, segmenter, trigger, link, config, recorder)
             return 0
         except KeyboardInterrupt:
             return 0
         finally:
+            if recorder is not None:
+                recorder.flush()
             if reply_client is not None:
                 reply_client.stop()
             if self._reply_task is not None:
@@ -240,7 +259,8 @@ room_name = "Кухня"
             await link.close()
 
     async def _run_single(self, mic: Any, negotiator: Any, segmenter: Any,
-                          trigger: Any, link: Any, config: CoreConfig) -> None:
+                          trigger: Any, link: Any, config: CoreConfig,
+                          recorder: Any = None) -> None:
         """ESP32-faithful mode: VAD endpoints locally; the wake gate arms a capture window;
         each passing utterance is one frames+end cycle awaiting the final response."""
         from ..intents.models import AudioData
@@ -251,6 +271,8 @@ room_name = "Кухня"
         async for raw in mic.listen():
             if not isinstance(raw, AudioData):
                 continue
+            if recorder is not None:
+                recorder.on_raw_chunk(raw)
             canonical = await negotiator.to_canonical(raw)
 
             if trigger is not None:
@@ -261,6 +283,8 @@ room_name = "Кухня"
                     wake = None
                 if wake is not None and wake.detected:
                     armed_at = time.time()
+                    if recorder is not None:
+                        recorder.on_wake(confidence=wake.confidence, armed_at=armed_at)
                     logger.info(f"Wake word detected ({wake.confidence:.2f}) — listening for a command")
                     print("🔔 Слушаю…")
 
@@ -270,21 +294,36 @@ room_name = "Кухня"
 
             if trigger is not None:
                 if not _in_armed_window(armed_at, segment.start_timestamp):
+                    if recorder is not None:
+                        recorder.on_gate_skip(segment_start=segment.start_timestamp,
+                                              armed_at=armed_at)
                     continue  # outside the armed window (includes the wake word's own segment)
                 armed_at = None  # one command per wake
 
             if config.vad.normalize_for_asr:
                 segment = segment.normalize_for_asr(config.vad.asr_target_rms)
-            await self._send_segment(link, segment.combined_audio.data)
+            await self._send_segment(link, segment, recorder)
 
-    async def _send_segment(self, link: Any, pcm: bytes) -> None:
+    async def _send_segment(self, link: Any, segment: Any, recorder: Any = None) -> None:
+        pcm = segment.combined_audio.data
+        sample_rate = segment.combined_audio.sample_rate
+        started = time.time()
+        response, error = None, None
         try:
             await link.ensure_connected()
             response = await link.send_utterance(pcm)
         except (ConnectionError, TimeoutError) as e:
             # The ESP32 contract too: a dropped utterance is lost, the connection heals.
+            error = str(e)
             logger.warning(f"Utterance not delivered ({e}); reconnecting")
             await link.close()
+        if recorder is not None:
+            recorder.complete_utterance(segment=segment, pcm=pcm, sample_rate=sample_rate,
+                                        response=response, error=error,
+                                        rtt_ms=(time.time() - started) * 1000.0,
+                                        trace_granted=link.trace_granted,
+                                        controller_trace=link.last_trace)
+        if response is None:
             return
         text = response.get("text") or ""
         if text:

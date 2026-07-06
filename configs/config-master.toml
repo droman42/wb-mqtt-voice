@@ -737,6 +737,7 @@ log_threshold = "INFO"               # Min log level captured into a trace (exce
 max_stages = 100                     # Per-trace cap on recorded pipeline stages (safety)
 max_data_size_mb = 10                # Per-trace cap on total sanitised stage data (safety)
 max_log_records = 500                # Per-trace cap on captured log records (safety)
+allow_remote_request = false         # Honor a satellite's wants_trace: capture + send the trace back over /ws/audio (ARCH-37; local saving stays governed by 'enabled')
 
 # ============================================================
 # WORKFLOWS - Processing Pipelines (Two-Level Configuration)
