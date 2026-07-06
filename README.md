@@ -55,6 +55,7 @@ Russian-first, English supported. Version 15.0.0 · Python 3.11+ · MIT.
   wb-mqtt-bridge: rooms, devices, scenarios, and sensor questions.
 - **[Tracing & replay](docs/guides/tracing.md)** — record a request to a self-contained file, then listen
   to it or replay it through the pipeline to debug and tune.
+- **[Changelog](CHANGELOG.md)** — what each release brings.
 - **[Contributing](CONTRIBUTING.md)** — developer setup and how-tos: adding an intent, a model, a
   language, or a test.
 - **[Quickstart](docs/QUICKSTART.md)** — install it, run it, talk to it.
