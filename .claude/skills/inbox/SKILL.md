@@ -49,13 +49,15 @@ owner says skip.
    handler special-cases, etc.).
 4. Give a plain verdict: **merge / revise / reject**, with the one reason that decides it.
 5. On the owner's call:
-   - **merge** → `gh pr merge <pr> --squash` (or their preferred strategy); then close the ticket
-     with a note (`gh issue close <n> --repo droman42/wb-user-reports --comment "..."`) and, if the
-     work belongs in the ledger as its own task, file it per `every-task-in-the-ledger`.
+   - **merge** → `gh pr merge <pr> --squash --delete-branch` (removes the triage's remote branch;
+     also delete any local review branch you created, e.g. `git branch -D pr-<n>-review`); then
+     close the ticket with a note (`gh issue close <n> --repo droman42/wb-user-reports --comment
+     "..."`) and, if the work belongs in the ledger as its own task, file it per
+     `every-task-in-the-ledger`.
    - **revise** → make the changes on the PR branch (or ask triage to, via a ticket comment), push,
      re-review.
-   - **reject** → `gh pr close <pr>` + close the ticket explaining why (a false positive is a normal
-     outcome; record it so the pattern is visible).
+   - **reject** → `gh pr close <pr> --delete-branch` + close the ticket explaining why (a false
+     positive is a normal outcome; record it so the pattern is visible).
 
 ### A `needs-owner` ticket
 
