@@ -1003,6 +1003,30 @@ rationale/chronology lives in [`RELEASE_JOURNAL.md`](./RELEASE_JOURNAL.md).
       mode (a Pi room node), `[satellite]` config section with config-ui parity, hermetic TLS e2e in CI.
       Unblocks ARCH-25 (3)/(4), which were otherwise unverifiable (no firmware). Implementation filed:
       **ARCH-36** `[release]`; **BUILD-13** `[deferred]` (Pi image, S-8).
+- [x] **ARCH-36** `[release]` [SATELLITE] — **DONE 2026-07-06. `irene-satellite` — the Python room node**
+      (design ARCH-35 §1-9, S-1..S-9 all delivered; gates ARCH-25 items (3)/(4)). **(1)** `SatelliteConfig` +
+      `SatelliteTLSConfig` in CoreConfig, config-ui type parity (`api.ts`), `[satellite]`/`[satellite.tls]`
+      documented in config-master, curated `configs/satellite.toml` (mic+vad+trigger+audio on, understanding
+      OFF — validator-clean). **(2)** `irene/satellite/` — `SatelliteLink` (persistent /ws/audio uplink, both
+      modes, ~32ms frames, backoff 1→30s re-register) + `SatelliteReplyClient` (§4 speak_begin/PCM/speak_end
+      → audio-component playback), aiohttp (base dep — no runtime dep on eval-commons). **(3)**
+      `SatelliteRunner` + `irene-satellite` console script + runners entry-point (ARCH-31 lesson applied);
+      wake gate = armed-window rule (`_in_armed_window`: wake fires → the NEXT segment that STARTS in the
+      8s window is the command — the wake word's own segment is naturally skipped; «Ирина», pause, command);
+      streaming mode = continuous pump, server-authoritative endpointing, VAD/wake bypassed (the always-on
+      device model). **(4)** TLS: `provisioning.py` first-run dance (EC key via openssl CLI — key never
+      leaves the box — → PUT CSR to the :80 dav zone → poll while printing the operator's `esp32-provision
+      approve` line), creds at `<assets_root>/credentials/satellite/` (S-6); **finding (b) CLOSED**: nginx
+      header renamed `X-Client-Cert-CN`→`X-Client-Cert-DN` (value was always the full DN) and BOTH WS
+      endpoints now enforce cert-CN == claimed client_id (`_client_cert_cn`, legacy header accepted; absent
+      header = local/dev, no binding). **(5)** tests: 10-test unit/loopback suite (S-9: SatelliteLink vs the
+      REAL /ws/audio server over TCP via uvicorn; reply client vs the §4 contract; provisioning dance vs a
+      stub bootstrap zone with real openssl CSRs) + **S-7 hermetic Plane-B e2e** (renders the ansible
+      template, throwaway CA, docker nginx on host network: CSR→approve→mTLS-wss→real header injection →
+      identity binding proven positive AND negative + no-cert refusal — 4.3s, skips cleanly without docker).
+      **(6)** `docs/guides/satellite.md` + satellite-flow diagram + README (highlights/docs/status) +
+      QUICKSTART run mode + CHANGELOG. `irene.satellite` added to 4 import-linter forbidden lists (11/11
+      kept). Suite 1349 green, pyright 0, config-ui check+build clean. Live-mic behavior stays ARCH-25.
 
 ### Code Quality & Review (QUAL)
 - [x] **QUAL-1** — Phase-0 static baseline (ruff/pyright/vulture/validators/import-graph). → `docs/review/phase0_static_baseline.md` (6e39886)

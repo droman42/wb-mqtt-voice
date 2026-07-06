@@ -513,6 +513,40 @@ class ReportsConfig(BaseModel):
                            description="Rolling request-trace ring depth dumped into bundles (design D-10)")
 
 
+class SatelliteTLSConfig(BaseModel):
+    """The fleet TLS plane, device side (ARCH-35 S-5/S-6 — design `docs/design/python_satellite.md` §5).
+
+    Enabled ⇒ the satellite speaks mTLS `wss://` through the nginx `/ws/` proxy, provisioning
+    itself on first run: EC keypair (private key never leaves the box) → CSR to the `:80`
+    bootstrap zone → poll for the operator-approved cert. Key material defaults to
+    `<assets_root>/credentials/satellite/` — asset-managed, never in git or configs."""
+    enabled: bool = Field(default=False, description="Connect over mTLS wss:// (the nginx Plane-B proxy)")
+    bootstrap_url: str = Field(default="", description="The :80 provisioning zone, e.g. 'http://wb7' — used only until a cert is issued")
+    ca_cert: Optional[str] = Field(default=None, description="CA cert path (default: <assets_root>/credentials/satellite/ca.crt)")
+    client_cert: Optional[str] = Field(default=None, description="Client cert path (default: <assets_root>/credentials/satellite/sat.crt)")
+    client_key: Optional[str] = Field(default=None, description="Client key path (default: <assets_root>/credentials/satellite/sat.key)")
+
+
+class SatelliteConfig(BaseModel):
+    """Satellite room-node mode (ARCH-35/36 — design `docs/design/python_satellite.md`).
+
+    The `irene-satellite` runner requires this section: the box runs mic → VAD → wake word
+    locally and streams utterances to the controller over `/ws/audio` (the same wire contract
+    the ESP32 firmware implements); replies come back over `/ws/audio/reply` and play through
+    the local audio component. CLI flags (`--server`, `--room`, `--mode`, `--no-wake`) override
+    individual fields per run."""
+    enabled: bool = Field(default=False, description="Allow the satellite runner to start with this config")
+    server_url: str = Field(default="ws://localhost:8080", description="Controller WebSocket base, e.g. 'ws://wb7:8080'; with [satellite.tls] enabled use 'wss://<host>'")
+    client_id: str = Field(default="satellite", description="Stable client identity (D-14) — room-scoped sessions and deferred completions key on it")
+    room_name: str = Field(default="", description="Human room name registered with the controller (e.g. 'Кухня')")
+    mode: str = Field(default="single", pattern="^(single|streaming)$",
+                      description="'single' = device-side VAD endpointing (ESP32-faithful); 'streaming' = server-authoritative endpointing")
+    wake_word_required: bool = Field(default=True, description="Gate streaming on the local wake word (--no-wake overrides per run)")
+    audio_out_rate: int = Field(default=22050, ge=8000, description="Reply-channel playback sample rate")
+    audio_out_channels: int = Field(default=1, ge=1, le=2, description="Reply-channel playback channels")
+    tls: SatelliteTLSConfig = Field(default_factory=SatelliteTLSConfig, description="Fleet TLS plane (mTLS wss + first-run CSR provisioning)")
+
+
 class TraceConfig(BaseModel):
     """Trace persistence configuration (ARCH-19).
 
@@ -1330,6 +1364,7 @@ class CoreConfig(BaseSettings):
     nlu_analysis: NLUAnalysisConfig = Field(default_factory=NLUAnalysisConfig, description="NLU Analysis component configuration (Phase 2)")
     trace: TraceConfig = Field(default_factory=TraceConfig, description="Trace persistence configuration (ARCH-19)")
     reports: ReportsConfig = Field(default_factory=ReportsConfig, description="Problem reporting configuration (ARCH-30)")
+    satellite: SatelliteConfig = Field(default_factory=SatelliteConfig, description="Satellite room-node mode (ARCH-35/36)")
     
     
     # Language and locale — SINGLE SOURCE OF TRUTH (QUAL-36).

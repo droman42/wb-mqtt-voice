@@ -502,6 +502,7 @@ export interface CoreConfig {
   monitoring: MonitoringConfig;
   trace: TraceConfig;
   reports: ReportsConfig;
+  satellite: SatelliteConfig;
 
 
   // Language and locale (QUAL-36: default_language + supported_languages are the canonical source of
@@ -555,6 +556,28 @@ export interface ReportsConfig {
   rate_limit_per_hour: number;
   rate_limit_per_day: number;
   ring_size: number;
+}
+
+// Fleet TLS plane, device side (backend SatelliteTLSConfig, ARCH-35 S-5/S-6).
+export interface SatelliteTLSConfig {
+  enabled: boolean;
+  bootstrap_url: string;
+  ca_cert?: string | null;
+  client_cert?: string | null;
+  client_key?: string | null;
+}
+
+// Satellite room-node mode (backend SatelliteConfig, ARCH-35/36).
+export interface SatelliteConfig {
+  enabled: boolean;
+  server_url: string;
+  client_id: string;
+  room_name: string;
+  mode: 'single' | 'streaming';
+  wake_word_required: boolean;
+  audio_out_rate: number;
+  audio_out_channels: number;
+  tls: SatelliteTLSConfig;
 }
 
 export interface SystemConfig {

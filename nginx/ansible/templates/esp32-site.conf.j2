@@ -62,7 +62,7 @@ server {
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection "upgrade";
         proxy_set_header Host $host;
-        proxy_set_header X-Client-Cert-CN $ssl_client_s_dn;   # the device identity, verified by mTLS
+        proxy_set_header X-Client-Cert-DN $ssl_client_s_dn;   # the device identity (full subject DN), verified by mTLS
         proxy_read_timeout 3600s;
     }
 {% endif %}

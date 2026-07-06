@@ -266,6 +266,7 @@ irene-replay-trace = "irene.tools.replay_trace:main"
 irene-cli = "irene.runners.cli:run_cli"
 irene-webapi = "irene.runners.webapi_runner:run_webapi"
 irene-voice = "irene.runners.voice_runner:run_voice"
+irene-satellite = "irene.runners.satellite_runner:run_satellite"
 
 # ============================================================
 # ENTRY-POINTS CATALOG - Provider Discovery System
@@ -372,6 +373,7 @@ web = "irene.inputs.web:WebInput"
 cli = "irene.runners.cli:CLIRunner"
 voice = "irene.runners.voice_runner:VoiceRunner"
 webapi = "irene.runners.webapi_runner:WebAPIRunner"
+satellite = "irene.runners.satellite_runner:SatelliteRunner"
 
 # Pull torch/torchaudio from the CPU-only wheel index. The only torch consumer is the x86_64 standalone
 # (Silero TTS + Whisper ASR), and it runs device="cpu" — the default PyPI torch drags in ~3.4 GB of unused
@@ -454,6 +456,7 @@ forbidden_modules = [
     "irene.runners",
     "irene.inputs",
     "irene.outputs",
+    "irene.satellite",
 ]
 # QUAL-24 (DONE): the `intents.handlers.* -> core.engine` get_core() escape hatch was removed.
 # Handlers now depend on domain-owned capability ports (irene/intents/ports.py); the application
@@ -472,6 +475,7 @@ forbidden_modules = [
     "irene.inputs",
     "irene.outputs",
     "irene.intents",
+    "irene.satellite",
 ]
 
 [[tool.importlinter.contracts]]
@@ -482,6 +486,7 @@ forbidden_modules = [
     "irene.runners",
     "irene.inputs",
     "irene.outputs",
+    "irene.satellite",
 ]
 
 [[tool.importlinter.contracts]]
@@ -563,6 +568,7 @@ forbidden_modules = [
     "irene.outputs",
     "irene.workflows",
     "irene.components",
+    "irene.satellite",
 ]
 
 [[tool.importlinter.contracts]]

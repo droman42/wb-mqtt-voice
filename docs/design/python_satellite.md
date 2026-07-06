@@ -88,7 +88,9 @@ Against `nginx/` as deployed by its ansible role (zones per `nginx/README.md`):
    emulator prints exactly this command while polling.
 3. **Operations:** with the cert issued, the satellite connects
    `wss://<host>/ws/audio` + `/ws/audio/reply` with client cert + CA pinning
-   (`ssl_verify_client on` upstream; nginx injects `X-Client-Cert-CN`).
+   (`ssl_verify_client on` upstream; nginx injects `X-Client-Cert-DN` — renamed from
+   `X-Client-Cert-CN` at implementation, since the value was always the full subject DN; Irene
+   enforces cert-CN == claimed `client_id` on both WS endpoints — finding (b)).
 
 - **S-6 (accepted) — key material location:** `<assets_root>/credentials/satellite/`
   (`sat.key` 600, `sat.crt`, `ca.crt`) — the existing credentials dir, asset-managed, never in

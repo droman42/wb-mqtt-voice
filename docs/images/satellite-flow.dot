@@ -1,0 +1,34 @@
+// Irene — the Python satellite: a room node without firmware. Render:
+//   dot -Tpng docs/images/satellite-flow.dot -o docs/images/satellite-flow.png
+digraph sat {
+  rankdir=LR; bgcolor="white"; splines=spline; nodesep=0.45; ranksep=0.8;
+  fontname="Helvetica"; labelloc=t; fontsize=14;
+  label="Satellite room node: the box listens and speaks — the controller understands";
+  node [fontname="Helvetica", fontsize=10, shape=box, style="filled,rounded", penwidth=1.4];
+  edge [fontname="Helvetica", fontsize=9, color="#616161", arrowsize=0.7];
+
+  subgraph cluster_sat {
+    label="satellite (laptop / Pi + mic)"; fontsize=12; color="#90caf9"; style=rounded; margin=12;
+    mic     [label="microphone\n16 kHz mono", fillcolor="#e3f2fd", color="#1976d2"];
+    vad     [label="VAD\nutterance boundaries", fillcolor="#e3f2fd", color="#1976d2"];
+    wake    [label="wake word «Ирина»\n(same pack as the ESP32)", fillcolor="#e3f2fd", color="#1976d2"];
+    speaker [label="speaker\nreply playback", fillcolor="#e3f2fd", color="#1976d2"];
+  }
+
+  tls [label="first run only:\nkeypair → CSR → operator\napproves → certificate", fillcolor="#fff8e1", color="#f9a825"];
+
+  subgraph cluster_ctrl {
+    label="controller (Wirenboard)"; fontsize=12; color="#a5d6a7"; style=rounded; margin=12;
+    proxy [label="nginx (optional)\nmTLS wss:// gate", fillcolor="#e8f5e8", color="#388e3c"];
+    irene [label="Irene\nASR → NLU → intents", fillcolor="#e8f5e8", color="#388e3c"];
+    home  [label="smart home\nvia the bridge", fillcolor="#e8f5e8", color="#388e3c"];
+  }
+
+  mic -> vad -> wake;
+  wake  -> proxy [label="utterance\n(WebSocket)"];
+  proxy -> irene;
+  irene -> home  [style=dashed];
+  irene -> proxy [label="spoken reply\n(audio frames)", style=dashed];
+  proxy -> speaker [style=dashed];
+  tls -> proxy [style=dotted, label="client\ncertificate"];
+}

@@ -8,6 +8,7 @@ Contains all endpoint definitions and request handlers.
 import asyncio
 import json
 import logging
+import re
 import time
 import uuid
 from typing import Dict, Any, List, Optional
@@ -36,6 +37,24 @@ WS_MAX_UTTERANCE_SECONDS = 60
 # many seconds with NO frames, the current utterance is force-finalized. Always-on devices
 # stream continuously (silence included), so this never fires for them.
 WS_STREAMING_IDLE_TIMEOUT_SECONDS = 10.0
+
+# ARCH-36 finding (b): behind the nginx mTLS proxy (Plane B) the verified client-cert subject
+# arrives on every proxied request. The canonical header is X-Client-Cert-DN (the value is the
+# FULL subject DN, e.g. "CN=kitchen_node,O=irene"); X-Client-Cert-CN is accepted for deployments
+# rendered before the rename — its value was always the DN too ($ssl_client_s_dn).
+_CERT_DN_HEADERS = ("x-client-cert-dn", "x-client-cert-cn")
+_CERT_CN_RE = re.compile(r"(?:^|[,/])\s*CN=([^,/]+)", re.IGNORECASE)
+
+
+def _client_cert_cn(headers: Any) -> Optional[str]:
+    """CN extracted from the proxy-injected client-cert subject DN, or None when the request
+    did not come through the mTLS proxy (plain ws://, local/dev — no binding to enforce)."""
+    for name in _CERT_DN_HEADERS:
+        dn = headers.get(name)
+        if dn:
+            m = _CERT_CN_RE.search(dn)
+            return m.group(1).strip() if m else dn.strip()
+    return None
 
 
 def create_webapi_router(
@@ -746,6 +765,16 @@ def create_webapi_router(
                 await websocket.close()
                 return
             registration = ClientRegistration.from_dict(reg)
+            # ARCH-36 finding (b) — mTLS identity binding: behind the nginx Plane-B proxy the
+            # verified client-cert subject DN arrives as a header; when present, the claimed
+            # client_id MUST match the cert's CN (a cert for the kitchen node cannot register
+            # as the bedroom). Absent header (plain ws://, local/dev) skips the check.
+            cert_cn = _client_cert_cn(websocket.headers)
+            if cert_cn is not None and cert_cn != registration.client_id:
+                await websocket.send_json({"type": "error",
+                                           "error": f"client_id does not match certificate identity ({cert_cn})"})
+                await websocket.close()
+                return
             await get_client_registry().register_client(registration)
             sample_rate = int(reg.get("sample_rate", 16000))
             wants_audio = bool(reg.get("wants_audio", False))
@@ -993,6 +1022,14 @@ def create_webapi_router(
         if reg.get("type") != "register-reply" or not client_id:
             await websocket.send_json({"type": "error",
                                        "error": "first frame must be type=register-reply with client_id"})
+            await websocket.close()
+            return
+        # ARCH-36 finding (b): same mTLS identity binding as /ws/audio — a cert can only
+        # claim its own reply channel (it would otherwise receive another room's speech).
+        cert_cn = _client_cert_cn(websocket.headers)
+        if cert_cn is not None and cert_cn != client_id:
+            await websocket.send_json({"type": "error",
+                                       "error": f"client_id does not match certificate identity ({cert_cn})"})
             await websocket.close()
             return
 

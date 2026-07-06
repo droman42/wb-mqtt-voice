@@ -15,6 +15,18 @@ newest entries near the top of each dated section.
 
 ## Action journal
 
+- **2026-07-06 — ARCH-36 DONE — the Python satellite, same day as its design.** `irene-satellite`
+  turns any Python box into a room node: mic → VAD → wake word «Ирина» locally, the utterance to
+  the controller over the same /ws/audio contract the ESP32 firmware will speak, replies played
+  back in the room. The uplink core is the eval-commons client grown up (no test-framework dep);
+  the wake gate uses an armed-window rule so the wake word's own audio never reaches ASR. The
+  fleet TLS plane got its first real client AND its first regression test: a hermetic e2e renders
+  the ansible nginx template into docker with a throwaway CA and runs the whole
+  CSR→approve→mTLS-wss cycle in 4.3 s — including proof that a kitchen certificate cannot register
+  as the bedroom (finding (b): the X-Client-Cert-DN binding is now enforced on both WS endpoints,
+  where before nothing consumed the header). Suite 1349, pyright 0, 11/11 import contracts,
+  config-ui clean. The release board is down to ARCH-25 — hardware bring-up — and the tag.
+
 - **2026-07-06 — ARCH-34 DONE (retagged `[release]` and shipped hours after filing).** The morning's
   loud thinking became an evening feature: smart-home problem reports now carry the bridge's own
   evidence. When `[outputs.bridge]` is wired, filing a report pulls `GET /reports/evidence` (the

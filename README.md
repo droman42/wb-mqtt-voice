@@ -7,8 +7,9 @@ Russian-first, English supported. Version 15.0.0 · Python 3.11+ · MIT.
 
 > **Status — pre-release, under active development.** The architecture is settled and the core works
 > (CLI and web API, intent handling, timers, smart-home control through
-> [wb-mqtt-bridge](docs/guides/smart-home.md), the browser config UI), and Docker images publish to
-> GHCR. The ESP32 voice satellite and on-device deployment await hardware bring-up.
+> [wb-mqtt-bridge](docs/guides/smart-home.md), Python satellite room nodes, the browser config UI),
+> and Docker images publish to GHCR. The ESP32 firmware satellite and on-device deployment await
+> hardware bring-up.
 >
 > First run: `uv run irene-cli -c configs/config-example.toml` — see the
 > [Quickstart](docs/QUICKSTART.md).
@@ -25,8 +26,10 @@ Russian-first, English supported. Version 15.0.0 · Python 3.11+ · MIT.
   Wirenboard and other gear — Irene stays device-agnostic; the bridge owns the hardware.
 - **Reports its own bugs.** Say «сообщи о проблеме», describe it in your own words, and Irene files
   a ticket with the logs and context a developer needs — privately, offline-tolerant, no account.
-- **One core, many front-ends.** CLI, a web API plus a browser config UI, and (planned) ESP32 voice
-  satellites — all on one hexagonal core.
+- **One core, many front-ends.** CLI, a web API plus a browser config UI, and
+  [satellite room nodes](docs/guides/satellite.md) — a Pi with a mic runs the wake word locally and
+  streams to the controller, over the same wire protocol the (planned) ESP32 firmware will speak —
+  all on one hexagonal core.
 
 ## Documentation
 
@@ -51,6 +54,8 @@ Russian-first, English supported. Version 15.0.0 · Python 3.11+ · MIT.
 - **[Configuration](docs/guides/configuration.md)** — the TOML configuration model, end to end.
 - **[Problem reporting](docs/guides/problem-reporting.md)** — «сообщи о проблеме»: describe an issue
   in your own words; Irene files it with everything a developer needs, privately.
+- **[Satellite room nodes](docs/guides/satellite.md)** — a laptop or Pi with a mic as a room node:
+  local wake word, understanding on the controller, optional mutual-TLS enrollment.
 - **[Smart-home control](docs/guides/smart-home.md)** — voice control of a Wirenboard home through
   wb-mqtt-bridge: rooms, devices, scenarios, and sensor questions.
 - **[Tracing & replay](docs/guides/tracing.md)** — record a request to a self-contained file, then listen

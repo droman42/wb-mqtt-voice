@@ -93,6 +93,17 @@ goes straight to ASR), and VAD is required (the runner turns it on). This needs 
 plus the matching ASR model installed**, so it's heavier than the text flows above. Useful flags:
 `--list-devices` (pick a microphone), `--check-deps`, and `--trace` (see [tracing & replay](guides/tracing.md)).
 
+### Satellite (room node — mic here, understanding on the controller)
+The satellite pipeline: **Microphone → VAD → wake word «Ирина» → the controller over WebSocket**,
+with spoken replies played back locally. Nothing heavy runs on the box — no ASR, no models beyond
+the wake word pack:
+```bash
+uv run irene-satellite -c configs/satellite.toml --server ws://localhost:8080 --room "Кухня"
+```
+Point `--server` at a running WebAPI/standalone instance (the step above works). Say «Ирина»,
+pause, then the command; `--no-wake` streams every utterance for rapid testing. Full story,
+including the mutual-TLS enrollment for real deployments: [satellite guide](guides/satellite.md).
+
 ### config-ui (browser config editor)
 Needs the WebAPI backend running (step above), which it talks to at `http://localhost:8080`.
 ```bash

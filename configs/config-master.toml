@@ -466,6 +466,36 @@ rate_limit_per_day = 10             # Max reports per day (design D-7)
 ring_size = 5                       # Rolling request-synopsis ring dumped into bundles (design D-10)
 
 # ============================================================
+# SATELLITE ROOM-NODE MODE (ARCH-35/36)
+# ============================================================
+# The `irene-satellite` runner: this box runs mic → VAD → wake word locally and streams
+# utterances to a controller over /ws/audio (the same wire contract the ESP32 firmware
+# implements); replies play back through the local audio component. Requires enabled = true;
+# see configs/satellite.toml for the curated profile (mic+vad+trigger+audio on, everything
+# else off — the controller owns understanding).
+[satellite]
+enabled = false                     # Allow the satellite runner to start with this config
+server_url = "ws://localhost:8080"  # Controller WebSocket base, e.g. "ws://wb7:8080" ("wss://<host>" with TLS below)
+client_id = "satellite"             # Stable client identity — room-scoped sessions key on it
+room_name = ""                      # Human room name, e.g. "Кухня"
+mode = "single"                     # "single" = device-side endpointing (ESP32-faithful) | "streaming" = server-side
+wake_word_required = true           # Gate streaming on the local wake word (--no-wake overrides per run)
+audio_out_rate = 22050              # Reply-channel playback sample rate
+audio_out_channels = 1              # Reply-channel playback channels
+
+# Fleet TLS plane, device side (design §5): mTLS wss:// through the nginx /ws/ proxy. On first
+# run with TLS enabled and no cert present, the satellite generates an EC keypair, submits a
+# CSR to the :80 bootstrap zone and polls for the operator-approved cert (the operator runs
+# `esp32-provision approve <client_id>` on the controller). Key material lives at
+# <assets_root>/credentials/satellite/ unless overridden here — never in git or configs.
+[satellite.tls]
+enabled = false                     # Connect over mTLS wss:// (the nginx Plane-B proxy)
+bootstrap_url = ""                  # The :80 provisioning zone, e.g. "http://wb7" (first run only)
+#ca_cert = ""                       # Override CA cert path (default: <assets_root>/credentials/satellite/ca.crt)
+#client_cert = ""                   # Override client cert path (default: .../sat.crt)
+#client_key = ""                    # Override client key path (default: .../sat.key)
+
+# ============================================================
 # TEXT PROCESSOR COMPONENT CONFIGURATION
 # ============================================================
 [text_processor]

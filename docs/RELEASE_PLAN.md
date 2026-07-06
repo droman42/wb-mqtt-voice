@@ -189,27 +189,6 @@ See `docs/review/phase1_architecture_map.md` §5.
       coverage on aarch64 (QUAL-19/20). Absorbs the boot / on-device remainders that **ARCH-24** + **BUILD-3** point here,
       and gates **Definition-of-release item #1**. User/hardware-gated — no CI surrogate. Refs:
       `torch_free_armv7_voice.md`, `esp32_satellite.md` §4.4/§12, BUILD-3, ARCH-10.
-- [ ] **ARCH-36** `[release]` [SATELLITE] — **`irene-satellite` implementation** (from ARCH-35, design
-      `docs/design/python_satellite.md` — S-1..S-9 AGREED 2026-07-06; gates ARCH-25 items (3)/(4)). Build
-      order per design §9: **(1)** `SatelliteConfig` (`[satellite]` + `[satellite.tls]`) + config-ui type
-      parity + `configs/satellite.toml` profile; **(2)** `SatelliteLink` uplink client (§3 wire contract,
-      both modes, adapted from eval-commons' proven core — NO runtime dep on the test framework) +
-      reply-channel client (§4) + playback wiring; **(3)** runner + `irene-satellite` console script +
-      persistent-connection lifecycle (reconnect w/ backoff 1→30s, re-register); **(4)** TLS: device-side
-      provisioning dance (EC keypair → PUT CSR → poll; prints the operator's `esp32-provision approve`
-      command) + mTLS wss connect; key material `<assets_root>/credentials/satellite/` (S-6);
-      **(5)** S-7 hermetic TLS e2e (ansible template + throwaway CA in docker nginx, full
-      CSR→approve→mTLS-wss cycle, CI-able) + S-9 loopback e2e + unit tests (framing, register shapes,
-      reconnect, wake gate); **(6)** `docs/guides/satellite.md` + diagram + README/QUICKSTART. Entry-point
-      registration in pyproject (the ARCH-31 lesson). Live-mic behavior stays a manual ARCH-25 item.
-      **Plane-B verification findings folded in (2026-07-06, user-requested doc-vs-implementation audit —
-      implementation CONFORMS to esp32_satellite.md §12.4-6/D-13/17/18 on all major points; two findings are
-      this task's scope):** **(a)** the `esp32_irene_upstream` premise is stale — Irene now deploys ON the
-      WB7, so the mTLS-wss path requires the nginx vars set to `127.0.0.1:8080` (README already corrected;
-      group_vars at deploy time = ARCH-25 step); **(b)** identity binding: nginx injects the mTLS-verified
-      subject as `X-Client-Cert-CN` but NOTHING consumes it — when present, Irene's /ws register must require
-      cert identity == claimed `client_id` (also fix/rename: the header carries the full DN, not the CN).
-      Trivial findings (c) PATH-dependent script call and (d) README wording were fixed at verification.
 
 ### Code Quality & Review (QUAL)
 

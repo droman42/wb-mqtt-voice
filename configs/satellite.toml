@@ -1,0 +1,123 @@
+# ============================================================
+# Irene — SATELLITE room node (ARCH-35/36)
+# ============================================================
+# A box with a microphone and a speaker; the controller owns understanding.
+# Pipeline here: mic → VAD → wake word «Ирина» → stream to the controller
+# over /ws/audio; replies come back over /ws/audio/reply and play locally.
+#
+#   uv run irene-satellite -c configs/satellite.toml
+#   uv run irene-satellite -c configs/satellite.toml --no-wake --server ws://wb7:8080
+#
+# ON:  microphone input, VAD, voice_trigger (microWakeWord), audio playback
+# OFF: asr, nlu, llm, tts, intent_system, text_processor — the controller runs them.
+
+name = "Irene Satellite"
+debug = false
+log_level = "INFO"
+
+# ============================================================
+# SATELLITE — who we are and where the controller is
+# ============================================================
+[satellite]
+enabled = true
+server_url = "ws://localhost:8080"  # the controller ("wss://<host>" with [satellite.tls])
+client_id = "satellite"             # stable identity — make it per-room, e.g. "kitchen_satellite"
+room_name = ""                      # e.g. "Кухня" — «включи свет» resolves to THIS room
+mode = "single"                     # "single" = ESP32-faithful | "streaming" = server endpointing
+wake_word_required = true           # --no-wake overrides per run
+audio_out_rate = 22050
+audio_out_channels = 1
+
+[satellite.tls]
+enabled = false                     # flip on for the fleet plane (mTLS wss via nginx)
+bootstrap_url = ""                  # e.g. "http://wb7" — the :80 provisioning zone (first run)
+
+# ============================================================
+# SYSTEM & INPUTS — microphone only
+# ============================================================
+[system]
+microphone_enabled = true
+audio_playback_enabled = true
+web_api_enabled = false
+
+[inputs]
+microphone = true
+web = false
+cli = false
+default_input = "microphone"
+
+[inputs.microphone_config]
+enabled = true
+sample_rate = 16000
+channels = 1
+chunk_size = 1024
+
+# ============================================================
+# COMPONENTS — listening + speaking only
+# ============================================================
+[components]
+audio = true
+voice_trigger = true
+tts = false
+asr = false
+llm = false
+nlu = false
+text_processor = false
+intent_system = false
+monitoring = false
+nlu_analysis = false
+configuration = false
+
+# ============================================================
+# VAD — local utterance endpointing (single mode)
+# ============================================================
+[vad]
+enabled = true
+default_provider = "energy"
+max_segment_duration_s = 10
+normalize_for_asr = true
+asr_target_rms = 0.15
+
+[vad.providers.energy]
+energy_threshold = 0.01
+sensitivity = 0.5
+use_zero_crossing_rate = true
+adaptive_threshold = true
+
+# ============================================================
+# WAKE WORD — the same pack the ESP32 will run
+# ============================================================
+[voice_trigger]
+enabled = true
+default_provider = "microwakeword"
+confidence_threshold = 0.8
+sample_rate = 16000
+channels = 1
+
+[voice_trigger.providers.microwakeword]
+enabled = true
+sliding_window_size = 5
+preload_models = true
+wake_words = [
+    { name = "irina", model = "irina", threshold = 0.97, language = "ru" },
+]
+
+# ============================================================
+# AUDIO — reply playback
+# ============================================================
+[audio]
+enabled = true
+default_provider = "sounddevice"
+fallback_providers = ["console"]
+
+[audio.providers.sounddevice]
+enabled = true
+
+[audio.providers.console]
+enabled = true
+
+# ============================================================
+# ASSETS — models (the wake-word pack) download here on first use
+# ============================================================
+[assets]
+auto_create_dirs = true

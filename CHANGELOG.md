@@ -46,8 +46,12 @@ English supported, offline by default.
   automated triage on the receiving side. When the smart home is connected, the report also
   carries the bridge's own evidence snapshot (recent device commands, live states). See the
   [problem-reporting guide](docs/guides/problem-reporting.md).
-- **Voice satellite support**: ESP32 room nodes stream finished utterances over WebSocket with
-  server-side wake-word packs (Russian «Ирина» shipped) and per-room reply routing.
+- **Satellite room nodes**: `irene-satellite` turns any Python-capable box (a Pi with a mic) into
+  a room node — local VAD + wake word («Ирина», the same pack the ESP32 will run), utterances
+  streamed to the controller over WebSocket, replies played back in the room, optional
+  mutual-TLS enrollment against the fleet certificate plane (certificate identity is enforced:
+  a kitchen certificate cannot register as the bedroom). The same wire contract serves the
+  future ESP32 firmware. See the [satellite guide](docs/guides/satellite.md).
 
 ### Operations
 
