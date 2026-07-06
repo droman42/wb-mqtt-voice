@@ -98,8 +98,14 @@ class ReportBundleCollector:
     # --- assembly --------------------------------------------------------------------------------
 
     def collect(self, description: str,
-                context: UnifiedConversationContext) -> Tuple[bytes, Dict[str, Any]]:
-        """One report → (tar.gz bytes, issue-ready summary)."""
+                context: UnifiedConversationContext,
+                bridge_evidence: Optional[Dict[str, Any]] = None) -> Tuple[bytes, Dict[str, Any]]:
+        """One report → (tar.gz bytes, issue-ready summary).
+
+        `bridge_evidence` (ARCH-34) is the status record from `BridgeClient.fetch_report_evidence`
+        — filed verbatim under `bridge/` in the tarball. An `attached` record contributes the raw
+        `EvidenceEnvelope` (the bridge-owned contract, pinned in eval-commons); any other status
+        is itself evidence (`bridge/unavailable.json`)."""
         report_id = uuid.uuid4().hex[:12]
         registry = get_client_registry()
         physical_id = resolve_physical_id(context.client_id, context.room_name,
@@ -111,6 +117,11 @@ class ReportBundleCollector:
         }
         requests_dump = get_request_ring().dump()
         metadata = self._metadata(context, report_id)
+        # ARCH-34 triage discriminators: was the smart home in play, and did the bridge answer?
+        metadata["smart_home_involved"] = any(
+            str(r.get("intent_name") or "").startswith("smart_home")
+            for r in requests_dump)
+        metadata["bridge_evidence"] = bridge_evidence["status"] if bridge_evidence else None
 
         members: List[Tuple[str, bytes]] = [
             ("description.txt", description.encode("utf-8")),
@@ -122,6 +133,15 @@ class ReportBundleCollector:
         config_bytes = self._redacted_config()
         if config_bytes is not None:
             members.append(("config.redacted.toml", config_bytes))
+        if bridge_evidence is not None:
+            if bridge_evidence.get("status") == "attached":
+                members.append(("bridge/evidence.json",
+                                json.dumps(bridge_evidence["envelope"],
+                                           ensure_ascii=False, indent=2).encode()))
+            else:
+                members.append(("bridge/unavailable.json",
+                                json.dumps(bridge_evidence,
+                                           ensure_ascii=False, indent=2).encode()))
         members.extend(self._todays_logs())
 
         buf = io.BytesIO()

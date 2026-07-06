@@ -29,6 +29,13 @@ last few requests (what was heard, what was understood, what happened), any rece
 or failed background actions, and your configuration — **with every key, token and password
 scrubbed out first**. No audio recordings are ever included.
 
+If Irene is [connected to your smart home](smart-home.md), the report also carries the home's
+side of the story: the bridge contributes its own snapshot — recent device commands, live
+device states, and what actually went over the wire — scrubbed the same way. So «свет в
+спальне не включается» arrives with the evidence of whether the command reached the lamp. And
+if the bridge itself can't be reached at that moment, that fact is recorded in the report too —
+it's often exactly the clue that's needed.
+
 Where it goes matters: reports are filed into a **private** repository that only the project
 owner (and the automation that analyzes reports) can see. They are never posted publicly, and
 the raw bundles are automatically deleted after 30 days. There's also a politeness valve: at

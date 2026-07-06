@@ -279,3 +279,18 @@ async def test_get_device_options_success_and_failure():
     assert bridge.requests[0] == ("GET", "/devices/mf_amplifier/options/inputs", None)
     assert await bridge.get_device_options("mf_amplifier", "nope") is None
     assert await bridge.get_device_options("mf_amplifier", "inputs") is None  # transport down
+
+
+async def test_fetch_report_evidence_all_outcomes_never_raise():
+    envelope = {"generated_at": "2026-07-06T12:00:00Z", "bridge": {"version": "1.4"}}
+    bridge = StubBridge((200, envelope),
+                        (429, {"detail": "rate limited"}),
+                        (500, {"detail": "boom"}),
+                        aiohttp.ClientConnectionError("refused"))
+    assert await bridge.fetch_report_evidence() == {"status": "attached", "envelope": envelope}
+    assert bridge.requests[0] == ("GET", "/reports/evidence", None)
+    assert (await bridge.fetch_report_evidence())["status"] == "rate_limited"
+    out = await bridge.fetch_report_evidence()
+    assert out["status"] == "error" and out["http_status"] == 500
+    out = await bridge.fetch_report_evidence()
+    assert out["status"] == "unreachable" and "refused" in out["error"]

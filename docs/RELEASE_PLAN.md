@@ -189,32 +189,6 @@ See `docs/review/phase1_architecture_map.md` §5.
       coverage on aarch64 (QUAL-19/20). Absorbs the boot / on-device remainders that **ARCH-24** + **BUILD-3** point here,
       and gates **Definition-of-release item #1**. User/hardware-gated — no CI surrogate. Refs:
       `torch_free_armv7_voice.md`, `esp32_satellite.md` §4.4/§12, BUILD-3, ARCH-10.
-- [ ] **ARCH-34** `[deferred]` [FEEDBACK] — **Bridge-evidence enrichment for smart-home reports**
-      (filed 2026-07-06, user loud-thinking; v1.1 — layers on the shipped ARCH-30/31/32 baseline, gated on
-      a bridge read endpoint). When a problem report is filed and the ARCH-32 request ring shows smart-home
-      involvement (`intent_name.startswith("smart_home")` in the recent window — the discriminator already
-      exists, no new capture) OR `[outputs.bridge]` is enabled, the voice collector calls the bridge's
-      evidence endpoint (`GET /reports/evidence` — the bridge's own report collector exposed as a READ
-      seam, not just `POST /reports`'s internal step) and folds the response into the bundle under a
-      `bridge/` subtree. Closes the gap the bridge design already NAMES (problem_reports_bridge.md §8/B-3:
-      a voice→bridge handover arrives with only voice evidence, cloud triage has no house access) — better
-      than their deferred manual CLI: automatic, at filing time. Design points: bridge-unreachable IS
-      evidence (record it, never fatal — mirrors BRIDGE_UNREACHABLE); don't hard-gate on the heuristic
-      (over-attaching into the same private repo is free); bridge redacts before returning (owns its
-      secrets, B-5); the evidence envelope is a shared contract the bridge OWNS + voice pins
-      (`cross-repo-source-of-truth`). Payoff = triage quality: the voice lens can often diagnose/fix
-      bridge-involved bugs WITHOUT a handover (it now holds the dispatch ring + persisted-vs-live diff), and
-      when it does hand over the bridge lens gets real house evidence. Paired bridge amendment: VWB-28's
-      collector must expose the read endpoint (dropped uncommitted into the bridge ledger 2026-07-06).
-      **Bridge intake corrections/facts (2026-07-06, accepted):** the amendment's consumer-(1) claim ("their
-      UI needs evidence preview before send") was WRONG — their design §2 explicitly excludes preview (B-4);
-      the ask stands on ARCH-34 alone. For activation: the evidence envelope lands in the bridge's
-      `openapi.json` → consumed via the CONTRACTS PIN path (like the catalog — pin inward, never hand-edit);
-      the endpoint carries a rate guard (gzipped logs) → the voice caller needs a bounded timeout + graceful
-      429 alongside the bridge-unreachable-is-evidence rule. **GATE LIFTED 2026-07-06 (QUAL-75):** the
-      bridge shipped VWB-28 same-day incl. B-11 `GET /reports/evidence` + the `EvidenceEnvelope` schema,
-      pinned @ contract v1.4 — activation is now pure voice-side work; the `[deferred]` tag stands by the
-      v1.1 scope decision, not by dependency.
 - [ ] **ARCH-36** `[release]` [SATELLITE] — **`irene-satellite` implementation** (from ARCH-35, design
       `docs/design/python_satellite.md` — S-1..S-9 AGREED 2026-07-06; gates ARCH-25 items (3)/(4)). Build
       order per design §9: **(1)** `SatelliteConfig` (`[satellite]` + `[satellite.tls]`) + config-ui type

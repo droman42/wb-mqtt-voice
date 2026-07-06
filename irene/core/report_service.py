@@ -15,7 +15,7 @@ import logging
 import time
 from collections import deque
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Awaitable, Callable, Dict, List, Optional
 
 from .report_bundle import ReportBundleCollector
 from ..intents.context_models import UnifiedConversationContext
@@ -32,11 +32,13 @@ def build_envelope(summary: Dict[str, Any], source: str = "voice") -> Dict[str, 
     turns = "\n".join(
         f"- «{t['user']}» → `{t['intent']}` → «{t['irene']}»" for t in summary["last_turns"]
     ) or "- (no prior turns)"
+    bridge_note = f" · bridge evidence: {meta['bridge_evidence']}" if meta.get("bridge_evidence") else ""
     body = (
         f"**Reported (verbatim):**\n\n> {summary['description']}\n\n"
         f"**Last turns:**\n{turns}\n\n"
         f"**Environment:** v{meta['version']} · profile `{meta['profile']}` · {meta['machine']} · "
-        f"language {meta['language']} · room {room} · catalog `{meta.get('catalog_version')}`\n\n"
+        f"language {meta['language']} · room {room} · catalog `{meta.get('catalog_version')}`"
+        f"{bridge_note}\n\n"
         f"**Bundle:** `{{bundle_url}}`\n\n"
         f"`report-id: {meta['report_id']}`"
     )
@@ -52,12 +54,15 @@ class ReportService:
     """The handler-facing submit seam (injected via `set_report_service`, ARCH-31)."""
 
     def __init__(self, collector: ReportBundleCollector, client: Any, spool_dir: Path,
-                 rate_limit_per_hour: int = 3, rate_limit_per_day: int = 10):
+                 rate_limit_per_hour: int = 3, rate_limit_per_day: int = 10,
+                 bridge_evidence_fetcher: Optional[Callable[[], Awaitable[Dict[str, Any]]]] = None):
         self.collector = collector
         self.client = client  # GitHubReportClient-shaped: put_bundle / create_issue
         self.spool_dir = spool_dir
         self.rate_limit_per_hour = rate_limit_per_hour
         self.rate_limit_per_day = rate_limit_per_day
+        # ARCH-34: BridgeClient.fetch_report_evidence when [outputs.bridge] is wired, else None.
+        self.bridge_evidence_fetcher = bridge_evidence_fetcher
         self._filed_at: deque = deque(maxlen=max(rate_limit_per_day, rate_limit_per_hour))
 
     # --- rate limiting (D-7) -----------------------------------------------------------------------
@@ -108,7 +113,17 @@ class ReportService:
             logger.warning("Problem report rate-limited (D-7)")
             return "rate_limited"
 
-        bundle, summary = self.collector.collect(description, context)
+        # ARCH-34: pull the bridge's evidence envelope at filing time (a snapshot — the retry
+        # path re-sends the spooled bundle as collected here). The fetcher never raises by
+        # contract, but a failure here must not lose the report either.
+        evidence: Optional[Dict[str, Any]] = None
+        if self.bridge_evidence_fetcher is not None:
+            try:
+                evidence = await self.bridge_evidence_fetcher()
+            except Exception as e:
+                evidence = {"status": "unreachable", "error": str(e)}
+
+        bundle, summary = self.collector.collect(description, context, bridge_evidence=evidence)
         report_id = summary["report_id"]
         envelope = build_envelope(summary)
         self._spool_write(report_id, bundle, envelope)  # crash safety before any network

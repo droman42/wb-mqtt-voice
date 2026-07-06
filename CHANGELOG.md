@@ -43,7 +43,8 @@ English supported, offline by default.
   (not the conversation), survive restarts, apologize when late, and never fail silently.
 - **Problem reporting by voice** («сообщи о проблеме»): describe an issue in your own words and
   Irene files it privately with the logs and context a developer needs — offline-tolerant, with
-  automated triage on the receiving side. See the
+  automated triage on the receiving side. When the smart home is connected, the report also
+  carries the bridge's own evidence snapshot (recent device commands, live states). See the
   [problem-reporting guide](docs/guides/problem-reporting.md).
 - **Voice satellite support**: ESP32 room nodes stream finished utterances over WebSocket with
   server-side wake-word packs (Russian «Ирина» shipped) and per-room reply routing.

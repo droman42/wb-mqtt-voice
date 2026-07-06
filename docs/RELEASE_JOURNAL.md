@@ -15,6 +15,17 @@ newest entries near the top of each dated section.
 
 ## Action journal
 
+- **2026-07-06 — ARCH-34 DONE (retagged `[release]` and shipped hours after filing).** The morning's
+  loud thinking became an evening feature: smart-home problem reports now carry the bridge's own
+  evidence. When `[outputs.bridge]` is wired, filing a report pulls `GET /reports/evidence` (the
+  B-11 seam the bridge shipped in VWB-28, pinned at v1.4 by QUAL-75) and folds the redacted
+  envelope into the bundle under `bridge/` — dispatch ring, MQTT window, live device states,
+  persisted-vs-live diffs. Every failure to fetch is filed verbatim as evidence in its own right
+  («свет не включается» + unreachable bridge is a diagnosis, not a missing attachment). The triage
+  lens learned to read the new members first — the point is fixing bridge-involved reports without
+  a lens handover. Suite 1337 green, pyright 0; guide, diagram and CHANGELOG updated. With this,
+  the whole ARCH-30 arc is closed end-to-end on both repos, same day the bridge finished its half.
+
 - **2026-07-06 — QUAL-75 DONE (filed + completed same day) — contract v1.4 consumed; the bridge
   closed the whole reporting loop from its side in one afternoon.** VWB-28 landed end-to-end over
   there — the UI bug button, the dispatch/MQTT evidence rings, redaction, spool, rate limits — and

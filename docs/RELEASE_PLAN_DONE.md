@@ -977,6 +977,22 @@ rationale/chronology lives in [`RELEASE_JOURNAL.md`](./RELEASE_JOURNAL.md).
       auto-enters, silently skips on gh failure. Verified live: the queue queries correctly surface ticket #2
       (fix-pr-open → PR #1), zero needs-owner. **The problem-reporting workstream (ARCH-30→34, BUILD-12) is
       complete bar ARCH-34 (deferred v1.1).** PR #1 is `/inbox`'s first real customer.
+- [x] **ARCH-34** `[release]` [FEEDBACK] — **DONE 2026-07-06. Bridge-evidence enrichment for smart-home
+      reports.** Filed `[deferred]` v1.1 the same morning; retagged `[release]` and shipped the same evening
+      once QUAL-75 lifted the dependency gate (bridge VWB-28 / contract v1.4). Every report filed while
+      `[outputs.bridge]` is wired now carries the bridge's own redacted `EvidenceEnvelope`
+      (`BridgeClient.fetch_report_evidence` → `GET /reports/evidence`, B-11): dispatch ring, MQTT window,
+      live states, persisted-vs-live diffs — under `bridge/evidence.json` in the bundle. Design points held:
+      NOT gated on the smart-home heuristic (over-attach is free; the ring-derived `smart_home_involved`
+      flag rides metadata as a triage discriminator instead); **unreachable IS evidence** — every failure
+      mode (transport, 429 gzip-guard, unexpected status, even a crashing fetcher) degrades to a verbatim
+      `bridge/unavailable.json`, never fatal to the report; the envelope is consumed as the bridge-owned
+      contract (pinned @ v1.4, QUAL-75). Composition: fetcher wired in `setup_problem_reporting` via the
+      new `OutputManager.get_output` (runs right after `setup_bridge_output`); issue body's environment
+      line names the evidence status. Triage side: `lens-voice.md` now reads `bridge/` first when
+      `smart_home_involved` — the payoff is diagnosing bridge-involved bugs WITHOUT a lens handover.
+      Tests: +6 (collector attach/unavailable/absent, envelope note, fetcher crash-safety, client status
+      matrix) — suite 1337, pyright 0. Docs: design §3 table, guide + regenerated flow diagram, CHANGELOG.
 - [x] **ARCH-35** `[release]` [SATELLITE][DESIGN] — **DONE 2026-07-06 (same-day interactive session).
       Python satellite design AGREED**: `docs/design/python_satellite.md` (S-1..S-9). The analysis found
       nearly everything already exists — the voice runner composes mic/VAD/wake/playback, and eval-commons'

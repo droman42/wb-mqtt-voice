@@ -140,10 +140,20 @@ async def setup_problem_reporting(core: AsyncVACore) -> None:
         config_path=core.config_path,
         catalog_version=_catalog_version,
     )
+    # ARCH-34: when the bridge output is wired (setup_bridge_output ran just before us), every
+    # report also carries the bridge's evidence envelope — don't gate on a smart-home heuristic;
+    # over-attaching into the same private repo is free, and unreachable is itself evidence.
+    bridge_fetcher = None
+    if core.output_manager is not None:
+        bridge = core.output_manager.get_output("bridge")
+        if bridge is not None and hasattr(bridge, "fetch_report_evidence"):
+            bridge_fetcher = bridge.fetch_report_evidence
+
     spool_dir = core.config.assets.assets_root / "state" / "reports"
     service = ReportService(collector, client, spool_dir,
                             rate_limit_per_hour=cfg.rate_limit_per_hour,
-                            rate_limit_per_day=cfg.rate_limit_per_day)
+                            rate_limit_per_day=cfg.rate_limit_per_day,
+                            bridge_evidence_fetcher=bridge_fetcher)
 
     intent_component = core.component_manager.get_component("intent_system")
     handler_manager = getattr(intent_component, "handler_manager", None)
@@ -156,4 +166,5 @@ async def setup_problem_reporting(core: AsyncVACore) -> None:
             handler.set_report_service(service, capture_ttl_seconds=cfg.capture_ttl_seconds)
             injected += 1
     logger.info(f"✅ Problem reporting wired ({cfg.repo}, spool {spool_dir}, "
-                f"{injected} handler(s))")
+                f"{injected} handler(s), bridge evidence "
+                f"{'on' if bridge_fetcher else 'off'})")

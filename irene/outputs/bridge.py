@@ -244,6 +244,22 @@ class BridgeClient(OutputPort):
         data = payload.get("data")
         return list(data) if isinstance(data, list) else None
 
+    async def fetch_report_evidence(self) -> Dict[str, Any]:
+        """The bridge's redacted evidence envelope (`GET /reports/evidence`, contract v1.4 B-11)
+        for a problem-report bundle (ARCH-34). Never raises — a failure to fetch IS evidence,
+        so every outcome comes back as a status record the collector files verbatim:
+        `attached` (envelope present) | `rate_limited` (the endpoint's gzip-guard 429) |
+        `unreachable` | `error` (unexpected HTTP status)."""
+        try:
+            status, payload = await self._request_json("GET", "/reports/evidence")
+        except (aiohttp.ClientError, asyncio.TimeoutError, OSError) as e:
+            return {"status": "unreachable", "error": str(e)}
+        if status == 429:
+            return {"status": "rate_limited", "http_status": 429}
+        if status != 200:
+            return {"status": "error", "http_status": status, "body": payload}
+        return {"status": "attached", "envelope": payload}
+
     # --- identity --------------------------------------------------------------------------------
 
     async def is_available(self) -> bool:

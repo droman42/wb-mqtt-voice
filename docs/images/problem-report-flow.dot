@@ -12,7 +12,7 @@ digraph pr {
   subgraph cluster_irene {
     label="Irene"; fontsize=12; color="#90caf9"; style=rounded; margin=12;
     capture [label="verbatim capture\n(a description is never\nexecuted as a command)", fillcolor="#e3f2fd", color="#1976d2"];
-    bundle  [label="support bundle\nday's log · redacted config\nrecent turns · request synopses", fillcolor="#e3f2fd", color="#1976d2"];
+    bundle  [label="support bundle\nday's log · redacted config\nrecent turns · request synopses\n+ the home's evidence", fillcolor="#e3f2fd", color="#1976d2"];
     spool   [label="offline? spool + retry\n(survives restarts)", fillcolor="#fff8e1", color="#f9a825"];
   }
 
@@ -25,7 +25,10 @@ digraph pr {
   fix   [label="fix PR on the\npublic code repo", fillcolor="#f3e5f5", color="#7b1fa2"];
   owner [label="owner review\n(one by one)", fillcolor="#fff8e1", color="#f9a825"];
 
+  bridge [label="smart-home bridge\ndevice commands · live states\n(unreachable? noted too)", fillcolor="#e0f2f1", color="#00796b"];
+
   user -> capture;
+  bridge -> bundle [style=dashed, label="if connected"];
   capture -> bundle;
   bundle -> issue [label="filed"];
   bundle -> spool [style=dashed, label="no network"];

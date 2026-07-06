@@ -165,3 +165,72 @@ async def test_rate_limit_blocks_fourth_report_in_hour(tmp_path):
 async def test_retry_of_missing_spool_counts_done(tmp_path):
     svc = _service(tmp_path, _FakeClient())
     assert await svc.retry_spooled("nonexistent") is True
+
+
+# --- bridge evidence (ARCH-34) --------------------------------------------------------------------
+
+_ENVELOPE = {"generated_at": "2026-07-06T12:00:00Z", "bridge": {"version": "1.4"},
+             "dispatch_ring": [{"device": "light1", "action": "on"}]}
+
+
+def test_bundle_attaches_bridge_envelope_and_flags_smart_home():
+    ring = get_request_ring()
+    ring.append(session_id="s", room="Кухня", language="ru",
+                input_text="включи свет", processed_text="включи свет",
+                intent_name="smart_home.power_on", confidence=0.95, nlu_provider="hybrid",
+                result_text="Включаю", success=True)
+    collector = ReportBundleCollector(catalog_version=lambda: None)
+    bundle, summary = collector.collect(
+        "свет не включился", _context(),
+        bridge_evidence={"status": "attached", "envelope": _ENVELOPE})
+
+    with tarfile.open(fileobj=io.BytesIO(bundle), mode="r:gz") as tar:
+        evidence = json.loads(tar.extractfile("bridge/evidence.json").read())
+    assert evidence == _ENVELOPE  # the pinned EvidenceEnvelope, verbatim
+    assert summary["metadata"]["bridge_evidence"] == "attached"
+    assert summary["metadata"]["smart_home_involved"] is True
+
+
+def test_bundle_records_bridge_unreachable_as_evidence():
+    collector = ReportBundleCollector(catalog_version=lambda: None)
+    bundle, summary = collector.collect(
+        "что-то не так", _context(),
+        bridge_evidence={"status": "unreachable", "error": "connect refused"})
+
+    with tarfile.open(fileobj=io.BytesIO(bundle), mode="r:gz") as tar:
+        names = tar.getnames()
+        record = json.loads(tar.extractfile("bridge/unavailable.json").read())
+    assert "bridge/evidence.json" not in names
+    assert record["status"] == "unreachable" and "refused" in record["error"]
+    assert summary["metadata"]["bridge_evidence"] == "unreachable"
+
+
+def test_bundle_without_bridge_has_no_bridge_members():
+    bundle, summary = ReportBundleCollector(catalog_version=lambda: None).collect(
+        "сломалось", _context())
+    with tarfile.open(fileobj=io.BytesIO(bundle), mode="r:gz") as tar:
+        assert not any(n.startswith("bridge/") for n in tar.getnames())
+    assert summary["metadata"]["bridge_evidence"] is None
+
+
+def test_envelope_body_names_bridge_evidence_status():
+    _, summary = ReportBundleCollector(catalog_version=lambda: None).collect(
+        "свет мигает", _context(),
+        bridge_evidence={"status": "rate_limited", "http_status": 429})
+    assert "bridge evidence: rate_limited" in build_envelope(summary)["body"]
+
+
+async def test_submit_pulls_evidence_and_survives_fetcher_crash(tmp_path):
+    async def fetcher():
+        return {"status": "attached", "envelope": _ENVELOPE}
+
+    client = _FakeClient()
+    svc = _service(tmp_path, client, bridge_evidence_fetcher=fetcher)
+    assert await svc.submit("сломалось", _context()) == "sent"
+
+    async def broken_fetcher():
+        raise RuntimeError("boom")
+
+    svc2 = _service(tmp_path, _FakeClient(), bridge_evidence_fetcher=broken_fetcher)
+    # a crashing fetcher must never lose the report — it degrades to unreachable-as-evidence
+    assert await svc2.submit("сломалось", _context()) == "sent"

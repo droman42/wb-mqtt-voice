@@ -60,6 +60,10 @@ class OutputManager:
             await self._outputs[name].stop()
         self._active.clear()
 
+    def get_output(self, name: str) -> Optional[OutputPort]:
+        """A registered output by name, or None (composition-time lookups, e.g. ARCH-34)."""
+        return self._outputs.get(name)
+
     def remove_output(self, name: str) -> None:
         """Deregister an output (e.g. a browser WS push channel on disconnect). Idempotent."""
         self._outputs.pop(name, None)
