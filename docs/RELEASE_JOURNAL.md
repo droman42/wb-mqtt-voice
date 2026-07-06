@@ -15,6 +15,14 @@ newest entries near the top of each dated section.
 
 ## Action journal
 
+- **2026-07-06 — DOC-12 filed into the bridge (uncommitted) — the guard triad goes cross-repo.**
+  The user wants both projects on one ledger discipline, so the evening's three machine-enforced
+  conventions (stranded completions, misfiled sections, ID ordering — voice QUAL-72/73/74) are
+  filed for the bridge to port into ITS check_scope.py + CLAUDE.md, adapted to its own header and
+  done-file formats, with the voice implementation as reference and canary-verification required
+  at acceptance. Left uncommitted for the bridge maintainer's intake, per the usual rule.
+
+
 - **2026-07-06 — QUAL-74 DONE (filed + completed same day) — the ledger sorts itself, third guard
   of the evening.** The user's third catch: no ID ordering inside sections. The audit showed it
   was never a rule — the done-archive grew in completion order (56 violations, most predating
