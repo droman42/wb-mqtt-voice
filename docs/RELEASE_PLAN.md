@@ -22,7 +22,9 @@ is `scripts/check_scope.py` clean) · **Status:** active · **Version:** 15.0.0
 > boot-validated where the hardware allows (x86_64 locally; ARM boot rides ARCH-25) — owned by **BUILD-11** + **REL-3**.
 
 - [x] Clean `uv sync` (CI: `uv lock --check` + install); boots in CLI **and** WebAPI modes on x86_64
-      (smoke e2e, BUG-20-hermetic). _Docker-image boot → **BUILD-11** (never published yet; images build in CI only)._
+      (smoke e2e, BUG-20-hermetic). _Docker-image boot ✓ BUILD-11 (2026-07-06): all 6 backend images + UI
+      published to GHCR, `standalone-x86_64` boot-validated locally (health + live command + first-boot model
+      downloads into the mounted volume); ARM on-device boot rides ARCH-25._
 - [x] CI green — BUILD-9's gated `ci.yml` (changes-filter, py-dev-gates, config-validator, build-analyzer,
       D-6 no-models guards), green on every push since 2026-07-02.
 - [x] No phantom-reference / runtime `NameError` bugs; **pyright (standard) = 0 errors, empty suppression list**
@@ -268,17 +270,6 @@ _Trace-driven system testing (design `docs/design/trace_system_testing.md`, TEST
 (TEST-12/13/14/15) done; see `RELEASE_PLAN_DONE.md`._
 
 ### Build & CI (BUILD)
-- [ ] **BUILD-11** [BUILD][DOCKER] (P1) `[release]` — **First real publish dispatch + image boot validation**
-      (filed at the REL-1 sign-off 2026-07-04 — the release artifact is tag + GHCR images, and **no
-      `workflow_dispatch` has ever run**, so criterion 1's Docker clause is unproven). Scope: **(1)** run the
-      BUILD-9 publish matrix for the backend targets (`standalone-x86_64`, `embedded-aarch64`, `embedded-armv7`
-      — RU at minimum; EN variants optional) + the config-ui image; **(2)** confirm the D-6 guards fire for real
-      (empty `/app/assets` assertion by digest; size budgets) and **replace the placeholder budgets
-      (3.5/4.5/10 GB) with real-size-derived ones**; **(3)** boot-validate `standalone-x86_64` locally via
-      `ops/docker-compose.yml` (web API on :6000, mounted assets root resolves, a model downloads into the
-      volume on first use); ARM images get structural checks here — their on-device boot is ARCH-25's item (1);
-      **(4)** record real image sizes in the journal. Rides the existing BUILD-9 workflow — this is an
-      *operation + verification* task, not new build code (any defect it surfaces gets its own BUG).
 _Real English deployment across all three Docker arches (armv7/aarch64/x86_64) + English eval. Design
 `docs/design/multilingual_deployment.md` (I18N-1 ✓) → the implementation slices below. English models are slim and
 size-matched to the Russian stack; language is a per-config/deployment choice (auto-detect is NOT wired to ASR/TTS)._

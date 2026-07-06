@@ -3119,6 +3119,20 @@ rationale/chronology lives in [`RELEASE_JOURNAL.md`](./RELEASE_JOURNAL.md).
       **Flagged (not fixed):** `Component.start`→`is_dependencies_available` `__import__`s the returned strings — dead
       code (ComponentManager uses `initialize()`; nothing calls `.start()`), but now a landmine since returns are
       extra-names; remove or rewrite later.
+- [x] **BUILD-11** [BUILD][DOCKER] (P1) `[release]` — **DONE 2026-07-06. First real publish dispatch + boot
+      validation.** Dispatch `28774806674` (all targets × all languages + config-ui) — every job green, first
+      artifacts ever on GHCR: `wb-mqtt-voice-{standalone,aarch64,armv7}[-en]` + `wb-mqtt-voice-ui`.
+      **(2)** D-6 guards fired for real on all 6 backend images (empty `/app/assets` by digest ✓, budgets ✓);
+      placeholder budgets replaced with real-size-derived: **armv7 248 MB → 500 MB budget, aarch64 718 MB →
+      1.5 GB, standalone 2.86 GB → 4 GB** (≈2×/1.4× headroom — a breach now means a real regression).
+      **(3)** `standalone-x86_64` boot-validated locally via `ops/docker-compose.yml` + override (scratch assets
+      root seeded per `update.sh`): health on :6000 in ~15 s, «который час» executed end-to-end, first-boot
+      downloads landed in the mounted volume (whisper `small.pt`, microwakeword `irina` pack, silero_v4, spaCy
+      cache — 357 MB+). ARM images passed the in-CI structural checks; their on-device boot is ARCH-25 (1).
+      **(4)** sizes recorded in the journal. Zero defects surfaced — no BUGs filed. Observation for ARCH-25/
+      REL-2: the RU image logs harmless `en_core_web_md not installed` ERRORs (spaCy en preference list in the
+      config; degrades gracefully to ru).
+
 
 ### Models & Assets (ASSET)
 - [x] **ASSET-1** — Refresh stale model IDs (Anthropic→Claude 4.x, Whisper large-v3, ElevenLabs multilingual_v2, spaCy 3.8, gpt-4→gpt-4o-mini). → fc85306

@@ -200,9 +200,11 @@ jobs:
               "standalone": {"dockerfile": "docker/Dockerfile.x86_64",  "platform": "linux/amd64",
                              "profile": "standalone-x86_64", "image": "wb-mqtt-voice-standalone"},
           }
-          # D-6 size budgets (bytes, uncompressed) — PLACEHOLDERS with headroom; tighten
-          # after the first dispatch prints actual sizes to the job summary.
-          BUDGETS = {"armv7": 3_500_000_000, "aarch64": 4_500_000_000, "standalone": 10_000_000_000}
+          # D-6 size budgets (bytes, uncompressed) — set from the FIRST real publish
+          # (BUILD-11, 2026-07-06): armv7 248 MB, aarch64 718 MB, standalone 2.86 GB.
+          # Roughly 2x/1.4x headroom for dependency growth; a breach means a silent
+          # multi-hundred-MB regression, not normal drift.
+          BUDGETS = {"armv7": 500_000_000, "aarch64": 1_500_000_000, "standalone": 4_000_000_000}
 
           want_targets = "${{ inputs.targets }}"
           want_langs = "${{ inputs.languages }}"

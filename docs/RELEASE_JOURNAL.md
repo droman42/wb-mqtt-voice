@@ -15,6 +15,21 @@ newest entries near the top of each dated section.
 
 ## Action journal
 
+- **2026-07-06 — BUILD-11 DONE — the first real GHCR publish, and the images are honest.**
+  Dispatch `28774806674` (all targets × all languages + config-ui): every job green on the
+  first attempt — six backend images + the UI image are the repo's first artifacts ever on
+  GHCR. The D-6 guards fired for real on each: `/app/assets` empty by digest, size within
+  budget. **Real uncompressed sizes: armv7 248 MB, aarch64 718 MB, standalone 2.86 GB** —
+  the torch-free armv7 diet earned its keep (the placeholder budget had 14× slack). Budgets
+  tightened to 500 MB / 1.5 GB / 4 GB. `standalone-x86_64` boot-validated locally through
+  the real `ops/docker-compose.yml` contract (override: standalone image + scratch assets
+  root seeded per `update.sh`): health on :6000 in ~15 s, «который час» answered end-to-end,
+  and first-boot downloads landed in the mounted volume exactly as designed (whisper
+  `small.pt`, the microwakeword `irina` v2 pack from HF, silero_v4, spaCy cache). Zero
+  defects — no BUGs filed. One observation parked for ARCH-25/REL-2: the RU image logs
+  harmless `en_core_web_md not installed` ERRORs (en in the spaCy preference list; degrades
+  cleanly to ru). Local test artifacts fully cleaned after (containers, images, scratch).
+
 - **2026-07-06 — QUAL-35 Slice 3 DONE → QUAL-35 CLOSED (evidence-first, interactive) — the
   hard-phrasing tier measured, and the scoreboard rewrote the plan.** Authored the tier-2
   fixtures (F90–F98 measurable + F100–F102 relative adjustments) and ran the two-leg
