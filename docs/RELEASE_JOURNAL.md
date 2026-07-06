@@ -15,6 +15,23 @@ newest entries near the top of each dated section.
 
 ## Action journal
 
+- **2026-07-06 — BUILD-12 DONE — the reporting loop closed, live, and immediately did its job.**
+  Bootstrapped `../wb-user-reports` (repo, labels, workflows, lens files, secrets, app install,
+  PATs) and ran the real smoke: «сообщи о проблеме» through the web API produced a ticket + a
+  committed bundle, and the triage workflow — one Claude, voice lens — analyzed it, labelled
+  `fix-pr-open`, and OPENED a fix PR on wb-mqtt-voice. Every leg of device→ticket→triage→PR
+  worked. The smoke earned its keep by flushing three CI-config gaps the authored workflow
+  couldn't reveal without running (`id-token: write`, `GH_TOKEN`, and the decisive one:
+  `--allowedTools`, whose absence silently denied all 26 of Claude's tool calls across two
+  confusing green-but-inert runs). Loop safety proved itself too — the bot's own edits
+  re-fired the workflow and were correctly skipped. The opened PR #1 claims a durable-action
+  restart bug: plausible, touches the right files, but read from a bundle full of MY dev-session
+  process kills — so it is a PROPOSAL for owner review, exactly what the design intends. That
+  the bot can safely open a PR at all is the whole point of the leak-fence + human-review model.
+  The workstream now needs only ARCH-33 (`/inbox`) to give that review its interactive home —
+  PR #1 is its first customer.
+
+
 - **2026-07-06 — BUILD-12 authored + ready (awaiting owner actions) — the reports repo in a
   box.** Everything `wb-user-reports` needs, authored as the SIBLING working copy
   `../wb-user-reports/` (git-initialized, content committed — the user corrected the first

@@ -153,27 +153,19 @@ and the structural refactors **move code** — so blind refactoring/fixing is th
 Target pattern: **Hexagonal (Ports & Adapters)** — SIGNED OFF 2026-06-01. Code is already ~80% there
 (interfaces=ports, providers=adapters, components=app services, entry-points=registry).
 See `docs/review/phase1_architecture_map.md` §5.
-- [ ] **BUILD-12** `[release]` [FEEDBACK][CI] — **`wb-user-reports` bootstrap — AUTHORED + READY 2026-07-06;
-      awaiting the OWNER ACTIONS below (the permission fence correctly stopped the agent from creating a repo
-      on the owner's account — by design, this is the owner's step).** Everything is authored + validated in
-      **`../wb-user-reports/`** — a SIBLING working copy, git-initialized with the content committed (user
-      correction 2026-07-06: every repo in the constellation is a sibling owning its own files; an `ops/`
-      copy here would drift — the intake FORMAT's home is the design doc, not a content mirror):
-      `README.md`; `triage.yml` (issues+comment triggers, §7.5 loop safety — bot-actor exclusion, label gate,
-      per-ticket concurrency; D-11 model pinned ONCE via `env.CLAUDE_MODEL=claude-fable-5`; checks out BOTH
-      public codebases; prompt enforces the leak fence + exactly-one-end-state); `lens-voice.md` +
-      `lens-bridge.md` (dedup-first, understand/reproduce recipes per repo, the four outcomes, handover
-      schema §7.3 verbatim, ping-pong guard, reply-drafts in the reporter's language; bridge lens told to
-      never touch that repo's ledger files); `prune.yml` (daily cron, 30-day stamp-parsed retention — logic
-      unit-tested; plain script, no model); `bootstrap.sh` (idempotent: repo + 6 labels + content push +
-      the owner-actions issue). Workflows YAML-validated. **OWNER TO RUN/CLICK: (1)**
-      `cd ../wb-user-reports && bash bootstrap.sh` (creates the private repo, pushes this checkout, labels,
-      the checklist issue); **(2)** install the Claude GitHub App on wb-user-reports + wb-mqtt-voice +
-      wb-mqtt-bridge; **(3)** `claude setup-token` → repo secret `CLAUDE_CODE_OAUTH_TOKEN`; **(4)** mint
-      `REPORTS_CROSS_REPO_TOKEN` (fine-grained PAT: the two public repos, Contents+PRs write) → repo secret;
-      **(5)** mint the device PAT (wb-user-reports only, Issues+Contents write) → device env
-      `IRENE_REPORTS_TOKEN` + flip `[reports] enabled=true, repo=...`; **(6)** live smoke:
-      «сообщи о проблеме» → ticket appears → triage runs. Completion = smoke green.
+- [x] **BUILD-12** `[release]` [FEEDBACK][CI] — **DONE 2026-07-06. `wb-user-reports` bootstrapped + the
+      full loop smoke-proven live.** Repo created (sibling `../wb-user-reports`), labels, both lens files,
+      triage + prune workflows, secrets (`CLAUDE_CODE_OAUTH_TOKEN`, `REPORTS_CROSS_REPO_TOKEN`), Claude App
+      on all three repos, device PAT. **Live smoke:** «сообщи о проблеме» → ticket #2 + bundle committed to
+      the repo → triage ran → posted analysis, flipped `fix-pr-open`, and OPENED a fix PR on wb-mqtt-voice
+      (the device→ticket→triage→PR loop, all four triage actions). The smoke flushed THREE CI-config gaps in
+      the authored workflow, each fixed on the reports repo (none in shipped code): `id-token: write` (Claude
+      action OIDC), `GH_TOKEN` in the step env (gh write auth), and `--allowedTools` (the action's default
+      tool gate denied every gh/uv/pytest call — 26 denials, the real culprit behind the silent no-ops). Loop
+      safety confirmed working: the triage's own comment/label re-fires were `[bot]`-skipped. **PR #1 is a
+      PROPOSAL awaiting owner review** (durable-action restart survival — plausible but triggered by
+      dev-session process kills; the first item for ARCH-33's `/inbox`). Note: the design's leak-fence +
+      owner-review model is what makes an auto-opened PR safe — it is reviewed, never merged by the bot.
 - [ ] **ARCH-33** `[release]` [FEEDBACK] — **Owner review loop, voice side** (ARCH-30 §10.7, design §8).
       `/inbox` skill: list open fix PRs on wb-mqtt-voice + `needs-owner` tickets (voice lens) in
       wb-user-reports, then walk them one-by-one interactively; CLAUDE.md line: mention pending items at
