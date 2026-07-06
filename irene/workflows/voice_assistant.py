@@ -19,6 +19,7 @@ from typing import AsyncIterator, Optional, Dict, Any, List
 from .base import Workflow, RequestContext
 from .audio_processor import AudioProcessorInterface, VoiceSegment
 from ..core.audio_negotiator import AudioNegotiator
+from ..core.request_ring import get_request_ring
 from ..core.metrics import get_metrics_collector
 from ..core.trace_context import (
     TraceContext, make_trace, save_trace, trace_scope, replay_request, trace_step,
@@ -613,7 +614,29 @@ class UnifiedVoiceAssistantWorkflow(Workflow):
             response=result.text,
             intent=intent.name
         )
-        
+
+        # ARCH-32: append the request synopsis to the always-on ring (dumped only into problem
+        # reports — the diagnosis material trace persistence would carry if it were on). A
+        # diagnostics tap must never be able to fail a request → fully defensive.
+        try:
+            provider_meta = (intent.entities or {}).get("_provider_metadata") or {}
+            get_request_ring().append(
+                session_id=getattr(conversation_context, "session_id", ""),
+                room=(getattr(conversation_context, "room_name", None)
+                      or getattr(conversation_context, "client_id", None)),
+                language=getattr(conversation_context, "language", None),
+                input_text=input_data,
+                processed_text=processed_text,
+                intent_name=intent.name,
+                confidence=intent.confidence,
+                nlu_provider=provider_meta.get("provider"),
+                result_text=result.text,
+                success=result.success,
+                error=getattr(result, "error", None),
+            )
+        except Exception as ring_err:  # pragma: no cover — belt and braces
+            self.logger.debug(f"request ring append skipped: {ring_err}")
+
         # Record final context state
         if trace_context:
             trace_context.record_context_snapshot("after", conversation_context)

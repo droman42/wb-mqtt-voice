@@ -503,6 +503,14 @@ class ReportsConfig(BaseModel):
     enabled: bool = Field(default=False, description="Enable problem reporting (the report intent files real tickets)")
     capture_ttl_seconds: int = Field(default=90, ge=10,
                                      description="Verbatim-capture window after «опишите проблему» (design D-5)")
+    # Delivery (ARCH-32): a PRIVATE GitHub repo receiving the ticket + the support bundle (design D-1).
+    repo: str = Field(default="", description="Reports repo, 'owner/name' — MUST be private (bundles carry logs/config)")
+    token_env: str = Field(default="IRENE_REPORTS_TOKEN",
+                           description="Env var holding a fine-grained PAT scoped to the reports repo only (issues + contents write)")
+    rate_limit_per_hour: int = Field(default=3, ge=1, description="Max reports filed per hour (design D-7)")
+    rate_limit_per_day: int = Field(default=10, ge=1, description="Max reports filed per day (design D-7)")
+    ring_size: int = Field(default=5, ge=1, le=50,
+                           description="Rolling request-trace ring depth dumped into bundles (design D-10)")
 
 
 class TraceConfig(BaseModel):

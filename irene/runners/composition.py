@@ -99,3 +99,61 @@ async def setup_bridge_output(core: AsyncVACore) -> None:
     snapshot = await core.catalog_service.refresh()
     if snapshot is None:
         logger.warning("Device catalog unavailable at startup — lazy refresh will retry on first use")
+
+async def setup_problem_reporting(core: AsyncVACore) -> None:
+    """Wire the problem-report delivery service when configured (ARCH-32, design §6).
+
+    Called by the base runner after `core.start()`, beside `setup_bridge_output` — runner-agnostic.
+    The request ring is sized regardless (it is the always-on diagnosis buffer); the delivery
+    service exists only when `[reports]` is enabled AND the repo + token are present — otherwise
+    the report intent keeps answering honestly that reporting isn't set up.
+    """
+    import os
+
+    from ..core.request_ring import get_request_ring
+
+    cfg = getattr(core.config, "reports", None)
+    if cfg is None:
+        return
+    get_request_ring().resize(cfg.ring_size)
+    if not cfg.enabled:
+        return
+
+    token = os.getenv(cfg.token_env, "")
+    if not cfg.repo or not token:
+        logger.warning(f"[reports] enabled but repo/token missing (repo='{cfg.repo}', "
+                       f"env {cfg.token_env} {'set' if token else 'EMPTY'}) — reporting stays off")
+        return
+
+    from ..core.report_bundle import ReportBundleCollector
+    from ..core.report_service import ReportService
+    from ..outputs.github_report import GitHubReportClient
+
+    client = GitHubReportClient(cfg.repo, token)
+    await client.start()
+
+    def _catalog_version():
+        snapshot = core.catalog_service.catalog() if core.catalog_service else None
+        return snapshot.version if snapshot else None
+
+    collector = ReportBundleCollector(
+        config_path=core.config_path,
+        catalog_version=_catalog_version,
+    )
+    spool_dir = core.config.assets.assets_root / "state" / "reports"
+    service = ReportService(collector, client, spool_dir,
+                            rate_limit_per_hour=cfg.rate_limit_per_hour,
+                            rate_limit_per_day=cfg.rate_limit_per_day)
+
+    intent_component = core.component_manager.get_component("intent_system")
+    handler_manager = getattr(intent_component, "handler_manager", None)
+    if handler_manager is None:
+        logger.warning("[reports] enabled but the intent system is unavailable — reporting stays off")
+        return
+    injected = 0
+    for name, handler in handler_manager.get_handlers().items():
+        if hasattr(handler, "set_report_service"):
+            handler.set_report_service(service, capture_ttl_seconds=cfg.capture_ttl_seconds)
+            injected += 1
+    logger.info(f"✅ Problem reporting wired ({cfg.repo}, spool {spool_dir}, "
+                f"{injected} handler(s))")

@@ -21,8 +21,10 @@ Russian-first, English supported. Version 15.0.0 · Python 3.11+ · MIT.
   handles the hard ones — both driven by declarative *donation* files instead of hardcoded phrasing.
 - **Ships only what you use.** Components and providers are discovered via entry-points and loaded
   only when configured, so a deployment stays as small as its config.
-- **Smart-home ready (planned).** A small canonical command vocabulary pairs with `wb-mqtt-bridge`
-  to drive Wirenboard and other gear — Irene stays device-agnostic; the bridge owns the hardware.
+- **Smart-home ready.** A small canonical command vocabulary pairs with `wb-mqtt-bridge` to drive
+  Wirenboard and other gear — Irene stays device-agnostic; the bridge owns the hardware.
+- **Reports its own bugs.** Say «сообщи о проблеме», describe it in your own words, and Irene files
+  a ticket with the logs and context a developer needs — privately, offline-tolerant, no account.
 - **One core, many front-ends.** CLI, a web API plus a browser config UI, and (planned) ESP32 voice
   satellites — all on one hexagonal core.
 
@@ -47,6 +49,8 @@ Russian-first, English supported. Version 15.0.0 · Python 3.11+ · MIT.
 - **[Docker builds](docs/guides/build-docker.md)** — multi-platform images that ship only what a
   config profile needs.
 - **[Configuration](docs/guides/configuration.md)** — the TOML configuration model, end to end.
+- **[Problem reporting](docs/guides/problem-reporting.md)** — «сообщи о проблеме»: describe an issue
+  in your own words; Irene files it with everything a developer needs, privately.
 - **[Smart-home control](docs/guides/smart-home.md)** — voice control of a Wirenboard home through
   wb-mqtt-bridge: rooms, devices, scenarios, and sensor questions.
 - **[Tracing & replay](docs/guides/tracing.md)** — record a request to a self-contained file, then listen

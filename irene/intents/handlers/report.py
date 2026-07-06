@@ -8,7 +8,9 @@ service (the ARCH-32 delivery path). With reporting unconfigured the intent answ
 turn one and never arms anything. Full design: docs/design/problem_reports.md.
 """
 
+import asyncio
 import logging
+import time
 from typing import Any, Dict, List, Optional
 
 from .base import IntentHandler
@@ -16,6 +18,9 @@ from ..models import Intent, IntentResult
 from ..context_models import UnifiedConversationContext
 
 logger = logging.getLogger(__name__)
+
+_RETRY_WINDOW_S = 48 * 3600   # keep trying for two days, then announce failure (durable default)
+_RETRY_INTERVAL_S = 300       # one attempt every 5 minutes while spooled
 
 # Recognition constants for ending the capture (not user-facing speech — replies come from
 # templates). Matched against the whole trimmed utterance, casefolded, trailing punctuation off.
@@ -93,6 +98,70 @@ class ReportIntentHandler(IntentHandler):
                                        "Не получилось отправить отчёт."),
                 should_speak=True, success=False, error=str(e))
 
-        key = "confirm_spooled" if status == "spooled" else "confirm_sent"
-        return IntentResult(text=self._get_template(key, language), should_speak=True,
-                            metadata={"report_status": status})
+        if status == "rate_limited":
+            return IntentResult(text=self._get_template("err_rate_limited", language),
+                                should_speak=True, success=False,
+                                error="report rate limit reached (D-7)")
+
+        if status == "spooled":
+            # The "I'll send it when I'm online" promise outlives this interaction and must
+            # survive a restart → durable action (ARCH-27 invariant), re-armed via
+            # rearm_durable_action below. Completion speaks in the request language (BUG-4).
+            await self.execute_fire_and_forget_with_context(
+                self._retry_spooled_reports,
+                action_name="report_retry",
+                domain="report",
+                context=context,
+                timeout=_RETRY_WINDOW_S + 60,
+                completion_message=self._get_template("confirm_sent", language),
+                durable=True,
+                deadline_ts=time.time() + _RETRY_WINDOW_S,
+            )
+            return IntentResult(text=self._get_template("confirm_spooled", language),
+                                should_speak=True, metadata={"report_status": status})
+
+        return IntentResult(text=self._get_template("confirm_sent", language),
+                            should_speak=True, metadata={"report_status": status})
+
+    async def _retry_spooled_reports(self, deadline_ts: float, **_kwargs) -> str:
+        """Durable retry loop: deliver every spooled report, checking every few minutes until
+        the deadline. Idempotent across duplicate launches — a report another loop already
+        delivered simply isn't in the spool anymore."""
+        while time.time() < deadline_ts:
+            service = self.report_service
+            if service is None:
+                raise RuntimeError("report service disappeared while reports were spooled")
+            ids = service.spooled_ids()
+            if not ids:
+                return "delivered"
+            for report_id in ids:
+                await service.retry_spooled(report_id)
+            if not service.spooled_ids():
+                return "delivered"
+            await asyncio.sleep(_RETRY_INTERVAL_S)
+        raise RuntimeError("report retry window expired with undelivered reports")
+
+    async def rearm_durable_action(self, record) -> bool:
+        """ARCH-28: re-arm the spool-retry promise after a restart with its remaining window."""
+        params = dict((record.rearm or {}).get("params") or {})
+        deadline_ts = float(params.get("deadline_ts") or 0)
+        if deadline_ts <= time.time():
+            return False  # window passed — the reconciler announces expiry
+        metadata = record.metadata or {}
+        await self.execute_fire_and_forget_action(
+            self._retry_spooled_reports,
+            action_name=record.action_name,
+            domain=record.domain,
+            physical_id=record.physical_id,
+            owner_session_id=record.session_id,
+            room_id=record.room_id,
+            source=record.source,
+            timeout=(deadline_ts - time.time()) + 60,
+            language=metadata.get("language"),
+            completion_message=metadata.get("completion_message"),
+            durable=True,
+            redeliver_on_reconnect=record.redeliver,
+            deadline_ts=deadline_ts,
+        )
+        logger.info(f"Re-armed report retry ({record.action_name}) after restart")
+        return True

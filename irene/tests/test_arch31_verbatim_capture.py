@@ -140,11 +140,23 @@ async def test_turn2_submits_description():
     assert result.success and "Отчёт отправлен" in result.text
 
 
-async def test_turn2_spooled_speaks_offline_variant():
+async def test_turn2_spooled_speaks_offline_variant_and_launches_durable_retry():
     h = await _report_handler(_FakeReportService(status="spooled"))
+    launches = []
+
+    async def _record_launch(action_func, **kwargs):
+        launches.append(kwargs)
+        return {"status": "started"}
+
+    h.execute_fire_and_forget_with_context = _record_launch  # the ARCH-27 seam, stubbed
     ctx = UnifiedConversationContext(session_id="t", language="ru")
     result = await h.execute(_intent(description="что-то сломалось"), ctx)
     assert "как только появится" in result.text
+    # the retry promise is DURABLE (survives restarts) with a JSON-serializable deadline
+    assert len(launches) == 1
+    assert launches[0]["durable"] is True
+    assert launches[0]["action_name"] == "report_retry"
+    assert isinstance(launches[0]["deadline_ts"], float)
 
 
 async def test_cancel_word_ends_dialog_without_filing():

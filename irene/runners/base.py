@@ -18,7 +18,7 @@ from dataclasses import dataclass
 from ..config.models import CoreConfig, ComponentConfig, LogLevel
 from ..config.manager import ConfigManager
 from ..core.engine import AsyncVACore
-from .composition import build_core, setup_bridge_output
+from .composition import build_core, setup_bridge_output, setup_problem_reporting
 from ..utils.logging import setup_logging
 
 
@@ -119,6 +119,9 @@ class BaseRunner(ABC):
             # 7b. Runner-agnostic configured outputs (ARCH-8 PR-2): the bridge actuation
             # channel rides `[outputs.bridge]`, whatever profile is running.
             await setup_bridge_output(self.core)
+
+            # ARCH-32: the problem-report delivery service rides `[reports]`, same pattern.
+            await setup_problem_reporting(self.core)
 
             # 8. Runner-specific initialization
             await self._post_core_setup(parsed_args)

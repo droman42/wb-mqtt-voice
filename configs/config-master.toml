@@ -457,6 +457,13 @@ max_phrases_per_intent = 3         # Sample phrases per intent in the classifier
 [reports]
 enabled = false                     # Enable problem reporting (files real tickets when delivery is configured)
 capture_ttl_seconds = 90            # Verbatim-capture window after «опишите проблему» (design D-5)
+# Delivery (ARCH-32): a PRIVATE GitHub repo receives the ticket + the support bundle. The token
+# is a fine-grained PAT scoped to THAT repo only (issues + contents write), read from the env.
+repo = ""                           # e.g. "droman42/wb-user-reports" — must be PRIVATE (bundles carry logs/config)
+token_env = "IRENE_REPORTS_TOKEN"   # Env var holding the PAT (never put the token itself in a config file)
+rate_limit_per_hour = 3             # Max reports per hour (design D-7 — guards ASR misfires)
+rate_limit_per_day = 10             # Max reports per day (design D-7)
+ring_size = 5                       # Rolling request-synopsis ring dumped into bundles (design D-10)
 
 # ============================================================
 # TEXT PROCESSOR COMPONENT CONFIGURATION

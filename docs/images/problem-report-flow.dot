@@ -1,0 +1,37 @@
+// Irene — problem reporting: from «сообщи о проблеме» to a fix PR. Render:
+//   dot -Tpng docs/images/problem-report-flow.dot -o docs/images/problem-report-flow.png
+digraph pr {
+  rankdir=LR; bgcolor="white"; splines=spline; nodesep=0.45; ranksep=0.8;
+  fontname="Helvetica"; labelloc=t; fontsize=14;
+  label="Problem reporting: describe it in your own words — the rest is plumbing";
+  node [fontname="Helvetica", fontsize=10, shape=box, style="filled,rounded", penwidth=1.4];
+  edge [fontname="Helvetica", fontsize=9, color="#616161", arrowsize=0.7];
+
+  user [label="«сообщи о проблеме»\n→ «опишите своими словами»\n→ the description", fillcolor="#f3e5f5", color="#7b1fa2"];
+
+  subgraph cluster_irene {
+    label="Irene"; fontsize=12; color="#90caf9"; style=rounded; margin=12;
+    capture [label="verbatim capture\n(a description is never\nexecuted as a command)", fillcolor="#e3f2fd", color="#1976d2"];
+    bundle  [label="support bundle\nday's log · redacted config\nrecent turns · request synopses", fillcolor="#e3f2fd", color="#1976d2"];
+    spool   [label="offline? spool + retry\n(survives restarts)", fillcolor="#fff8e1", color="#f9a825"];
+  }
+
+  subgraph cluster_repo {
+    label="private reports repo"; fontsize=12; color="#a5d6a7"; style=rounded; margin=12;
+    issue  [label="ticket + bundle\n(pruned after 30 days)", fillcolor="#e8f5e8", color="#388e3c"];
+    triage [label="Claude triage\nanalyze · reproduce · decide", fillcolor="#e8f5e8", color="#388e3c"];
+  }
+
+  fix   [label="fix PR on the\npublic code repo", fillcolor="#f3e5f5", color="#7b1fa2"];
+  owner [label="owner review\n(one by one)", fillcolor="#fff8e1", color="#f9a825"];
+
+  user -> capture;
+  capture -> bundle;
+  bundle -> issue [label="filed"];
+  bundle -> spool [style=dashed, label="no network"];
+  spool -> issue [style=dashed, label="later"];
+  issue -> triage;
+  triage -> fix [label="real bug"];
+  triage -> owner [label="unclear /\nneeds a decision"];
+  fix -> owner;
+}

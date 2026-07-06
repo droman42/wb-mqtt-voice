@@ -943,6 +943,28 @@ rationale/chronology lives in [`RELEASE_JOURNAL.md`](./RELEASE_JOURNAL.md).
       7 dialog/workflow cases + 3 routing cases (no collisions: «расскажи о себе»→system.about,
       «что такое…»→reference intact). Suite 1318, device gate 48/48, donation gate 15 handlers 0/0,
       config gate 13/13, pyright 0. User-facing docs land with ARCH-32 (feature is off until delivery exists).
+- [x] **ARCH-32** `[release]` [FEEDBACK] — **DONE 2026-07-06. Support bundle + delivery (voice side).**
+      **Ring:** `core/request_ring.py` — always-on rolling request synopses (input/processed text, NLU
+      provider+confidence, outcome; 500-char clips; depth = `[reports] ring_size`), appended at the pipeline
+      tail via a DEFENSIVE tap (a diagnostics buffer must never fail a request — the coverage suite proved
+      the point immediately). **Bundle:** `core/report_bundle.py` — description + conversation window +
+      registry recent/failed actions + ring dump + day's logs (gzipped) + REDACTED config (secret-shaped
+      keys/bearers out, household context stays — D-1) + metadata (version/profile/arch/language/room/
+      catalog version). **Envelope §5:** `build_envelope` — title/body/labels + bundle repo path (shared
+      voice/bridge intake format). **Delivery:** `outputs/github_report.py` (contents PUT + issues POST,
+      fine-grained PAT from `[reports] token_env`); `core/report_service.py` — rate limit (D-7 3/h,10/day →
+      "rate_limited" + new template), SPOOL-before-network to `<assets_root>/state/reports/` (crash
+      safety), sent/spooled statuses; **the retry promise is a DURABLE ACTION** (ARCH-27 invariant honored:
+      handler launches `report_retry` durable=True with JSON deadline kwargs + `rearm_durable_action`
+      override — 5-min attempts for 48h, completion speaks in the request language, expiry announces via
+      the substrate). **Wiring:** `setup_problem_reporting` beside `setup_bridge_output` (ring sized always;
+      service only when enabled + repo + token — else the honest off state). Master `[reports]` fully
+      documented; api.ts parity (check+build green). **Docs:** `docs/guides/problem-reporting.md` + house-
+      style diagram + README (guides list, Highlights bullet — and the stale 'smart-home (planned)' fixed).
+      Tests: 9 new (ring/redaction/bundle/envelope/service flows) + tightened ARCH-31 durable-launch case.
+      Suite 1327, device gate 48/48, donation gate 15/0/0, configs 13/13, pyright 0. E2E against the real
+      repo awaits BUILD-12 (provisioning).
+
 
 
 

@@ -153,12 +153,6 @@ and the structural refactors **move code** — so blind refactoring/fixing is th
 Target pattern: **Hexagonal (Ports & Adapters)** — SIGNED OFF 2026-06-01. Code is already ~80% there
 (interfaces=ports, providers=adapters, components=app services, entry-points=registry).
 See `docs/review/phase1_architecture_map.md` §5.
-- [ ] **ARCH-32** `[release]` [FEEDBACK] — **Support bundle + delivery (voice side)** (ARCH-30 §10.3-5, design
-      §3-6). Trace ring buffer (last 5 requests, always on); `ReportBundleCollector` (+ redaction pass §4 +
-      envelope §5); `ReportSinkPort` + `GitHubReportSink` (issues + contents API); `[reports]` config (enabled,
-      repo, token_env, TTL, D-7 rate limits 3/h + 10/day, D-10 tunables); offline spool via the ARCH-27 durable
-      substrate (`durable=True`, re-arm); mock-sink e2e for the bundle path. Config-master + 6 deployment
-      configs gain the section (disabled until BUILD-12 provisions the repo/token).
 - [ ] **BUILD-12** `[release]` [FEEDBACK][CI] — **`wb-user-reports` bootstrap** (ARCH-30 §10.6, design §7).
       Private repo + labels (`problem-report`, `lens:voice/bridge`, `new`, `needs-owner`, `fix-pr-open`);
       triage workflow (issues + issue_comment triggers, loop safety §7.5, model pinned per D-11 =

@@ -15,6 +15,21 @@ newest entries near the top of each dated section.
 
 ## Action journal
 
+- **2026-07-06 — ARCH-32 DONE — the bundle, the sink, and a promise that survives reboots.**
+  The delivery half of problem reporting: an always-on ring of request synopses (the diagnosis
+  material trace persistence would carry if it were on — added as a deliberately DEFENSIVE tap
+  after the coverage suite instantly proved that a diagnostics buffer can crash a pipeline),
+  a bundle collector whose redaction strips every secret-shaped value while keeping household
+  context (the repo is private — that's the design's whole point), the two-call GitHub client,
+  and a service that spools to durable state BEFORE touching the network. The nicest part is
+  the offline story: «отправлю, как только появится связь» is exactly the kind of promise the
+  durable-actions invariant exists for, so it IS one — a durable `report_retry` action with a
+  48-hour window, re-armed across restarts, completing in the reporter's language. User guide
+  + diagram shipped; README Highlights gained the bullet (user) and lost a stale «planned» on
+  smart-home. Suite 1327, device gate 48/48. BUILD-12 (repo bootstrap + owner checklist) is the
+  remaining gap between this code and a real filed ticket.
+
+
 - **2026-07-06 — ARCH-31 DONE — the problem-report dialog, and the capture that must not obey.**
   The heart of the build is a single inversion: for one turn, Irene deliberately does NOT
   understand you. Verbatim mode on the pending-clarification state makes the workflow consume

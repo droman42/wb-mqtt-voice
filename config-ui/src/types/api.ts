@@ -550,6 +550,11 @@ export interface TraceConfig {
 export interface ReportsConfig {
   enabled: boolean;
   capture_ttl_seconds: number;
+  repo: string;
+  token_env: string;
+  rate_limit_per_hour: number;
+  rate_limit_per_day: number;
+  ring_size: number;
 }
 
 export interface SystemConfig {
