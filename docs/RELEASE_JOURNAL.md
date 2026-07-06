@@ -16,7 +16,10 @@ newest entries near the top of each dated section.
 ## Action journal
 
 - **2026-07-06 — BUILD-12 authored + ready (awaiting owner actions) — the reports repo in a
-  box.** Everything `wb-user-reports` needs, authored under `ops/user-reports/` and validated:
+  box.** Everything `wb-user-reports` needs, authored as the SIBLING working copy
+  `../wb-user-reports/` (git-initialized, content committed — the user corrected the first
+  placement under `ops/`: repos in this constellation are siblings owning their own files;
+  a mirror here would drift) and validated:
   the triage workflow (loop-safe, per-ticket concurrency, both codebases checked out, the
   D-11 model pinned in exactly one env var), the two lens process files (dedup-first, repro
   recipes, four outcomes, the §7.3 handover schema verbatim, ping-pong guard, replies drafted

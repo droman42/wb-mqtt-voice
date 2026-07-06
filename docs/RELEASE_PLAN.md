@@ -156,7 +156,9 @@ See `docs/review/phase1_architecture_map.md` §5.
 - [ ] **BUILD-12** `[release]` [FEEDBACK][CI] — **`wb-user-reports` bootstrap — AUTHORED + READY 2026-07-06;
       awaiting the OWNER ACTIONS below (the permission fence correctly stopped the agent from creating a repo
       on the owner's account — by design, this is the owner's step).** Everything is authored + validated in
-      **`ops/user-reports/`** (the intake format's home; the live repo owns its content after bootstrap):
+      **`../wb-user-reports/`** — a SIBLING working copy, git-initialized with the content committed (user
+      correction 2026-07-06: every repo in the constellation is a sibling owning its own files; an `ops/`
+      copy here would drift — the intake FORMAT's home is the design doc, not a content mirror):
       `README.md`; `triage.yml` (issues+comment triggers, §7.5 loop safety — bot-actor exclusion, label gate,
       per-ticket concurrency; D-11 model pinned ONCE via `env.CLAUDE_MODEL=claude-fable-5`; checks out BOTH
       public codebases; prompt enforces the leak fence + exactly-one-end-state); `lens-voice.md` +
@@ -165,7 +167,7 @@ See `docs/review/phase1_architecture_map.md` §5.
       never touch that repo's ledger files); `prune.yml` (daily cron, 30-day stamp-parsed retention — logic
       unit-tested; plain script, no model); `bootstrap.sh` (idempotent: repo + 6 labels + content push +
       the owner-actions issue). Workflows YAML-validated. **OWNER TO RUN/CLICK: (1)**
-      `cd ops/user-reports && bash bootstrap.sh` (creates the private repo, labels, pushes content, opens
+      `cd ../wb-user-reports && bash bootstrap.sh` (creates the private repo, pushes this checkout, labels,
       the checklist issue); **(2)** install the Claude GitHub App on wb-user-reports + wb-mqtt-voice +
       wb-mqtt-bridge; **(3)** `claude setup-token` → repo secret `CLAUDE_CODE_OAUTH_TOKEN`; **(4)** mint
       `REPORTS_CROSS_REPO_TOKEN` (fine-grained PAT: the two public repos, Contents+PRs write) → repo secret;
