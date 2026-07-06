@@ -309,6 +309,19 @@ size-matched to the Russian stack; language is a per-config/deployment choice (a
       explicit deferred follow-up — `uv run irene-satellite` covers the release need). A slim aarch64 image
       on the `satellite.toml` profile (mic device passthrough, credentials volume for the S-6 material),
       published beside the backend images; compose snippet for a Pi room node.
+- [ ] **BUILD-14** `[deferred]` [CI][FEEDBACK] — **Retire the pre-ARCH-30 public-repo issue triage; consolidate
+      intake on `wb-user-reports`** (filed 2026-07-06, user; post-release-1). This repo still carries the
+      old deterministic triage from before the problem-reporting system existed:
+      `.github/workflows/issue-triage.yml` (keyword → `area:*`/`platform:*` labels + ack comment, no AI)
+      and the `.github/ISSUE_TEMPLATE/` intake forms — now the strictly weaker of the two intake paths
+      (the reports repo has Claude triage with lens process files, the /inbox loop, and — since ARCH-34 —
+      bundles with bridge evidence). Scope: move/adapt what's worth keeping into `wb-user-reports` and
+      retire the rest — decide at task start whether public GitHub issues should (a) flow into the reports-
+      repo triage (e.g. a forwarding workflow that mirrors them as tickets, minus the private-bundle parts),
+      or (b) keep lightweight templates here with the triage workflow simply deleted. Mind the leak fence
+      either way: public issues carry no household data, so mirroring is safe in that direction only.
+      Cross-repo: any reports-repo workflow change is committed there; the bridge repo has the same
+      question — file the sibling task into its ledger (uncommitted) if (a) is chosen.
 
 ### Models & Assets (ASSET)
 
