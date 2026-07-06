@@ -3522,6 +3522,15 @@ rationale/chronology lives in [`RELEASE_JOURNAL.md`](./RELEASE_JOURNAL.md).
       beside add-an-intent/model/language) and the top-level `README` pointer; also cross-linked from `eval/README.md`
       (reference ⟷ walkthrough). No internal tracking language in the prose (user-facing-docs voice). Complements the
       existing `eval/README.md` + `fixtures/README.md` rather than duplicating them.
+- [x] **DOC-10** `[release]` [EVAL] — **DONE 2026-07-07 (filed + completed same day, user request). The
+      WebSocket protocol document is now an INVARIANT, both sides of the sibling boundary.** New CLAUDE.md
+      invariant **`ws-protocol-doc-canonical`**: `docs/guides/websocket-api.md` is the single source of
+      truth for the WS wire protocol (hand-written reference, deliberately not generated tooling); any WS
+      endpoint/message-shape change updates it in the same change; design docs defer to it
+      (`python_satellite.md` §3's "single written truth" claim re-pointed accordingly). Sibling seed:
+      `../eval-commons/CLAUDE.md` CREATED (the repo had none) naming that document as the protocol truth
+      its `ws_audio_provider` implements — plus the standing contracts-pin rule (never hand-edit, owned by
+      voice's re-pin flow) and the execution-logic-lives-here framing, so both repos run the discipline.
 
 ### UI / config-ui (UI)
 - [x] **UI-1** [DEDITOR] (P2) — **DONE 2026-06-06.** Designed the human-friendly donation/pattern authoring model →

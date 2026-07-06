@@ -15,6 +15,13 @@ newest entries near the top of each dated section.
 
 ## Action journal
 
+- **2026-07-07 — DOC-10 DONE (filed + completed same day).** The lesson from the ARCH-38
+  catch-up became a rule: `websocket-api.md` is now the `ws-protocol-doc-canonical` invariant —
+  the WS protocol's single source of truth, updated in the same change as any endpoint or frame
+  shape, with design docs deferring to it. And eval-commons got its first CLAUDE.md, seeded with
+  the mirror rule (its providers implement that document, never reverse-engineer the protocol)
+  plus the contracts-pin ownership rule. The protocol now has one book, and both repos know it.
+
 - **2026-07-07 — ARCH-38 doc/profile catch-up (user review).** Two gaps closed in the same
   breath: `configs/satellite.toml` gained its `[trace]` stanza (off by default, `--trace` flips
   it; segmenter level so satellite traces carry the VAD-tuning frames), and the hand-written

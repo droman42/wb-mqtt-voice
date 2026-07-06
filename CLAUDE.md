@@ -20,6 +20,14 @@ but these rules apply to any task). **Single source of truth** (relocated here f
   - **REST API endpoints / parameter schemas / analysis endpoints** → `src/utils/apiClient.ts`, the analysis components.
   - Definition-of-done addendum: `cd config-ui && npm run check && npm run build` passes (`check` = type-check **+**
     the strict ESLint gate). _Pairs with `user-facing-docs-are-done` — config-ui is the user-facing **app**._
+- **`ws-protocol-doc-canonical`** — `docs/guides/websocket-api.md` is the **single source of truth for the
+  WebSocket wire protocol** (`/ws/audio`, `/ws/audio/reply`, `/ws/output`, `/ws/observe`) — a hand-written
+  reference, deliberately not generated tooling. Any change to a WS endpoint or message shape (the
+  `webapi_router` WS endpoints, `irene/satellite/`) **updates that document in the same change** — it is what
+  clients are built against (the satellite runner, the future ESP32 firmware, eval-commons'
+  `ws_audio_provider`). Design docs hold rationale and **defer to it** (e.g. `python_satellite.md` §3 points
+  there); never duplicate frame tables elsewhere. Sibling rule: `../eval-commons/CLAUDE.md` names this
+  document as the protocol truth its providers implement.
 - **`cross-repo-source-of-truth`** — for any artifact **shared with a sibling repo**, know which side *owns* it and
   don't write across the boundary the wrong way.
   - **The Irene↔bridge catalog / canonical-command contract is owned by `../wb-mqtt-bridge`** (its generator / source
