@@ -15,6 +15,17 @@ newest entries near the top of each dated section.
 
 ## Action journal
 
+- **2026-07-06 — QUAL-73 DONE (filed + completed same day) — the gate learns sections too.** The
+  user's second catch of the evening: BUILD-13 filed under the ARCH section (in-place filing at a
+  design task's completion) and, found by the audit it triggered, BUG-29 sitting at the tail of
+  QUAL in the done file (insert-before-next-header lands in the PRECEDING section — a subtle
+  off-by-one-section bug in the filing pattern itself). Both moved. check_scope now enforces
+  ID-prefix == enclosing section across both ledger files, and CLAUDE.md says the rule out loud.
+  Direct answer to the user's question «do we need to strengthen the rules?»: the rule existed
+  implicitly and prose didn't help — the strengthening that works is the machine check; the
+  CLAUDE.md sentence just makes the convention citable.
+
+
 - **2026-07-06 — QUAL-72 DONE (filed + completed same day) — the scope gate learns to catch the
   maintainer.** The user spotted three completions (BUILD-12, ARCH-33, REL-3) marked [x] in the
   ACTIVE plan instead of moved to the done-archive — a plain single-task-ledger violation that

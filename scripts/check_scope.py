@@ -101,6 +101,20 @@ def main() -> int:
     # (three entries drifted exactly this way on 2026-07-06 before this check existed).
     stranded = re.findall(r"^- \[x\] \*\*([A-Z]+-\d+)\*\*", ledger_text, flags=re.M)
 
+    # misfiled tasks: a task's ID prefix must match its enclosing workstream section, in BOTH
+    # files (a BUILD task under "### Architecture (ARCH)" is a filing error — twice on 2026-07-06).
+    def misfiled(text: str, which: str) -> list[str]:
+        out, section = [], None
+        for line in text.split("\n"):
+            if line.startswith("### "):
+                m = re.search(r"\(([A-Z]+)\)", line)
+                section = m.group(1) if m else None
+            m = re.match(r"^- \[[ x]\] \*\*([A-Z]+)-(\d+)\*\*", line)
+            if m and section and m.group(1) != section:
+                out.append(f"{m.group(1)}-{m.group(2)} under ({section}) [{which}]")
+        return out
+    misplaced = misfiled(ledger_text, "active") + misfiled(done_text, "done")
+
     failed = False
     print("== check_scope: release-scope drift guard ==\n")
 
@@ -109,6 +123,12 @@ def main() -> int:
         print("STRANDED completions ([x] task entries still in the ACTIVE plan — move them to RELEASE_PLAN_DONE.md):")
         for tid in stranded:
             print(f"  - {tid}")
+        print()
+    if misplaced:
+        failed = True
+        print("MISFILED tasks (ID prefix does not match the enclosing workstream section):")
+        for t in misplaced:
+            print(f"  - {t}")
         print()
     if orphans:
         failed = True

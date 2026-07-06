@@ -2313,17 +2313,6 @@ rationale/chronology lives in [`RELEASE_JOURNAL.md`](./RELEASE_JOURNAL.md).
       Error-path nuance: a template call inside an `except` must never mask the ORIGINAL failure — new
       `_template_or(name, lang, fallback)` base helper: localized when assets are healthy, last-resort
       literal when the template system itself is broken (a unit test caught exactly this).
-- [x] **BUG-29** `[release]` [UI][CONFIG] — **DONE 2026-07-06. Default `web_port` 6000 → 8080 —
-      the config-ui could not reach the backend from ANY browser** (found in the REL-3 manual functional
-      pass; the exact class of defect no automated test catches — `curl` is happy on 6000, a browser is not).
-      Port 6000 is X11, on Chromium/Firefox's hard-blocked list → every config-ui request failed
-      `net::ERR_UNSAFE_PORT` before leaving the browser (a retry-storm of 35k+ requests). Violated
-      `config-ui-stays-functional` on the shipped defaults. Swept 6000→8080 (word-boundary, 16000 sample
-      rates untouched) across all 13 configs, the `CoreConfig.web_port` model default (the source of truth),
-      the config-ui `defaultApiBase()` + generated openapi default, `ops/docker-compose.yml`, all 3
-      Dockerfiles (CMD/EXPOSE), `ops/INSTALL.md`, QUICKSTART (was inconsistently 8000). 8080 chosen (user):
-      browser-safe, no collision with the bridge (8000) or config-ui (3000). Verified: default boot binds
-      8080; config gate 13/13; config-ui check+build green.
 - [x] **QUAL-72** `[release]` [PROCESS] — **DONE 2026-07-06 (filed + completed same day; user caught the
       drift). `check_scope.py` now flags STRANDED completions** — a `- [x] **ID**` task entry still in the
       ACTIVE plan is a `single-task-ledger` violation (completion must MOVE the entry to the done-archive in
@@ -2331,6 +2320,14 @@ rationale/chronology lives in [`RELEASE_JOURNAL.md`](./RELEASE_JOURNAL.md).
       REL-3) were flipped in place instead of moved, and every gate run since passed. Entries moved; the
       guard now fails on the class (canary-verified both directions). The gate that exists to catch drift
       must catch the maintainer's own drift first.
+- [x] **QUAL-73** `[release]` [PROCESS] — **DONE 2026-07-06 (filed + completed same day; user caught it,
+      second guard-hardening of the evening). Tasks filed into WRONG workstream sections** — BUILD-13 landed
+      under ARCH (filed in-place at ARCH-35's completion) and BUG-29 at the tail of QUAL in the done file
+      (the insert-before-next-header pattern drops entries into the PRECEDING section). Both moved.
+      `check_scope.py` now fails on any ID-prefix / enclosing-section mismatch in EITHER ledger file
+      (canary-verified), and CLAUDE.md's `single-task-ledger` states the section rule explicitly. Same
+      lesson as QUAL-72: conventions the maintainer can violate under tempo must be machine-checked.
+
 
 
 
@@ -2701,6 +2698,17 @@ rationale/chronology lives in [`RELEASE_JOURNAL.md`](./RELEASE_JOURNAL.md).
       `timed_out` pattern; set by user-cancel + eviction) — unmarked cancel = teardown → record survives,
       no failure notification; reconciler deletes only consumed records. Flagship regression: set → restart
       → re-arm → restart → still re-arms. Suite 1331, pyright 0 on the integration merge.
+- [x] **BUG-29** `[release]` [UI][CONFIG] — **DONE 2026-07-06. Default `web_port` 6000 → 8080 —
+      the config-ui could not reach the backend from ANY browser** (found in the REL-3 manual functional
+      pass; the exact class of defect no automated test catches — `curl` is happy on 6000, a browser is not).
+      Port 6000 is X11, on Chromium/Firefox's hard-blocked list → every config-ui request failed
+      `net::ERR_UNSAFE_PORT` before leaving the browser (a retry-storm of 35k+ requests). Violated
+      `config-ui-stays-functional` on the shipped defaults. Swept 6000→8080 (word-boundary, 16000 sample
+      rates untouched) across all 13 configs, the `CoreConfig.web_port` model default (the source of truth),
+      the config-ui `defaultApiBase()` + generated openapi default, `ops/docker-compose.yml`, all 3
+      Dockerfiles (CMD/EXPOSE), `ops/INSTALL.md`, QUICKSTART (was inconsistently 8000). 8080 chosen (user):
+      browser-safe, no collision with the bridge (8000) or config-ui (3000). Verified: default boot binds
+      8080; config gate 13/13; config-ui check+build green.
 
 
 

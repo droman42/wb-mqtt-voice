@@ -220,10 +220,6 @@ See `docs/review/phase1_architecture_map.md` §5.
       subject as `X-Client-Cert-CN` but NOTHING consumes it — when present, Irene's /ws register must require
       cert identity == claimed `client_id` (also fix/rename: the header carries the full DN, not the CN).
       Trivial findings (c) PATH-dependent script call and (d) README wording were fixed at verification.
-- [ ] **BUILD-13** `[deferred]` [SATELLITE][DOCKER] — **Pi/aarch64 satellite docker image** (ARCH-35 S-8:
-      explicit deferred follow-up — `uv run irene-satellite` covers the release need). A slim aarch64 image
-      on the `satellite.toml` profile (mic device passthrough, credentials volume for the S-6 material),
-      published beside the backend images; compose snippet for a Pi room node.
 - [ ] **ARCH-25** [INFER][HW] (P-TBD) `[release]` — **Satellite hardware bring-up — WB7 (armv7) + WB8.5 (aarch64)
       on-device re-validation.** The single convergence point for the hardware-gated verification the software tasks defer
       here (split out of **ARCH-10** 2026-06-16, now implementation-complete). Deploy the `embedded-armv7` /
@@ -331,6 +327,10 @@ _Trace-driven system testing (design `docs/design/trace_system_testing.md`, TEST
 _Real English deployment across all three Docker arches (armv7/aarch64/x86_64) + English eval. Design
 `docs/design/multilingual_deployment.md` (I18N-1 ✓) → the implementation slices below. English models are slim and
 size-matched to the Russian stack; language is a per-config/deployment choice (auto-detect is NOT wired to ASR/TTS)._
+- [ ] **BUILD-13** `[deferred]` [SATELLITE][DOCKER] — **Pi/aarch64 satellite docker image** (ARCH-35 S-8:
+      explicit deferred follow-up — `uv run irene-satellite` covers the release need). A slim aarch64 image
+      on the `satellite.toml` profile (mic device passthrough, credentials volume for the S-6 material),
+      published beside the backend images; compose snippet for a Pi room node.
 
 ### Models & Assets (ASSET)
 

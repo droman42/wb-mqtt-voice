@@ -49,7 +49,10 @@ but these rules apply to any task). **Single source of truth** (relocated here f
   `scripts/check_scope.py` at each gate (flags orphan findings, dead evidence links, contradictory status markers).
   - **The ledger spans two files:** active `docs/RELEASE_PLAN.md` (open + paused/partial) + frozen
     `docs/RELEASE_PLAN_DONE.md` (completed `[x]`, by workstream). One ledger — every ID in exactly one file; on
-    completion a task **moves** active → done (same change as the journal entry).
+    completion a task **moves** active → done (same change as the journal entry). **A task lives in the
+    workstream section matching its ID prefix** (a BUILD task never sits under ARCH, even when filed from
+    another task's completion) — `check_scope.py` fails on stranded `[x]` entries in the active file AND on
+    prefix/section mismatches in either file.
 - **`every-task-in-the-ledger`** — No work happens without a ledger entry, **regardless of where the task came from**
   — a chat request, a GitHub issue, a code-review finding, a TODO spotted mid-task. The first action on any new piece
   of work is to file it: give it an ID and a `[release]`/`[deferred]` tag *before* starting. External sources merely
