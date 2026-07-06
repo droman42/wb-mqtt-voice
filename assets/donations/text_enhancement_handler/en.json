@@ -149,7 +149,10 @@
               "label": "TEXT"
             }
           ],
-          "aliases": []
+          "aliases": [
+            "phrase",
+            "content"
+          ]
         }
       ]
     },
@@ -313,7 +316,10 @@
               "label": "TEXT"
             }
           ],
-          "aliases": []
+          "aliases": [
+            "phrase",
+            "sentence"
+          ]
         },
         {
           "name": "improvement_type",
@@ -339,7 +345,11 @@
               "label": "IMPROVEMENT_TYPE"
             }
           ],
-          "aliases": [],
+          "aliases": [
+            "type",
+            "kind",
+            "method"
+          ],
           "default_value": "general",
           "choice_surfaces": {
             "grammar": [
@@ -521,7 +531,10 @@
               "label": "TEXT"
             }
           ],
-          "aliases": []
+          "aliases": [
+            "phrase",
+            "fragment"
+          ]
         },
         {
           "name": "correction_type",
@@ -548,7 +561,11 @@
               "label": "CORRECTION_TYPE"
             }
           ],
-          "aliases": [],
+          "aliases": [
+            "type",
+            "kind",
+            "category"
+          ],
           "default_value": "all",
           "choice_surfaces": {
             "grammar": [

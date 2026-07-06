@@ -234,7 +234,11 @@
               "label": "TEXT"
             }
           ],
-          "aliases": []
+          "aliases": [
+            "phrase",
+            "words",
+            "sentence"
+          ]
         },
         {
           "name": "voice",
@@ -485,7 +489,11 @@
               "label": "TEXT"
             }
           ],
-          "aliases": []
+          "aliases": [
+            "phrase",
+            "words",
+            "sentence"
+          ]
         }
       ]
     },

@@ -116,7 +116,10 @@
               "label": "COMPONENT"
             }
           ],
-          "aliases": []
+          "aliases": [
+            "module",
+            "subsystem"
+          ]
         }
       ]
     },
@@ -211,7 +214,10 @@
               "label": "METRIC_TYPE"
             }
           ],
-          "aliases": [],
+          "aliases": [
+            "type",
+            "kind"
+          ],
           "choice_surfaces": {
             "performance": [
               "performance"
@@ -342,7 +348,10 @@
               "label": "DETAILED"
             }
           ],
-          "aliases": [],
+          "aliases": [
+            "full",
+            "verbose"
+          ],
           "default_value": false
         }
       ]

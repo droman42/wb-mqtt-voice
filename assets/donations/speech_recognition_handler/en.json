@@ -337,7 +337,11 @@
               "label": "PROVIDER"
             }
           ],
-          "aliases": []
+          "aliases": [
+            "engine",
+            "system",
+            "service"
+          ]
         }
       ]
     },
@@ -610,7 +614,13 @@
           "aliases": [
             "level"
           ],
-          "default_value": "high"
+          "default_value": "high",
+          "choice_surfaces": {
+            "ultra": [
+              "maximum",
+              "max"
+            ]
+          }
         }
       ]
     },

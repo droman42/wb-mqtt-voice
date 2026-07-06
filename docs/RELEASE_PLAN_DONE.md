@@ -2527,6 +2527,22 @@ rationale/chronology lives in [`RELEASE_JOURNAL.md`](./RELEASE_JOURNAL.md).
       source of truth. Verified: full suite 1074 passed (no test relied on it), and the WB7-config golden now replays
       green with no workaround. Surfaced while recording a golden trace (TEST-12). _Noted but not changed: the webapi
       runner overriding component config is its own smell — relevant to the `--set` work, worth a future look._
+- [x] **BUG-5** [NLU/I18N/DONATION] (P3) `[deferred]` — **DONE 2026-07-06 (user pulled it forward — an EN tester is
+      waiting). Donation EN recognition enrichment**, gap re-measured fresh (the BUG-4-era numbers held: 27 alias
+      params + 10 choice params). Added EN `aliases` to all 27 (concept synonyms — "faces", "reminder", "engine",
+      "into"…) and EN `choice_surfaces` to the 5 CONCEPT choices (system language ru→"russian"; timer unit
+      second/sec/min/hrs…; quality ultra→"maximum"; provider_control component asr→"speech recognition"…);
+      the identifier CHOICEs (provider/voice names) deliberately got NOTHING per `donation-choice-surfaces-rule` —
+      canonicals self-match in EN. **smart_home taken into account** (user): structural parity was already clean,
+      but 9 methods were phrase-THIN (1-2 EN vs 3-9 RU) — enriched to concept parity (mute/menu-nav/presence/
+      cover-position/hvac-fan…). One regression caught by A/B probing during the work: "set a timer for ten minutes"
+      had NO exact pattern (article-blind "set timer") and lived on a 0.01 fuzzy margin my keyword additions tipped —
+      fixed at the root with article-tolerant phrases ("set a timer", "timer for") → exact match at 1.00 (the
+      QUAL-64/Slice-3 lesson applied to EN). Pre-existing EN misroutes found while probing (NOT this task, seed
+      evidence for the EN-fixture effort): "cancel the timer"→voice_synthesis.cancel, "switch asr to whisper"→
+      smart_home.input_select, "translate hello to german"→greeting.hello, bare "pause"→audio.stop.
+      Gates: donation validator 0/0, suite 1299, device gate 48/48 (RU untouched).
+
 
 ### Tests (TEST)
 - [x] **TEST-18** [EVAL][MQTT] (P3) `[deferred]` — **DONE 2026-07-05. The `device_command` capture provider + Irene

@@ -189,7 +189,10 @@
               "label": "COMPONENT"
             }
           ],
-          "aliases": []
+          "aliases": [
+            "module",
+            "subsystem"
+          ]
         }
       ]
     },
@@ -328,7 +331,15 @@
     {
       "name": "language",
       "description": "Response language preference",
-      "default_value": "ru"
+      "default_value": "ru",
+      "choice_surfaces": {
+        "ru": [
+          "russian"
+        ],
+        "en": [
+          "english"
+        ]
+      }
     }
   ]
 }

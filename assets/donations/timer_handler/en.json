@@ -54,6 +54,8 @@
       "description": "Set a timer with duration and optional message",
       "phrases": [
         "set timer",
+        "set a timer",
+        "timer for",
         "start timer",
         "set alarm",
         "start alarm",
@@ -235,7 +237,10 @@
               "label": "DURATION_WITH_THROUGH"
             }
           ],
-          "aliases": []
+          "aliases": [
+            "time",
+            "for"
+          ]
         },
         {
           "name": "unit",
@@ -260,8 +265,27 @@
               "label": "TIME_UNIT"
             }
           ],
-          "aliases": [],
-          "default_value": "minutes"
+          "aliases": [
+            "units",
+            "time unit"
+          ],
+          "default_value": "minutes",
+          "choice_surfaces": {
+            "seconds": [
+              "second",
+              "sec",
+              "secs"
+            ],
+            "minutes": [
+              "minute",
+              "min",
+              "mins"
+            ],
+            "hours": [
+              "hour",
+              "hrs"
+            ]
+          }
         },
         {
           "name": "message",
@@ -306,7 +330,10 @@
               "label": "TIMER_MESSAGE_SAY"
             }
           ],
-          "aliases": []
+          "aliases": [
+            "text",
+            "reminder"
+          ]
         }
       ]
     },

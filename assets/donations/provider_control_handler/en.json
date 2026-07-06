@@ -262,7 +262,28 @@
               "label": "COMPONENT"
             }
           ],
-          "aliases": []
+          "aliases": [
+            "type",
+            "system",
+            "module"
+          ],
+          "choice_surfaces": {
+            "audio": [
+              "sound"
+            ],
+            "llm": [
+              "model",
+              "language model"
+            ],
+            "asr": [
+              "recognition",
+              "speech recognition"
+            ],
+            "tts": [
+              "voice",
+              "speech"
+            ]
+          }
         },
         {
           "name": "provider",
@@ -299,7 +320,10 @@
               "label": "PROVIDER"
             }
           ],
-          "aliases": []
+          "aliases": [
+            "name",
+            "driver"
+          ]
         }
       ]
     },
@@ -507,7 +531,31 @@
               "label": "COMPONENT"
             }
           ],
-          "aliases": []
+          "aliases": [
+            "type",
+            "system",
+            "module"
+          ],
+          "choice_surfaces": {
+            "audio": [
+              "sound"
+            ],
+            "llm": [
+              "model",
+              "language model"
+            ],
+            "asr": [
+              "recognition",
+              "speech recognition"
+            ],
+            "tts": [
+              "voice",
+              "speech"
+            ],
+            "all": [
+              "everything"
+            ]
+          }
         }
       ]
     }

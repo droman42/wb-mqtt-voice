@@ -132,7 +132,9 @@
               "label": "TIME_OF_DAY"
             }
           ],
-          "aliases": [],
+          "aliases": [
+            "time"
+          ],
           "choice_surfaces": {
             "morning": [
               "morning"

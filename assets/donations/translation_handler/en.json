@@ -161,7 +161,10 @@
               "label": "TEXT"
             }
           ],
-          "aliases": []
+          "aliases": [
+            "phrase",
+            "word"
+          ]
         },
         {
           "name": "target_language",
@@ -196,7 +199,11 @@
               "label": "TARGET_LANGUAGE"
             }
           ],
-          "aliases": []
+          "aliases": [
+            "language",
+            "to",
+            "into"
+          ]
         }
       ]
     },
@@ -380,7 +387,11 @@
               "label": "TEXT"
             }
           ],
-          "aliases": []
+          "aliases": [
+            "phrase",
+            "word",
+            "sentence"
+          ]
         },
         {
           "name": "target_language",
@@ -415,7 +426,11 @@
               "label": "TARGET_LANGUAGE"
             }
           ],
-          "aliases": []
+          "aliases": [
+            "language",
+            "to",
+            "into"
+          ]
         }
       ]
     }

@@ -15,6 +15,20 @@ newest entries near the top of each dated section.
 
 ## Action journal
 
+- **2026-07-06 — BUG-5 DONE (pulled forward from deferred — an EN tester is waiting) — donation
+  EN enrichment, smart_home included.** The BUG-4-era gap held almost exactly (27 alias params,
+  10 choice params). EN aliases added everywhere; EN choice surfaces ONLY for concept choices
+  (language, timer units, quality, component) — identifier choices (provider/voice names) got
+  nothing on purpose: canonicals self-match in EN. smart_home was structurally at parity but
+  phrase-thin on 9 methods (menu-nav had 2 EN phrases vs 9 RU) — enriched. The valuable catch
+  came from A/B probing the work instead of trusting it: "set a timer for ten minutes" had NO
+  exact pattern (the phrases were article-blind) and won at HEAD on a 0.01 fuzzy margin that
+  the new keywords tipped over to timer.cancel — fixed at the root with article-tolerant
+  phrases (exact match 1.00), the same fix-T1-not-the-fallback lesson QUAL-64/Slice-3 taught.
+  Probing also surfaced four PRE-EXISTING EN misroutes (cancel-the-timer, switch-asr-to,
+  translate-hello, bare pause) — untouched here, recorded as seed evidence for the EN
+  system-test discussion. Validator 0/0, suite 1299, RU device gate 48/48.
+
 - **2026-07-06 — QUAL-69 DONE (filed + completed same day) — wardrobe «свет» alias consumed,
   re-pin @ `acc1e18b`.** The bridge's open-questions resolution gave `wardrobe_spots` the ru
   alias «свет» — a device now carries the group noun as a NAME. Analysis before consuming:

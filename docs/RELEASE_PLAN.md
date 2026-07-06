@@ -247,15 +247,6 @@ _Apply to every remediation task below (from the 4 review docs + QUAL-25/26). So
 _Discrete functional defects (distinct from QUAL refactors/quality work). Surfaced from any source; filed before fixing._
 
 
-- [ ] **BUG-5** [NLU/I18N/DONATION] (P3) `[deferred]` — **Donation en files missing user-facing translations
-      (recognition enrichment).** The translation audit (under BUG-4) found Russian donation files richer than English:
-      ~28 params across 13 handlers have RU `aliases` (param-name synonyms) with no EN equivalent, and ~9 params have
-      RU `choice_surfaces` with no EN. These are **recognition enrichment** (en already works via method phrases +
-      patterns; missing aliases just mean fewer en synonyms), not a functional break — so split out from BUG-4.
-      **Respect `donation-choice-surfaces-rule`:** add EN synonyms for user-facing *concepts* (e.g. `duration` →
-      "time"/"for", `message` → "reminder"), but **NEVER** "translate" canonical technical identifiers (provider /
-      model / driver / service names are self-matchable). Per-handler gap list in the BUG-4 audit. Surfaced while
-      fixing BUG-4.
 
 ### Tests (TEST)
 > **Strategy (decided 2026-06-01): do NOT keep repairing the existing suite.** Most tests were written against

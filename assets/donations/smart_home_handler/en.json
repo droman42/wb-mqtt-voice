@@ -514,7 +514,10 @@
       "description": "volume mute",
       "phrases": [
         "mute",
-        "sound off"
+        "sound off",
+        "mute the sound",
+        "turn off the sound",
+        "no sound"
       ],
       "lemmas": [],
       "examples": [],
@@ -597,7 +600,9 @@
       "intent_suffix": "playback_previous",
       "description": "playback previous",
       "phrases": [
-        "previous track"
+        "previous track",
+        "previous song",
+        "previous"
       ],
       "lemmas": [],
       "examples": [],
@@ -652,7 +657,10 @@
       "description": "cover position",
       "phrases": [
         "halfway",
-        "percent open"
+        "percent open",
+        "percent closed",
+        "curtains to",
+        "blinds to"
       ],
       "lemmas": [],
       "examples": [],
@@ -690,7 +698,9 @@
       "intent_suffix": "tracks_audio",
       "description": "tracks audio",
       "phrases": [
-        "switch audio track"
+        "switch audio track",
+        "change audio track",
+        "audio track"
       ],
       "lemmas": [],
       "examples": [],
@@ -732,7 +742,10 @@
       "description": "screen aspect",
       "phrases": [
         "widescreen",
-        "aspect ratio"
+        "aspect ratio",
+        "sixteen by nine",
+        "four by three",
+        "letterbox"
       ],
       "lemmas": [],
       "examples": [],
@@ -765,7 +778,12 @@
       "description": "menu nav",
       "phrases": [
         "menu up",
-        "menu down"
+        "menu down",
+        "menu left",
+        "menu right",
+        "menu select",
+        "menu back",
+        "menu home"
       ],
       "lemmas": [],
       "examples": [],
@@ -814,7 +832,10 @@
       "description": "presence set",
       "phrases": [
         "we are home",
-        "we are leaving"
+        "we are leaving",
+        "we left",
+        "home mode",
+        "away mode"
       ],
       "lemmas": [],
       "examples": [],
@@ -839,7 +860,9 @@
       "intent_suffix": "cleaning_start",
       "description": "cleaning start",
       "phrases": [
-        "cleaning mode"
+        "cleaning mode",
+        "start cleaning",
+        "start the cleaning"
       ],
       "lemmas": [],
       "examples": [],
@@ -918,7 +941,10 @@
       "intent_suffix": "hvac_fan",
       "description": "hvac fan",
       "phrases": [
-        "ac fan"
+        "ac fan",
+        "fan to speed",
+        "fan to auto",
+        "fan to quiet"
       ],
       "lemmas": [],
       "examples": [],
