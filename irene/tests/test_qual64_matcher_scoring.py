@@ -37,6 +37,12 @@ CASES = [
     ("запусти youtube на телеке", "smart_home.app_launch"),
     ("сделай телек громче", "smart_home.volume_up"),
     ("какая температура в душевой", "smart_home.read_state"),
+    # QUAL-35 Slice 3 (F96): the bare «кондиционер на» pattern was greedy — a setpoint sentence
+    # routed to hvac_mode at full confidence; mode-worded phrases keep both routings honest
+    ("поставь в спальне кондиционер на двадцать два градуса", "smart_home.set_setpoint"),
+    ("кондиционер на охлаждение", "smart_home.hvac_mode"),
+    ("переведи кондиционер в режим осушения", "smart_home.hvac_mode"),
+    ("вентилятор на скорость 2", "smart_home.hvac_fan"),
 ]
 
 

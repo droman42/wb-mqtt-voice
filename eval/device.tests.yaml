@@ -144,14 +144,14 @@
     fixture: F20
     tier: "1"
     kind: clarify
-- description: "F21 (t2, clarify): поставь двадцать два градуса"
+- description: "F21 (t1, clarify): поставь двадцать два градуса"
   vars:
     utterance: "поставь двадцать два градуса"
     room: "bedroom"
     expect: {"kind": "clarify", "capability": "climate", "candidates": ["bedroom_heating", "bedroom_hvac"]}
   metadata:
     fixture: F21
-    tier: "2"
+    tier: "1"
     kind: clarify
 - description: "F30 (t1, read): какая температура в душевой"
   vars:
@@ -386,4 +386,112 @@
   metadata:
     fixture: F81
     tier: "1"
+    kind: actuate
+- description: "F90 (t2, actuate): вруби телек"
+  vars:
+    utterance: "вруби телек"
+    room: "children_room"
+    expect: {"kind": "actuate", "device_id": "children_room_tv", "capability": "power", "action": "on", "params": null}
+  metadata:
+    fixture: F90
+    tier: "2"
+    kind: actuate
+- description: "F91 (t2, actuate): вырубай телек"
+  vars:
+    utterance: "вырубай телек"
+    room: "children_room"
+    expect: {"kind": "actuate", "device_id": "children_room_tv", "capability": "power", "action": "off", "params": null}
+  metadata:
+    fixture: F91
+    tier: "2"
+    kind: actuate
+- description: "F92 (t2, room-group): выруби свет"
+  vars:
+    utterance: "выруби свет"
+    room: "bedroom"
+    expect: {"kind": "room-group", "room_id": "bedroom", "group": "light", "action": "off", "scope": "auto"}
+  metadata:
+    fixture: F92
+    tier: "2"
+    kind: room-group
+- description: "F93 (t2, actuate): глуши магнитофон"
+  vars:
+    utterance: "глуши магнитофон"
+    room: "living_room"
+    expect: {"kind": "actuate", "device_id": "reel_to_reel", "capability": "playback", "action": "stop", "params": null}
+  metadata:
+    fixture: F93
+    tier: "2"
+    kind: actuate
+- description: "F94 (t1, actuate): на кухне вытяжку включи"
+  vars:
+    utterance: "на кухне вытяжку включи"
+    room: "kitchen"
+    expect: {"kind": "actuate", "device_id": "kitchen_hood", "capability": "fan", "action": "set", "params": {"level": 2}}
+  metadata:
+    fixture: F94
+    tier: "1"
+    kind: actuate
+- description: "F95 (t2, room-group): прикрой шторы"
+  vars:
+    utterance: "прикрой шторы"
+    room: "bedroom"
+    expect: {"kind": "room-group", "room_id": "bedroom", "group": "cover", "action": "close", "scope": "auto"}
+  metadata:
+    fixture: F95
+    tier: "2"
+    kind: room-group
+- description: "F96 (t1, actuate): поставь в спальне кондиционер на двадцать два градуса"
+  vars:
+    utterance: "поставь в спальне кондиционер на двадцать два градуса"
+    room: "bedroom"
+    expect: {"kind": "actuate", "device_id": "bedroom_hvac", "capability": "climate", "action": "set_setpoint", "params": {"temp": 22}}
+  metadata:
+    fixture: F96
+    tier: "1"
+    kind: actuate
+- description: "F97 (t1, actuate): сделай на телеке звук на пятнадцать"
+  vars:
+    utterance: "сделай на телеке звук на пятнадцать"
+    room: "children_room"
+    expect: {"kind": "actuate", "device_id": "children_room_tv", "capability": "volume", "action": "set", "params": {"level": 15}}
+  metadata:
+    fixture: F97
+    tier: "1"
+    kind: actuate
+- description: "F98 (t1, actuate): процентов на тридцать поставь яркость спотов"
+  vars:
+    utterance: "процентов на тридцать поставь яркость спотов"
+    room: "kitchen"
+    expect: {"kind": "actuate", "device_id": "kitchen_spots", "capability": "brightness", "action": "set", "params": {"level": 30}}
+  metadata:
+    fixture: F98
+    tier: "1"
+    kind: actuate
+- description: "F100 (t2, actuate): сделай споты поярче"
+  vars:
+    utterance: "сделай споты поярче"
+    room: "bedroom"
+    expect: {"kind": "actuate", "device_id": "bedroom_spots", "capability": "brightness", "action": "set", "params": {"level": 70}}
+  metadata:
+    fixture: F100
+    tier: "2"
+    kind: actuate
+- description: "F101 (t2, actuate): притуши споты"
+  vars:
+    utterance: "притуши споты"
+    room: "kitchen"
+    expect: {"kind": "actuate", "device_id": "kitchen_spots", "capability": "brightness", "action": "set", "params": {"level": 50}}
+  metadata:
+    fixture: F101
+    tier: "2"
+    kind: actuate
+- description: "F102 (t2, actuate): сделай потеплее"
+  vars:
+    utterance: "сделай потеплее"
+    room: "kitchen"
+    expect: {"kind": "actuate", "device_id": "kitchen_floor", "capability": "climate", "action": "set_setpoint", "params": {"temp": 23}}
+  metadata:
+    fixture: F102
+    tier: "2"
     kind: actuate

@@ -2050,6 +2050,167 @@ rationale/chronology lives in [`RELEASE_JOURNAL.md`](./RELEASE_JOURNAL.md).
       `top_p`/`frequency_penalty`/`presence_penalty`); providers now use a fixed deterministic `0.0`. **Invariant #4:**
       config-ui has no typed temperature field (free-form params dict) → nothing to sync, openapi unchanged. (QUAL-15/16
       console-LLM fallback / `fallback_providers` — left as-is; not in scope here.)
+- [x] **QUAL-35** `[release]` [PEX][MQTT] — **DONE 2026-07-06 (Slice 3 closed it — evidence-first, interactive).**
+      **Slice 3 record:** authored the tier-2 hard-phrasing fixtures (F90–F98 measurable + F100–F102 relative
+      adjustments) and ran the two-leg measurement (baseline vs the QUAL-50 LLM tier). The scoreboard said the wins
+      were NOT in a new NLU tier; what got built instead: **(a)** group-noun routing for RAW NLU entities
+      (`_group_for_surface` — LLM puts «свет»/«шторы» in `target`, never the CHOICE param; F92/F95),
+      **(b)** power-verb → playback play/stop fallback (tape-deck class; F93), **(c)** resolver `scan_utterance`
+      (stem-grade catalog spotting when word order defeats the post-verb extraction regex; F94),
+      **(d)** donation pattern fixes — mode-worded hvac phrases (the greedy «кондиционер на» routed a setpoint
+      sentence to hvac_mode at conf 1.00 where NO fallback tier can ever help; F96) + «звук на» volume_set pattern
+      with mute out-specified (threshold coin-flip actuated volume up/down; F97). **Final: tier-1 gate 47/47
+      (F94/F96/F97/F98 graduated in); tier-2 `NLU=llm` 5/8 — red = F100–F102 only (→ QUAL-68).** Colloquial lexicon
+      («вруби»/«глуши») deliberately NOT added to donations — the LLM tier covers it (already enabled in ALL 6
+      deployment configs since QUAL-50/51 — the 'disabled in deployments' note was stale) and the smart-home guide
+      now documents the teach-a-word-via-donations recipe instead (user decision). **spaCy T2 leg DROPPED on
+      evidence** (zero smart-home patterns exist; `spacy_provider` never consumes `token_patterns` at recognition;
+      no fixture uniquely needed it) → revival, if ever, lives in QUAL-53. **Excluded by design** (recorded in the
+      fixture-file header): anaphora, multi-command/negation, source→dest, free-text spans. 10 new unit tests;
+      suite 1299; pyright 0. _Restructure + historical spine below (kept as the record):_
+      landed): what remains runs in THREE SLICES; the historical prose below is the record, the slices are
+      the plan.** **Already satisfied elsewhere** (task-start reconciliation): (a) typed `entity_type`
+      donations ✓ ARCH-8 PR-4; (b) the Q7b declarative swap ✓ PR-3; (c) D-15 room policy + missing-room
+      clarify ✓ PR-3/PR-4; resolver note (1) `options_from` dance ✓ QUAL-65; note (3) input fence lifted ✓;
+      the units *requirement* (catalog `unit` + range pre-validation) ✓ PR-4; **"compound numerals need T2"
+      is a dead theory** — F05/F06/F07 pass at T1 (the failures were BUG-23/24 pipeline corruption).
+      **The slices:**
+      • **Slice 1 — transliteration-tolerant matching (note 2) — DONE 2026-07-05.**
+        `utils/text_normalizers.latin_to_cyrillic_hint` (cached): Latin words through the in-house TTS
+        transcription engine ("YouTube"→«ютуб» exactly), ALL-CAPS acronyms spelled with English letter
+        names (TV→«ти ви» — the engine would expand «тэлевижен»); consumed by the handler's
+        `_match_option` (options with Latin also match their pronunciation hint) and the scenario label
+        scorer, with «э»→«е» folding so transcription variants don't lose points. **Acceptance met:
+        F41 + F53 green live, `make device-auto` → 25/27** — the only red left is F40/F42 (QUAL-64,
+        user-parked). F41/F42/F53 retiered to 1 (eval-commons `30e174c`); tier 2 now means exactly the
+        Slice-3 set. 3 handler tests + hint unit coverage; suite 1269 green.
+      • **Slice 2 — capability breadth — SCOPE DECIDED 2026-07-05 (interactive, item-by-item), DOING.**
+        **WIRE:** `volume` all four (up/down/set/mute_toggle); `playback` everything (play/stop/next/
+        previous/ff/rewind; `play_pause` as the fallback where a device lacks the split actions — the
+        `video` device has only the toggle); `cover.set_position` in BOTH address forms (device +
+        room-group with `params{pct}`; «наполовину»→50); `climate` on/off via power-verb fallback
+        («включи обогрев» fails today — power verbs only see `power` caps); kitchen-hood `fan` (power
+        verbs → `set(2)`/`off`; explicit levels; «на полную»→catalog max 4); `tracks` audio/subtitles
+        (no eject); `screen` aspect ratios; `menu` nav subset up/down/left/right/ok/back/home (user:
+        needed for track dialogs on some devices — exit/menu/settings excluded); `presence` home/away
+        («мы дома»/«мы уходим»); `cleaning` start + set_delay(minutes); **`water_supply` alarm on/off
+        only** (not heating_control's). **SKIP (recorded exclusions):** `pointer`, `power.toggle`,
+        `seasonal_mode` (twice-a-year deliberate act vs ASR misfire), heating_control `alarm`, **all
+        four valves — PERMANENT voice fence** (consequence-heavy plumbing, like the power-fan-out
+        fence). **CONTRACT-BLOCKED:** HVAC `set_mode`/`set_fan` — bare string params, no triplets/
+        options_from (the G5 disease, third instance) → **bridge VWB-24 filed (uncommitted)**; wire
+        after the re-pin that types them. Vanes never. Each wired item = donation method + handler
+        method + crossover fixtures (PR-4 pattern). Adjudications ride along: `set_position`'s `%`
+        settles units-generalization; `room_context` enforcement gets a keep-or-close call.
+        **Part A DONE 2026-07-05** (`bedc867`): volume all-four (dB ranges honest via shared range
+        pre-validation), playback play/stop/next/previous + seek-CHOICE with `play_pause` fallback,
+        `cover.set_position` both forms («наполовину»→50), power-verb fallback → climate.on/off +
+        hood fan set(2)/off. Fixtures F60–F67 ALL GREEN live first run — **33/35** (red = F40/F42 =
+        QUAL-64 only). 5 handler tests; suite 1274, pyright 0. **Part B DONE 2026-07-05:** tracks audio/subtitles («смени» verbs — «переключи» is
+        input_select's in the matcher's scoring, QUAL-64 family), screen aspects (CHOICE + target),
+        menu nav CHOICE (7 directions), presence home/away, cleaning start + set_delay, water alarm
+        (device narrowed by the alarm+leaks capability PAIR — never an id literal). Fixtures
+        F70–F75; live **39/41** — only F40/F42 (QUAL-64) red. **Slice 2 COMPLETE.** Adjudications:
+        units-generalization SETTLED (dB volume, % position/brightness, °C setpoint all ride the one
+        catalog-range pre-validation path — no further abstraction); `room_context` declarative
+        enforcement CLOSED as satisfied-by-implementation.
+      • **Slice 2a — HVAC mode/fan (VWB-24 consumed) — DOING 2026-07-05.** The bridge accepted +
+        implemented VWB-24 (set_mode/set_fan params typed). Scope: re-pin the contract into
+        eval-commons (guards will flag stale fixtures), wire `_handle_hvac_mode` (+fan if triplets
+        landed for it) via the CHOICE path against the typed values, fixtures («кондиционер на
+        охлаждение»), vanes stay unwired. **DONE 2026-07-05:** re-pinned @ `a17a63b0` (VWB-24 v1.3 —
+        full ru/en/de triplets, e.g. cool→«охлаждение»; wire≠canonical now: "COOL"/"cool" — the
+        fixture guard learned to validate CANONICAL, which is what Irene sends per §5a);
+        `_hvac_choice` matches spoken vs the device's OWN triplets (labels+canonicals through
+        `_match_option`), device picked ACTION-aware (only HVACs carry set_mode — heaters must not
+        clarify into it); set_fan's param is named `fan`. Fixtures F80/F81 green live — **41/43**,
+        red = F40/F42 (QUAL-64) only. Gotcha hardened: a STALE mock bridge squatting on the port
+        served an old golden silently (empty mode values) — `device-auto` now clears the port first.
+      • **Slice 3 — hard-phrasing tier, evidence-first (absorbs old T2 AND T3).** Author the fixtures for
+        the genuinely hard phrasings (multi-param «яркость 30 и температуру 22», role/preposition
+        «со спальни на кухню», free-text spans, negation «все кроме торшера», anaphora «сделай его поярче»),
+        then measure BOTH existing mechanisms against them: the parked spaCy patterns activated as the
+        cascade fallback, and the **QUAL-50 LLM NLU tier enabled in config** (built, donation-grounded,
+        DeepSeek-through-LLMPort, abstains offline — currently NOT enabled in any deployment config). Build
+        only what the scoreboard says is missing. Sequencing: AFTER the QUAL-64 matcher tune, so the
+        fallback tiers are built against a tuned first tier. **The old T3 bullet's "local-LLM / local-only"
+        framing is OBSOLETE** (pre-dates QUAL-50/QUAL-14): the universal fallback is the configured LLM
+        provider (DeepSeek with an API key), offline = graceful degradation — no separate T3 task exists.
+      QUAL-35 CLOSES at Slice 3. _Historical spine below (kept as the record):_
+      **★ ARCH-22 (2026-06-14) supplies the multi-room resolution SPEC
+      (D-15, `docs/design/esp32_satellite.md`):** no room → primary; a covered room in the utterance → that room; a known
+      (catalog) room NOT covered → spoken error "this room is not managed by this device". Needs the bridge catalog
+      (ARCH-8) for the global room set + RU-morphology room matching. ARCH-22 already **carries** `primary_room`/
+      `covered_rooms` on `ClientRegistration` (D-14); this task implements the resolver that consumes them. _Orig:_
+      **Declarative NLU tiers T2 + T3 — MUST-HAVE for smart-home/MQTT
+      (gated on ARCH-7/8). Split out of QUAL-11 (2026-06-03, user).** _ARCH-15 PR-9.2 note: the device handlers QUAL-35
+      authors **emit a `device_command`-modality result delivered via the OutputManager to the designated bridge
+      `OutputPort`** and await its rich `DeliveryResult` (echo/error → spoken confirm; `param_invalid` → clarify) — per
+      `mqtt_integration.md` §13 (ARCH-8). No bespoke ActuationPort._ QUAL-11 deliberately shipped the **lightweight (T1)**
+      extraction contract — keyword/NER + regex + CHOICE surfaces + lemmas, which is what the `hybrid_keyword_matcher`
+      (the hot path) actually runs. T1 covers the easy ~80% of commands but **fails on the complex commands smart-home
+      control needs.** This task builds the two heavier tiers when MQTT/smart-home lands:
+      • **T2 — spaCy `Matcher`/`EntityRuler` slot-filling** (the currently-**parked** `token_patterns`/`slot_patterns`/
+        `extraction_patterns`, authored across all 14 handlers but validated-then-discarded today). Implement in the
+        **spaCy provider as the cascade fallback** (lemma/POS-aware recognition + span→`ParameterSpec` slot extraction).
+        Wins where T1 provably fails: **compound values** ("таймер на 2 часа 30 минут" → 150 min, not 2), **two
+        same-type entities by role/preposition** ("со спальни **на** кухню" → source vs dest), **multiple param=value
+        pairs in any order** ("яркость 30 и температуру 22"), **free-text spans into a slot** ("напомни выключить
+        плиту"), and **morphology/name-collisions at real-home scale** (`{LEMMA: лампа}` vs `{LEMMA: лампочка}`,
+        deterministic vs fuzzy). _Stop the silent validate-then-discard now (QUAL-11 Stage C documents the patterns as
+        parked here)._
+      • **T3 — dependency-parse / local-LLM NLU** for what T2 **also** can't do (linear Matcher has no scope):
+        **negation/exceptions** ("все лампы **кроме** торшера"), **anaphora** ("сделай **его** поярче"), **conditionals**
+        ("**если** темно, включи свет"). Ties to the local-LLM-assist lane (QUAL-15) + ARCH-9/10 [INFER]; opt-in,
+        local-only.
+      **Sequencing:** design with **ARCH-7** (MQTT/output-port + room/device model) and land before/with **ARCH-8**
+      (smart-home actuation) — complex device commands are unusable on T1 alone. **OWNS the device-half relocated
+      from ARCH-6 (2026-06-03):** ARCH-6 deferred the `entity_type`/`room_context` *consumption* because at its build
+      time NO device/room handlers existed (all decls `generic`) — that work lives HERE, where the device handlers do.
+      So this task: **(a)** authors the non-generic `entity_type`/`room_context` (device/location/room/person) on the
+      smart-home handlers it builds; **(b)** replaces the brittle `_is_device_entity`/`_is_location_entity` name-heuristics
+      (`entity_resolver.py`) with declarative `entity_type`-driven resolver selection (the Q7b "typed accessor IS the
+      replacement" atomic swap); **(c)** implements the `room_context` resolve-or-clarify policy (with QUAL-30). ARCH-6
+      left the seam ready (`resolve_physical_id` returns the registered physical id; `ClientRegistry` populated by the WS
+      handshake). Gated by `config-ui-stays-functional` (any donation-schema change → config-ui;
+      note the parked T2 pattern fields already exist, so no new schema surface unless extended). Refs:
+      `parameter_extraction_review.md` (T2 = the "dead best mechanisms" themes 1+3), QUAL-11 (T1 baseline), Q6/Q7.
+      • **★ Units-of-measurement layer (design WITH this task — user, 2026-06-28).** Smart-home commands carry units
+        (dimming **%**, climate **°C**, …), the same value+unit shape time already needs. BUG-6 consolidated the **time**
+        family into `irene/utils/units.py` (`TIME_UNITS` table + `parse_duration`) and **removed the dead `DURATION`
+        param-type stub** (it never had a `coerce()` branch). Do NOT build a general units abstraction speculatively —
+        design it HERE, against the real device-unit requirements: generalize `units.py` to a value+unit type with
+        **canonical normalization + externalized (donation/catalog) unit surfaces** so timer + dimming + temperature
+        share ONE path. The bridge catalog (ARCH-8) declares each device's unit — that's the requirement source.
+        **★ Satisfied bridge-side 2026-07-05 (VWB-20 v1.1): 27 action params carry `unit` (°C on `set_setpoint`,
+        % on brightness/position) in the typed `CatalogParam`.**
+        `QuantityEntityResolver` (`entity_resolver.py`) already holds the non-time nucleus (percent/degrees). _(The ru
+        oblique-case numeral gap noted here was resolved separately as BUG-7.)_
+      • **★ Resolver-design notes from the contract analysis (2026-07-04/05, chat → recorded here):**
+        **(1) CHOICE resolution gains a SECOND surface source** — a `CatalogParam` with `options_from` (e.g.
+        `apps.launch app`) enumerates its surfaces at RESOLUTION time via `GET /devices/{id}/options/<kind>`,
+        not from the catalog; generalize the ARCH-26 lazy-miss pattern (resolve → miss → re-fetch → retry once)
+        plus a short-TTL per-device cache — this round-trip sits inside a voice command's latency budget.
+        **(2) Dynamic-set surfaces need transliteration-tolerant matching:** the options endpoint returns
+        device-reported proper nouns ("YouTube", "Netflix") while RU ASR yields «ютуб»/«нетфликс» — the
+        resolver must match Cyrillic↔Latin phonetically/transliterated, NOT by exact equality (per
+        `donation-choice-surfaces-rule` the contract stays canonical; matching is Irene's job).
+        **(3) ~~The v1 command set EXCLUDES input switching~~ FENCE LIFTED 2026-07-05 (bridge VWB-19 +
+        voice QUAL-65):** `input.set {value}` + `apps.launch {app}` implemented — by_value sets validate
+        offline against catalog `values`; parametric/app sets enumerate at resolution time via the
+        note-(1) `options_from` dance (now BUILT: `read_options` on the port + 30s TTL cache). Only
+        Cyrillic-spoken-Latin matching («ютуб») remains T2 — note (2).
+        **(4) The depth doctrine (VWB-23, 2026-07-05):** resolve only as deep as the utterance specifies —
+        a named device → device-canonical; a bare capability noun («включи свет», «закрой шторы») → a
+        room-group command (`{room, group, action, scope}`); the noun lexicon binds group nouns to catalog
+        `CatalogCapability.group` values, NOT to convention; singular → `scope: auto` (the bridge's
+        `group_defaults` picks the device), «весь»/plural → `scope: all`.
+        **(5) No power-group fan-out promises** in donations — the bridge allow-lists fan-out to
+        `light`+`cover` only and 409s the rest by design («выключи все розетки» must not work).
+        **(6) Same-room capability ambiguity: v1 CLARIFIES** (user decision 2026-07-05; TEST-18 fixtures
+        F20/F21 are the spec) — don't build priority config into the v1 resolver; priority rules are
+        **QUAL-63** (later release).
+
 
 ### Bugs (BUG)
 - [x] **BUG-13** [ASR][WS] (P3) `[deferred]` — **DONE 2026-07-02 (re-scoped with the user after

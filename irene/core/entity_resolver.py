@@ -201,6 +201,23 @@ class ContextualEntityResolver:
                     self.logger.debug(f"Entity '{entity_name}'='{entity_value}' classified as {attempted_kind} "
                                       f"but did not resolve — marked _resolution_failed")
 
+        # QUAL-35 Slice 3 (F94): a donation-declared DEVICE param the extraction regexes missed —
+        # pre-verbal word order («на кухне вытяжку включи») defeats the post-verb captures — gets
+        # one last chance: scan the utterance itself for catalog device names (stem-grade only).
+        if self._entity_types_by_intent is None:
+            self._entity_types_by_intent = self._build_entity_type_map()
+        for param, etype in self._entity_types_by_intent.get(intent.name, {}).items():
+            if etype is not EntityType.DEVICE or param in intent.entities:
+                continue
+            scanned = await self.device_resolver.scan_utterance(intent.raw_text, context)
+            if scanned is not None:
+                resolved_entities[f"{param}_resolved"] = scanned.resolved_value
+                resolved_entities[f"{param}_confidence"] = scanned.confidence
+                resolved_entities[f"{param}_resolution_type"] = scanned.resolution_type
+                resolution_metadata[param] = scanned.metadata
+                self.logger.debug(f"Utterance scan resolved device param '{param}': "
+                                  f"{scanned.resolved_value} ({scanned.resolution_type})")
+
         # Add resolution metadata
         if resolution_metadata:
             resolved_entities["_resolution_metadata"] = resolution_metadata
@@ -424,7 +441,14 @@ class DeviceEntityResolver:
 
         best = max(score for score, _ in scored)
         candidates = [device for score, device in scored if score == best]
+        return self._result_from_candidates(candidates, best, device_reference,
+                                            catalog, locale, context)
 
+    def _result_from_candidates(self, candidates: List[CatalogDevice], best: int,
+                                device_reference: str, catalog: DeviceCatalog, locale: str,
+                                context: UnifiedConversationContext) -> EntityResolutionResult:
+        """Top-scored candidates → the handler-facing result (shared by the reference path and
+        the utterance scan): room-context disambiguation, then payload or ambiguity."""
         # room-context disambiguation: «эппл» names both Apple TVs; the requesting room picks one
         if len(candidates) > 1:
             room_id = resolve_default_room(context, catalog)
@@ -452,6 +476,41 @@ class DeviceEntityResolver:
             resolution_type="exact" if best == 100 else "fuzzy",
             metadata={"match_type": "catalog", "score": best,
                       "device_id": device.id, "catalog_version": catalog.version})
+
+    _SCAN_WORD_RE = re.compile(r"[а-яёa-z0-9]+")
+
+    async def scan_utterance(self, text: str,
+                             context: UnifiedConversationContext) -> Optional[EntityResolutionResult]:
+        """Last-resort device spotting for utterances whose word order defeated the extraction
+        regexes («на кухне вытяжку включи» — the device stands BEFORE the verb, so the post-verb
+        capture never fires). Scores every content word against the catalog and accepts only
+        exact/stem-grade hits (≥ _STEM_MATCH_SCORE): a scan has no extraction signal around it,
+        so fuzzy-grade (≥80) would false-positive on generic words. Never triggers the ARCH-26
+        re-pull — a scan miss is the normal case, not a staleness signal."""
+        if self.catalog_port is None:
+            return None
+        catalog = self.catalog_port.catalog()
+        if catalog is None:
+            return None
+        locale = context.language or "ru"
+        best_score = 0
+        best_devices: List[CatalogDevice] = []
+        for word in self._SCAN_WORD_RE.findall(text.lower()):
+            if len(word) < 3:
+                continue
+            ref_norm = _norm(word)
+            for device in catalog.devices:
+                score = _surface_score(ref_norm, device.surfaces(locale))
+                if score < _STEM_MATCH_SCORE:
+                    continue
+                if score > best_score:
+                    best_score, best_devices = score, [device]
+                elif score == best_score and device not in best_devices:
+                    best_devices.append(device)
+        if not best_devices:
+            return None
+        return self._result_from_candidates(best_devices, best_score, text,
+                                            catalog, locale, context)
 
     @staticmethod
     def _device_payload(device: CatalogDevice, locale: str) -> Dict[str, Any]:

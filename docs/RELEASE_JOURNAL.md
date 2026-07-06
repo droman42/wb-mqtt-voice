@@ -15,6 +15,26 @@ newest entries near the top of each dated section.
 
 ## Action journal
 
+- **2026-07-06 — QUAL-35 Slice 3 DONE → QUAL-35 CLOSED (evidence-first, interactive) — the
+  hard-phrasing tier measured, and the scoreboard rewrote the plan.** Authored the tier-2
+  fixtures (F90–F98 measurable + F100–F102 relative adjustments) and ran the two-leg
+  measurement: baseline vs the QUAL-50 LLM tier flipped into the derived SUT config (new
+  `make device-auto TIER=… NLU=llm` knobs). Baseline 1/12; the LLM leg exposed the real
+  blockers — none of them a new NLU tier. Built instead: group-noun routing for raw LLM
+  entities («свет» arrives in `target`, not the CHOICE param — was «Не нашла устройство
+  "свет"»), power-verb → playback fallback (the tape-deck class), a resolver utterance scan
+  for pre-verbal device words («на кухне вытяжку включи» — stem-grade only, no re-pull on
+  miss), and two donation pattern fixes for confidently-wrong T1 (greedy «кондиционер на» at
+  conf 1.00 — no fallback tier can EVER rescue a confident misroute; «звук на» vs the fuzzy
+  volume coin-flip). Colloquial verbs («вруби»/«глуши») deliberately NOT enumerated in
+  donations — the LLM tier covers them (found ALREADY enabled in all 6 deployment configs;
+  the "disabled in deployments" note was stale) and the smart-home guide now teaches the
+  add-a-word donation recipe instead. spaCy T2 leg dropped on evidence → QUAL-53 addendum
+  owns any revival; relative adjustments deferred → QUAL-68 (fixtures already red in the
+  suite). **Tier-1 gate 47/47 (F94/F96/F97/F98 graduated in), tier-2 `NLU=llm` 5/8 (red =
+  the deferred trio), suite 1299, pyright 0.** Guide updated (stale «ютуб» limitation
+  removed — Slice 1 shipped it; new limits stated honestly).
+
 - **2026-07-05 — QUAL-67 DONE (filed + completed same day) — donation validation is a CI/build
   gate, warnings-as-errors.** The natural payoff of QUAL-66: with the wiring warnings at zero,
   `irene-donation-validate` fails the build on ANY new one — dead params and undeclared routing

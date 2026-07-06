@@ -894,7 +894,11 @@
       "description": "hvac mode",
       "phrases": [
         "ac mode",
-        "air conditioner to"
+        "air conditioner to cool",
+        "air conditioner to heat",
+        "air conditioner to dry",
+        "air conditioner to auto",
+        "air conditioner to fan"
       ],
       "lemmas": [],
       "examples": [],

@@ -44,10 +44,11 @@ Volume, playback and household modes answer to voice as well: «сделай г�
 сигнализацию воды». Water valves and heating circuits deliberately have no voice surface.
 
 Inputs and apps are voice-switchable too: «переключи усилитель на cd» validates the
-input against the device's own set, and «запусти youtube на телеке» asks the device
+input against the device's own set, and «запусти ютуб на телеке» asks the device
 for its installed apps at that moment — so a newly installed app is launchable
-immediately, with no configuration anywhere. If the name doesn't match, Irene reads
-back what *is* available.
+immediately, with no configuration anywhere. Latin names answer to their Russian
+pronunciation («ютуб» finds YouTube, «эппл ти ви» finds Apple TV), and if a name
+doesn't match, Irene reads back what *is* available.
 
 ## Enabling it
 
@@ -65,10 +66,45 @@ That's the whole setup: the catalog pull, the room vocabulary, and the device co
 all follow from it. With the bridge disabled or unreachable, smart-home phrases get an
 honest spoken answer («умный дом не подключён») and everything else keeps working.
 
+## Teaching her your words
+
+Two layers of understanding are at work. The **built-in vocabulary** recognizes commands
+instantly and fully offline. Phrasings outside it — slang, unusual word order — fall
+through to an **LLM fallback** (enabled in the shipped configurations): «вруби телек» or
+«глуши магнитофон» still work when an LLM API key is configured, and without one Irene
+simply says she didn't understand rather than guessing.
+
+If a phrase your household actually uses keeps landing on the fallback, you can promote
+it into the built-in vocabulary yourself. Command phrases live in *donation* files under
+`assets/donations/` — one folder per skill, one file per language. For example, to make
+«вруби» a first-class "turn on" verb, find the `_handle_power_on` entry in
+`assets/donations/smart_home_handler/ru.json` and add the word to its `phrases` list:
+
+```json
+{
+  "method_name": "_handle_power_on",
+  "phrases": [
+    "включи",
+    "включить",
+    "зажги",
+    "вруби"
+  ]
+}
+```
+
+That's the whole change — after a restart the word is recognized offline, with no code
+involved. Keep each phrase specific to one command: a word that could mean two different
+things (like «поставь») belongs in the more specific entry («поставь таймер»), so the
+commands don't compete. The same files can be edited visually in the config UI, which
+also validates the format as you type.
+
 ## Current limits
 
 - Ambiguous same-room requests always ask a clarifying question; configurable
   preferences (e.g. "degrees means the heater") are planned.
-- App and input names are matched as the device reports them (usually Latin —
-  "YouTube", "hdmi1"); speaking them in Cyrillic («ютуб») is planned.
+- Relative adjustments («сделай поярче», «сделай потеплее») are recognized but ask for
+  an absolute value; adjusting from the current state is planned.
+- One command per sentence: «яркость 30 и температуру 22» and exceptions like «весь свет
+  кроме торшера» are not split yet. Pronouns need the device named («сделай его погромче»
+  won't find "him").
 - English phrasing is supported at a basic level; the primary vocabulary is Russian.

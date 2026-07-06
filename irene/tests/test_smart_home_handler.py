@@ -599,3 +599,54 @@ async def test_cover_position_room_form_halfway(harness):
     assert captured == [{"kind": "room-group", "room_id": "living_room", "group": "cover",
                          "action": "set_position", "scope": "auto"}]
     assert "50" in result.text
+
+
+# --- QUAL-35 Slice 3 — hard-phrasing fixes ----------------------------------------------------------
+
+async def test_f92_raw_target_group_noun_goes_room_form(harness):
+    # QUAL-50 LLM entities carry the spoken noun in `target`, never the donation CHOICE param —
+    # «свет» must still ride the depth doctrine into the room form (F92)
+    result, captured = await harness.run("power_off", "выруби свет",
+                                         {"target": "свет"}, room="Спальня")
+    assert captured == [{"kind": "room-group", "room_id": "bedroom",
+                         "group": "light", "action": "off", "scope": "auto"}]
+
+
+async def test_f95_raw_target_cover_noun_goes_room_form(harness):
+    result, captured = await harness.run("cover_close", "прикрой шторы",
+                                         {"target": "шторы"}, room="Гостиная")
+    assert captured == [{"kind": "room-group", "room_id": "living_room",
+                         "group": "cover", "action": "close", "scope": "auto"}]
+
+
+async def test_f93_power_verb_off_on_playback_only_device(harness):
+    # the tape-deck class: playback capability, no power — power verbs map to stop/play (F93)
+    result, captured = await harness.run("power_off", "глуши заппити",
+                                         {"target": "заппити"}, room="Гостиная")
+    assert captured == [{"kind": "actuate", "device_id": "video",
+                         "capability": "playback", "action": "stop", "params": None}]
+
+
+async def test_power_on_playback_only_device_falls_back_to_play_pause(harness):
+    # «Заппити» has no plain `play` — the toggle stands in, mirroring the playback_play fallback
+    result, captured = await harness.run("power_on", "вруби заппити",
+                                         {"target": "заппити"}, room="Гостиная")
+    assert captured == [{"kind": "actuate", "device_id": "video",
+                         "capability": "playback", "action": "play_pause", "params": None}]
+
+
+async def test_f94_preverbal_device_resolved_by_utterance_scan(harness):
+    # no target entity at all — the post-verb extraction regex can't capture pre-verbal
+    # «вытяжку»; the resolver's utterance scan must spot the catalog device (F94)
+    result, captured = await harness.run("power_on", "на кухне вытяжку включи",
+                                         {}, room="Кухня")
+    assert captured == [{"kind": "actuate", "device_id": "kitchen_hood",
+                         "capability": "fan", "action": "set", "params": {"level": 2}}]
+
+
+async def test_utterance_scan_stays_quiet_without_a_device_word(harness):
+    # scan is stem-grade only: an utterance with no catalog name in it must still clarify,
+    # not false-positive on generic words
+    result, captured = await harness.run("power_on", "включи", {}, room="Спальня")
+    assert captured == []
+    assert result.metadata.get("clarification") or not result.success

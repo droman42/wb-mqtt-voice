@@ -52,7 +52,7 @@ _QUANTITY_FIELDS = {
 
 # capability each method actuates, in preference order when a device carries several
 _METHOD_CAPABILITY = {
-    "power": ("power", "climate", "fan"),
+    "power": ("power", "climate", "fan", "playback"),
     "cover": ("cover",),
     "climate": ("climate",),
     "brightness": ("brightness",),
@@ -128,6 +128,12 @@ class SmartHomeIntentHandler(IntentHandler):
         light) trigger the light group and break the depth doctrine."""
         group = self.get_param(intent, "group_noun", None)
         if not group:
+            # Raw NLU tiers (QUAL-50 LLM) copy the spoken noun verbatim into `target` — «выключи
+            # свет» arrives as target="свет", never as the donation CHOICE param. Re-read the
+            # target as a group noun when it IS one; the surface-in-utterance verification below
+            # still gates it, so a named device can't be demoted to its group.
+            group = self._group_for_surface(self.get_param(intent, "target", None), intent)
+        if not group:
             return None
         spec = self._find_param_spec(intent, "group_noun")
         surfaces = list((spec.choice_surfaces or {}).get(group, [])) if spec else []
@@ -135,6 +141,20 @@ class SmartHomeIntentHandler(IntentHandler):
         text_norm = intent.raw_text.lower()
         for surface in surfaces:
             if re.search(rf"(?:^|\s){re.escape(surface.lower())}(?:\s|$)", text_norm):
+                return group
+        return None
+
+    def _group_for_surface(self, value: Optional[Any], intent: Intent) -> Optional[str]:
+        """The group whose declared surface (or canonical) equals `value` word-for-word —
+        «свет» → light, «шторы» → cover. None for anything that isn't a bare group noun."""
+        if not value or not isinstance(value, str):
+            return None
+        spec = self._find_param_spec(intent, "group_noun")
+        if spec is None:
+            return None
+        needle = value.strip().lower()
+        for group, surfaces in (spec.choice_surfaces or {}).items():
+            if needle == group.lower() or any(needle == s.lower() for s in surfaces):
                 return group
         return None
 
@@ -320,6 +340,13 @@ class SmartHomeIntentHandler(IntentHandler):
                 device_action, params = "set", {"level": 2}
             else:
                 device_action, params = "off", None
+        elif kind == "power" and capability == "playback":
+            # Slice 3: «глуши/выключи магнитофон» — a playback-only device (tape deck) obeys
+            # power verbs as play/stop; play_pause covers devices with only the toggle
+            wanted = "play" if device_action == "on" else "stop"
+            cap_obj = catalog_device.capability("playback")
+            has_wanted = cap_obj is not None and cap_obj.action(wanted) is not None
+            device_action, params = (wanted if has_wanted else "play_pause"), None
         command = DeviceCommand(device_id=catalog_device.id, capability=capability,
                                 action=device_action, params=params)
         delivery = await self._deliver(command, context)

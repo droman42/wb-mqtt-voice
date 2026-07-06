@@ -90,8 +90,12 @@ device-tests:                 ## regenerate device.tests.yaml from the pinned cr
 
 # -j 1: cases share per-room SUT sessions (room_alias → one session per room), so parallel
 # runs interleave turns of the same conversation — inherent cross-talk, not a flake.
+# TIER=1 (default) is the green gate; TIER=2 is the QUAL-35 Slice-3 hard-phrasing scoreboard
+# (red until built); TIER=all runs both. Result files carry the tier so runs don't clobber.
+TIER ?= 1
+DEVICE_TIER_FILTER := $(if $(filter all,$(TIER)),,--filter-metadata tier=$(TIER))
 device: device-tests          ## producer contract suite (needs SUT + mock bridge running; see device-auto)
-	$(PROMPTFOO) eval -c device.promptfooconfig.yaml -j 1 -o results-device-$(TARGET).json
+	$(PROMPTFOO) eval -c device.promptfooconfig.yaml -j 1 $(DEVICE_TIER_FILTER) -o results-device-$(TARGET)-t$(TIER).json
 
 # The SUT config is DERIVED from config-master at run time (env can't override nested TOML
 # sections — pydantic-settings gives init kwargs priority), flipping [outputs.bridge] at the mock.
@@ -100,6 +104,13 @@ DEVICE_SUT_CONFIG := /tmp/irene-device-sut.toml
 device-sut-config:
 	@sed -e '/^\[outputs.bridge\]/,/^\[/{s|^enabled = false|enabled = true|;s|^base_url = .*|base_url = "http://localhost:$(MOCK_BRIDGE_PORT)"|;}' \
 	  ../configs/config-master.toml > $(DEVICE_SUT_CONFIG)
+ifeq ($(NLU),llm)
+# QUAL-35 Slice-3 measurement leg: append the QUAL-50 LLM tier to the cascade (deterministic
+# tiers still run first; needs DEEPSEEK_API_KEY in the environment for the tier to answer).
+	@sed -i -e 's|^provider_cascade_order = .*|provider_cascade_order = ["hybrid_keyword_matcher", "spacy_nlu", "llm"]|' \
+	  -e '/^\[nlu.providers.llm\]/,/^\[/{s|^enabled = false|enabled = true|;}' $(DEVICE_SUT_CONFIG)
+	@grep -n '^provider_cascade_order' $(DEVICE_SUT_CONFIG)
+endif
 	@grep -A3 '^\[outputs.bridge\]' $(DEVICE_SUT_CONFIG) | head -4
 
 device-auto: device-tests device-sut-config  ## one-shot local run: mock bridge + SUT up → suite → teardown
@@ -108,7 +119,7 @@ device-auto: device-tests device-sut-config  ## one-shot local run: mock bridge 
 	( cd .. && .venv/bin/irene-webapi -c $(DEVICE_SUT_CONFIG) --port 6000 >/tmp/irene-device-eval.log 2>&1 ) & SUT=$$!; \
 	echo ">> waiting for $(HEALTH_URL) ..."; \
 	for i in $$(seq 1 60); do curl -sf "$(HEALTH_URL)" >/dev/null 2>&1 && break; sleep 1; done; \
-	$(PROMPTFOO) eval -c device.promptfooconfig.yaml -j 1 -o results-device-$(TARGET).json; code=$$?; \
+	$(PROMPTFOO) eval -c device.promptfooconfig.yaml -j 1 $(DEVICE_TIER_FILTER) -o results-device-$(TARGET)-t$(TIER).json; code=$$?; \
 	kill $$SUT $$MOCK 2>/dev/null; wait $$SUT $$MOCK 2>/dev/null; exit $$code
 
 ws:                           ## streaming-ASR system tests over /ws/audio (needs a running SUT; TRACE=1 keeps failing traces)
