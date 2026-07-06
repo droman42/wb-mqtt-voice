@@ -1,0 +1,36 @@
+# Bundle retention (design D-4): raw bundles die after 30 days; issues + summaries persist.
+# A plain script on a schedule — no model involved.
+name: prune-bundles
+
+on:
+  schedule:
+    - cron: "17 4 * * *"   # daily, 04:17 UTC
+  workflow_dispatch: {}
+
+jobs:
+  prune:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Delete bundles older than 30 days
+        run: |
+          set -eu
+          cutoff=$(date -u -d '30 days ago' +%Y%m%dT%H%M%S)
+          removed=0
+          for dir in reports/*/; do
+            [ -d "$dir" ] || continue
+            stamp=$(basename "$dir" | cut -d- -f1)   # reports/<UTCstamp>-<source>-<room>/
+            if [ "$stamp" \< "$cutoff" ]; then
+              git rm -rq "$dir"
+              removed=$((removed+1))
+            fi
+          done
+          if [ "$removed" -gt 0 ]; then
+            git config user.name "bundle-pruner"
+            git config user.email "actions@users.noreply.github.com"
+            git commit -m "prune: $removed bundle(s) past 30-day retention"
+            git push
+          fi
+          echo "pruned $removed bundle dir(s)"

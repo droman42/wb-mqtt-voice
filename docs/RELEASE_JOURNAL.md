@@ -15,6 +15,19 @@ newest entries near the top of each dated section.
 
 ## Action journal
 
+- **2026-07-06 — BUILD-12 authored + ready (awaiting owner actions) — the reports repo in a
+  box.** Everything `wb-user-reports` needs, authored under `ops/user-reports/` and validated:
+  the triage workflow (loop-safe, per-ticket concurrency, both codebases checked out, the
+  D-11 model pinned in exactly one env var), the two lens process files (dedup-first, repro
+  recipes, four outcomes, the §7.3 handover schema verbatim, ping-pong guard, replies drafted
+  in the reporter's language), the 30-day retention pruner (stamp-parsed, logic unit-tested),
+  and an idempotent `bootstrap.sh` that does repo+labels+push+checklist-issue in one run. A
+  worthy note: the permission fence BLOCKED the agent from `gh repo create` on the owner's
+  account — which is exactly where the design put the owner boundary anyway; the script now
+  IS the owner's one-command step, followed by the app-install/secrets/PAT clicks no script
+  can do. Completion criterion: the live smoke — «сообщи о проблеме» → ticket → triage run.
+
+
 - **2026-07-06 — ARCH-32 DONE — the bundle, the sink, and a promise that survives reboots.**
   The delivery half of problem reporting: an always-on ring of request synopses (the diagnosis
   material trace persistence would carry if it were on — added as a deliberately DEFENSIVE tap

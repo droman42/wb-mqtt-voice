@@ -1,0 +1,72 @@
+# Problem-report triage (ARCH-30 design §7, BUILD-12).
+#
+# Runs Claude on every new report and on follow-up comments. The lens label picks the process
+# file; the model is pinned in ONE place (env.CLAUDE_MODEL, design D-11) so upgrades are
+# deliberate. Loop safety (§7.5): never triggered by the bot's own activity, label-gated,
+# one run per ticket at a time.
+name: triage
+
+on:
+  issues:
+    types: [opened, labeled]
+  issue_comment:
+    types: [created]
+
+env:
+  CLAUDE_MODEL: claude-fable-5   # D-11: one strong model for triage AND code work
+
+concurrency:
+  group: triage-${{ github.event.issue.number }}
+  cancel-in-progress: false
+
+jobs:
+  triage:
+    # §7.5 loop safety: only real problem-report tickets, never our own bot's events.
+    if: >-
+      contains(github.event.issue.labels.*.name, 'problem-report') &&
+      !endsWith(github.actor, '[bot]')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+    steps:
+      - name: Checkout reports repo
+        uses: actions/checkout@v4
+
+      - name: Checkout voice codebase
+        uses: actions/checkout@v4
+        with:
+          repository: droman42/wb-mqtt-voice
+          path: code/wb-mqtt-voice
+
+      - name: Checkout bridge codebase
+        uses: actions/checkout@v4
+        with:
+          repository: droman42/wb-mqtt-bridge
+          path: code/wb-mqtt-bridge
+
+      - name: Run Claude triage
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          claude_args: "--model ${{ env.CLAUDE_MODEL }}"
+          prompt: |
+            You are the problem-report triage agent for this private reports repo.
+
+            Ticket: issue #${{ github.event.issue.number }}.
+            Read the ticket (gh issue view ${{ github.event.issue.number }} --comments), find its
+            lens label (lens:voice or lens:bridge), then follow the matching process file TO THE
+            LETTER: .github/claude/lens-voice.md or .github/claude/lens-bridge.md.
+            The corresponding codebase is checked out under code/.
+
+            Two absolute rules, whatever the lens file says:
+            1. LEAK FENCE: anything you write to the PUBLIC repos (PRs, branches, commits)
+               describes defects technically — never quote logs, room or device names, user
+               free text, or configuration values. Household data stays in THIS repo.
+            2. Every run ends with the ticket in exactly one state: lens flipped (handover),
+               fix-pr-open, or needs-owner. Remove the 'new' label when you start.
+        env:
+          # Cross-repo PR creation on the public code repos (owner-minted PAT; see the
+          # bootstrap issue). GITHUB_TOKEN only covers THIS repo.
+          CROSS_REPO_TOKEN: ${{ secrets.REPORTS_CROSS_REPO_TOKEN }}
