@@ -15,6 +15,19 @@ newest entries near the top of each dated section.
 
 ## Action journal
 
+- **2026-07-06 — ARCH-33 DONE — `/inbox`, and the workstream closes.** The owner's review loop:
+  a skill that pulls the report queue from the reports repo (the source of truth, not this repo's
+  PRs), then walks fix-PRs and escalations one at a time. Its spine is a deliberate distrust — the
+  fix-PR path tells the reviewer to verify the finding independently and expect false positives,
+  because the cloud triage reasons from a bundle it can't re-run and reports are often transients
+  or dev-session artifacts (PR #1, opened by the smoke, is precisely that case — plausible bug or
+  my own process kills, TBD at review). A CLAUDE.md invariant does the non-blocking session-start
+  nudge. Verified against the live queue. With this, ARCH-30's design is fully built: the
+  intent+capture (ARCH-31), the bundle+durable delivery (ARCH-32), the live triage repo (BUILD-12),
+  and now the review loop — only ARCH-34 (bridge-evidence enrichment, deferred v1.1) remains of the
+  whole idea. The release tail is back to REL-3 + ARCH-25.
+
+
 - **2026-07-06 — ARCH-34 filed [deferred] (user loud-thinking) — bridge-evidence enrichment for
   smart-home reports.** When a report is filed and the request ring shows smart-home involvement,
   the voice collector pulls bridge-side evidence (dispatch ring, MQTT window, persisted-vs-live

@@ -166,10 +166,19 @@ See `docs/review/phase1_architecture_map.md` §5.
       PROPOSAL awaiting owner review** (durable-action restart survival — plausible but triggered by
       dev-session process kills; the first item for ARCH-33's `/inbox`). Note: the design's leak-fence +
       owner-review model is what makes an auto-opened PR safe — it is reviewed, never merged by the bot.
-- [ ] **ARCH-33** `[release]` [FEEDBACK] — **Owner review loop, voice side** (ARCH-30 §10.7, design §8).
-      `/inbox` skill: list open fix PRs on wb-mqtt-voice + `needs-owner` tickets (voice lens) in
-      wb-user-reports, then walk them one-by-one interactively; CLAUDE.md line: mention pending items at
-      session start (never auto-run). Bridge twin rides the VWB-25 filing.
+- [x] **ARCH-33** `[release]` [FEEDBACK] — **DONE 2026-07-06. Owner review loop (`/inbox`), voice side.**
+      `.claude/skills/inbox/SKILL.md`: gathers the queue from the SOURCE OF TRUTH (the reports repo, not this
+      repo's PR list) — `fix-pr-open` + `needs-owner` tickets, lens:voice — then walks them ONE AT A TIME,
+      each waiting for the owner's decision. The fix-PR path's load-bearing instruction: **verify the finding
+      independently, never trust the triage** (the cloud reasons from a bundle it can't re-run; a report is
+      often a transient or a dev-session artifact — PR #1 is the live example) → reproduce/refute → merge/
+      revise/reject. The needs-owner path presents the triage's reporter-language reply draft for approval
+      (no user registry in v1, so the owner relays out-of-band). Leak fence restated (bundle data stays out
+      of public PRs); read-only until an explicit decision. **CLAUDE.md `problem-report-inbox` invariant:** a
+      non-blocking session-start `gh` check mentions any waiting items in one line + offers `/inbox`, never
+      auto-enters, silently skips on gh failure. Verified live: the queue queries correctly surface ticket #2
+      (fix-pr-open → PR #1), zero needs-owner. **The problem-reporting workstream (ARCH-30→34, BUILD-12) is
+      complete bar ARCH-34 (deferred v1.1).** PR #1 is `/inbox`'s first real customer.
 - [ ] **ARCH-34** `[deferred]` [FEEDBACK] — **Bridge-evidence enrichment for smart-home reports**
       (filed 2026-07-06, user loud-thinking; v1.1 — layers on the shipped ARCH-30/31/32 baseline, gated on
       a bridge read endpoint). When a problem report is filed and the ARCH-32 request ring shows smart-home

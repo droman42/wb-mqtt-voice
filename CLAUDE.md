@@ -109,6 +109,14 @@ but these rules apply to any task). **Single source of truth** (relocated here f
   **Diagrams are docs too:** update the source (`docs/images/*.dot`) and regenerate the image in the existing visual
   style. _Pairs with `config-ui-stays-functional` (the user-facing **app**; this is the user-facing **docs**)._
 
+- **`problem-report-inbox`** — problem reports (ARCH-30) land as tickets in the private
+  `droman42/wb-user-reports` repo; a cloud Claude triages each and leaves it needing the owner (a fix PR open on
+  this repo, or a `needs-owner` escalation). **At the start of a new or resumed session, do a quick, non-blocking
+  check** — `gh issue list --repo droman42/wb-user-reports --label needs-owner --label lens:voice --state open`
+  plus the `fix-pr-open` variant — and if anything is waiting, **mention the count in one line** and offer
+  `/inbox`. Never auto-enter the review; the owner decides when. (Skill: `.claude/skills/inbox/`. A `gh` failure —
+  no network, no auth — is silently skipped; this check must never block or noise up a normal session.)
+
 **Legend — historical numbers → names.** Frozen journal/ledger archives and review docs reference these invariants by
 their old number (numbering retired 2026-06-27). Resolve here:
 `#1`→`work-on-main` · `#2`→`config-master-canonical` · `#3`→`hexagonal-architecture` · `#4`→`config-ui-stays-functional`
