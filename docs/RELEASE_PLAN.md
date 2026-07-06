@@ -323,6 +323,14 @@ Governed by `config-ui-stays-functional` (config-ui must stay functional).
       config). Recommends the lightweight `minimal`/`api-only` profiles for first run. **Remaining for release:** a curated
       `config-example.toml` (vs the heavy `config-master.toml`), final README pointer, and a friendlier runner message on
       config-validation failure.
+      _Intake evidence 2026-07-06 (live first-touch session, user):_ **bare `irene-cli` has no working invocation
+      without `-c`.** (a) No config found → silent fall-back to `create_default_config()` (bare `CoreConfig`:
+      `components.nlu=false`) → first command dies with the internals-leaking "Required component 'nlu' not
+      available"; (b) `--headless` force-enables the components but the default config underneath has an EMPTY
+      `[nlu]` `provider_cascade_order` and no provider sections → "No providers available for intent recognition.
+      JSON donation initialization may have failed" (misleading — donations are fine, the provider list is empty).
+      Acceptance addendum: both invocations must either work or say plainly "no configuration found — pass
+      `-c configs/…` or set `IRENE_CONFIG_FILE`". Verified working meanwhile: `irene-cli -c configs/config-master.toml`.
 - [ ] **REL-3** (P1) `[release]` — Version bump / changelog / tag.
 
 ---
