@@ -15,6 +15,17 @@ newest entries near the top of each dated section.
 
 ## Action journal
 
+- **2026-07-06 — REL-3 DONE (bar the tag) — 15.0.0 confirmed, changelog written, config-ui pass
+  green.** Version holds at 15.0.0 for the whole release (bump rides the next one, user), so the
+  "version bump" was a no-op confirmation. CHANGELOG.md authored for the revival release; README
+  linked. The config-ui manual functional pass — the one exit-criterion check no CI can do —
+  PASSED against the live backend across every page, after it flushed out BUG-29 (the 6000/X11
+  browser block). The `git tag v15.0.0` is deliberately held as the final release act: the
+  artifact needs ARM boot validation (ARCH-25) and a clean scope gate first. With this, the
+  software release gate is down to ONE task — ARCH-25, the WB7/WB8.5 hardware bring-up — plus the
+  deferred v1.1 tail. Everything that can be done from a desk is done.
+
+
 - **2026-07-06 — BUG-29 DONE — the config-ui never worked from a browser on the default port, and
   only a human clicking found it.** REL-3's manual functional pass did exactly its job: port 6000
   (the shipped default everywhere) is X11, hard-blocked by Chrome/Firefox as ERR_UNSAFE_PORT, so

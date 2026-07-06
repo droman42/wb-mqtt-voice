@@ -39,8 +39,9 @@ is `scripts/check_scope.py` clean) · **Status:** active · **Version:** 15.0.0
       `configs/config-example.toml` (curated first-run starter, boots + answers live), friendly no-config
       runner failure (acceptance driven by a live first-touch transcript), README status + first-run
       pointer, QUICKSTART finalized (example-first, smart-home in scope, GHCR images noted).
-- [ ] **`config-ui` builds + type-checks clean** (CI-gated ✓) **and is functional against the release backend** —
-      the functional pass is a manual check at release time (**REL-3** checklist item).
+- [x] **`config-ui` builds + type-checks clean** (CI-gated) **and functional against the release backend** —
+      manual pass PASSED 2026-07-06 (REL-3): sections/donations/templates/localizations/monitoring all live on the
+      running backend; the pass FOUND + fixed BUG-29 (default port 6000 → 8080, browser-blocked X11).
 
 ---
 
@@ -368,7 +369,17 @@ Governed by `config-ui-stays-functional` (config-ui must stay functional).
       `code.toUpperCase()`; the `DonationsPage` `['en','ru']` fallback is a defensible default for a rare miss._
 
 ### Release Readiness (REL)
-- [ ] **REL-3** (P1) `[release]` — Version bump / changelog / tag.
+- [x] **REL-3** (P1) `[release]` — **DONE 2026-07-06 (bar the tag ceremony). Version / changelog /
+      functional pass.** Version **held at 15.0.0 for the entire release** (user 2026-07-06 — the bump rides
+      the NEXT release, not this one), so the 'bump' is a confirmed no-op. `CHANGELOG.md` authored (the
+      revival release — architecture / understanding / capabilities / operations) + README-linked. config-ui
+      MANUAL functional pass PASSED against the running backend (the exit-criterion's human check) —
+      sections incl. the new `reports`, donations, templates, localizations, ru/en switch, monitoring all
+      live — and it earned its keep by catching **BUG-29** (default `web_port` 6000 was X11 / browser-blocked;
+      swept to 8080). **The `git tag v15.0.0` is deliberately NOT created here:** the release artifact requires
+      ARM boot validation (ARCH-25) and a clean `check_scope.py` (every `[release]` task `[x]`), so the tag is
+      the FINAL release act, cut when ARCH-25 closes. REL-3's own deliverables (version decision, changelog,
+      functional pass) are complete.
 
 ---
 
