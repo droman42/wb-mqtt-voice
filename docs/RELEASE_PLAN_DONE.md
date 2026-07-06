@@ -2643,6 +2643,20 @@ rationale/chronology lives in [`RELEASE_JOURNAL.md`](./RELEASE_JOURNAL.md).
       its «час» token fuzzy-matched the «24 часа» choice surface → 24hour.) Fix: ru default → verbose (the
       natural path), and the EXPLICIT ru 12-hour rendering says the day period in words from the existing
       localization table («1:11 дня»), never "%p".
+- [x] **BUG-28** `[release]` [ARCH][F&F] — **DONE 2026-07-06 (the problem-reporting system's FIRST
+      self-caught bug: filed by voice report → diagnosed by cloud triage → PR reviewed via `/inbox` →
+      merged `e1dd319`). Durable actions died silently across GRACEFUL restarts** — two compounding
+      defects, both independently verified at review: **(1)** `_on_action_done` deleted the persisted
+      record on ANY cancellation, including teardown-cancel (SIGTERM/docker restart) — durability only
+      worked across hard crashes, violating the design's own D-2 exit discipline; also emitted a spurious
+      «сбой действия … cancelled» at every shutdown; **(2)** `reconcile_durable_actions` deleted the record
+      in a `finally` AFTER a successful re-arm — re-arm re-persists under the SAME `action_name` (D-8), so
+      the delete destroyed the fresh record; one restart unhooked the promise. The masking test hand-re-saved
+      the record. Fix (triage-authored, owner-reviewed): `ActionRecord.deliberate_cancel` marker (BUG-19
+      `timed_out` pattern; set by user-cancel + eviction) — unmarked cancel = teardown → record survives,
+      no failure notification; reconciler deletes only consumed records. Flagship regression: set → restart
+      → re-arm → restart → still re-arms. Suite 1331, pyright 0 on the integration merge.
+
 
 
 

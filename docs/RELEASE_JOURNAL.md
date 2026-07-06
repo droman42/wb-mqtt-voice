@@ -15,6 +15,20 @@ newest entries near the top of each dated section.
 
 ## Action journal
 
+- **2026-07-06 — BUG-28 DONE — the reporting system catches its first real bug, hours after
+  going live.** The smoke test's "тестовый отчёт" turned out not to be a test at all: the cloud
+  triage read the bundle's logs, spotted durable timers dying silently across restarts, opened a
+  fix PR — and the `/inbox` review CONFIRMED both root causes by reading today's main, no bundle
+  trust needed. The done-callback deleted persisted records on teardown-cancel (so durability
+  only worked across SIGKILL, backwards from the design's own D-2 line), and the reconciler's
+  finally-delete destroyed the very record a successful re-arm had just refreshed under the same
+  key. The reviewer's initial skepticism (dev-session kills ≠ real restarts) died on the facts:
+  SIGTERM teardown is exactly the production restart path. Fix merged as authored — the marker
+  pattern mirrors BUG-19, anti-resurrection preserved, spurious shutdown failure-notifications
+  gone, flagship double-restart regression added. Full circle: user speech → private ticket →
+  triage → PR → owner review → merge, all in one afternoon, all on the rails built today.
+
+
 - **2026-07-06 — ARCH-33 DONE — `/inbox`, and the workstream closes.** The owner's review loop:
   a skill that pulls the report queue from the reports repo (the source of truth, not this repo's
   PRs), then walks fix-PRs and escalations one at a time. Its spine is a deliberate distrust — the
