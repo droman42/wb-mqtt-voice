@@ -2407,6 +2407,13 @@ rationale/chronology lives in [`RELEASE_JOURNAL.md`](./RELEASE_JOURNAL.md).
       eval-commons guard 8/8. **ARCH-34's dependency gate is now LIFTED** — the endpoint exists and its
       envelope is pinned; ARCH-34 stays `[deferred]` by the v1.1 scope decision, but activation is now
       pure voice-side work (bounded call + `bridge/` bundle subtree + envelope-pin expectation).
+- [x] **QUAL-76** `[release]` [MQTT] — **DONE 2026-07-07 (filed + completed same day). Consume the bridge's
+      rack-verified catalog: re-pin @ `8159b4b0` (bridge `40f0452`)** — auralic gains a `previous` action,
+      zappiti power becomes a **toggle** (was on/off); openapi unchanged, contract stays v1.4. Zero crossover
+      fixtures bind the changed devices, so only the fixtures doc's `catalog_version` stamp moved. **Bonus
+      catch:** QUAL-75's PIN.json had recorded the bridge repo HEAD in `bridge_commit` instead of mirroring
+      `STAMP.bridge_commit` (the generator's commit), leaving eval-commons' `test_pin_matches_stamp` guard
+      red unnoticed — convention restored, eval-commons suite 40/40 (eval-commons `14ac383`).
 
 ### Bugs (BUG)
 - [x] **BUG-1** [NLU/TIMER] (P2) `[release]` — **DONE 2026-06-28.** Spelled-out numbers didn't reach parameter
