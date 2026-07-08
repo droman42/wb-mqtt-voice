@@ -3517,6 +3517,21 @@ rationale/chronology lives in [`RELEASE_JOURNAL.md`](./RELEASE_JOURNAL.md).
       controller (a 3001 port remap from the first pass lived for minutes); with repo-owns-config
       (BUILD-17) the editor runs on a workstation when wanted (`build-docker.md` "The configuration
       editor" — whose two stale port-6000 refs from before BUG-29 were fixed in the same change)._
+- [x] **BUILD-20** `[deferred]` [BUILD][OPS][PROCESS] — **DONE 2026-07-08 (filed + completed same day;
+      joint productization design session, run from `~/development` acting as both repos' Claude).** The
+      cross-project productization design: product name **Domovoy** (pending availability sweep), ONE
+      umbrella = eval-commons renamed `domovoy-commons` (three ownership regimes: product-owned contract
+      pins / co-owned shared code / process+product artifacts, per-package prefixed tags), PROD-board
+      cross-repo idea discipline with board-as-outbox (retires uncommitted sibling filings),
+      `domovoy-satellite` as a third product repo (ESP32 estate relocates; the outdated top-level `ESP32/`
+      tree deleted, not migrated), rule-of-two shared-code extractions (dynamic loader + logging first),
+      config UI = two apps + shared kit (one-shell-with-plugins stays reachable), ledgers KEPT over
+      GitHub Projects/Jira, per-component semver + calver suite compatibility manifests, contract
+      tagging + scripted re-pin + staleness gate, normative ops spec + shared CLAUDE.md invariant blocks
+      with drift guard, landing page in `commons/site/`, problem-report policy spec unified. Deliverable:
+      `docs/design/productization.md` (D-1..D-12 + drift inventory + commons seed backlog) + sibling
+      `../wb-mqtt-bridge/docs/design/productization_bridge.md` (uncommitted, intake). Follow-ups filed:
+      BUILD-21/22/23/24, ARCH-42/43, BUILD-18 narrowed; bridge intake VWB-29, CORE-7, OPS-14/15/16.
 
 ### Models & Assets (ASSET)
 - [x] **ASSET-1** — Refresh stale model IDs (Anthropic→Claude 4.x, Whisper large-v3, ElevenLabs multilingual_v2, spaCy 3.8, gpt-4→gpt-4o-mini). → fc85306

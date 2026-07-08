@@ -17,6 +17,30 @@ newest entries near the top of each dated section.
 
 ## Action journal
 
+- **2026-07-08 — BUILD-20 DONE (filed + completed same day) — the joint productization design session:
+  the product is called Domovoy.** Run from `~/development` with both repos' CLAUDE.md + memory loaded,
+  acting as both projects' Claude — the session the release-endgame memory anticipated. Six topics +
+  three follow-up rounds, all user-decided; deliverable `docs/design/productization.md` (D-1..D-12).
+  The shape: **one** umbrella repo — eval-commons repurposed + renamed `domovoy-commons` (no new
+  commons sprawl; three ownership regimes keep contract pins / co-owned code / process artifacts from
+  blurring; per-package prefixed tags) — plus a **third product repo `domovoy-satellite`** starting now
+  (ESP32 design corpus relocates out of this repo; the top-level `ESP32/` tree ruled outdated and slated
+  for deletion, not migration; the WS protocol doc STAYS here — satellite pins it like voice pins the
+  bridge catalog). Cross-repo ideas get the `design-then-implement` discipline lifted a level: PROD
+  design tasks in the commons board, delegation entries committed there ("the board entry IS the
+  outbox" — retires the fragile uncommitted sibling filings; this session's own bridge filings are the
+  deliberate last use of the old way). Coordination stays on the per-repo ledgers (GitHub
+  Projects/Jira explicitly rejected — the ledgers' in-context/greppable/machine-guarded properties are
+  the point); releases = per-component semver + calver "Domovoy 2026.xx" compatibility manifests gated
+  on the eval cross-suites; the contract re-pin becomes scripted + machine-checked (D-11). BUILD-18's
+  drift inventory is now recorded evidence (design §2 — including a correction: journal direction is
+  NOT drift, both repos are newest-on-top). Housekeeping verified in passing: the contracts re-pin to
+  bridge golden `8159b4b0068d1c63` has already landed (STAMP matches — the bridge-side "voice must
+  re-pin" note was stale). Filed: BUILD-21 (commons bootstrap), BUILD-22 (satellite bootstrap +
+  relocation), BUILD-23 (invariant blocks + drift guard), BUILD-24 (scripted re-pin + staleness gate),
+  ARCH-42 (loader extraction design), ARCH-43 (logging extraction design); BUILD-18 narrowed; bridge
+  intake (uncommitted): VWB-29, CORE-7, OPS-14/15/16 + `productization_bridge.md`.
+
 - **2026-07-08 — ARCH-41 DONE (same-day pull-forward, interactive) — Plane-B ports settled without
   touching a single client line.** The discussion opened with recon that reframed the filed problem:
   the WB admin UI turns out to be served by the controller's SYSTEM nginx on `:80` (user's live
