@@ -18,10 +18,10 @@ newest entries near the top of each dated section.
 ## Action journal
 
 - **2026-07-08 — BUILD-16 DONE (filed + completed same day) — two-disk layout, decided at the live
-  WB7 shell.** The user's `df` settled it: `/` has ~800 MB free (docker's default data-root — the
-  image wouldn't even fit), `/mnt/data` 2.3 GB, the SD card 61 GB empty. Rule adopted: re-obtainable
-  data (checkout, docker images via a `data-root` move to `/mnt/sdcard/docker`, models, logs) → the
-  card; precious runtime state → the eMMC. The split lands as one nested bind mount:
+  WB7 shell.** The user's `df` settled it: `/mnt/data` 2.3 GB free, the SD card 61 GB empty. Rule
+  adopted: re-obtainable data (checkout, models, logs) → the card; precious runtime state → the
+  eMMC; docker's data-root stays at the controller's existing `/mnt/data/.docker` (user-corrected —
+  a draft had it moving to the card). The split lands as one nested bind mount:
   `/mnt/data/mqtt-voice-state` over `/app/assets/state` (timer records + report spool — the only
   durable subtree, verified). An SD card death now loses nothing that can't be re-downloaded, and
   the systemd unit refuses to start with either disk unmounted (`RequiresMountsFor`). Hours-later

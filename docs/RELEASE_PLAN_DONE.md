@@ -3441,10 +3441,10 @@ rationale/chronology lives in [`RELEASE_JOURNAL.md`](./RELEASE_JOURNAL.md).
       reporting live at the rack; log flash-wear).
 - [x] **BUILD-16** `[release]` [BUILD][OPS] — **DONE 2026-07-08 (filed + completed same day; user directive
       from the live WB7 `df`: re-obtainable data → the 61 GB SD card, `/mnt/data` = runtime only). Two-disk
-      deployment layout.** The WB7 numbers made it non-optional: `/` has ~800 MB free (docker's default
-      data-root — the Irene image alone wouldn't fit unpacked), `/mnt/data` 2.3 GB free. New layout:
-      checkout at **`/mnt/sdcard/mqtt-voice-config`**, docker data-root → `/mnt/sdcard/docker` (one-time
-      controller prep in INSTALL.md, controller-wide — bridge images move too), `.assets` (models/cache/
+      deployment layout.** The WB7 numbers: `/mnt/data` 2.3 GB free, card empty. New layout:
+      checkout at **`/mnt/sdcard/mqtt-voice-config`**; docker data-root stays at the controller's existing
+      `/mnt/data/.docker` (user-corrected same day — an INSTALL.md draft had it moving to the card; the
+      image fits fine where it is), `.assets` (models/cache/
       traces) + `.logs` ride the checkout onto the card; the ONE precious subtree — durable state
       (`<assets_root>/state/`: timer records, report spool — confirmed sole location, `composition.py:152`)
       — is a **nested bind mount** `/mnt/data/mqtt-voice-state:/app/assets/state`, so an SD card death

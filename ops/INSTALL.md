@@ -5,11 +5,11 @@ anything. This directory is the whole deployment: a compose file, a short update
 systemd unit. The pattern (and most of the muscle memory) is the same as the sibling
 `wb-mqtt-bridge` deployment.
 
-**Disk layout rule: re-obtainable data goes to the big SD card; only precious runtime state
-stays on the eMMC.** The Wirenboard's root filesystem (~2 GB) and `/mnt/data` (~5 GB) are small
-flash; `/mnt/sdcard` is large. Everything that can be re-cloned, re-pulled or re-downloaded —
-the git checkout, docker images, speech models, logs — lives on the card; the one thing that
-can't (durable state: timer records, the report spool) lives on `/mnt/data`:
+**Disk layout rule: re-obtainable data goes to the big SD card; `/mnt/data` is the runtime
+environment.** The Wirenboard's root filesystem (~2 GB) and `/mnt/data` (~5 GB) are small
+flash; `/mnt/sdcard` is large. Everything that can be re-cloned or re-downloaded — the git
+checkout, speech models, logs — lives on the card; durable state (timer records, the report
+spool) lives on `/mnt/data`:
 
 - **the git checkout** at `/mnt/sdcard/mqtt-voice-config` — the compose file, this script, and
   the git-owned assets content (donation phrasings, prompts, templates, localization);
@@ -20,29 +20,10 @@ can't (durable state: timer records, the report spool) lives on `/mnt/data`:
   subtree (timers survive restarts *and* an SD card death because their records live here);
 - **`.logs/`** (gitignored, in the checkout root → on the card) — the mounted log directory
   (`/app/logs` inside the container): `irene.log` plus timestamped rotations. Mounted so logs
-  neither bloat the container's writable layer nor vanish on recreate;
-- **docker's data-root** at `/mnt/sdcard/docker` — the images are far too big for the root
-  filesystem's free space (see prep below).
+  neither bloat the container's writable layer nor vanish on recreate.
 
-## One-time controller prep: docker images onto the card
-
-Docker's default data-root is on the root filesystem, which doesn't have the space for the
-Irene image. Move it (this is controller-wide — the bridge's images move with it, which is
-equally welcome there):
-
-```sh
-systemctl stop docker
-mkdir -p /mnt/sdcard/docker
-cat > /etc/docker/daemon.json <<'EOF'
-{ "data-root": "/mnt/sdcard/docker" }
-EOF
-systemctl start docker
-docker info | grep "Docker Root Dir"   # → /mnt/sdcard/docker
-```
-
-Existing images don't survive the move — re-pull them (`cd /mnt/data/mqtt-bridge-config/ops &&
-docker compose pull && docker compose up -d` for the bridge), then reclaim the old store:
-`rm -rf /var/lib/docker`.
+Docker's data-root is already configured on the controller (`/mnt/data/.docker`) and stays
+where it is — the Irene image fits there comfortably.
 
 ## Install
 
@@ -143,9 +124,8 @@ and connect over plain `ws://` directly to :8080.
 - The container is stateless: removing it (or the image) loses nothing — everything that matters
   lives in the mounted directories and the git checkout.
 - **An SD card death loses nothing precious.** Everything on the card is re-obtainable: re-clone
-  the repo, re-run the docker prep + `./update.sh`, and models re-download on the next start.
-  Durable state (timers, spooled reports) sits on `/mnt/data/mqtt-voice-state` and reattaches
-  as-is.
+  the repo, re-run `./update.sh`, and models re-download on the next start. Durable state
+  (timers, spooled reports) sits on `/mnt/data/mqtt-voice-state` and reattaches as-is.
 - A corrupted model download can be deleted from `.assets/models/…`; it re-downloads on the next
   start.
 - Memory: the compose file caps Irene at 800 MB — if the assistant is OOM-killed on a busy
