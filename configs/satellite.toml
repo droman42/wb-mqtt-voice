@@ -30,7 +30,7 @@ audio_out_channels = 1
 
 [satellite.tls]
 enabled = false                     # flip on for the fleet plane (mTLS wss via nginx)
-bootstrap_url = ""                  # e.g. "http://wb7" — the :80 provisioning zone (first run)
+bootstrap_url = ""                  # e.g. "http://wb7:8081" — the provisioning zone (first run)
 
 # ============================================================
 # SYSTEM & INPUTS — microphone only

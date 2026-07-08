@@ -1058,6 +1058,24 @@ rationale/chronology lives in [`RELEASE_JOURNAL.md`](./RELEASE_JOURNAL.md).
       Suite 1353, pyright 0, 11/11 contracts, config-ui clean, master config validates. eval-commons
       untouched (T-6).
 
+- [x] **ARCH-41** `[release]` [TLS][HW] — **DONE 2026-07-08 (filed + completed same day; retagged
+      `[deferred]`→`[release]` on user pull-forward; interactive discussion first, per request). Plane-B
+      ports settled: bootstrap zone → dedicated `:8081`, mTLS stays `:443`, both ansible variables.**
+      Live-WB7 recon reframed the problem: the WB admin UI is served by the SYSTEM nginx on `:80` (user's
+      `ss`), and our ansible role deploys a site into that same nginx (`sites-enabled/*` include verified
+      live) — so the conflict was never a port *bind*, it was *routing*: our `:80` server block claims the
+      bare IP in `server_name`, which would steal `http://<ip>/` from the admin UI (and dropping the IP
+      breaks DNS-less-home bootstrap). Resolution: the bootstrap zone gets its OWN port (`esp32_http_port`,
+      default **8081**); `:443` verified free and stays (`esp32_https_port`, default **443** — inside one
+      nginx a future WB https-admin coexists via SNI/name routing, no bind conflict possible). Template
+      `listen` lines parametrized with `default()` filters (old `group_vars/all.yml` keeps working); the S-7
+      hermetic e2e now renders its high ports as template vars — its `.replace()` port hack deleted ("no
+      test-plumbing deviation left"). Client code needed ZERO changes (`bootstrap_url`/`server_url` are full
+      URLs). Docs swept: `nginx/README.md` (zone table, rationale, deploy pre-flight `ss` check),
+      `satellite.md`, `esp32_satellite.md` D-17, `python_satellite.md` §6, both config TOMLs' comments,
+      `SatelliteTLSConfig` descriptions, provisioning docstring/error. Satellite suite 15/15 (incl. the TLS
+      e2e), pyright 0/0, config-ui check green.
+
 ### Code Quality & Review (QUAL)
 - [x] **QUAL-1** — Phase-0 static baseline (ruff/pyright/vulture/validators/import-graph). → `docs/review/phase0_static_baseline.md` (6e39886)
 - [x] **QUAL-2** — Review round 1: phantom-reference `NameError`s + method shadowing. → b6cd282

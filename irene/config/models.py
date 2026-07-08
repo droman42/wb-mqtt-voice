@@ -517,11 +517,11 @@ class SatelliteTLSConfig(BaseModel):
     """The fleet TLS plane, device side (ARCH-35 S-5/S-6 — design `docs/design/python_satellite.md` §5).
 
     Enabled ⇒ the satellite speaks mTLS `wss://` through the nginx `/ws/` proxy, provisioning
-    itself on first run: EC keypair (private key never leaves the box) → CSR to the `:80`
+    itself on first run: EC keypair (private key never leaves the box) → CSR to the `:8081`
     bootstrap zone → poll for the operator-approved cert. Key material defaults to
     `<assets_root>/credentials/satellite/` — asset-managed, never in git or configs."""
     enabled: bool = Field(default=False, description="Connect over mTLS wss:// (the nginx Plane-B proxy)")
-    bootstrap_url: str = Field(default="", description="The :80 provisioning zone, e.g. 'http://wb7' — used only until a cert is issued")
+    bootstrap_url: str = Field(default="", description="The provisioning bootstrap zone, e.g. 'http://wb7:8081' — used only until a cert is issued")
     ca_cert: Optional[str] = Field(default=None, description="CA cert path (default: <assets_root>/credentials/satellite/ca.crt)")
     client_cert: Optional[str] = Field(default=None, description="Client cert path (default: <assets_root>/credentials/satellite/sat.crt)")
     client_key: Optional[str] = Field(default=None, description="Client key path (default: <assets_root>/credentials/satellite/sat.key)")

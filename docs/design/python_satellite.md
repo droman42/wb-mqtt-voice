@@ -119,7 +119,7 @@ audio_out_rate = 22050
 audio_out_channels = 1
 # [satellite.tls] — present ⇒ wss expected
 # ca_cert / client_cert / client_key = paths (default: <assets_root>/credentials/satellite/)
-# bootstrap_url = "http://wb7"     # the :80 provisioning zone
+# bootstrap_url = "http://wb7:8081" # the provisioning zone (dedicated port, ARCH-41)
 ```
 
 CoreConfig gains `SatelliteConfig` (+ config-ui type parity + the schema-driven section appears

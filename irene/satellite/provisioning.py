@@ -1,7 +1,7 @@
 """Device-side TLS provisioning for the fleet plane (ARCH-36 S-5/S-6, design §5).
 
-Implements the CSR-approval dance against the nginx `:80` bootstrap zone
-(`nginx/README.md`): generate an EC keypair locally (the private key never leaves the box),
+Implements the CSR-approval dance against the nginx bootstrap zone (`:8081` by default —
+`nginx/README.md`): generate an EC keypair locally (the private key never leaves the box),
 submit `PUT /esp32/provision/pending/<client_id>.csr`, then poll
 `GET /esp32/provision/cert/<client_id>.crt` while the operator approves over SSH
 (`esp32-provision approve <client_id>` — printed verbatim while polling). Key material lives
@@ -80,7 +80,7 @@ async def ensure_credentials(cfg: SatelliteTLSConfig, assets_root: Path, client_
     if not cfg.bootstrap_url:
         raise ProvisioningError(
             "TLS is enabled but credentials are missing and [satellite.tls] bootstrap_url "
-            "is empty — set it to the controller's :80 provisioning zone (e.g. 'http://wb7')")
+            "is empty — set it to the controller's provisioning zone (e.g. 'http://wb7:8081')")
     base = cfg.bootstrap_url.rstrip("/")
     csr = key.parent / f"{client_id}.csr"
     if not (key.is_file() and csr.is_file()):

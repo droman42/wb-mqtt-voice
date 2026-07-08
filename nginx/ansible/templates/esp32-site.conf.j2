@@ -4,9 +4,11 @@
 # Path mapping: web root is {{ esp32_web_root }} (the parent of {{ esp32_srv_dir }}), so a URL
 # /esp32/<x> maps to the file {{ esp32_srv_dir }}/<x> with no alias juggling.
 
-# --- :80  provisioning bootstrap (PUBLIC artifacts; human approval is the gate) ----------------
+# --- :{{ esp32_http_port | default(8081) }}  provisioning bootstrap (PUBLIC artifacts; human approval is the gate)
+# A DEDICATED port (default 8081), not :80 — the WB admin UI lives on this same nginx's :80,
+# and a shared-:80 server block claiming the bare IP would steal it (ARCH-41).
 server {
-    listen 80;
+    listen {{ esp32_http_port | default(8081) }};
     server_name {{ esp32_server_name }};
 
     # public CA cert — the device fetches it to trust the server
@@ -33,9 +35,9 @@ server {
     location / { return 404; }
 }
 
-# --- :443  operational zone (mTLS — only provisioned devices) -----------------------------------
+# --- :{{ esp32_https_port | default(443) }}  operational zone (mTLS — only provisioned devices) --
 server {
-    listen 443 ssl http2;
+    listen {{ esp32_https_port | default(443) }} ssl http2;
     server_name {{ esp32_server_name }};
 
     ssl_certificate        {{ esp32_ca_dir }}/server.crt;

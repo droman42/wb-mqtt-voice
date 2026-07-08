@@ -485,12 +485,12 @@ audio_out_channels = 1              # Reply-channel playback channels
 
 # Fleet TLS plane, device side (design §5): mTLS wss:// through the nginx /ws/ proxy. On first
 # run with TLS enabled and no cert present, the satellite generates an EC keypair, submits a
-# CSR to the :80 bootstrap zone and polls for the operator-approved cert (the operator runs
+# CSR to the :8081 bootstrap zone and polls for the operator-approved cert (the operator runs
 # `esp32-provision approve <client_id>` on the controller). Key material lives at
 # <assets_root>/credentials/satellite/ unless overridden here — never in git or configs.
 [satellite.tls]
 enabled = false                     # Connect over mTLS wss:// (the nginx Plane-B proxy)
-bootstrap_url = ""                  # The :80 provisioning zone, e.g. "http://wb7" (first run only)
+bootstrap_url = ""                  # The provisioning zone, e.g. "http://wb7:8081" (first run only)
 #ca_cert = ""                       # Override CA cert path (default: <assets_root>/credentials/satellite/ca.crt)
 #client_cert = ""                   # Override client cert path (default: .../sat.crt)
 #client_key = ""                    # Override client key path (default: .../sat.key)

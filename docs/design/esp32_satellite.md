@@ -237,7 +237,7 @@ WB7 is tiny (~1 GB RAM / 2 GB disk, armv7 — another service is the wrong weigh
    `ssl_verify_client on`. **No Irene endpoint.** Operator/CI publishes files into `/srv/esp32/{firmware,models}/`
    (the per-node model is operator-managed there — amends D-13: *not* served by Irene's AssetManager, which is for
    Irene's own server-side models in the standalone-64-bit scenario).
-5. **CSR-approval / CA** → **Plane B: openssl home-CA + nginx + CLI.** Two zones: `:80` bootstrap (public CA cert +
+5. **CSR-approval / CA** → **Plane B: openssl home-CA + nginx + CLI.** Two zones: `:8081` bootstrap (dedicated port — the WB admin UI owns the controller's `:80`, ARCH-41; public CA cert +
    CSR `PUT` + signed-cert `GET`; no secrets cross — the device key never leaves it; the **human approval is the
    gate**) and `:443` mTLS operations. Approval is **`esp32-provision {list,approve,revoke}`** over SSH (amends D-17:
    a dedicated, LAN-only CLI — more isolated than config-ui for a once-per-device crown-jewel op; config-ui can call

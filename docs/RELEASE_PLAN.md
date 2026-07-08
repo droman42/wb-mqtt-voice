@@ -214,18 +214,6 @@ See `docs/review/phase1_architecture_map.md` §5.
       confirm → execute, never blanket. Deliverable: design doc under `docs/design/` + implementation follow-up
       task(s). Refs: bridge `43c504c`, bridge `docs/design/ui_backend_contract.md` ("Scenario force-reconcile
       dialog"), eval-commons pin `7cfd5a7`.
-- [ ] **ARCH-41** [TLS][HW] (P-TBD) `[deferred]` — **Plane-B port conflict on the WB7: nginx's `:80`
-      bootstrap zone vs the WB admin UI** (filed 2026-07-08 from the bridge's verified controller facts:
-      "Port 80 is the WB admin UI"). The `nginx/` fleet-provisioning design binds `:80` (public CSR
-      bootstrap) + `:443` (mTLS operations) on the controller — `:80` is already taken by the Wirenboard
-      admin interface, so the ansible deploy would collide head-on; `:443` occupancy unverified. Decide
-      before ANY Plane-B deploy on the WB7 (i.e. before TLS-satellite testing at the rack — not required
-      for the ARCH-25 DoR items themselves): (a) move the bootstrap zone to a high port (satellite
-      `bootstrap_url` takes a full URL, `http://wb7:8081` is representable; ESP32 design D-17 likewise) and
-      keep/verify `:443`, or (b) displace/re-port the WB admin UI (operator-hostile), or (c) host Plane-B
-      elsewhere. Touches: `nginx/ansible` templates/group_vars, `nginx/README.md`, `docs/guides/satellite.md`
-      provisioning runbook, `esp32_satellite.md` D-16/D-17 prose. Check `:443` on the live WB7 at task start.
-
 ### Code Quality & Review (QUAL)
 
 #### Cross-cutting systemic remediation — principles (the Gate 2 lens)

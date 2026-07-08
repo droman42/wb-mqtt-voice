@@ -17,6 +17,19 @@ newest entries near the top of each dated section.
 
 ## Action journal
 
+- **2026-07-08 — ARCH-41 DONE (same-day pull-forward, interactive) — Plane-B ports settled without
+  touching a single client line.** The discussion opened with recon that reframed the filed problem:
+  the WB admin UI turns out to be served by the controller's SYSTEM nginx on `:80` (user's live
+  `ss`), and our ansible role deploys into that same nginx — so the collision was routing, not
+  binding: our `:80` block claims the bare IP and would steal `http://<ip>/` from the admin UI,
+  while dropping the IP would break DNS-less bootstrap. Decision (user-approved): the bootstrap
+  zone gets a dedicated `:8081`, mTLS keeps the verified-free `:443`, both as ansible variables
+  with `default()` fallbacks. The S-7 hermetic e2e lost its port-replace hack (it now renders the
+  vars directly — "no test-plumbing deviation left") and stayed green along with the full satellite
+  suite; `bootstrap_url`/`server_url` being full URLs meant zero code changes. Docs swept end to
+  end, including a deploy pre-flight `ss` check in the nginx README. ESP32 firmware doesn't exist
+  yet — this was the last free moment to move the ports.
+
 - **2026-07-08 — BUILD-19 DONE + ARCH-41 filed — the bridge's reboot lesson landed here before it
   could hurt.** The bridge's compose cutover failed its reboot test today: their unit was rooted on
   the SD card, which is a lazy automount — the hard mount requirement dragged the card's fsck into

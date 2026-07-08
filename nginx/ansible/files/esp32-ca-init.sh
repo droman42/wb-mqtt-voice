@@ -28,7 +28,7 @@ else
   chmod 644 "$CA_DIR/ca.crt"
 fi
 
-# publish the PUBLIC CA cert for the :80 bootstrap zone (device trust anchor)
+# publish the PUBLIC CA cert for the :8081 bootstrap zone (device trust anchor)
 install -m644 "$CA_DIR/ca.crt" "$SRV_DIR/provision/ca.crt"
 
 # --- WB7 server cert (never overwritten) -----------------------------------------

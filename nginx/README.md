@@ -11,14 +11,16 @@ weight.
 
 | Endpoint | Zone | Purpose |
 |---|---|---|
-| `GET  http://<host>/esp32/provision/ca.crt` | **:80 bootstrap** | the home-CA cert (public trust anchor) — the device fetches it to trust the server |
-| `PUT  http://<host>/esp32/provision/pending/<client_id>.csr` | **:80 bootstrap** | the device submits its CSR (public; the private key never leaves the device) |
-| `GET  http://<host>/esp32/provision/cert/<client_id>.crt` | **:80 bootstrap** | the device polls for its signed cert (404 until an operator approves) |
+| `GET  http://<host>:8081/esp32/provision/ca.crt` | **:8081 bootstrap** | the home-CA cert (public trust anchor) — the device fetches it to trust the server |
+| `PUT  http://<host>:8081/esp32/provision/pending/<client_id>.csr` | **:8081 bootstrap** | the device submits its CSR (public; the private key never leaves the device) |
+| `GET  http://<host>:8081/esp32/provision/cert/<client_id>.crt` | **:8081 bootstrap** | the device polls for its signed cert (404 until an operator approves) |
 | `GET  https://<host>/esp32/firmware/...` | **:443 mTLS** | OTA firmware images (only provisioned devices, by client cert) |
 | `GET  https://<host>/esp32/models/...` | **:443 mTLS** | µWW/µVAD model artifacts (manifest + `.tflite`) |
 
 **Two zones, by design:**
-- **`:80` provisioning bootstrap** — everything here is *public* (a CA cert, a CSR, a signed cert; no
+- **`:8081` provisioning bootstrap** — a dedicated port, NOT `:80`: the WB admin UI is served
+  by this same nginx on `:80`, and a server block claiming the bare IP there would steal it
+  (ARCH-41; both ports are ansible variables). Everything here is *public* (a CA cert, a CSR, a signed cert; no
   secrets, the device key never leaves the device). The security gate is the **human approval**, not the
   transport. Solves the cert chicken-and-egg without a bootstrap secret.
 - **`:443` mTLS operations** — `ssl_verify_client on` against the home CA, so only a **provisioned device
@@ -76,7 +78,7 @@ esp32-provision status                # counts: pending vs issued
 - The signing scripts treat the CSR as **untrusted input**: `client_id` must match `^[A-Za-z0-9_-]+$` (no path
   traversal / shell injection), the CSR must self-verify (`openssl req -verify`) before signing, and it is
   signed **by file** — never interpolated into a shell.
-- Nothing on the `:80` bootstrap zone is secret (a public CA cert, a CSR, a signed cert; the device key never
+- Nothing on the `:8081` bootstrap zone is secret (a public CA cert, a CSR, a signed cert; the device key never
   crosses it), so the **human approval is the only gate** — there is no bootstrap password to manage or leak.
 
 ## Keys
@@ -90,9 +92,9 @@ EC (`prime256v1`) throughout — far lighter than RSA-4096 for the ESP32's mTLS 
   ca.key  ca.crt               # the home CA
   server.key  server.crt       # the WB7 server cert (signed by the CA), used by :443
 /srv/esp32/                    # web roots (public artifacts only)
-  provision/ca.crt             #   :80  the public CA cert
-  provision/pending/<id>.csr   #   :80  device-submitted CSRs (nginx writes, www-data)
-  provision/cert/<id>.crt      #   :80  signed device certs (sign script writes)
+  provision/ca.crt             #   :8081 the public CA cert
+  provision/pending/<id>.csr   #   :8081 device-submitted CSRs (nginx writes, www-data)
+  provision/cert/<id>.crt      #   :8081 signed device certs (sign script writes)
   firmware/...                 #   :443 OTA images   (operator/CI publishes)
   models/<client_id>/...       #   :443 model packs  (operator publishes the per-node artifact)
 /usr/local/bin/
@@ -126,6 +128,10 @@ ansible-playbook -i inventory.ini deploy.yml
 The playbook is **idempotent**: it creates the layout, installs the scripts, runs the CA init **once**
 (guarded on `ca.key`), templates the nginx site, and reloads nginx after `nginx -t`. It never overwrites an
 existing CA.
+
+Pre-flight, on the controller: `ss -tlnp | grep -E ':443 |:8081 '` — both must be free (`:80` is the WB
+admin UI on the same nginx, which is exactly why the bootstrap zone doesn't use it; override
+`esp32_http_port`/`esp32_https_port` in `group_vars/all.yml` if your box differs).
 
 ## What this plane does NOT do
 

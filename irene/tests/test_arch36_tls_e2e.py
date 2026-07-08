@@ -62,16 +62,17 @@ def _make_throwaway_ca(ca_dir: Path) -> None:
 
 def _render_site_conf(upstream_port: int) -> str:
     import jinja2
-    conf = jinja2.Template(TEMPLATE.read_text()).render(
+    # No test-plumbing deviation left: the listen ports are template variables
+    # since ARCH-41 (the bootstrap zone must stay off the WB admin UI's :80).
+    return jinja2.Template(TEMPLATE.read_text()).render(
         esp32_server_name="localhost",
         esp32_web_root="/srv/www",
         esp32_srv_dir="/srv/www/esp32",
         esp32_ca_dir="/etc/esp32-ca",
         esp32_irene_upstream=f"127.0.0.1:{upstream_port}",
+        esp32_http_port=HTTP_PORT,
+        esp32_https_port=HTTPS_PORT,
     )
-    # the only test-plumbing deviation from production: unprivileged ports
-    return conf.replace("listen 80;", f"listen {HTTP_PORT};") \
-               .replace("listen 443 ssl http2;", f"listen {HTTPS_PORT} ssl http2;")
 
 
 def _approve(web_root: Path, ca_dir: Path, client_id: str) -> None:

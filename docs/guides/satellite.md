@@ -66,7 +66,7 @@ server_url = "wss://wb7"
 
 [satellite.tls]
 enabled = true
-bootstrap_url = "http://wb7"    # only used until the certificate is issued
+bootstrap_url = "http://wb7:8081"  # only used until the certificate is issued
 ```
 
 First start walks the enrollment: the satellite generates a private key (it never leaves the
