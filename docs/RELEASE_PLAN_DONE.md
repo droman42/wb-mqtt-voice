@@ -2811,6 +2811,8 @@ rationale/chronology lives in [`RELEASE_JOURNAL.md`](./RELEASE_JOURNAL.md).
       family (`report_bundle.py::_todays_logs`). `test_logging_rotation.py` rewritten (7 tests); bundle
       tests 4/4; pyright 0/0. Docker's json-file caps only ever bounded stdout — the file channel was the
       uncapped one.
+
+### Tests (TEST)
 - [x] **TEST-0** (P0) — Minimal end-to-end smoke/integration harness (refactor safety net, Gate 0). **DONE
       2026-06-01** → `irene/tests/test_smoke_e2e.py` (**5 passed / 1 xfailed**, ~21s; boots the WebAPI runner once
       as a subprocess + a CLI headless check). Green flows: WebAPI boots, `привет`→`greeting.hello`, `/nlu/recognize`
