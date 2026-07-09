@@ -358,6 +358,42 @@ _Discrete functional defects (distinct from QUAL refactors/quality work). Surfac
       touching it. Not release-blocking (v0.5.0 is tagged), but it is the first sentence a user hears from a
       headline feature; worth fixing before the feature is mentioned to anyone.
 
+- [ ] **BUG-38** [MQTT][NLU][SAFETY] `[release]` — **A named device ignores the room the user spoke: D-15 rules
+      1–2 are unimplemented on the device-name path.** Found on the WB7 (2026-07-09) via «включи кондиционер в
+      гостиной» → `clarification_reason: "ambiguous_device"`, candidates `[bedroom_hvac, children_room_hvac,
+      living_room_hvac]` — the spoken «в гостиной» was never applied. Lights work only because «свет» is a
+      **group noun**: `_dispatch` routes it to `_room_group`, which calls `_requested_room(...)` — *"the D-15
+      pass"* — that reads the spoken `room` param and even raises the `uncovered_room` error. The **named-device
+      branch never calls it** (0 call sites in `smart_home.py:294-322`). Ambiguity is decided upstream in
+      `entity_resolver._result_from_candidates`, whose only narrowing is
+      `room_id = resolve_default_room(context, catalog)` — and that function's own docstring reads *"D-15 rule 3:
+      no room mentioned → the client's primary room"*. **Only rule 3 exists.** The disambiguator asks "which room
+      is the speaker in?" when it must first ask "which room did the speaker name?"
+      **Why `[release]`, and why it blocks any satellite deployment:** over REST (no client room) the failure is
+      benign — you get the useless clarification above. With a satellite that has a primary room, the *same* code
+      **silently actuates the wrong room**: from the living room, «включи кондиционер **в спальне**» narrows the
+      three candidates to the speaker's room, turns on `living_room_hvac`, and answers «Включила кондиционер».
+      The spoken room is never compared against `catalog_device.room` anywhere on that branch (checked
+      `:320-345`). D-15 rule 2 requires targeting the named room, or refusing with "that room is not managed by
+      this device" and **no actuation**. Latent only because every test to date has gone through REST.
+      Fix in `_result_from_candidates`, not in the handler, so every device-name path benefits at once (power,
+      cover, playback, `read_state`): prefer the spoken room, fall back to the client's primary room, and honour
+      rule 2's uncovered-room refusal. **Design subtlety:** the resolver loops over `intent.entities`, so when it
+      resolves `target` the sibling `room` may not be resolved yet (`room_resolved` absent) — the fix must read
+      the raw `room` entity and match it against the catalog itself, or force room resolution first. Refs: D-15
+      (`docs/design/esp32_satellite.md:154-163`), ARCH-7/QUAL-35 own the room resolver.
+- [ ] **BUG-39** [MQTT][UX] `[deferred]` — **The ambiguity clarification lists identical names, so it cannot be
+      answered.** «включи кондиционер в гостиной» asks: *«Какой именно: Кондиционер или Кондиционер или
+      Кондиционер?»* `_ambiguous_result` (`smart_home.py:255`) builds the prompt from `c.get("name")` alone,
+      while the candidate payloads carry `room` (`bedroom_hvac`, `children_room_hvac`, `living_room_hvac` — all
+      named «Кондиционер»). The user can only repeat themselves; a clarification they cannot answer is worse
+      than none. Qualify each option by its room («Кондиционер в спальне, в детской или в гостиной?»), falling
+      back to a further distinguishing attribute when the rooms also coincide. **Independent of BUG-38 and
+      survives it:** genuine within-room ambiguity («ночники» = two sconces in one room) still yields identical
+      names. Same code serves the capability-level ambiguity path, so fix once. Related: QUAL-63 (priority rules
+      for ambiguity) may later avoid asking at all in some of these cases; this task is about the question being
+      answerable when it *is* asked.
+
 ### Tests (TEST)
 > **Strategy (decided 2026-06-01): do NOT keep repairing the existing suite.** Most tests were written against
 > pre-refactor code and will be invalidated by the ARCH refactors (ARCH-1..5) and the code reviews (QUAL-8/10/12/14).

@@ -17,6 +17,30 @@ newest entries near the top of each dated section.
 
 ## Action journal
 
+- **2026-07-09 — DRV-23/DRV-25 verified live, both directions; then «включи кондиционер в гостиной» found
+  BUG-38/39.** After the bridge redeploy, voice restarted and pulled `16eee0f2f7832995` (`mirrored` gone from
+  `/state`). The full cycle now runs honestly on hardware: «включи свет» → relay `1`, `state.power = 'on'`;
+  «какая температура» → `24.1875` read from the top level; «выключи свет» → relay `0`, `state.power = 'off'`,
+  `status: "executed"` with no `skipped_reason`. The command I predicted this morning would silently no-op
+  transmits correctly — for two reasons, both of which contradict my filing: their guard reads the right field,
+  and the belief it reads is now true.
+  Then the owner tried «включи кондиционер в гостиной» and got
+  `«Какой именно: Кондиционер или Кондиционер или Кондиционер?»` — three candidates, the spoken room ignored.
+  **BUG-38** `[release]`: lights work only because «свет» is a *group noun*, routed to `_room_group`, which calls
+  `_requested_room()` — "the D-15 pass". The named-device branch never calls it; ambiguity is decided upstream in
+  `entity_resolver._result_from_candidates`, whose sole narrowing is `resolve_default_room(context, catalog)`,
+  documented in its own docstring as *"D-15 rule 3: no room mentioned → the client's primary room"*. Only rule 3
+  exists. The disambiguator asks which room the *speaker* is in, never which room the speaker *named*.
+  The REST symptom is the benign one. On a satellite with a primary room the same code **silently actuates the
+  wrong room**: from the living room, «включи кондиционер в спальне» narrows to the speaker's room, switches on
+  `living_room_hvac`, and answers «Включила кондиционер» — while D-15 rule 2 demands the named room, or a spoken
+  refusal and *no actuation*. Nothing compares the spoken room to `catalog_device.room` on that branch. Latent
+  purely because every test so far went through REST, which carries no client room. Hence `[release]`: it blocks
+  the next tag and any satellite deployment.
+  **BUG-39** `[deferred]`: the clarification cannot be answered — all three devices are named «Кондиционер», and
+  `_ambiguous_result` builds the prompt from `name` alone though the payloads carry `room`. It survives BUG-38's
+  fix, because two sconces in one room still collide.
+
 - **2026-07-09 — QUAL-80: golden re-pinned `8159b4b0…` → `16eee0f2f7832995`, and the loop closes.** The bridge
   asked for the re-pin; both driving fixes were caused by our WB7 testing. **DRV-23** — WB-passthrough devices
   now expose feedback at top-level `state.<field>`, exactly the read path we depend on, and the `mirrored` bucket
