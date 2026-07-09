@@ -331,6 +331,27 @@ _Apply to every remediation task below (from the 4 review docs + QUAL-25/26). So
 ### Bugs (BUG)
 _Discrete functional defects (distinct from QUAL refactors/quality work). Surfaced from any source; filed before fixing._
 
+- [ ] **BUG-37** [NLU][TTS][UX] `[deferred]` — **Spoken sensor readings are unrounded, mis-vocalized and
+      ungrammatical.** Latent since the read-state path was written; **invisible until 2026-07-09**, when the
+      bridge's DRV-23 fix made `smart_home.read_state` return a value for the first time. «какая температура в
+      кабинете» now answers `«Сейчас 24.125 градусов — Тёплый пол»`. Three defects compound:
+      **(a) no rounding.** `smart_home.py:636` only narrows a float when it is already integral
+      (`value == int(value)`), so a sensor's `24.125` reaches the template verbatim. A person says «двадцать
+      четыре градуса».
+      **(b) the decimal is vocalized wrongly.** `utils/text_processing.all_num_to_text` renders the fraction as a
+      second whole number and silently drops digits: `24.125 → «двадцать четыре двенадцать»`,
+      `24.5 → «двадцать четыре пятьдесят»`, `2.75 → «два семьдесят пять»`, `21.0 → «двадцать один ноль»`. So
+      even a correctly-rounded `24.5` would be spoken as "twenty-four fifty".
+      **(c) no Russian numeral agreement.** `assets/templates/smart_home_handler/ru.yaml:42` hardcodes
+      «градусов»: `1 → «один градусов»` (should be «градус»), `24 → «двадцать четыре градусов»` (should be
+      «градуса»). English `en.yaml:41` has the same flaw ("1 degrees").
+      Fix: round sensor values at the handler (1 decimal, or integer for temperature), decline the unit by the
+      numeral (1/21/31→ед., 2–4/22–24→род.ед., else род.мн.), and either fix the fraction path in
+      `all_num_to_text` or keep decimals out of spoken text entirely. Note (b) is a **general** text-processing
+      defect — it affects any spoken decimal, not just temperatures. Not release-blocking (v0.5.0 is tagged), but
+      it is the first sentence a user hears from a headline feature; worth fixing before the feature is
+      mentioned to anyone.
+
 ### Tests (TEST)
 > **Strategy (decided 2026-06-01): do NOT keep repairing the existing suite.** Most tests were written against
 > pre-refactor code and will be invalidated by the ARCH refactors (ARCH-1..5) and the code reviews (QUAL-8/10/12/14).

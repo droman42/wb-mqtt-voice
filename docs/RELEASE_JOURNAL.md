@@ -17,6 +17,22 @@ newest entries near the top of each dated section.
 
 ## Action journal
 
+- **2026-07-09 — The bridge fixed DRV-23; sensor questions answer, and immediately expose BUG-37.** «какая
+  температура в кабинете» now returns `success: true`, `room_temperature = 24.125`, «Сейчас 24.125 градусов —
+  Тёплый пол». The bridge projects its mirrored fields to the top level, and voice reads `state.<field>` per the
+  ARCH-8 contract, unchanged. The **`power` half of DRV-23 is not yet confirmed**: belief, `mirrored` and the
+  relay topic all read `off/0/0` right now, and a consistent state proves only that nothing contradicts — it
+  takes a toggle to prove the projection.
+  What the working read path revealed is ours. The sentence a user would *hear* is
+  «Сейчас двадцать четыре двенадцать градусов»: (a) the handler only narrows integral floats, so `24.125` reaches
+  the template raw; (b) `all_num_to_text` renders a fraction as a second whole number and drops digits
+  (`24.5 → «двадцать четыре пятьдесят»`, `2.75 → «два семьдесят пять»`) — a **general** text-processing defect,
+  not a temperature one; (c) the template hardcodes «градусов», so `1 → «один градусов»` and `24 → «двадцать
+  четыре градусов»` (English `"1 degrees"` likewise). Filed as **BUG-37** `[deferred]`.
+  The pattern is by now familiar: this has been broken since the read path was written, and no gate could see it
+  because the path never returned a value — the bug needed a *working* dependency to become visible. Today's
+  score for "found only by running the real thing on real hardware" stands at eight.
+
 - **2026-07-09 — Answered the bridge's DRV-23 question, and the answer is worse than either side assumed.** They
   asked which field Irene reads — `state.power` or `mirrored.power` — since that decides whether their
   state/mirror decoupling is a live integration bug or cosmetic. **Irene reads the top-level field; `mirrored`
