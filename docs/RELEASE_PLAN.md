@@ -425,6 +425,30 @@ size-matched to the Russian stack; language is a per-config/deployment choice (a
       on drift (the `check_scope.py` / contract-pin mechanic applied to a generated file), or drop the artifact
       from git and generate it during the build. Pairs with `config-ui-stays-functional`, which assumes the
       schema the UI is built against is the schema the backend serves.
+- [ ] **BUILD-27** [OPS][MQTT] `[release]` — **The voice container joins the host network; bridge actuation is
+      turned on.** On the WB7 (2026-07-09) `[outputs.bridge] enabled = false` in every embedded profile, so the
+      device catalog was never fetched — zero bridge lines in the log. Worse, flipping it alone would have
+      failed: `base_url = "http://localhost:8000"` resolves to the *container* under our `ports:` mapping —
+      verified from inside it, `127.0.0.1:8000` → connection refused, gateway `172.17.0.1:8000` → HTTP 200
+      serving 79 devices at `catalog_version 8159b4b0068d1c63` (identical to the eval-commons pin, so the two
+      halves agree). The bridge's own compose uses `network_mode: host` because it must reach WB's mosquitto on
+      `localhost:1883`; our `ports:`-mapped container is the odd one out, which is the whole bug. Fix (owner's
+      call): give the voice container `network_mode: host` too, matching the bridge, so the shipped
+      `localhost:8000` becomes true as written and the asymmetry disappears. Drop the now-meaningless `ports:`
+      mapping; the runner already binds `0.0.0.0:8080`, so reachability and Plane B's
+      `esp32_irene_upstream: 127.0.0.1:8080` proxy are unaffected. Enable `[outputs.bridge]` in the four embedded
+      profiles (standalone keeps it off — a dev box has no bridge). A failed startup catalog pull is non-fatal by
+      design (`composition.py:79`): the ARCH-26 lazy refresh retries on the first resolution miss.
+- [ ] **BUILD-28** [OPS][PROCESS] `[deferred]` — **One compose file for the controller, with a real startup
+      order.** Three containers run on the WB7 today — `wb-mqtt-bridge`, `wb-mqtt-ui`, `wb-mqtt-voice` — from
+      **two** compose projects (`mqtt-bridge-config`, `mqtt-voice-config`), each with its own systemd unit, no
+      `depends_on` between them and no ordering guarantee. Voice pulls the bridge's catalog at startup, so today
+      it simply races and relies on the ARCH-26 lazy refresh to paper over losing (BUILD-27). Owner's framing
+      (2026-07-09): the permanent answer is a single compose file managing all three, with the startup sequence
+      expressed rather than hoped for — and since it spans both product repos, it belongs on the **commons PROD
+      board** (D-4/D-5), seeded when BUILD-21 lands, not decided unilaterally here. Scope for that design: which
+      repo owns the unified compose, health-gated `depends_on` vs. tolerant clients, whether the units collapse
+      into one, and how `update.sh` stays per-repo when the compose is not. Related: BUILD-18 (ops conformance).
 ### Documentation (DOC)
 
 ### UI / config-ui (UI)

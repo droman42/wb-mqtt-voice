@@ -60,9 +60,11 @@ console = true                      # Console (terminal) text output (CLI channe
 web_push = true                     # Browser push channel (/ws/output) for deferred results
 
 [outputs.bridge]
-# Smart-home actuation via wb-mqtt-bridge (ARCH-8). Flip on when the bridge is
-# deployed and reachable from this instance (hardware bring-up, ARCH-25).
-enabled = false
+# Smart-home actuation via wb-mqtt-bridge (ARCH-8). ON: the bridge runs on this controller
+# (BUILD-27). `localhost` is correct because the container shares the host network, exactly as
+# the bridge's own container does — see ops/docker-compose.yml. A failed startup catalog pull is
+# non-fatal; the lazy refresh retries on the first device-resolution miss.
+enabled = true
 base_url = "http://localhost:8000"  # wb-mqtt-bridge REST API
 timeout_seconds = 5.0
 

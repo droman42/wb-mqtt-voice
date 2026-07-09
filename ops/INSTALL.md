@@ -60,6 +60,12 @@ The web API answers on port **8080** (`curl http://localhost:8080/health`). Spee
 download into the runtime tree's `assets/` on first boot — the first start takes a few
 minutes; subsequent starts reuse them.
 
+The container runs on the **host network**, like the bridge next to it. That is what lets the
+assistant reach the bridge's REST API at `http://localhost:8000` to fetch the device catalog and
+send commands: inside a port-mapped container, `localhost` means the container itself, not the
+controller. It also means `:8080` is bound directly on the controller rather than published through
+a mapping — so nothing else may already be listening there.
+
 While that download runs, `docker compose ps` shows the container as **`health: starting`** —
 its healthcheck polls `/health` and is given five minutes of grace before it starts reporting
 `unhealthy`. On a slow link the first boot can outlast that; nothing restarts the container, so

@@ -12,8 +12,14 @@ services:
     image: ghcr.io/droman42/wb-mqtt-voice-armv7:latest
     container_name: wb-mqtt-voice
     restart: unless-stopped
-    ports:
-      - "8080:8080"
+    # Host network, matching the sibling bridge (which needs it to reach WB's mosquitto on
+    # localhost:1883). Under a `ports:` mapping our container's `localhost` is the CONTAINER, so
+    # `[outputs.bridge] base_url = "http://localhost:8000"` could never have reached the bridge's
+    # REST API on the host — it had to be a gateway IP, which is brittle (BUILD-27). On the host
+    # network that config line is simply true, and the two products stop networking differently.
+    # No `ports:` needed: the runner already binds 0.0.0.0:8080, so :8080 is served on the host
+    # directly — including for Plane B's nginx proxy (`esp32_irene_upstream: 127.0.0.1:8080`).
+    network_mode: host
     volumes:
       # The runtime tree lives on /mnt/data (the clone on /mnt/sdcard is only the
       # delivery vehicle — same split as the sibling mqtt-bridge-config). assets/ is
