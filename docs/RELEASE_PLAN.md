@@ -309,6 +309,24 @@ _Apply to every remediation task below (from the 4 review docs + QUAL-25/26). So
       `web_server.py` builds the uvicorn config (`_build_uvicorn_server`, which already special-cases uvicorn's
       logging so its loggers propagate to the root handlers). Keep non-2xx — a failing probe is exactly the
       event worth seeing. Surfaced on the WB7 bring-up.
+- [ ] **QUAL-79** [APICONTRACT] `[deferred]` — **`confidence` on the intent-result contract is a success flag, not
+      a confidence.** `IntentResult.confidence` (`intents/models.py:55`, *"Confidence in the response"*) is set by
+      only **4 of 120** `IntentResult(...)` constructions — all in `handlers/base.py`, `1.0` on the success helper
+      and `0.0` on the error helper; everything else takes the `1.0` default. `api/serializers.py:38` (the single
+      canonical serializer QUAL-55 introduced) lifts that value to the response's top level, so every
+      intent-executing surface reports a constant. Meanwhile the **recognition** confidence — `Intent.confidence`,
+      logged at `nlu_component.py:793`, and the number the cascade actually gates on
+      (`voice_assistant.py:558`, `>= threshold`) — never reaches a client. Observed on the WB7 (2026-07-09):
+      «включи свет в кабинете» recognized at **0.76** against a 0.70 threshold, response said `confidence: 1.0`;
+      and a *failed* read-state reply also said `confidence: 1.0` (`success: false`), so it is not even reliably
+      the success flag it duplicates. QUAL-55 canonicalized *where* the field sits without asking *what* it means.
+      Fix: `confidence` should carry the recognition confidence (`success` already encodes the rest); the
+      orchestrator holds the `Intent` when it builds the result. **Contract change across three surfaces** —
+      the REST response (`openapi.json` → config-ui's generated types), the WS response frame
+      (`docs/guides/websocket-api.md`, which `ws-protocol-doc-canonical` makes authoritative), and
+      `eval-commons/providers/ws_audio_provider.py`, which documents the field. Nothing currently *consumes* the
+      value, which is why this is deferrable rather than urgent. Interim alternative if the break is unwelcome:
+      add `recognition_confidence` alongside — purely additive, but it leaves the misleading field in place.
 
 ### Bugs (BUG)
 _Discrete functional defects (distinct from QUAL refactors/quality work). Surfaced from any source; filed before fixing._

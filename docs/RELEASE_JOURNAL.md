@@ -17,6 +17,31 @@ newest entries near the top of each dated section.
 
 ## Action journal
 
+- **2026-07-09 — Answered the bridge's DRV-23 question, and the answer is worse than either side assumed.** They
+  asked which field Irene reads — `state.power` or `mirrored.power` — since that decides whether their
+  state/mirror decoupling is a live integration bug or cosmetic. **Irene reads the top-level field; `mirrored`
+  does not appear anywhere in the voice codebase.** `outputs/bridge.py:230` unwraps `payload.get("state")` and
+  falls back to the whole flat payload; `smart_home.py:631` then does `state.get(field_name)` by the name the
+  catalog advertises.
+  So: live, not cosmetic — and the **read** path is hit harder than the idempotence path we started from. Voice
+  only reads `temperature`/`humidity` today (`_QUANTITY_FIELDS`), never `power` — but on exactly the devices
+  carrying those fields, the values live *only* inside `mirrored`: `cabinet_floor` reports top-level
+  `{"power": "off"}` with `mirrored {"room_temperature": 24.125, …}`. Run end-to-end on the box, «какая
+  температура в кабинете» returns `success: false`,
+  `error: "state read failed for cabinet_floor.room_temperature"`, and Irene says «Не уверена, что получилось» —
+  while the number sits in `mirrored`. **Every spoken sensor question is broken on those devices**, independently
+  of the `power` idempotence skip. Both findings, and the answer, are in the bridge's DRV-23 (uncommitted).
+  Voice will keep reading top-level `state.<field>`: that is the ARCH-8 contract (`mqtt_integration.md` §5c) and
+  `mirrored` is not part of it. Whether the projection is missing or `mirrored` is secretly authoritative, the
+  fix is bridge-side; we changed nothing here.
+  Filed **QUAL-79** `[deferred]` from the same session: the `confidence` in every intent-result response is a
+  success flag, not a confidence. Only 4 of 120 `IntentResult(...)` constructions set it (`1.0` success / `0.0`
+  error in `handlers/base.py`); the rest take the `1.0` default, and the canonical serializer publishes that.
+  The recognition confidence — the number the cascade gates on — never reaches a client: «включи свет» was
+  recognized at **0.76** against a 0.70 threshold while the response claimed `1.0`. And the failed read-state
+  reply above *also* reported `confidence: 1.0` alongside `success: false`, so it is not even reliably the flag
+  it duplicates. QUAL-55 canonicalized where the field sits without asking what it means.
+
 - **2026-07-09 — «включи свет в кабинете» → the light came on. Text in, photons out.** BUILD-27 landed and the
   assistant actuated real hardware for the first time: `smart_home.power_on` recognized by
   `hybrid_keyword_matcher` (0.76), «кабинет» resolved against the freshly-pulled catalog to `cabinet_spots`, a
