@@ -22,7 +22,6 @@
 # traces (QUAL-53 — analysing why utterances fall through to the LLM tier).
 
 name = "Irene"
-version = "15.0.0"
 debug = false
 log_level = "INFO"
 

@@ -4,7 +4,7 @@ The single active tracker for the road to release. Supersedes the legacy `docs/T
 `docs/TODO/TODO0x` (refactor-era, mostly complete — to be archived under DOC-2).
 
 **Target:** milestone — **scope-complete** (release when every `[release]` task is `[x]`; no calendar date; the gate
-is `scripts/check_scope.py` clean) · **Status:** active · **Version:** 15.0.0
+is `scripts/check_scope.py` clean) · **Status:** active · **Version:** 0.5.0 (REL-4; was `15.0.0`)
 
 > **Completed tasks** (`[x]`) live in the frozen archive **[`RELEASE_PLAN_DONE.md`](./RELEASE_PLAN_DONE.md)** —
 > split out to keep this file the *active* working set (open tasks + structure). IDs are preserved there; grep it
@@ -415,6 +415,16 @@ size-matched to the Russian stack; language is a per-config/deployment choice (a
       that goes red when the pin trails the newest bridge contract tag — staleness becomes a machine
       failure, not a memory note. Pairs with bridge intake VWB-29 (they tag + attach artifacts; gated on
       it). Ref: `docs/design/productization.md` D-11.
+- [ ] **BUILD-26** [BUILD][UI] `[deferred]` — **`config-ui/openapi.json` is a committed generated artifact that
+      nothing regenerates.** Found during REL-4 (2026-07-09): re-running `scripts/dump_openapi.py` produced 241
+      inserted lines — four schemas (`BridgeOutputConfig`, `ReportsConfig`, `SatelliteConfig`,
+      `SatelliteTLSConfig`) had been added to the API by earlier work and never re-dumped, besides
+      `info.version` and `HealthResponse.inactive_providers`. `config-ui`'s TypeScript types are generated
+      *from* that file (`npm run gen:api-types`), so the editor has been type-checking against a stale view of
+      the backend and silently lacks types for those config sections. Fix: a CI gate that regenerates and fails
+      on drift (the `check_scope.py` / contract-pin mechanic applied to a generated file), or drop the artifact
+      from git and generate it during the build. Pairs with `config-ui-stays-functional`, which assumes the
+      schema the UI is built against is the schema the backend serves.
 ### Documentation (DOC)
 
 ### UI / config-ui (UI)

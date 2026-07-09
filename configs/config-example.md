@@ -46,7 +46,6 @@ The v14 configuration architecture provides:
 ```toml
 # Core assistant settings
 name = "Irene"
-version = "14.0.0"
 language = "en-US"
 
 # System capabilities (what your hardware/environment supports)
@@ -81,7 +80,6 @@ assets_root = "${IRENE_ASSETS_ROOT}"
 ### **1. Core Settings**
 ```toml
 name = "Irene"                      # Assistant name
-version = "14.0.0"                  # Configuration version
 debug = false                       # Debug mode
 log_level = "INFO"                  # Logging level
 language = "en-US"                  # Primary language

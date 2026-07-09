@@ -17,7 +17,8 @@
 # CORE SETTINGS
 # ============================================================
 name = "Irene"                      # Assistant name
-version = "15.0.0"                  # Configuration version
+# version — omitted on purpose (REL-4). It defaults to the running assistant's own version; writing
+# it here (as every profile once did) creates an unvalidated copy that can only drift out of date.
 debug = false                       # Enable debug mode for detailed logging
 log_level = "INFO"                  # Logging level: DEBUG, INFO, WARNING, ERROR, CRITICAL
 

@@ -17,6 +17,32 @@ newest entries near the top of each dated section.
 
 ## Action journal
 
+- **2026-07-09 — REL-4: the version stops lying. `15.0.0` → `0.5.0`.** The owner's objection was exact: `15.0.0`
+  claims a fifteenth major release, and there was never a first. The only tags this repo ever carried are `8.1`
+  (inherited 2023 upstream history) and `v12-final`. His scheme — major `0` because the API is not frozen, minor
+  `5` because it is the fifth design generation — turns out to fit 0.x semver rather than fight it: under 0.x the
+  *minor* is the breaking axis, which is exactly where a new design generation belongs. The third part of the
+  idea, patch = "15th iteration overall", was the one thing that could not survive: patch's only job is counting
+  backwards-compatible fixes, and the first bugfix would have destroyed the meaning. That fact now lives in prose
+  (CHANGELOG + `__version__.py`), where a reader understands it and no resolver misreads it.
+  The change also improved the code. `MAJOR_VERSION` never meant "package major" — it printed `V15 Components`,
+  the *architecture generation* — so it became an explicit `ARCH_GENERATION = 5`, no longer derived from the
+  version. The log now reads `V5 Components`, which is what it always meant.
+  Two dividends from looking rather than assuming. **The 13 configs' `version = "15.0.0"` lines were deleted, not
+  updated**: `CoreConfig.version` already defaults to `__version__`, so they were unvalidated copies that could
+  only drift — and `configs/config-example.md` proved it, still carrying `14.0.0`, a whole major behind. And
+  regenerating `config-ui/openapi.json` revealed the committed artifact was **stale**: four schemas
+  (`BridgeOutputConfig`, `ReportsConfig`, `SatelliteConfig`, `SatelliteTLSConfig`) had been added to the API and
+  never re-dumped, so config-ui has been type-checking against an old backend. Nothing in CI regenerates it →
+  **BUILD-26** `[deferred]`.
+  Cross-repo cost was zero, as estimated: the bridge never reads our version (its `15` hits are a lockfile
+  `node` engines range and a slice number), eval-commons stamps only `bridge_version`. The single stale claim —
+  D-11's "voice 15.x" — was corrected in `productization.md`. I had earlier argued that D-11 "already decided
+  15.x cross-repo"; reading it, that was a parenthetical describing the status quo, not a constraint anything
+  builds against, and I withdrew the argument. Verified live: `/health` → `"version":"0.5.0"`,
+  `openapi.info.version` = `0.5.0`, startup logs `V5 Components`, all 14 configs parse and inherit it.
+  pyright 0, import-linter 11/11, 1358 tests, config-ui check + build green.
+
 - **2026-07-09 — ARCH-25 DONE: the WB7 is up, and the reboot test passed. Scope is complete.** The controller
   boots the `embedded-armv7` image from `/mnt/data`, downloads and loads sherpa-onnx ASR (26 MB) + Piper irina
   (79 MB), and answers a live Russian command — «который час» → «11:35», `datetime.current_time`, confidence 1.0.

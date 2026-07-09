@@ -1,11 +1,17 @@
 # Changelog
 
-## 15.0.0 — the revival release *(unreleased — tag pending hardware validation)*
+## 0.5.0 — the revival release *(unreleased)*
 
 The first release of the revived Irene: a ground-up modernization of the
 [janvarev/Irene-Voice-Assistant](https://github.com/janvarev/Irene-Voice-Assistant) lineage,
 rebuilt as an async, configuration-driven, hexagonal-architecture voice assistant. Russian-first,
 English supported, offline by default.
+
+**About the version number.** This is the **fifth design generation** of the assistant — counting
+the original that inspired it, this codebase is the fifteenth iteration overall. Earlier development
+carried the version `15.0.0`, which claimed fourteen prior major releases that never existed. So:
+`0` because the public API is not frozen yet, `5` because it is the fifth design. The `1.0.0` will
+come when the API settles, not before.
 
 ### Architecture
 

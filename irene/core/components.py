@@ -15,12 +15,9 @@ from ..utils.loader import DependencyChecker, get_component_status
 from .interfaces.component import ComponentPort
 from ..intents.context import ContextManager
 from ..intents.ports import ComponentControlRegistryPort  # QUAL-24: registry port (application implements it)
-from ..__version__ import __version__
+from ..__version__ import ARCH_GENERATION
 
 logger = logging.getLogger(__name__)
-
-# Extract major version for consistent messaging
-MAJOR_VERSION = __version__.split('.')[0]
 
 T = TypeVar('T', bound='ComponentPort')
 
@@ -159,7 +156,7 @@ class ComponentManager(ComponentControlRegistryPort):
         if self._initialized:
             return
             
-        logger.info(f"Initializing V{MAJOR_VERSION} component system with dependency injection...")
+        logger.info(f"Initializing V{ARCH_GENERATION} component system with dependency injection...")
         
         # What the OPERATOR asked for. This is the authority: iterating `available_components` and
         # filtering by config (as this once did) makes an enabled-but-unimportable component simply
@@ -207,7 +204,7 @@ class ComponentManager(ComponentControlRegistryPort):
         broken = {**self._missing_components, **{n: str(e) for n, e in self._failed_components.items()}}
         profile = self.get_deployment_profile()
         logger.info(
-            f"V{MAJOR_VERSION} Components. Profile: {profile}, Requested: {len(requested)}, "
+            f"V{ARCH_GENERATION} Components. Profile: {profile}, Requested: {len(requested)}, "
             f"Running: {len(self._components)}, Missing: {len(self._missing_components)}, "
             f"Failed to initialize: {len(self._failed_components)}"
         )
@@ -437,7 +434,7 @@ class ComponentManager(ComponentControlRegistryPort):
         if not self._initialized:
             return
             
-        logger.info(f"Shutting down V{MAJOR_VERSION} component system...")
+        logger.info(f"Shutting down V{ARCH_GENERATION} component system...")
         
         # Shutdown in reverse order of initialization
         shutdown_order = list(reversed(list(self._components.keys())))
@@ -455,7 +452,7 @@ class ComponentManager(ComponentControlRegistryPort):
         self._failed_components.clear()
         self._initialized = False
         
-        logger.info(f"V{MAJOR_VERSION} component system shutdown completed")
+        logger.info(f"V{ARCH_GENERATION} component system shutdown completed")
             
     def get_component_info(self) -> dict[str, ComponentInfo]:
         """Get information about all components (successful and failed)"""

@@ -45,7 +45,7 @@ GOOGLE_CLOUD_PROJECT_ID=your_google_project_id
 IRENE_DEBUG=false
 IRENE_LOG_LEVEL=INFO
 IRENE_NAME=Irene
-# IRENE_VERSION is informational; leave it to the package (currently 15.0.0) rather than pinning it here.
+# IRENE_VERSION is informational; leave it to the package (currently 0.5.0) rather than pinning it here.
 IRENE_LANGUAGE=en-US
 IRENE_TIMEZONE=UTC
 

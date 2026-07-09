@@ -3,7 +3,7 @@
 An offline-first voice assistant for the home — speech in, intents out, no cloud round-trip by
 default. It runs locally on its own and couples to a smart home over MQTT when you want it to.
 
-Russian-first, English supported. Version 15.0.0 · Python 3.11+ · MIT.
+Russian-first, English supported. Version 0.5.0 · Python 3.11+ · MIT.
 
 > **Status — pre-release, under active development.** The architecture is settled and the core works
 > (CLI and web API, intent handling, timers, smart-home control through

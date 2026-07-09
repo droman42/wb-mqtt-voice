@@ -4072,3 +4072,25 @@ rationale/chronology lives in [`RELEASE_JOURNAL.md`](./RELEASE_JOURNAL.md).
       ARM boot validation (ARCH-25) and a clean `check_scope.py` (every `[release]` task `[x]`), so the tag is
       the FINAL release act, cut when ARCH-25 closes. REL-3's own deliverables (version decision, changelog,
       functional pass) are complete.
+
+- [x] **REL-4** [REL] `[release]` — **DONE 2026-07-09.** Version renumbered `15.0.0` → **`0.5.0`**. The old number
+      asserted fourteen prior major releases of this codebase; the only tags this repo ever carried are `8.1`
+      (inherited 2023 upstream history) and `v12-final`. Owner's scheme: major `0` = the public API is not frozen
+      (BUILD-21/22/23 will rename the package and extract the loader/logging), minor `5` = the fifth design
+      generation — which fits 0.x semver exactly, since under 0.x the minor *is* the breaking axis. The "15th
+      iteration overall" lineage fact moved to prose (CHANGELOG + `__version__.py`), because in the patch field it
+      would collide with the only job patch has and be destroyed by the first bugfix.
+      `irene/__version__.py` is the single source; `pyproject` (`attr`), FastAPI `info.version`, `/health` and
+      `CoreConfig.version` all derive from it. `MAJOR_VERSION` — which never meant "package major", it printed
+      `V15 Components`, i.e. the *architecture generation* — became an explicit `ARCH_GENERATION = 5`, no longer
+      derived from the version (the log now reads `V5 Components`). **Deleted the `version = "15.0.0"` line from
+      all 13 configs**: `CoreConfig.version` already defaults to `__version__`, so they were unvalidated copies
+      that could only drift — and `configs/config-example.md` proved the point, still carrying `14.0.0`, a whole
+      major behind. `config-master.toml` keeps a comment explaining the omission instead of a value.
+      Regenerating `config-ui/openapi.json` also revealed it was **stale**: four schemas (`BridgeOutputConfig`,
+      `ReportsConfig`, `SatelliteConfig`, `SatelliteTLSConfig`) had been added to the API and never re-dumped;
+      nothing in CI regenerates it (filed as BUILD-26). Cross-repo cost was **zero** — the bridge never reads our
+      version and eval-commons stamps only `bridge_version`; the one stale claim, D-11's "voice 15.x", was
+      corrected in `productization.md`. Verified live: `/health` → `"version":"0.5.0"`, `openapi.info.version` =
+      `0.5.0`, startup logs `V5 Components`, all 14 configs parse and inherit the version. pyright 0,
+      import-linter 11/11, 1358 tests pass, `config-ui` check + build green.

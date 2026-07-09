@@ -125,10 +125,11 @@ homes, cross-repo idea discipline, work/release coordination, and delivery harmo
   layer — solved by D-4/D-5's board.
 
 - **D-11 — Releases: per-component semver + calver compatibility sets.** Each component keeps
-  its own semver + changelog (voice 15.x, bridge toward 1.0, contract explicitly semver-ish:
-  additive = minor / breaking = major, ui-kit + firmware when they exist). A **suite release
+  its own semver + changelog (voice **0.5.x** — renumbered from the inherited `15.0.0`, which claimed
+  fourteen major releases that never happened; see REL-4 — bridge toward 1.0, contract explicitly
+  semver-ish: additive = minor / breaking = major, ui-kit + firmware when they exist). A **suite release
   is a tested-together statement, not a lockstep version**: a manifest in commons — e.g.
-  "Domovoy 2026.07 = voice v15.0.0 + bridge v1.0.0 + contract v1.4 + images …" — gated on the
+  "Domovoy 2026.07 = voice v0.5.0 + bridge v1.0.0 + contract v1.4 + images …" — gated on the
   eval-commons cross-suites passing against exactly those pins. **Contract distribution
   formalized:** the bridge tags contract releases (`contract-vN`, artifacts attached); the
   voice re-pin becomes a script (`make repin CONTRACT=vN` writing the stamp) + a

@@ -3,7 +3,7 @@
   "info": {
     "title": "Irene Voice Assistant API",
     "description": "Modern async voice assistant API with WebSocket support",
-    "version": "15.0.0"
+    "version": "0.5.0"
   },
   "paths": {
     "/": {
@@ -168,7 +168,7 @@
           "General"
         ],
         "summary": "Health Check",
-        "description": "Health check endpoint",
+        "description": "Liveness + a refusal to claim health while running degraded.\n\nA component enabled in `[components]` that could not start aborts the process outright; the\nobservability components degrade instead (BUG-36). When any of them is missing, this returns\n503 so the container healthcheck, systemd and any orchestrator see the truth rather than a\ncheerful constant. (Full readiness — \"the models are loaded, I can actually speak\" — is\nARCH-45.)",
         "operationId": "health_check_health_get",
         "responses": {
           "200": {
@@ -3568,7 +3568,7 @@
             "required": true,
             "schema": {
               "type": "string",
-              "format": "binary",
+              "contentMediaType": "application/octet-stream",
               "title": "Audio Data"
             }
           },
@@ -5646,7 +5646,7 @@
         "properties": {
           "audio_file": {
             "type": "string",
-            "format": "binary",
+            "contentMediaType": "application/octet-stream",
             "title": "Audio File"
           }
         },
@@ -5660,7 +5660,7 @@
         "properties": {
           "file": {
             "type": "string",
-            "format": "binary",
+            "contentMediaType": "application/octet-stream",
             "title": "File"
           }
         },
@@ -5674,7 +5674,7 @@
         "properties": {
           "audio_file": {
             "type": "string",
-            "format": "binary",
+            "contentMediaType": "application/octet-stream",
             "title": "Audio File"
           }
         },
@@ -5688,7 +5688,7 @@
         "properties": {
           "audio": {
             "type": "string",
-            "format": "binary",
+            "contentMediaType": "application/octet-stream",
             "title": "Audio"
           }
         },
@@ -5697,6 +5697,32 @@
           "audio"
         ],
         "title": "Body_transcribe_audio_file_asr_transcribe_post"
+      },
+      "BridgeOutputConfig": {
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "title": "Enabled",
+            "description": "Enable the smart-home bridge output (wb-mqtt-bridge)",
+            "default": false
+          },
+          "base_url": {
+            "type": "string",
+            "title": "Base Url",
+            "description": "Base URL of the wb-mqtt-bridge REST API (no trailing slash)",
+            "default": "http://localhost:8000"
+          },
+          "timeout_seconds": {
+            "type": "number",
+            "exclusiveMinimum": 0.0,
+            "title": "Timeout Seconds",
+            "description": "Per-request HTTP timeout — covers the bridge's ~500 ms actuation echo-wait with margin",
+            "default": 5.0
+          }
+        },
+        "type": "object",
+        "title": "BridgeOutputConfig",
+        "description": "The wb-mqtt-bridge actuation channel (ARCH-8) — the designated DEVICE_COMMAND output.\n\nWhen enabled, the composition registers the `BridgeClient` output adapter and designates it\nfor the `device_command` modality; smart-home intents actuate through it and the device\ncatalog is pulled from the same endpoint (`GET /system/catalog`, lazy refresh per ARCH-26)."
       },
       "CLIInputConfig": {
         "properties": {
@@ -6598,7 +6624,7 @@
             "type": "string",
             "title": "Version",
             "description": "Version",
-            "default": "15.0.0"
+            "default": "0.5.0"
           },
           "debug": {
             "type": "boolean",
@@ -6675,6 +6701,14 @@
           "trace": {
             "$ref": "#/components/schemas/TraceConfig",
             "description": "Trace persistence configuration (ARCH-19)"
+          },
+          "reports": {
+            "$ref": "#/components/schemas/ReportsConfig",
+            "description": "Problem reporting configuration (ARCH-30)"
+          },
+          "satellite": {
+            "$ref": "#/components/schemas/SatelliteConfig",
+            "description": "Satellite room-node mode (ARCH-35/36)"
           },
           "default_language": {
             "type": "string",
@@ -7748,6 +7782,14 @@
           "timestamp": {
             "type": "number",
             "title": "Timestamp"
+          },
+          "inactive_providers": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Inactive Providers",
+            "default": {}
           }
         },
         "type": "object",
@@ -10437,6 +10479,10 @@
             "title": "Web Push",
             "description": "Enable the browser push channel (/ws/output) for deferred results",
             "default": true
+          },
+          "bridge": {
+            "$ref": "#/components/schemas/BridgeOutputConfig",
+            "description": "Smart-home bridge actuation channel (ARCH-8)"
           }
         },
         "type": "object",
@@ -11235,6 +11281,60 @@
         "title": "ReloadDonationResponse",
         "description": "Response for unified donation reload operation"
       },
+      "ReportsConfig": {
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "title": "Enabled",
+            "description": "Enable problem reporting (the report intent files real tickets)",
+            "default": false
+          },
+          "capture_ttl_seconds": {
+            "type": "integer",
+            "minimum": 10.0,
+            "title": "Capture Ttl Seconds",
+            "description": "Verbatim-capture window after «опишите проблему» (design D-5)",
+            "default": 90
+          },
+          "repo": {
+            "type": "string",
+            "title": "Repo",
+            "description": "Reports repo, 'owner/name' — MUST be private (bundles carry logs/config)",
+            "default": ""
+          },
+          "token_env": {
+            "type": "string",
+            "title": "Token Env",
+            "description": "Env var holding a fine-grained PAT scoped to the reports repo only (issues + contents write)",
+            "default": "IRENE_REPORTS_TOKEN"
+          },
+          "rate_limit_per_hour": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Rate Limit Per Hour",
+            "description": "Max reports filed per hour (design D-7)",
+            "default": 3
+          },
+          "rate_limit_per_day": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Rate Limit Per Day",
+            "description": "Max reports filed per day (design D-7)",
+            "default": 10
+          },
+          "ring_size": {
+            "type": "integer",
+            "maximum": 50.0,
+            "minimum": 1.0,
+            "title": "Ring Size",
+            "description": "Rolling request-trace ring depth dumped into bundles (design D-10)",
+            "default": 5
+          }
+        },
+        "type": "object",
+        "title": "ReportsConfig",
+        "description": "Problem reporting («сообщи о проблеме») — ARCH-30 design (`docs/design/problem_reports.md`).\n\nARCH-31 ships the dialog (this section's `enabled` + `capture_ttl_seconds`); ARCH-32 adds the\ndelivery fields (repo, token env, rate limits). Disabled ⇒ the intent answers honestly that\nreporting isn't set up — it never half-works."
+      },
       "RoomAliasesResponse": {
         "properties": {
           "success": {
@@ -11294,6 +11394,124 @@
           "timestamp": 1704067200.123,
           "total_count": 4
         }
+      },
+      "SatelliteConfig": {
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "title": "Enabled",
+            "description": "Allow the satellite runner to start with this config",
+            "default": false
+          },
+          "server_url": {
+            "type": "string",
+            "title": "Server Url",
+            "description": "Controller WebSocket base, e.g. 'ws://wb7:8080'; with [satellite.tls] enabled use 'wss://<host>'",
+            "default": "ws://localhost:8080"
+          },
+          "client_id": {
+            "type": "string",
+            "title": "Client Id",
+            "description": "Stable client identity (D-14) — room-scoped sessions and deferred completions key on it",
+            "default": "satellite"
+          },
+          "room_name": {
+            "type": "string",
+            "title": "Room Name",
+            "description": "Human room name registered with the controller (e.g. 'Кухня')",
+            "default": ""
+          },
+          "mode": {
+            "type": "string",
+            "pattern": "^(single|streaming)$",
+            "title": "Mode",
+            "description": "'single' = device-side VAD endpointing (ESP32-faithful); 'streaming' = server-authoritative endpointing",
+            "default": "single"
+          },
+          "wake_word_required": {
+            "type": "boolean",
+            "title": "Wake Word Required",
+            "description": "Gate streaming on the local wake word (--no-wake overrides per run)",
+            "default": true
+          },
+          "audio_out_rate": {
+            "type": "integer",
+            "minimum": 8000.0,
+            "title": "Audio Out Rate",
+            "description": "Reply-channel playback sample rate",
+            "default": 22050
+          },
+          "audio_out_channels": {
+            "type": "integer",
+            "maximum": 2.0,
+            "minimum": 1.0,
+            "title": "Audio Out Channels",
+            "description": "Reply-channel playback channels",
+            "default": 1
+          },
+          "tls": {
+            "$ref": "#/components/schemas/SatelliteTLSConfig",
+            "description": "Fleet TLS plane (mTLS wss + first-run CSR provisioning)"
+          }
+        },
+        "type": "object",
+        "title": "SatelliteConfig",
+        "description": "Satellite room-node mode (ARCH-35/36 — design `docs/design/python_satellite.md`).\n\nThe `irene-satellite` runner requires this section: the box runs mic → VAD → wake word\nlocally and streams utterances to the controller over `/ws/audio` (the same wire contract\nthe ESP32 firmware implements); replies come back over `/ws/audio/reply` and play through\nthe local audio component. CLI flags (`--server`, `--room`, `--mode`, `--no-wake`) override\nindividual fields per run."
+      },
+      "SatelliteTLSConfig": {
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "title": "Enabled",
+            "description": "Connect over mTLS wss:// (the nginx Plane-B proxy)",
+            "default": false
+          },
+          "bootstrap_url": {
+            "type": "string",
+            "title": "Bootstrap Url",
+            "description": "The provisioning bootstrap zone, e.g. 'http://wb7:8081' — used only until a cert is issued",
+            "default": ""
+          },
+          "ca_cert": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ca Cert",
+            "description": "CA cert path (default: <assets_root>/credentials/satellite/ca.crt)"
+          },
+          "client_cert": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Client Cert",
+            "description": "Client cert path (default: <assets_root>/credentials/satellite/sat.crt)"
+          },
+          "client_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Client Key",
+            "description": "Client key path (default: <assets_root>/credentials/satellite/sat.key)"
+          }
+        },
+        "type": "object",
+        "title": "SatelliteTLSConfig",
+        "description": "The fleet TLS plane, device side (ARCH-35 S-5/S-6 — design `docs/design/python_satellite.md` §5).\n\nEnabled ⇒ the satellite speaks mTLS `wss://` through the nginx `/ws/` proxy, provisioning\nitself on first run: EC keypair (private key never leaves the box) → CSR to the `:8081`\nbootstrap zone → poll for the operator-approved cert. Key material defaults to\n`<assets_root>/credentials/satellite/` — asset-managed, never in git or configs."
       },
       "SectionToTomlRequest": {
         "properties": {
@@ -11563,8 +11781,8 @@
             "maximum": 65535.0,
             "minimum": 1.0,
             "title": "Web Port",
-            "description": "Web API server port (8000 is taken by wb-mqtt-bridge)",
-            "default": 6000
+            "description": "Web API server port (8080 default; 6000 is X11 — browser-blocked; 8000 is the bridge)",
+            "default": 8080
           },
           "observe_token": {
             "anyOf": [
@@ -12854,6 +13072,12 @@
             "title": "Max Log Records",
             "description": "Per-trace cap on captured log records (safety)",
             "default": 500
+          },
+          "allow_remote_request": {
+            "type": "boolean",
+            "title": "Allow Remote Request",
+            "description": "Honor a satellite's wants_trace (ARCH-37): run per-utterance capture and send the trace back over /ws/audio. Deliberate opt-in; local persistence stays governed by 'enabled'",
+            "default": false
           }
         },
         "type": "object",
@@ -13308,6 +13532,13 @@
           "type": {
             "type": "string",
             "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
           }
         },
         "type": "object",

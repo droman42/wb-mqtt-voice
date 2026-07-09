@@ -13,7 +13,6 @@
 # voices, providers at runtime without rebuilding.
 
 name = "Irene"
-version = "15.0.0"
 debug = false
 log_level = "INFO"
 

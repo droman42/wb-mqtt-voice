@@ -93,7 +93,13 @@ export interface paths {
         };
         /**
          * Health Check
-         * @description Health check endpoint
+         * @description Liveness + a refusal to claim health while running degraded.
+         *
+         *     A component enabled in `[components]` that could not start aborts the process outright; the
+         *     observability components degrade instead (BUG-36). When any of them is missing, this returns
+         *     503 so the container healthcheck, systemd and any orchestrator see the truth rather than a
+         *     cheerful constant. (Full readiness — "the models are loaded, I can actually speak" — is
+         *     ARCH-45.)
          */
         get: operations["health_check_health_get"];
         put?: never;
@@ -3013,35 +3019,51 @@ export interface components {
         };
         /** Body_execute_audio_execute_audio_post */
         Body_execute_audio_execute_audio_post: {
-            /**
-             * Audio File
-             * Format: binary
-             */
+            /** Audio File */
             audio_file: string;
         };
         /** Body_play_audio_audio_play_post */
         Body_play_audio_audio_play_post: {
-            /**
-             * File
-             * Format: binary
-             */
+            /** File */
             file: string;
         };
         /** Body_trace_audio_execution_trace_audio_post */
         Body_trace_audio_execution_trace_audio_post: {
-            /**
-             * Audio File
-             * Format: binary
-             */
+            /** Audio File */
             audio_file: string;
         };
         /** Body_transcribe_audio_file_asr_transcribe_post */
         Body_transcribe_audio_file_asr_transcribe_post: {
-            /**
-             * Audio
-             * Format: binary
-             */
+            /** Audio */
             audio: string;
+        };
+        /**
+         * BridgeOutputConfig
+         * @description The wb-mqtt-bridge actuation channel (ARCH-8) — the designated DEVICE_COMMAND output.
+         *
+         *     When enabled, the composition registers the `BridgeClient` output adapter and designates it
+         *     for the `device_command` modality; smart-home intents actuate through it and the device
+         *     catalog is pulled from the same endpoint (`GET /system/catalog`, lazy refresh per ARCH-26).
+         */
+        BridgeOutputConfig: {
+            /**
+             * Enabled
+             * @description Enable the smart-home bridge output (wb-mqtt-bridge)
+             * @default false
+             */
+            enabled: boolean;
+            /**
+             * Base Url
+             * @description Base URL of the wb-mqtt-bridge REST API (no trailing slash)
+             * @default http://localhost:8000
+             */
+            base_url: string;
+            /**
+             * Timeout Seconds
+             * @description Per-request HTTP timeout — covers the bridge's ~500 ms actuation echo-wait with margin
+             * @default 5
+             */
+            timeout_seconds: number;
         };
         /**
          * CLIInputConfig
@@ -3697,7 +3719,7 @@ export interface components {
             /**
              * Version
              * @description Version
-             * @default 15.0.0
+             * @default 0.5.0
              */
             version: string;
             /**
@@ -3740,6 +3762,10 @@ export interface components {
             nlu_analysis?: components["schemas"]["NLUAnalysisConfig"];
             /** @description Trace persistence configuration (ARCH-19) */
             trace?: components["schemas"]["TraceConfig"];
+            /** @description Problem reporting configuration (ARCH-30) */
+            reports?: components["schemas"]["ReportsConfig"];
+            /** @description Satellite room-node mode (ARCH-35/36) */
+            satellite?: components["schemas"]["SatelliteConfig"];
             /**
              * Default Language
              * @description Canonical default language (2-letter, e.g. 'ru'/'en'). Seeds new sessions and is the detection fallback — the single source of truth.
@@ -4526,6 +4552,13 @@ export interface components {
             version: string;
             /** Timestamp */
             timestamp: number;
+            /**
+             * Inactive Providers
+             * @default {}
+             */
+            inactive_providers: {
+                [key: string]: string;
+            };
         };
         /**
          * InputConfig
@@ -6610,6 +6643,8 @@ export interface components {
              * @default true
              */
             web_push: boolean;
+            /** @description Smart-home bridge actuation channel (ARCH-8) */
+            bridge?: components["schemas"]["BridgeOutputConfig"];
         };
         /**
          * PerformanceAnalyticsResponse
@@ -7225,6 +7260,58 @@ export interface components {
             merged_languages: string[];
         };
         /**
+         * ReportsConfig
+         * @description Problem reporting («сообщи о проблеме») — ARCH-30 design (`docs/design/problem_reports.md`).
+         *
+         *     ARCH-31 ships the dialog (this section's `enabled` + `capture_ttl_seconds`); ARCH-32 adds the
+         *     delivery fields (repo, token env, rate limits). Disabled ⇒ the intent answers honestly that
+         *     reporting isn't set up — it never half-works.
+         */
+        ReportsConfig: {
+            /**
+             * Enabled
+             * @description Enable problem reporting (the report intent files real tickets)
+             * @default false
+             */
+            enabled: boolean;
+            /**
+             * Capture Ttl Seconds
+             * @description Verbatim-capture window after «опишите проблему» (design D-5)
+             * @default 90
+             */
+            capture_ttl_seconds: number;
+            /**
+             * Repo
+             * @description Reports repo, 'owner/name' — MUST be private (bundles carry logs/config)
+             * @default
+             */
+            repo: string;
+            /**
+             * Token Env
+             * @description Env var holding a fine-grained PAT scoped to the reports repo only (issues + contents write)
+             * @default IRENE_REPORTS_TOKEN
+             */
+            token_env: string;
+            /**
+             * Rate Limit Per Hour
+             * @description Max reports filed per hour (design D-7)
+             * @default 3
+             */
+            rate_limit_per_hour: number;
+            /**
+             * Rate Limit Per Day
+             * @description Max reports filed per day (design D-7)
+             * @default 10
+             */
+            rate_limit_per_day: number;
+            /**
+             * Ring Size
+             * @description Rolling request-trace ring depth dumped into bundles (design D-10)
+             * @default 5
+             */
+            ring_size: number;
+        };
+        /**
          * RoomAliasesResponse
          * @description Response model for room aliases endpoint
          * @example {
@@ -7272,6 +7359,106 @@ export interface components {
              * @description Number of room aliases returned
              */
             total_count: number;
+        };
+        /**
+         * SatelliteConfig
+         * @description Satellite room-node mode (ARCH-35/36 — design `docs/design/python_satellite.md`).
+         *
+         *     The `irene-satellite` runner requires this section: the box runs mic → VAD → wake word
+         *     locally and streams utterances to the controller over `/ws/audio` (the same wire contract
+         *     the ESP32 firmware implements); replies come back over `/ws/audio/reply` and play through
+         *     the local audio component. CLI flags (`--server`, `--room`, `--mode`, `--no-wake`) override
+         *     individual fields per run.
+         */
+        SatelliteConfig: {
+            /**
+             * Enabled
+             * @description Allow the satellite runner to start with this config
+             * @default false
+             */
+            enabled: boolean;
+            /**
+             * Server Url
+             * @description Controller WebSocket base, e.g. 'ws://wb7:8080'; with [satellite.tls] enabled use 'wss://<host>'
+             * @default ws://localhost:8080
+             */
+            server_url: string;
+            /**
+             * Client Id
+             * @description Stable client identity (D-14) — room-scoped sessions and deferred completions key on it
+             * @default satellite
+             */
+            client_id: string;
+            /**
+             * Room Name
+             * @description Human room name registered with the controller (e.g. 'Кухня')
+             * @default
+             */
+            room_name: string;
+            /**
+             * Mode
+             * @description 'single' = device-side VAD endpointing (ESP32-faithful); 'streaming' = server-authoritative endpointing
+             * @default single
+             */
+            mode: string;
+            /**
+             * Wake Word Required
+             * @description Gate streaming on the local wake word (--no-wake overrides per run)
+             * @default true
+             */
+            wake_word_required: boolean;
+            /**
+             * Audio Out Rate
+             * @description Reply-channel playback sample rate
+             * @default 22050
+             */
+            audio_out_rate: number;
+            /**
+             * Audio Out Channels
+             * @description Reply-channel playback channels
+             * @default 1
+             */
+            audio_out_channels: number;
+            /** @description Fleet TLS plane (mTLS wss + first-run CSR provisioning) */
+            tls?: components["schemas"]["SatelliteTLSConfig"];
+        };
+        /**
+         * SatelliteTLSConfig
+         * @description The fleet TLS plane, device side (ARCH-35 S-5/S-6 — design `docs/design/python_satellite.md` §5).
+         *
+         *     Enabled ⇒ the satellite speaks mTLS `wss://` through the nginx `/ws/` proxy, provisioning
+         *     itself on first run: EC keypair (private key never leaves the box) → CSR to the `:8081`
+         *     bootstrap zone → poll for the operator-approved cert. Key material defaults to
+         *     `<assets_root>/credentials/satellite/` — asset-managed, never in git or configs.
+         */
+        SatelliteTLSConfig: {
+            /**
+             * Enabled
+             * @description Connect over mTLS wss:// (the nginx Plane-B proxy)
+             * @default false
+             */
+            enabled: boolean;
+            /**
+             * Bootstrap Url
+             * @description The provisioning bootstrap zone, e.g. 'http://wb7:8081' — used only until a cert is issued
+             * @default
+             */
+            bootstrap_url: string;
+            /**
+             * Ca Cert
+             * @description CA cert path (default: <assets_root>/credentials/satellite/ca.crt)
+             */
+            ca_cert?: string | null;
+            /**
+             * Client Cert
+             * @description Client cert path (default: <assets_root>/credentials/satellite/sat.crt)
+             */
+            client_cert?: string | null;
+            /**
+             * Client Key
+             * @description Client key path (default: <assets_root>/credentials/satellite/sat.key)
+             */
+            client_key?: string | null;
         };
         /**
          * SectionToTomlRequest
@@ -7456,7 +7643,7 @@ export interface components {
             web_api_enabled: boolean;
             /**
              * Web Port
-             * @description Web API server port (8000 is taken by wb-mqtt-bridge)
+             * @description Web API server port (8080 default; 6000 is X11 — browser-blocked; 8000 is the bridge)
              * @default 8080
              */
             web_port: number;
@@ -8420,6 +8607,12 @@ export interface components {
              * @default 500
              */
             max_log_records: number;
+            /**
+             * Allow Remote Request
+             * @description Honor a satellite's wants_trace (ARCH-37): run per-utterance capture and send the trace back over /ws/audio. Deliberate opt-in; local persistence stays governed by 'enabled'
+             * @default false
+             */
+            allow_remote_request: boolean;
         };
         /**
          * TranslateRequest
@@ -8764,6 +8957,10 @@ export interface components {
             msg: string;
             /** Error Type */
             type: string;
+            /** Input */
+            input?: unknown;
+            /** Context */
+            ctx?: Record<string, never>;
         };
         /**
          * ValidationReportSchema
