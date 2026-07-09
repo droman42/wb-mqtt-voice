@@ -17,6 +17,34 @@ newest entries near the top of each dated section.
 
 ## Action journal
 
+- **2026-07-09 — The WB7 assistant has no ASR: BUG-33/34/35/36 filed.** The owner noticed the piper voice
+  downloaded but no ASR model ever did. It is not a config problem — the delivered `irene.toml` is read
+  correctly. `libopenblas.so.0` is absent from the armv7 image, numpy cannot import, and **nine of twelve
+  components die**: asr, nlu, intent_system, text_processor, configuration, monitoring, nlu_analysis,
+  voice_trigger, unified_voice_assistant. The assistant on the rack can synthesize speech and call an LLM, and
+  can neither hear nor understand.
+  Chain, established with a throwaway container on the box (`--rm`, production container untouched):
+  **(1) BUG-33** — numpy on armv7 comes from **PiWheels** (`Tag: cp311-cp311-linux_armv7l`), which links the
+  *system* openblas and ships no `numpy.libs/`; PyPI's manylinux wheels bundle it (the aarch64 image carries
+  `numpy.libs/libopenblas64_…so`, so it is **not** affected). Nothing declares the dep: `derive_build_reqs.py`
+  derives runtime packages from *provider-declared* system packages, and this is a transitive C dep of a wheel.
+  `apt-get install libopenblas0` in a scratch container makes numpy, sherpa_onnx and all five probed components
+  import. **(2) BUG-34** — the blast radius: `components/__init__.py` eagerly imports every component, and line 8
+  drags in `openwakeword.py`'s module-scope `import numpy` for a provider this profile **disables**. Survivors
+  (tts/asr/llm/audio, lines 4–7) live only because they were already in `sys.modules`; everything past line 8
+  dies. The providers themselves lazy-import correctly — `tts/piper.py` imports `sherpa_onnx` inside a method,
+  which is exactly why **Piper TTS kept working while ASR did not** (sherpa_onnx itself imports fine without
+  openblas; it was never the problem). **(3) BUG-35** — the owner asked why `audio` initialized when the profile
+  says `audio = false`: `webapi_runner._modify_config_for_runner` overwrites the whole `[components]` block
+  after the TOML loads (`config.components.audio = args.enable_tts`, `asr = True`, …). Forcing web-only *input*
+  is this runner's job; silently overriding component enablement defeats repo-owns-config. **(4) BUG-36** — the
+  worst part: after nine import failures the runner logged `Success: 3, Failed: 0`, then
+  `all configured provider names resolve to registered entry-points ✓`, then `Irene started successfully`, exit
+  0, `/health` 200, Docker `healthy`. Nothing failed loudly. `Failed: 0` counts components that failed to
+  *initialize*, not ones never discovered.
+  Fix shape for BUG-33 deferred to the owner ("let's do the numpy fix clean"). Investigation only — no code
+  touched, the running container left as it was.
+
 - **2026-07-09 — Irene is running on the WB7; ARCH-45 + QUAL-78 filed from the first boot.** The container came
   up `healthy` on `v20260709-7224ff7`, secrets present, models downloading. The owner asked why the bridge logs
   a uvicorn banner immediately and Irene does not: the runners initialize in opposite order. Irene does

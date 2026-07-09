@@ -325,6 +325,56 @@ _Apply to every remediation task below (from the 4 review docs + QUAL-25/26). So
 ### Bugs (BUG)
 _Discrete functional defects (distinct from QUAL refactors/quality work). Surfaced from any source; filed before fixing._
 
+- [ ] **BUG-33** [BUILD][HW] `[release]` — **The armv7 image has no `libopenblas.so.0`, so numpy cannot import and
+      the assistant has no ASR, NLU, or intents.** Found on the WB7 first boot (2026-07-09, image
+      `v20260709-7224ff7`): `Provider 'asr' not available (import failed): Error importing numpy…` — numpy's own
+      message is misleading; the chained cause is `libopenblas.so.0: cannot open shared object file`. **Why armv7
+      only:** the builder pulls numpy from **PiWheels** (`Tag: cp311-cp311-linux_armv7l`), whose wheels link the
+      *system* openblas and ship no `numpy.libs/`; PyPI's manylinux wheels bundle theirs (verified: the aarch64
+      image carries `numpy.libs/libopenblas64_…so` + `libgfortran…so`, tag `manylinux2014_aarch64` — **not
+      affected**; x86_64 takes the same manylinux path, unverified on hardware). Nothing declares the dependency:
+      `derive_build_reqs.py` builds `runtime-packages.txt` from *provider-declared* system packages, and this is
+      a transitive C dependency of a wheel. **Proven fix** (throwaway container on the WB7,
+      `docker run --rm -u root … apt-get install libopenblas0`): numpy 1.26.4 imports, `sherpa_onnx` imports, and
+      `asr`/`nlu`/`intent_system`/`text_processor`/`monitoring` all import. The owner will direct the shape of
+      the clean fix (runtime-stage apt package vs. teaching the analyzer about wheel-level system deps vs.
+      sourcing numpy from PyPI). Blocks the release: the deployed assistant currently cannot understand speech.
+- [ ] **BUG-34** [ARCH][BUILD] `[release]` — **One optional provider's missing dependency takes out nine
+      components, and which ones survive depends on line order.** `irene/components/__init__.py` eagerly imports
+      every component; line 8 imports `voice_trigger_component` → `providers/voice_trigger/__init__.py` →
+      `openwakeword.py`, which does `import numpy as np` at module scope — **even though `voice_trigger = false`
+      in this profile.** When numpy is unimportable (BUG-33) the package `__init__` explodes, so the components
+      on lines 4–7 (`tts`, `asr`, `llm`, `audio`) survive only because they already sit in `sys.modules`, while
+      `asr` (which triggered the first attempt) and everything after line 8 is reported unavailable. Same
+      module-scope numpy in `providers/nlu/spacy_provider.py` and `utils/vad.py`. The providers themselves are
+      written correctly — `asr/sherpa_onnx.py` and `tts/piper.py` import `sherpa_onnx` *inside* their methods,
+      which is exactly why Piper TTS kept working. The eager `__init__` defeats that discipline. Fix: lazy /
+      guarded imports in the package `__init__`s so a disabled provider with an absent dep cannot break loading.
+      Independently of BUG-33 this is a latent landmine for every optional dependency.
+- [ ] **BUG-35** [ARCH][CONFIG] `[release]` — **`webapi_runner` overwrites the config file's `[components]`
+      block.** `_modify_config_for_runner` (`webapi_runner.py:84`) assigns `config.components.audio =
+      args.enable_tts`, `…asr = True`, `…nlu = True`, `…intent_system = True`, `…monitoring = True`,
+      `…text_processor = True`, `…voice_trigger = False` — unconditionally, after the TOML is loaded. So
+      `embedded-armv7.toml`'s `audio = false` ("no local speaker — TTS reply rides the output seam") is ignored
+      and the audio component initializes anyway (observed on the WB7: `Component initialization order:
+      ['audio', 'llm', 'tts']`). Forcing the *input* topology (web-only, mic off) is legitimate for this runner;
+      silently overriding the operator's component enablement is not — it defeats `config-master-canonical` and
+      the repo-owns-config delivery (BUILD-17), and makes `[components]` a lie in `config-master.toml` and in
+      config-ui. Fix: keep the input forcing, drop the component overrides (or make them a documented,
+      log-emitting floor for components this runner genuinely requires). Harmless today only by luck — the
+      forced values happen to match the profile except `audio`.
+- [ ] **BUG-36** [ARCH][OPS] `[release]` — **Nine components failed to load and the runner reported success.**
+      On the WB7 boot the log reads `V15 Components initialized. Profile: custom(6 components), Success: 3,
+      Failed: 0` — after nine `not available (import failed)` warnings — then
+      `[startup-validation] all configured provider names resolve to registered entry-points ✓`, then a clean
+      `Irene started successfully`, exit code 0, `/health` → 200, Docker `healthy`. A voice assistant with no
+      ASR, no NLU and no intent system advertised itself as fully operational; only reading WARNING lines
+      revealed it. `Failed: 0` counts components that failed *to initialize*, not those that never got
+      discovered, and the startup validator checks that configured provider *names* resolve to entry-points, not
+      that the entry-points import. Fix: a component enabled in `[components]` that does not load is a **hard
+      startup failure** (or at minimum ERROR + non-zero exit + unhealthy), and the counter must not report a set
+      it never attempted. Pairs with ARCH-45 (readiness): a process this broken must never report healthy.
+
 ### Tests (TEST)
 > **Strategy (decided 2026-06-01): do NOT keep repairing the existing suite.** Most tests were written against
 > pre-refactor code and will be invalidated by the ARCH refactors (ARCH-1..5) and the code reviews (QUAL-8/10/12/14).
