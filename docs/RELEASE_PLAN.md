@@ -401,7 +401,6 @@ size-matched to the Russian stack; language is a per-config/deployment choice (a
       that goes red when the pin trails the newest bridge contract tag — staleness becomes a machine
       failure, not a memory note. Pairs with bridge intake VWB-29 (they tag + attach artifacts; gated on
       it). Ref: `docs/design/productization.md` D-11.
-
 ### Documentation (DOC)
 
 ### UI / config-ui (UI)

@@ -17,6 +17,22 @@ newest entries near the top of each dated section.
 
 ## Action journal
 
+- **2026-07-09 — BUILD-25: config-ui runs non-root, and its healthcheck could never have passed.** The owner
+  noticed the UI image was the last one still building as root — not controller-deployed, but published and run
+  on workstations against the assistant's API. Dropped it to the base image's `nginx` user (uid 101); nothing
+  needed uid 0 since nginx binds 3000 and the entrypoint only writes inside the html root. The real risk was the
+  official nginx entrypoint, whose behaviour changes for uid≠0 — if `/docker-entrypoint.d/40-runtime-config.sh`
+  had stopped running, the app would have silently fallen back to a default API base rather than failing. Built
+  and ran it to check: the hook executes, `runtime-config.js` is written both with and without `API_BASE_URL`.
+  **Verification then turned up a latent BUILD-9 bug:** the healthcheck probed `http://localhost:3000/`, but
+  `listen 3000` binds IPv4 only, musl resolves `localhost` to `::1` first, and busybox wget does not fall back —
+  `wget` inside the container got *connection refused* from a server serving 200 to the outside. Every config-ui
+  container ever published would have sat `unhealthy` forever. Fixed to `127.0.0.1` (what the bridge's UI always
+  used); Docker now reports `healthy`. Two stale comments went with it (`:6000` → 8080; "compose ships it
+  disabled" → the service was removed). **Third image-level defect today found only by running the artifact
+  rather than reading it** — after BUG-31/32 on the ansible plane. The pattern is now unambiguous: anything
+  hardware- or deploy-gated in this repo has never been executed, and reading it does not substitute.
+
 - **2026-07-09 — ARCH-25 pre-flight: the install guide audited against the box, three defects fixed.** Before
   running the container install, `ops/INSTALL.md` was checked claim-by-claim against the scripts and the live
   controller. Most of it held (layout, `update.sh` working from either invocation, public clone + all four public

@@ -3557,6 +3557,23 @@ rationale/chronology lives in [`RELEASE_JOURNAL.md`](./RELEASE_JOURNAL.md).
       `docs/design/productization.md` (D-1..D-12 + drift inventory + commons seed backlog) + sibling
       `../wb-mqtt-bridge/docs/design/productization_bridge.md` (uncommitted, intake). Follow-ups filed:
       BUILD-21/22/23/24, ARCH-42/43, BUILD-18 narrowed; bridge intake VWB-29, CORE-7, OPS-14/15/16.
+- [x] **BUILD-25** [UI][SEC] `[release]` — **DONE 2026-07-09.** config-ui image ran as root: the runtime stage
+      was a bare `FROM nginx:alpine` with no `USER`, the posture the backend images deliberately reject. Not
+      deployed on the controller, but published to GHCR and run on workstations against the assistant's API.
+      Now `USER nginx` (uid 101) with `/usr/share/nginx/html`, `/var/cache/nginx` and a pre-created
+      `/var/run/nginx.pid` chowned to it (that directory stays root-owned), and the base image's `user`
+      directive stripped — meaningless without uid 0 and it warned on every start. Nothing needed uid 0: nginx
+      binds 3000 and the entrypoint writes only inside the html root. Verified by building + running: uid 101,
+      `/docker-entrypoint.d/40-runtime-config.sh` still executes (the official entrypoint's behaviour does
+      change for uid≠0, so this was the risk — `runtime-config.js` is written, with and without `API_BASE_URL`),
+      SPA + fallback + no-store config all serve 200, zero warnings.
+      **Found while verifying: the healthcheck could never have passed.** It probed
+      `http://localhost:3000/`, but `listen 3000` binds IPv4 only while musl resolves `localhost` to `::1`
+      first and busybox wget does not fall back — `wget` inside the container returned *connection refused*
+      against a server answering fine from outside. Every published config-ui container was destined to sit
+      `unhealthy` forever (latent since BUILD-9; the bridge's UI dodged it with `127.0.0.1`). Now `127.0.0.1`,
+      and Docker reports **healthy**. Also fixed the file's two stale comments: the `:6000` API fallback (8080
+      since BUG-29) and "the ops/ compose ships it disabled" (the service was removed outright).
 
 ### Models & Assets (ASSET)
 - [x] **ASSET-1** — Refresh stale model IDs (Anthropic→Claude 4.x, Whisper large-v3, ElevenLabs multilingual_v2, spaCy 3.8, gpt-4→gpt-4o-mini). → fc85306
