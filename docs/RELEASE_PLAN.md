@@ -369,19 +369,33 @@ _Discrete functional defects (distinct from QUAL refactors/quality work). Surfac
       `room_id = resolve_default_room(context, catalog)` — and that function's own docstring reads *"D-15 rule 3:
       no room mentioned → the client's primary room"*. **Only rule 3 exists.** The disambiguator asks "which room
       is the speaker in?" when it must first ask "which room did the speaker name?"
-      **Why `[release]`, and why it blocks any satellite deployment:** over REST (no client room) the failure is
-      benign — you get the useless clarification above. With a satellite that has a primary room, the *same* code
-      **silently actuates the wrong room**: from the living room, «включи кондиционер **в спальне**» narrows the
-      three candidates to the speaker's room, turns on `living_room_hvac`, and answers «Включила кондиционер».
-      The spoken room is never compared against `catalog_device.room` anywhere on that branch (checked
-      `:320-345`). D-15 rule 2 requires targeting the named room, or refusing with "that room is not managed by
-      this device" and **no actuation**. Latent only because every test to date has gone through REST.
-      Fix in `_result_from_candidates`, not in the handler, so every device-name path benefits at once (power,
-      cover, playback, `read_state`): prefer the spoken room, fall back to the client's primary room, and honour
-      rule 2's uncovered-room refusal. **Design subtlety:** the resolver loops over `intent.entities`, so when it
-      resolves `target` the sibling `room` may not be resolved yet (`room_resolved` absent) — the fix must read
-      the raw `room` entity and match it against the catalog itself, or force room resolution first. Refs: D-15
-      (`docs/design/esp32_satellite.md:154-163`), ARCH-7/QUAL-35 own the room resolver.
+      **SEVERITY CORRECTED (2026-07-09, same day, after the owner's review — the first filing understated it
+      twice).** (i) The wrong-room actuation is **not** satellite-only: `_result_from_candidates` narrows by room
+      *only* under `if len(candidates) > 1`, so a **uniquely-named** device skips the room check entirely, by any
+      path. Against the live golden, `«торшер»` matches exactly one device — `living_room_floor_lamp`. So
+      **«включи торшер в спальне» switches on the living-room lamp and answers «Включила торшер», today, over
+      REST**, with no satellite and no client room. (ii) The device path also never consumes the
+      **`uncovered_room`** refusal that `entity_resolver.py:739` already produces, so a satellite naming a room
+      it does not cover actuates anyway — violating D-15 rule 2b, which demands SPEECH and *no actuation*.
+      **The rule, as settled with the owner:** the room recognized in the utterance is **king**. `r ∈ R` and
+      (client unconstrained, or `r ∈ covered_rooms` — note *covered*, not merely `primary_room`) → target = `r`;
+      `r ∈ R` but uncovered → spoken refusal, no actuation; `r ∉ R` → not a room word, fall through; no room
+      named → `primary_room`; none of that → unconstrained. Then filter candidates to the target room **always**,
+      keeping `room == target` **or** `room == "global"` — 8 of 79 devices are `global` (`all_lights`,
+      `oven_power`, `heating_control`, …) and the resolver already exempts them ("addressable from anywhere",
+      `:739`), so a blanket filter would break «включи духовку на кухне». Empty after filtering → **refuse**
+      («в спальне нет торшера»), never silently retarget — the group-noun branch already refuses this way ("the
+      room must actually have members of this group"), and the two branches finally agree. Still ambiguous →
+      clarify (BUG-39; note the survivors are now *within one room*, so the room name can no longer disambiguate).
+      Fix in `_result_from_candidates`, not the handler, so every device-name path inherits it (power, cover,
+      playback, `read_state`, and the `scan_utterance` path for undeclared device params). **Design subtlety:**
+      that function takes `(candidates, best, device_reference, catalog, locale, context)` — no `intent`, so it
+      cannot see the spoken room. Thread `intent` through and match the **raw** `room` entity with
+      `match_catalog_room` inside the narrowing step: the resolver loops over `intent.entities`, so
+      `room_resolved` may not exist yet when `target` resolves, and reading the raw word sidesteps that ordering
+      dependency entirely. Refs: D-15 (`docs/design/esp32_satellite.md:154-163`), ARCH-7/QUAL-35 own the room
+      resolver. Regression cover belongs in eval-commons crossover fixtures against the pinned golden:
+      «включи торшер в спальне» → refusal; «включи кондиционер в гостиной» → `living_room_hvac`, no clarification.
 - [ ] **BUG-39** [MQTT][UX] `[deferred]` — **The ambiguity clarification lists identical names, so it cannot be
       answered.** «включи кондиционер в гостиной» asks: *«Какой именно: Кондиционер или Кондиционер или
       Кондиционер?»* `_ambiguous_result` (`smart_home.py:255`) builds the prompt from `c.get("name")` alone,
