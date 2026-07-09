@@ -229,6 +229,19 @@ See `docs/review/phase1_architecture_map.md` §5.
       shared package surface (rollover naming family, retention constants, prune sweep, report-bundle
       same-day glob compatibility both sides), then file the voice-side adoption task (bridge intake:
       OPS-14). Gated on BUILD-21. Ref: `docs/design/productization.md` D-8.
+- [ ] **ARCH-44** [HW][SEC] `[deferred]` — **DESIGN: device certificate lifecycle — revocation and renewal.**
+      Plane B can *issue* device certs but never *withdraw* them. `esp32-provision revoke` only deletes a
+      **pending CSR** (`esp32-provision.sh` `revoke` = `rm -f "$PEND/$id.csr"`); once `approve` signs, the cert is
+      trusted for its full **825 days** because the mTLS zone runs `ssl_verify_client on` with
+      `ssl_client_certificate` and **no `ssl_crl`**. Deleting the published `/srv/esp32/provision/cert/<id>.crt`
+      changes nothing — the device already holds its copy. So a lost/stolen/decommissioned satellite keeps
+      firmware + model + `/ws/` access until expiry, and the only lever today is re-issuing the whole CA (which
+      re-provisions every device). Symmetrically there is **no renewal story**: every device provisioned in the
+      same week silently expires in the same week, 825 days on. Design (post-release, before a real fleet exists):
+      a CRL (`ssl_crl` + a `revoke-cert` verb regenerating it, nginx reload on change) or short-lived certs with
+      auto-renew over mTLS; the operator verb naming needs to distinguish *drop a pending CSR* from *revoke an
+      issued cert*. Surfaced 2026-07-09 by the ARCH-25 provisioning round-trip (`probe_node`). Deliverable:
+      design doc + implementation follow-up(s). Refs: `docs/design/esp32_satellite.md` D-17, `nginx/README.md`.
 ### Code Quality & Review (QUAL)
 
 #### Cross-cutting systemic remediation — principles (the Gate 2 lens)

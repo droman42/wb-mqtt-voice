@@ -17,6 +17,20 @@ newest entries near the top of each dated section.
 
 ## Action journal
 
+- **2026-07-09 — Plane B proven end-to-end on the WB7; ARCH-44 filed from what the round-trip exposed.** The
+  owner ran the full provisioning flow against the live controller: CSR `PUT` → **201**, `esp32-provision list`
+  shows subject + pubkey fingerprint, `approve` signs and consumes the CSR, the device poll flips **404 → 200**,
+  and the issued cert opens the mTLS zone — `:443 /esp32/models/` returns **403** with the client cert (handshake
+  accepted, directory listing refused) against **400** without one. Cert carries `CA:FALSE` +
+  `TLS Web Client Authentication`; its public key matches the device key. Every claim in `nginx/README.md` about
+  the happy path now has evidence behind it.
+  **What the exercise exposed:** the plane can issue device certs but never withdraw them. `revoke` only deletes
+  a *pending* CSR; after `approve` the cert is trusted for its full 825 days, because the mTLS zone verifies
+  against the CA with no CRL — and deleting the published `.crt` is meaningless, the device already has it. No
+  renewal story either: a batch provisioned together expires together. Filed **ARCH-44** `[deferred]` (design:
+  revocation + renewal, and a verb naming that distinguishes *drop a pending CSR* from *revoke an issued cert*).
+  The README's safety section now states the limit plainly instead of implying `revoke` withdraws access.
+
 - **2026-07-09 — BUG-32: the approval CLI installed under a name nothing documents.** The owner ran the
   bootstrap round-trip on the box: the device CSR `PUT` to `:8081` returned **201** (WebDAV path proven), and
   then `esp32-provision list` → `команда не найдена`. The play copied all three scripts verbatim, so the CLI was

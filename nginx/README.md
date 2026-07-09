@@ -46,6 +46,11 @@ esp32-provision revoke  <client_id>   # drop a pending CSR (rejected / mistaken 
 esp32-provision status                # counts: pending vs issued
 ```
 
+**`revoke` drops a *pending* CSR — it cannot withdraw a cert that was already signed.** Approval is one-way
+today: an issued cert stays trusted for its full 825 days (the mTLS zone verifies against the CA and consults no
+revocation list), and deleting the published `.crt` achieves nothing because the device already holds its copy.
+Treat `approve` as irreversible, and see *Safety properties* below.
+
 ### Provisioning a new device — runbook
 
 1. **Flash + Stage-1** the device (WiFi creds + this controller's address). On first STA boot it generates an
@@ -80,6 +85,12 @@ esp32-provision status                # counts: pending vs issued
   signed **by file** — never interpolated into a shell.
 - Nothing on the `:8081` bootstrap zone is secret (a public CA cert, a CSR, a signed cert; the device key never
   crosses it), so the **human approval is the only gate** — there is no bootstrap password to manage or leak.
+- **Known limit — approval is one-way.** There is no revocation list and no renewal path: a signed cert is
+  trusted until it expires (825 days), so a lost or decommissioned device keeps its firmware/model/`/ws/` access,
+  and a whole batch provisioned together expires together. Today the only remedy is re-issuing the CA, which
+  re-provisions every device. This is acceptable while the fleet is a handful of nodes you physically own; it is
+  the first thing to fix before the fleet grows. Approve only devices you recognise — and check the
+  `pubkey-sha256`, not just the name, since the `client_id` is chosen by whoever submits the CSR.
 
 ## Keys
 
