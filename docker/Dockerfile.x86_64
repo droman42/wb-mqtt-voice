@@ -85,11 +85,17 @@ RUN find /opt/venv -name '__pycache__' -type d -prune -exec rm -rf {} + 2>/dev/n
     find /opt/venv -path '*/site-packages/*/tests' -type d -prune -exec rm -rf {} + 2>/dev/null || true && \
     find /opt/venv -path '*/site-packages/*/test' -type d -prune -exec rm -rf {} + 2>/dev/null || true
 
-RUN useradd -m -u 1000 irene && mkdir -p /app/assets && chown -R irene:irene /app
-USER irene
+# Non-root by design: a compromised process must not be able to write host paths as uid 0.
+# The NAME tracks the product (provisional — it changes with the final name decision); the
+# UID is what actually crosses the container boundary, so a bind-mounted assets tree must be
+# owned by 1000 (ops/update.sh does this on the controllers).
+RUN useradd -m -u 1000 domovoy && mkdir -p /app/assets && chown -R domovoy:domovoy /app
+USER domovoy
 
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD python -c "import irene; print('ok')" || exit 1
+# Probe the service, not the interpreter: `import irene` passes while the API is unbound, the
+# config is broken, or the runner is dead. Both runners mount /health at the root (WebServerMixin).
+HEALTHCHECK --interval=30s --timeout=10s --start-period=180s --retries=3 \
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/health', timeout=5)" || exit 1
 
 # Config from $IRENE_CONFIG_FILE (baked default; override with -e + a mount). Assets + models mounted at
 # IRENE_ASSETS_ROOT. No entrypoint — the runner reads the env directly.

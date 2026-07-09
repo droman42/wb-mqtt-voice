@@ -20,10 +20,29 @@ RUNTIME_DIR="${RUNTIME_DIR:-/mnt/data/mqtt-voice-config}"
 ASSETS_DIR="$RUNTIME_DIR/assets"
 LOGS_DIR="$RUNTIME_DIR/logs"
 CONFIG_DIR="$RUNTIME_DIR/config"
+PROFILE_FILE="$RUNTIME_DIR/config-profile"
+mkdir -p "$ASSETS_DIR" "$LOGS_DIR" "$CONFIG_DIR"
+
 # Which profile TOML this controller runs (must match the image variant):
 # embedded-armv7 (WB7, default) | embedded-aarch64 (WB8.5/Pi) | *-en variants.
-CONFIG_PROFILE="${CONFIG_PROFILE:-embedded-armv7}"
-mkdir -p "$ASSETS_DIR" "$LOGS_DIR" "$CONFIG_DIR"
+#
+# The choice STICKS. Passing CONFIG_PROFILE=... records it in the runtime tree; every later run
+# reuses it. Otherwise a plain `./update.sh` on a WB8.5 would silently re-deliver the armv7
+# profile over irene.toml — a config/image mismatch nothing detects.
+if [ -z "${CONFIG_PROFILE:-}" ]; then
+    if [ -f "$PROFILE_FILE" ]; then
+        CONFIG_PROFILE="$(cat "$PROFILE_FILE")"
+    else
+        CONFIG_PROFILE=embedded-armv7
+    fi
+fi
+# Validate BEFORE recording, or a typo would persist and break every later run.
+[ -f "../configs/$CONFIG_PROFILE.toml" ] || {
+    echo "error: unknown CONFIG_PROFILE '$CONFIG_PROFILE' (no configs/$CONFIG_PROFILE.toml)" >&2
+    echo "       expected one of: $(cd ../configs && echo embedded-*.toml | sed 's/\.toml//g')" >&2
+    exit 2
+}
+printf '%s\n' "$CONFIG_PROFILE" > "$PROFILE_FILE"
 
 # THE REPO OWNS THE CONFIG (bridge semantics): delivered on every update, on-box
 # edits are overwritten — config changes are made in the repo and arrive by git pull.
@@ -35,9 +54,10 @@ for d in donations localization prompts templates web; do
 done
 cp ../assets/donation_contract_v1.1.json ../assets/donation_language_v1.1.json "$ASSETS_DIR/"
 
-# The container runs as uid 1000 (`USER irene`); on the controller this script runs as
-# root, so the mounted tree must be handed to that uid or the first model download /
-# log write fails with EACCES.
+# The container runs non-root as uid 1000 (`USER domovoy` in the Dockerfiles); on the
+# controller this script runs as root, so the mounted tree must be handed to that uid or the
+# first model download / log write fails with EACCES. The uid is the contract — the name
+# exists only inside the container, and uid 1000 is unassigned on a stock Wirenboard.
 chown -R 1000:1000 "$ASSETS_DIR" "$LOGS_DIR" 2>/dev/null || true
 echo "assets synced -> $ASSETS_DIR"
 

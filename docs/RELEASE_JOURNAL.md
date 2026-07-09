@@ -17,6 +17,32 @@ newest entries near the top of each dated section.
 
 ## Action journal
 
+- **2026-07-09 — ARCH-25 pre-flight: the install guide audited against the box, three defects fixed.** Before
+  running the container install, `ops/INSTALL.md` was checked claim-by-claim against the scripts and the live
+  controller. Most of it held (layout, `update.sh` working from either invocation, public clone + all four public
+  GHCR packages, `/health` prefix-less on 8080, `.env` semantics, `rsync`/`git`/`docker` compose v2.38.2 present).
+  Three things did not:
+  **(1) The healthcheck was a lie.** All three Dockerfiles ran `CMD python -c "import irene"` — green as soon as
+  the interpreter starts, regardless of whether the API bound, the config parsed, or the runner died, with
+  `--start-period=10s`. Replaced with a real probe of `http://127.0.0.1:8080/health` (both runners mount it at
+  root via `WebServerMixin`) and a start-period that survives first-boot model downloads: 300s on the two ARM
+  images, 180s on x86_64. Modeled on the bridge's `backend/Dockerfile` (180s + a real urlopen), which is where
+  the owner remembered the slow-start tuning from.
+  **(2) Rolling back / Variants told you to do the wrong thing.** "Pin it in `docker-compose.yml` and run
+  `docker compose up -d`" names neither copy: pinning the *deployed* copy is reverted by the next `update.sh`
+  (`cp docker-compose.yml "$RUNTIME_DIR/"`), and running compose from the clone's `ops/` starts a **second
+  project named `ops`** with no `.env` (compose names projects after the directory — verified on the box:
+  the bridge runs as project `mqtt-bridge-config`). Both rules now stated explicitly.
+  **(3) `CONFIG_PROFILE` did not stick.** One plain `./update.sh` on a WB8.5 would re-deliver the armv7 profile
+  over `irene.toml`, undetected. It is now recorded in `<runtime>/config-profile` on first use and reused after;
+  an unknown name exits 2. Validation happens *before* recording — the first cut wrote the bad value first, so a
+  typo would have poisoned every later run; caught by exercising it against a scratch runtime tree.
+  Also: the container user is now **`domovoy`** (uid 1000 unchanged — the uid is the contract that crosses the
+  bind mount; the name tracks the product and changes with the final name decision), and `build-docker.md` lost
+  its last stale port-6000 reference. Non-root is deliberate and stays: the bridge's root container is the
+  outlier, not us. Fixes ride under ARCH-25 (owner's scoping); the image must be rebuilt for the healthcheck to
+  take effect, so the install tag moves off `v20260708-86d0134`.
+
 - **2026-07-09 — Plane B proven end-to-end on the WB7; ARCH-44 filed from what the round-trip exposed.** The
   owner ran the full provisioning flow against the live controller: CSR `PUT` → **201**, `esp32-provision list`
   shows subject + pubkey fingerprint, `approve` signs and consumes the CSR, the device poll flips **404 → 200**,

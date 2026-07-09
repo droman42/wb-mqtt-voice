@@ -63,7 +63,11 @@ directory at `/app/assets`:
 | `IRENE_CONFIG_FILE` | `/app/runtime-config.toml` | The active config (baked; override by mounting). |
 | `IRENE_ASSETS_ROOT` | `/app/assets` | Root for models, cache, credentials, and the bundled assets. |
 
-The container runs as a non-root user and exposes the web API on **port 6000**.
+The container runs as a **non-root user (uid 1000)** and exposes the web API on **port 8080**. The
+uid is the part that matters: it is what the host sees on bind-mounted directories, so any
+directory you mount for models, logs, or state must be owned by uid 1000 or the container cannot
+write to it. Its healthcheck polls `/health` on that port, with a long start-period because the
+first boot downloads the speech models.
 
 ## Running
 

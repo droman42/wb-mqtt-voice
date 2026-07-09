@@ -60,6 +60,13 @@ The web API answers on port **8080** (`curl http://localhost:8080/health`). Spee
 download into the runtime tree's `assets/` on first boot — the first start takes a few
 minutes; subsequent starts reuse them.
 
+While that download runs, `docker compose ps` shows the container as **`health: starting`** —
+its healthcheck polls `/health` and is given five minutes of grace before it starts reporting
+`unhealthy`. On a slow link the first boot can outlast that; nothing restarts the container, so
+just keep watching (`docker logs -f wb-mqtt-voice`) until the models land and it flips to
+`healthy`. A container stuck `unhealthy` long after the models finished means the API never
+bound — check the logs rather than the network.
+
 ## Secrets
 
 Two optional cloud integrations read their keys from the container's environment; both degrade
@@ -99,23 +106,41 @@ images, restarts the stack, and prunes old image layers to keep flash usage in c
 ## Rolling back
 
 Every published image also carries an immutable `vYYYYMMDD-<sha>` tag (see the package pages on
-GHCR). Pin it in `docker-compose.yml`:
+GHCR). Pin it in the **clone's** `ops/docker-compose.yml`:
 
 ```yaml
     image: ghcr.io/droman42/wb-mqtt-voice-armv7:v20260702-abc1234
 ```
 
-and run `docker compose up -d`. Return to `:latest` the same way.
+then run `./ops/update.sh`. Return to `:latest` the same way.
+
+Two rules make this work, and breaking either fails quietly rather than loudly:
+
+- **Edit the clone's copy, never the deployed one.** `update.sh` copies `ops/docker-compose.yml`
+  into the runtime tree on every run, so a pin written straight into
+  `/mnt/data/mqtt-voice-config/docker-compose.yml` is silently reverted to `:latest` at the next
+  update. (Pinning leaves the clone dirty — commit it, or `git stash` before the next pull.)
+- **Never run `docker compose` from the clone.** Compose names the project after the directory it
+  runs in, so `docker compose up -d` inside `ops/` starts a *second* stack called `ops` beside the
+  real one — and it finds no `.env` there, so that stack comes up with empty API keys. Run compose
+  only from `/mnt/data/mqtt-voice-config`, which is exactly what `update.sh` and the systemd unit
+  do.
 
 ## Variants
 
-- **aarch64 controller (WB8.5 / Pi)** — switch the image to the aarch64 build
-  (`ghcr.io/droman42/wb-mqtt-voice-aarch64`) and run updates with
-  `CONFIG_PROFILE=embedded-aarch64 ./update.sh` (or export it) so the delivered config matches
-  the image. The armv7 defaults target the WB7.
-- **English deployment** — switch the image to the `-en` variant
+The controller **remembers its profile**: pass `CONFIG_PROFILE` once and `update.sh` records it in
+`/mnt/data/mqtt-voice-config/config-profile`, so every later plain `./ops/update.sh` reuses it. An
+unknown name aborts instead of delivering the wrong config.
+
+- **aarch64 controller (WB8.5 / Pi)** — pin the aarch64 image
+  (`ghcr.io/droman42/wb-mqtt-voice-aarch64`) in the clone's `ops/docker-compose.yml`, then run
+  `CONFIG_PROFILE=embedded-aarch64 ./ops/update.sh` once. The armv7 defaults target the WB7.
+- **English deployment** — same shape, with the `-en` image variant
   (`ghcr.io/droman42/wb-mqtt-voice-armv7-en` / `-aarch64-en`) and the matching
   `CONFIG_PROFILE=embedded-armv7-en` (resp. `-aarch64-en`); language is baked into the image.
+
+The image and the profile must agree: the profile names the models the image actually ships.
+
 The configuration editor (config-ui) is **not deployed on the controller** — the repo owns the
 config here, so editing happens repo-side; run config-ui on a workstation against a dev
 backend when you want the visual editor.
