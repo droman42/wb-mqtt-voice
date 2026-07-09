@@ -2912,6 +2912,35 @@ rationale/chronology lives in [`RELEASE_JOURNAL.md`](./RELEASE_JOURNAL.md).
       audio component on the web path — `voice_assistant.py:169` treats it as optional and the dependency
       resolver skips deps that aren't enabled. `test_voice_runner.py` rewritten to the new contract (10 pass),
       pyright 0, import-linter 11/11.
+- [x] **BUG-36** [ARCH][OPS] `[release]` — **DONE 2026-07-09.** Nine components failed to load and the runner
+      reported `Success: 3, Failed: 0`, exit 0, `/health` 200, Docker `healthy`. Four independently "graceful"
+      decisions composed into a lie: (1) `utils/loader.py` logged an ImportError at WARNING and dropped it;
+      (2) `core/components.py` computed the enabled set by iterating **what loaded** and filtering by config, so
+      an enabled-but-unimportable component was neither initialized nor failed — it was *absent from the
+      universe*; (3) `_failed_components` only ever saw components that were discovered and then raised, so the
+      counter could not be non-zero; (4) `get_deployment_profile()` counted the *config*, printing intent (6)
+      beside reality (3). `run_startup_validation` passed because it resolves entry-point **names** in metadata,
+      which succeeds whether or not the module imports.
+      Fixed: the config is now the authority (`requested` from `[components]`), anything it names that did not
+      load is recorded with the loader's reason (the loader now *returns* its failures), and the summary line
+      reports `Requested / Running / Missing / Failed to initialize` at ERROR. A missing component **aborts
+      startup** (`RequiredComponentsUnavailable`) unless it is one of the observability surfaces
+      (`monitoring`, `nlu_analysis`, `configuration`), which degrade instead — and while any is degraded
+      `/health` returns **503**, so Docker/systemd see the truth. Provider level, per the owner's ruling that a
+      configured provider that doesn't come up means the component isn't ready, split by failure kind:
+      **kind 1** (cannot import / no entry point — a broken build, BUG-33's class) fails the component and so
+      aborts; **kind 2** (imports but reports unavailable — no `DEEPSEEK_API_KEY`, no network) is an anticipated
+      condition the profiles cover with `fallback_providers = ["console"]` and `INSTALL.md` promises, so it logs
+      at ERROR and is published on `/health.inactive_providers` — loud, never fatal. This distinction was found
+      by *running* the change: strict-everywhere refused to boot the keyless smoke suite, i.e. it would have
+      bricked any controller without a DeepSeek key. Also: `llm_component` swallowed its own init exception
+      entirely and warned "No LLM providers available"; it now raises. `asr`'s CR-A2 "reconcile the default to
+      whatever survived" swap is gone — the configured default must be usable. **Build gate added**
+      (`docker/verify_components.py`, wired into all three Dockerfiles): every component + provider the baked
+      profile enables must import *in that image, on that architecture*, after the lean-down. It would have
+      caught BUG-33 before publish; every other gate runs on x86_64, where numpy vendors its own openblas.
+      Verified live both ways: keyless boot → 200 + `inactive_providers: {llm.deepseek: …}`; a bogus configured
+      provider → exit 1 naming it. pyright 0, import-linter 11/11, 1358 tests pass incl. the 6 hermetic smoke.
 
 ### Tests (TEST)
 - [x] **TEST-0** (P0) — Minimal end-to-end smoke/integration harness (refactor safety net, Gate 0). **DONE

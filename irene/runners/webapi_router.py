@@ -99,6 +99,8 @@ def create_webapi_router(
         status: str
         version: str
         timestamp: float
+        # Configured providers that imported but are unavailable (e.g. no API key). Empty = all live.
+        inactive_providers: Dict[str, str] = {}
 
     class HistoryResponse(BaseModel):
         messages: list[Dict[str, Any]]
@@ -342,11 +344,37 @@ def create_webapi_router(
     # Health check endpoint
     @router.get("/health", response_model=HealthResponse, tags=["General"])
     async def health_check():
-        """Health check endpoint"""
+        """Liveness + a refusal to claim health while running degraded.
+
+        A component enabled in `[components]` that could not start aborts the process outright; the
+        observability components degrade instead (BUG-36). When any of them is missing, this returns
+        503 so the container healthcheck, systemd and any orchestrator see the truth rather than a
+        cheerful constant. (Full readiness — "the models are loaded, I can actually speak" — is
+        ARCH-45.)
+        """
+        degraded = core.component_manager.degraded_components
+        # Providers that imported but reported unavailable (typically a missing API key). The
+        # assistant runs on its fallback chain, so this is not an error — but it is never silent.
+        inactive = {
+            f"{name}.{provider}": reason
+            for name, component in core.component_manager.get_components().items()
+            for provider, reason in getattr(component, "inactive_providers", {}).items()
+        }
+        if degraded:
+            raise HTTPException(
+                status_code=503,
+                detail={
+                    "status": "degraded",
+                    "version": __version__,
+                    "unavailable_components": degraded,
+                    "inactive_providers": inactive,
+                },
+            )
         return {
             "status": "healthy",
             "version": __version__,
-            "timestamp": asyncio.get_event_loop().time()
+            "timestamp": asyncio.get_event_loop().time(),
+            "inactive_providers": inactive,
         }
     
     # PHASE 7 - TODO16: Trace endpoints for detailed pipeline execution visibility

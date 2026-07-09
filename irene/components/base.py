@@ -97,6 +97,9 @@ class Component(ComponentPort):
         self.providers: Dict[str, Any] = {}
         self.default_provider: Optional[str] = None
         self.initialized = False
+        # Configured providers that imported but reported themselves unavailable (no API key, no
+        # network). Not fatal — the fallback chain covers them — but never silent: /health lists them.
+        self.inactive_providers: Dict[str, str] = {}
         self.injected_dependencies: Dict[str, Any] = {}  # For dependency injection
     
 
@@ -257,6 +260,46 @@ class Component(ComponentPort):
         """
         self.logger.info(f"Initializing component: {self.name}")
         self.initialized = True
+
+    def _require_loadable_providers(self, namespace: str, configured: List[str],
+                                    discovered: Dict[str, Any]) -> None:
+        """A provider the operator enabled must LOAD. If it can't, the component isn't ready.
+
+        BUG-36, failure kind 1: the entry point is missing, or the module raises on import (the
+        `libopenblas.so.0` case). Nothing at runtime will fix that, so it is exactly as severe as the
+        component itself failing — raise, and let ComponentManager apply one policy. Components used
+        to log a warning and carry on with whatever survived, reporting success either way.
+
+        Distinct from kind 2 (`_note_inactive_providers`): a provider that imports fine but has no API
+        key is an anticipated condition with a configured fallback chain, not a broken build.
+        """
+        missing = [name for name in configured if name not in discovered]
+        if not missing:
+            return
+        from ..utils.loader import dynamic_loader
+        why = dynamic_loader.get_discovery_failures(namespace)
+        detail = "; ".join(
+            f"{name} ({why.get(name, 'no entry point is registered under this name')})" for name in missing
+        )
+        raise RuntimeError(
+            f"configured provider(s) failed to load: {detail}. "
+            f"Disable them in the config or fix the environment."
+        )
+
+    def _note_inactive_providers(self, configured: List[str], loaded: Dict[str, Any]) -> None:
+        """Providers that imported but reported themselves unavailable (BUG-36, failure kind 2).
+
+        A missing `DEEPSEEK_API_KEY` is not a broken build — the profiles ship
+        `fallback_providers = ["console"]` precisely for it, and the install guide promises the
+        assistant still runs fully offline. So this never aborts. But it is never silent either: it
+        is logged at ERROR and published on `self.inactive_providers`, which `/health` reports.
+        """
+        self.inactive_providers = {
+            name: "enabled in config but reported unavailable (missing credentials or dependencies?)"
+            for name in configured if name not in loaded
+        }
+        for name, reason in self.inactive_providers.items():
+            self.logger.error(f"{self.name}: provider '{name}' {reason}")
     
     async def shutdown(self):
         """Shutdown the component and clean up resources."""

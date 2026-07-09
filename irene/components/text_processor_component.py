@@ -66,6 +66,8 @@ class TextProcessorComponent(Component, TextProcessorPlugin, WebAPIPlugin):
         # Discover only enabled providers from entry-points (configuration-driven filtering)
         enabled_providers = [name for name, provider_config in providers_config.items()
                             if provider_config.get("enabled", False)]
+        # Explicit operator intent — the unified processor appended next is implicit (BUG-36).
+        configured_providers = list(enabled_providers)
 
         # Ensure the unified processor is available as a fallback (QUAL-13).
         if "unified_text_processor" not in enabled_providers and \
@@ -97,11 +99,15 @@ class TextProcessorComponent(Component, TextProcessorPlugin, WebAPIPlugin):
                 except Exception as e:
                     logger.error(f"Failed to load text processing provider {provider_name}: {e}")
         
+        # BUG-36: kind 1 cannot import → fatal; kind 2 unavailable → loud, not fatal.
+        self._require_loadable_providers("irene.providers.text_processor", configured_providers, self._provider_classes)
+        self._note_inactive_providers(configured_providers, self.providers)
+
         # Set default provider if not set
         if not self.default_provider and self.providers:
             self.default_provider = next(iter(self.providers.keys()))
             logger.info(f"Set default text processing provider to: {self.default_provider}")
-        
+
         logger.info(f"Text processing component initialized with {enabled_count} providers")
     
     async def process(self, text: str, context: Optional['UnifiedConversationContext'] = None,

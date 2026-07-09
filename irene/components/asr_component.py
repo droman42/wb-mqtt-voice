@@ -162,12 +162,19 @@ class ASRComponent(MetricsPushMixin, Component, ASRPlugin, WebAPIPlugin, ASRPort
                 self.default_provider = getattr(config, "default_provider", "vosk")
                 self.default_language = getattr(config, "default_language", "ru")
 
-            # CR-A2: reconcile the default to a provider that actually loaded (mirror TTS/audio/
-            # voice_trigger). The configured default may have failed to load while another succeeded —
-            # without this every request raises "provider not loaded" even though ASR is usable.
-            if self.default_provider not in self.providers and self.providers:
-                self.default_provider = next(iter(self.providers))
-                logger.info(f"Configured default ASR provider unavailable; using '{self.default_provider}'")
+            # BUG-36 kind 1 — a configured engine that cannot even import is a broken build: fatal.
+            self._require_loadable_providers("irene.providers.asr", enabled_providers, self._provider_classes)
+            # BUG-36 kind 2 — imported but unavailable (missing model/deps): loud, not fatal.
+            self._note_inactive_providers(enabled_providers, self.providers)
+
+            # The configured default must be usable. This replaces the CR-A2 "reconcile the default to
+            # whatever survived" swap: transcribing with a different engine than the operator chose,
+            # silently, is the same class of lie as a component vanishing at import time.
+            if self.default_provider not in self.providers:
+                raise ValueError(
+                    f"ASR default_provider={self.default_provider!r} is not usable — add an enabled "
+                    f"[asr.providers.{self.default_provider}] section, or point default_provider at one of: "
+                    f"{', '.join(sorted(self.providers)) or 'none'}")
 
             # A (BUG-11): fail fast. An *enabled* ASR component that loaded zero providers used to report
             # healthy and then fail EVERY audio request at runtime with a confusing "ASR provider '<x>'

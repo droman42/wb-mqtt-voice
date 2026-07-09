@@ -140,7 +140,15 @@ class DynamicLoader:
     
     def __init__(self):
         self._cache: Dict[str, Dict[str, Type]] = {}
-        
+        # namespace -> {entry_point_name: why it did not load}. Discovery used to log the reason and
+        # drop it, so a component enabled in config that failed to import simply vanished from the
+        # universe and nothing could report *why* (BUG-36). Callers ask for the reason by name.
+        self._failures: Dict[str, Dict[str, str]] = {}
+
+    def get_discovery_failures(self, namespace: str) -> Dict[str, str]:
+        """Entry points in `namespace` that were tried and did not load, with the reason."""
+        return dict(self._failures.get(namespace, {}))
+
     def discover_providers(self, namespace: str, enabled: Optional[List[str]] = None) -> Dict[str, Type]:
         """
         Discover providers via entry-points with optional configuration filtering.
@@ -183,13 +191,16 @@ class DynamicLoader:
                 try:
                     provider_class = entry_point.load()
                     discovered[entry_point.name] = provider_class
+                    self._failures.get(namespace, {}).pop(entry_point.name, None)
                     logger.debug(f"Loaded provider '{entry_point.name}' from entry-point")
-                    
+
                 except ImportError as e:
                     logger.warning(f"Provider '{entry_point.name}' not available (import failed): {e}")
+                    self._failures.setdefault(namespace, {})[entry_point.name] = f"import failed: {e}"
                     continue
                 except Exception as e:
                     logger.error(f"Failed to load provider '{entry_point.name}': {e}")
+                    self._failures.setdefault(namespace, {})[entry_point.name] = f"load failed: {e}"
                     continue
                     
         except Exception as e:

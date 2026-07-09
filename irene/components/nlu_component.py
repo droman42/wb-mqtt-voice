@@ -343,9 +343,11 @@ class NLUComponent(Component, NLUPlugin, WebAPIPlugin):
         providers_config = config.get("providers", {})
         
         # Discover only enabled providers from entry-points (configuration-driven filtering)
-        enabled_providers = [name for name, provider_config in providers_config.items() 
+        enabled_providers = [name for name, provider_config in providers_config.items()
                             if provider_config.get("enabled", False)]
-        
+        # Explicit operator intent — the hybrid_keyword_matcher appended next is implicit (BUG-36).
+        configured_providers = list(enabled_providers)
+
         # Always include the hybrid keyword matcher as fallback if not already included
         # (real entry-point name; "keyword_matcher" was phantom — it never resolved).
         if "hybrid_keyword_matcher" not in enabled_providers and providers_config.get("hybrid_keyword_matcher", {}).get("enabled", True):
@@ -384,11 +386,16 @@ class NLUComponent(Component, NLUPlugin, WebAPIPlugin):
                 except Exception as e:
                     logger.error(f"Failed to load NLU provider {provider_name}: {e}")
         
+        # BUG-36: a silently-missing NLU provider degrades the cascade (e.g. the spaCy tier vanishes)
+        # with no signal anywhere. Kind 1 cannot import → fatal; kind 2 unavailable → loud, not fatal.
+        self._require_loadable_providers("irene.providers.nlu", configured_providers, self._provider_classes)
+        self._note_inactive_providers(configured_providers, self.providers)
+
         # Set default provider if not set
         if not self.default_provider and self.providers:
             self.default_provider = next(iter(self.providers.keys()))
             logger.info(f"Set default NLU provider to: {self.default_provider}")
-        
+
         logger.info(f"NLU component initialized with {enabled_count} providers")
         
         # Log cascading configuration

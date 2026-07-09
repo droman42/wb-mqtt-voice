@@ -141,9 +141,12 @@ class AudioComponent(Component, AudioPlugin, WebAPIPlugin, AudioPort):
             providers_config = config.get('providers', {})
         
         # Discover only enabled providers from entry-points (configuration-driven filtering)
-        enabled_providers = [name for name, provider_config in providers_config.items() 
+        enabled_providers = [name for name, provider_config in providers_config.items()
                             if provider_config.get("enabled", False)]
-        
+        # Explicit operator intent — the console fallback appended next is implicit and must never
+        # make startup fatal (BUG-36 check below uses this list).
+        configured_providers = list(enabled_providers)
+
         # Always include console as fallback if not already included
         if "console" not in enabled_providers and providers_config.get("console", {}).get("enabled", True):
             enabled_providers.append("console")
@@ -188,10 +191,19 @@ class AudioComponent(Component, AudioPlugin, WebAPIPlugin, AudioPort):
                 logger.error(f"Failed to create fallback console audio provider: {e}")
                 raise RuntimeError("No audio providers available")
         
-        # Set default to first available if current default not available
+        # BUG-36 kind 1 (cannot import → fatal) and kind 2 (imported, unavailable → loud, not fatal).
+        self._require_loadable_providers("irene.providers.audio", configured_providers, self._provider_classes)
+        self._note_inactive_providers(configured_providers, self.providers)
+
+        # The default may fall back to console only when the operator did not name one explicitly.
         if self.default_provider not in self.providers:
+            if self.default_provider in configured_providers:
+                raise ValueError(
+                    f"Audio default_provider={self.default_provider!r} did not initialize; "
+                    f"available: {', '.join(sorted(self.providers)) or 'none'}")
             self.default_provider = list(self.providers.keys())[0]
-            
+            logger.info(f"Audio default_provider not configured; using '{self.default_provider}'")
+
         logger.info(f"Universal audio plugin initialized with {enabled_count} providers. Default: {self.default_provider}")
     
     # AudioPlugin interface - delegates to providers

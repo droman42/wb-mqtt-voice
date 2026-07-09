@@ -325,18 +325,6 @@ _Apply to every remediation task below (from the 4 review docs + QUAL-25/26). So
 ### Bugs (BUG)
 _Discrete functional defects (distinct from QUAL refactors/quality work). Surfaced from any source; filed before fixing._
 
-- [ ] **BUG-36** [ARCH][OPS] `[release]` — **Nine components failed to load and the runner reported success.**
-      On the WB7 boot the log reads `V15 Components initialized. Profile: custom(6 components), Success: 3,
-      Failed: 0` — after nine `not available (import failed)` warnings — then
-      `[startup-validation] all configured provider names resolve to registered entry-points ✓`, then a clean
-      `Irene started successfully`, exit code 0, `/health` → 200, Docker `healthy`. A voice assistant with no
-      ASR, no NLU and no intent system advertised itself as fully operational; only reading WARNING lines
-      revealed it. `Failed: 0` counts components that failed *to initialize*, not those that never got
-      discovered, and the startup validator checks that configured provider *names* resolve to entry-points, not
-      that the entry-points import. Fix: a component enabled in `[components]` that does not load is a **hard
-      startup failure** (or at minimum ERROR + non-zero exit + unhealthy), and the counter must not report a set
-      it never attempted. Pairs with ARCH-45 (readiness): a process this broken must never report healthy.
-
 ### Tests (TEST)
 > **Strategy (decided 2026-06-01): do NOT keep repairing the existing suite.** Most tests were written against
 > pre-refactor code and will be invalidated by the ARCH refactors (ARCH-1..5) and the code reviews (QUAL-8/10/12/14).

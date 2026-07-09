@@ -89,6 +89,11 @@ RUN find /opt/venv -name '__pycache__' -type d -prune -exec rm -rf {} + 2>/dev/n
     find /opt/venv -path '*/site-packages/*/tests' -type d -prune -exec rm -rf {} + 2>/dev/null || true && \
     find /opt/venv -path '*/site-packages/*/test' -type d -prune -exec rm -rf {} + 2>/dev/null || true
 
+# BUILD GATE (BUG-36): every component + provider this profile enables must import, in THIS image,
+# on THIS architecture, after the lean-down. Imports only — no models, no service.
+COPY docker/verify_components.py /tmp/verify_components.py
+RUN python /tmp/verify_components.py /app/runtime-config.toml && rm -f /tmp/verify_components.py
+
 # Non-root by design: a compromised process must not be able to write host paths as uid 0.
 # The NAME tracks the product (provisional — it changes with the final name decision); the
 # UID is what actually crosses the container boundary, so ops/update.sh chowns the bind-mounted

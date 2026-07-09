@@ -167,14 +167,27 @@ class LLMComponent(Component, LLMPlugin, WebAPIPlugin, LLMPort):
                 self.default_task = getattr(config, "default_task", "improve")
                 self.fallback_providers = list(getattr(config, "fallback_providers", []) or [])
             
-            # Ensure we have at least one provider
+            # BUG-36 kind 1 — a configured provider that cannot import is a broken build: fatal.
+            self._require_loadable_providers("irene.providers.llm", enabled_providers, self._provider_classes)
+            # BUG-36 kind 2 — imported but unavailable (no DEEPSEEK_API_KEY, no network). NOT fatal:
+            # the profiles ship `fallback_providers = ["console"]` and the install guide promises the
+            # assistant still runs fully offline. Logged at ERROR and reported by /health.
+            self._note_inactive_providers(enabled_providers, self.providers)
+
+            # An enabled LLM component with no providers used to warn and carry on, then fail every
+            # request at runtime — the NLU cascade's LLM tier would silently never fire.
             if not self.providers:
-                logger.warning("No LLM providers available")
-            else:
-                logger.info(f"Universal LLM Plugin initialized with {len(self.providers)} providers")
-                
+                raise ValueError(
+                    "LLM component is enabled but loaded no providers. Add an enabled "
+                    "[llm.providers.<name>] section, or disable it via [components] llm = false.")
+            logger.info(f"Universal LLM Plugin initialized with {len(self.providers)} providers")
+
         except Exception as e:
+            # Re-raise so ComponentManager applies one policy (BUG-36). Swallowing here left an
+            # `initialized` LLM component that could not answer anything.
             logger.error(f"Failed to initialize Universal LLM Plugin: {e}")
+            self.initialized = False
+            raise
     
     # Primary LLM interface - used by other plugins
     async def is_available(self) -> bool:

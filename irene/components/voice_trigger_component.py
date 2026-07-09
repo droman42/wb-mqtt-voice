@@ -152,9 +152,12 @@ class VoiceTriggerComponent(MetricsPushMixin, Component, VoiceTriggerPlugin, Web
             providers_config = config.get('providers', {})
         
         # Discover only enabled providers from entry-points (configuration-driven filtering)
-        enabled_providers = [name for name, provider_config in providers_config.items() 
+        enabled_providers = [name for name, provider_config in providers_config.items()
                             if provider_config.get("enabled", False)]
-        
+        # Explicit operator intent. The openwakeword fallback appended next is implicit and must never
+        # abort startup: it needs numpy + onnxruntime, which 32-bit images do not install (BUG-36).
+        configured_providers = list(enabled_providers)
+
         # Always include openwakeword as fallback if not already included
         if "openwakeword" not in enabled_providers and providers_config.get("openwakeword", {}).get("enabled", True):
             enabled_providers.append("openwakeword")
@@ -216,10 +219,18 @@ class VoiceTriggerComponent(MetricsPushMixin, Component, VoiceTriggerPlugin, Web
             except Exception as e:
                 logger.error(f"Failed to create fallback voice trigger provider: {e}")
         
-        # Set default to first available if current default not available
+        # BUG-36: kind 1 cannot import → fatal; kind 2 unavailable → loud, not fatal.
+        self._require_loadable_providers("irene.providers.voice_trigger", configured_providers, self._provider_classes)
+        self._note_inactive_providers(configured_providers, self.providers)
+
+        # Fall back only when the operator did not name the default explicitly.
         if self.default_provider not in self.providers and self.providers:
+            if self.default_provider in configured_providers:
+                raise ValueError(
+                    f"Voice trigger default_provider={self.default_provider!r} did not initialize; "
+                    f"available: {', '.join(sorted(self.providers)) or 'none'}")
             self.default_provider = list(self.providers.keys())[0]
-            
+
         self.active = len(self.providers) > 0
         logger.info(f"Voice trigger component initialized with {enabled_count} providers. Default: {self.default_provider}")
         

@@ -119,6 +119,13 @@ RUN find /opt/venv -name '__pycache__' -type d -prune -exec rm -rf {} + 2>/dev/n
     find /opt/venv -path '*/site-packages/*/test' -type d -prune -exec rm -rf {} + 2>/dev/null || true && \
     find /opt/venv -name '*.dist-info' -prune -exec sh -c 'rm -rf "$1"/RECORD.bak' _ {} \; 2>/dev/null || true
 
+# BUILD GATE (BUG-36): every component + provider this profile enables must import, in THIS image,
+# on THIS architecture, after the lean-down. BUG-33 shipped an armv7 image whose numpy could not load
+# — nine components died at startup — and nothing caught it, because every other gate runs on x86_64.
+# Imports only: no models are downloaded, no service starts.
+COPY docker/verify_components.py /tmp/verify_components.py
+RUN python /tmp/verify_components.py /app/runtime-config.toml && rm -f /tmp/verify_components.py
+
 # Non-root user; the mounted assets root must be writable for model downloads
 # Non-root by design: a compromised process must not be able to write host paths as uid 0.
 # The NAME tracks the product (provisional — it changes with the final name decision); the

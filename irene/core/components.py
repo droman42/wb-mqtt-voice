@@ -30,6 +30,21 @@ class ComponentNotAvailable(Exception):
     pass
 
 
+class RequiredComponentsUnavailable(RuntimeError):
+    """A component enabled in `[components]` could not be loaded or initialized.
+
+    Startup aborts (BUG-36). A voice assistant that cannot hear is not "degraded" — it is broken,
+    and it must not boot into a state that reports itself healthy.
+    """
+    pass
+
+
+# Enabled-but-unloadable components that must NOT abort startup: observability and management
+# surfaces. The assistant still does its job without them, so they degrade instead — logged at
+# ERROR, and the process refuses to report itself healthy while any of them is missing.
+DEGRADABLE_COMPONENTS = frozenset({"monitoring", "nlu_analysis", "configuration"})
+
+
 
 @dataclass
 class ComponentInfo:
@@ -116,6 +131,11 @@ class ComponentManager(ComponentControlRegistryPort):
         self.config = config
         self._components: Dict[str, ComponentPort] = {}
         self._failed_components: Dict[str, Exception] = {}
+        # Enabled in [components] but never discovered (entry point absent / module import failed).
+        self._missing_components: Dict[str, str] = {}
+        # The subset of the broken ones that only degrade (DEGRADABLE_COMPONENTS). Non-empty means
+        # the process must never report itself healthy.
+        self._degraded_components: Dict[str, str] = {}
         self._dependency_resolver: Optional[DependencyResolver] = None
         self._initialized = False
         self.dependency_checker = DependencyChecker()  # From loader.py
@@ -141,18 +161,31 @@ class ComponentManager(ComponentControlRegistryPort):
             
         logger.info(f"Initializing V{MAJOR_VERSION} component system with dependency injection...")
         
-        # Get available components and create dependency resolver
+        # What the OPERATOR asked for. This is the authority: iterating `available_components` and
+        # filtering by config (as this once did) makes an enabled-but-unimportable component simply
+        # absent — neither initialized nor failed, and invisible to every counter (BUG-36).
+        requested = [name for name in type(self.config.components).model_fields
+                     if self._is_component_enabled(name)]
+
         available_components = self.get_available_components()
         self._dependency_resolver = DependencyResolver(available_components)
-        
-        # Get enabled components
-        enabled_components = [name for name in available_components.keys() 
-                            if self._is_component_enabled(name)]
-        
+
+        # Requested but never loaded: entry point missing, or its module failed to import.
+        from ..utils.loader import dynamic_loader
+        why = dynamic_loader.get_discovery_failures("irene.components")
+        self._missing_components = {
+            name: why.get(name, "no `irene.components` entry point is registered under this name")
+            for name in requested if name not in available_components
+        }
+        for name, reason in self._missing_components.items():
+            logger.error(f"❌ Component '{name}' is enabled in [components] but did not load: {reason}")
+
+        enabled_components = [name for name in requested if name in available_components]
+
         # Resolve initialization order based on dependencies
         initialization_order = self._dependency_resolver.resolve_initialization_order(enabled_components)
         logger.info(f"Component initialization order: {initialization_order}")
-        
+
         # Initialize components in dependency order
         await self._initialize_components_with_dependency_injection(core, initialization_order, available_components)
         
@@ -166,15 +199,34 @@ class ComponentManager(ComponentControlRegistryPort):
         run_startup_validation(core.config)
 
         self._initialized = True
-        
-        # Log deployment profile and status
+
+        # Report what was ASKED FOR against what is actually running. The old line printed the
+        # config-derived profile beside `Success: len(self._components)` and a `Failed:` counter that
+        # only ever saw components which were discovered and then raised — so nine components could
+        # vanish at import time and it still read `Success: 3, Failed: 0` (BUG-36).
+        broken = {**self._missing_components, **{n: str(e) for n, e in self._failed_components.items()}}
         profile = self.get_deployment_profile()
-        success_count = len(self._components)
-        failed_count = len(self._failed_components)
-        logger.info(f"V{MAJOR_VERSION} Components initialized. Profile: {profile}, Success: {success_count}, Failed: {failed_count}")
-        
-        if self._failed_components:
-            logger.warning(f"Failed components with graceful degradation: {list(self._failed_components.keys())}")
+        logger.info(
+            f"V{MAJOR_VERSION} Components. Profile: {profile}, Requested: {len(requested)}, "
+            f"Running: {len(self._components)}, Missing: {len(self._missing_components)}, "
+            f"Failed to initialize: {len(self._failed_components)}"
+        )
+
+        if broken:
+            fatal = {n: r for n, r in broken.items() if n not in DEGRADABLE_COMPONENTS}
+            self._degraded_components = {n: r for n, r in broken.items() if n in DEGRADABLE_COMPONENTS}
+            if self._degraded_components:
+                logger.error(
+                    "Running DEGRADED — enabled components unavailable: "
+                    + "; ".join(f"{n} ({r})" for n, r in self._degraded_components.items())
+                )
+            if fatal:
+                detail = "\n".join(f"  - {n}: {r}" for n, r in sorted(fatal.items()))
+                raise RequiredComponentsUnavailable(
+                    f"{len(fatal)} component(s) enabled in [components] could not be started:\n{detail}\n"
+                    "Fix the configuration or the environment. (Observability components — "
+                    f"{', '.join(sorted(DEGRADABLE_COMPONENTS))} — degrade instead of aborting.)"
+                )
     
     async def _initialize_components_with_dependency_injection(self, core, initialization_order: List[str], available_components: Dict[str, Type]) -> None:
         """Initialize components with sophisticated dependency injection and graceful degradation"""
@@ -331,6 +383,11 @@ class ComponentManager(ComponentControlRegistryPort):
         """Get component-specific configuration"""
         return getattr(self.config, component_name, None)
         
+    @property
+    def degraded_components(self) -> Dict[str, str]:
+        """Enabled observability components that are unavailable, with the reason (empty = none)."""
+        return dict(self._degraded_components)
+
     def has_component(self, name: str) -> bool:
         """Check if a component is available and initialized"""
         return name in self._components and self._components[name].initialized

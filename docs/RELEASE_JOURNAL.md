@@ -17,6 +17,35 @@ newest entries near the top of each dated section.
 
 ## Action journal
 
+- **2026-07-09 — BUG-36 fixed: a broken assistant can no longer report itself healthy.** Four independently
+  "graceful" decisions composed into the lie. The loader logged an ImportError at WARNING and dropped it. The
+  component manager built its enabled set by iterating **what loaded** and filtering by config — so a component
+  you enabled that failed to import was neither initialized nor failed, it was absent from the universe.
+  `_failed_components` only ever saw components that were discovered and then raised, so `Failed:` structurally
+  could not be non-zero. And `get_deployment_profile()` counted the *config*, so the line printed intent (6)
+  beside reality (3). Even `run_startup_validation` was no help: it resolves entry-point **names** in package
+  metadata, which succeeds whether or not the module imports.
+  Now the config is the authority: anything `[components]` names that did not load is recorded with the loader's
+  reason (the loader returns its failures instead of only logging them), the summary reads
+  `Requested / Running / Missing / Failed to initialize` at ERROR, and a missing component **aborts startup** —
+  unless it is one of the observability surfaces (`monitoring`, `nlu_analysis`, `configuration`), which degrade
+  and force `/health` to 503 so Docker and systemd see it.
+  At the provider level the owner ruled that a configured provider which doesn't come up means the component
+  isn't ready. Implementing that surfaced a real conflict, and **running the change is what found it**: strict
+  everywhere refused to boot the keyless smoke suite — i.e. it would have bricked any controller without a
+  DeepSeek key, breaking the offline promise `INSTALL.md` makes and that `fallback_providers = ["console"]`
+  exists for. So the rule split by failure kind, with the owner's agreement: **cannot import** (no entry point,
+  or `libopenblas.so.0`) is a broken build → fatal; **imports but reports unavailable** (no API key, no network)
+  is anticipated → logged at ERROR and published on `/health.inactive_providers`, loud but never fatal.
+  Two more silences died on the way: `llm_component` swallowed its own initialization exception and merely
+  warned "No LLM providers available"; and `asr` reconciled its default to *whatever survived* (CR-A2), quietly
+  transcribing with an engine nobody chose. Finally, a **build gate** (`docker/verify_components.py`, wired into
+  all three Dockerfiles) now imports every component and provider the baked profile enables, in that image, on
+  that architecture. It would have caught BUG-33 before publish — every other gate we own runs on x86_64, where
+  numpy vendors its own openblas. Verified live both ways: keyless boot → 200 with
+  `inactive_providers: {llm.deepseek: …}`; a bogus configured provider → exit 1 naming it. 1358 tests pass,
+  including the six hermetic smoke tests that started this.
+
 - **2026-07-09 — BUG-35 fixed: the runners stop overwriting `[components]`; TEST-20 filed.** `webapi_runner`
   rewrote eight of the eleven `[components]` flags immediately after the TOML loaded, and `--enable-tts` was
   `action="store_true", default=True` — a flag that can never be False, so TTS and the audio component were

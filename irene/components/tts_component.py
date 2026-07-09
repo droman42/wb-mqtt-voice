@@ -133,15 +133,22 @@ class TTSComponent(Component, TTSPlugin, WebAPIPlugin, TTSPort):
         self._provider_configs = config.get("providers", {})
         
         # Discover only enabled providers from entry-points (configuration-driven filtering)
-        enabled_providers = [name for name, provider_config in self._provider_configs.items() 
+        enabled_providers = [name for name, provider_config in self._provider_configs.items()
                             if provider_config.get("enabled", False)]
-        
+        # What the operator EXPLICITLY enabled — the console fallback appended below is implicit, so
+        # its absence must never abort startup (BUG-36 checks below use this list, not the appended one).
+        configured_providers = list(enabled_providers)
+
         # Always include console as fallback if not already included
         if "console" not in enabled_providers and self._provider_configs.get("console", {}).get("enabled", True):
             enabled_providers.append("console")
-            
+
         self._provider_classes = dynamic_loader.discover_providers("irene.providers.tts", enabled_providers)
         logger.info(f"Discovered {len(self._provider_classes)} enabled TTS providers: {list(self._provider_classes.keys())}")
+
+        # BUG-36 kind 1 — a configured provider must at least IMPORT. Instantiation may legitimately be
+        # deferred here (lazy loading), so this checks the discovered classes, not the instances.
+        self._require_loadable_providers("irene.providers.tts", configured_providers, self._provider_classes)
         
         if self._lazy_loading_enabled:
             # Lazy loading: Only load essential providers immediately
@@ -156,12 +163,21 @@ class TTSComponent(Component, TTSPlugin, WebAPIPlugin, TTSPort):
         # Ensure we have at least one provider
         if not self.providers and not self._lazy_loading_enabled:
             await self._load_fallback_provider()
-        
-        # Set default to first available if current default not available
-        if self.default_provider not in self.providers and self.providers:
-            self.default_provider = list(self.providers.keys())[0]
-            logger.info(f"Set default TTS provider to: {self.default_provider}")
-            
+
+        if not self._lazy_loading_enabled:
+            # Eager path: report anything that imported but could not initialize (kind 2 — loud, not fatal).
+            self._note_inactive_providers(configured_providers, self.providers)
+
+        # BUG-36: the default must be a provider that exists, not "whatever survived". Silently
+        # speaking through a different engine than the configured one is the same lie as a component
+        # vanishing at import time. (Runtime fallback remains the job of the fallback chain.)
+        if self.default_provider not in self._provider_classes:
+            raise ValueError(
+                f"TTS default_provider={self.default_provider!r} did not load — enable a "
+                f"[tts.providers.{self.default_provider}] section, or point default_provider at one of: "
+                f"{', '.join(sorted(self._provider_classes)) or 'none'}")
+
+
         logger.info(f"Universal TTS plugin initialized with {len(self.providers)} providers (lazy loading: {self._lazy_loading_enabled})")
     
     async def _initialize_essential_providers(self) -> None:
