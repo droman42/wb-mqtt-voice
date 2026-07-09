@@ -854,6 +854,25 @@ rationale/chronology lives in [`RELEASE_JOURNAL.md`](./RELEASE_JOURNAL.md).
       glibc 2.31/Cortex-A7 and exposes both `OfflineRecognizer` and `OfflineTts`/`OfflineTtsVitsModelConfig` (Piper) — the
       one-engine premise holds. Completing T1+T2 is the clean resolution for the deferred **torch ×4 / transformers ×1**
       Dependabot alerts (commits 05aa763/4e05a38) — no risky major bumps. **No code until scheduled + green-lit.**
+- [x] **ARCH-25** [INFER][HW] `[release]` — **DONE 2026-07-09.** WB7 (armv7) hardware bring-up, on the real
+      controller. The `embedded-armv7` image boots from `/mnt/data`, the web API answers on **:8080**, the
+      delivered config + mounted assets root resolve, sherpa-onnx ASR (vosk-small, 26 MB) and Piper TTS
+      (irina, 79 MB) download on first boot and load, and a live Russian command round-trips:
+      «который час» → «11:35», `intent_name: datetime.current_time`, confidence 1.0 — i.e. text-processing →
+      NLU → intent execution all work on the A7. **REBOOT TEST PASSED** (the acceptance criterion, and the
+      failure mode the bridge hit live): `uptime` 3 min, unit `enabled`/`active`, `Result=success`,
+      `NRestarts=0`, **zero** dependency failures and no `/mnt/sdcard` in the boot transaction, container
+      `(healthy)`, compose re-read `.env` at boot (`DEEPSEEK_API_KEY` present in the container), components
+      `Requested: 9, Running: 9, Missing: 0, Failed: 0`, `/health` 200 with `inactive_providers: {}`, and
+      Plane B back on its own (`:8081` ca.crt → 200, `:443` without a client cert → 400).
+      The bring-up **found six defects that every existing gate had missed**, because they all run on x86_64:
+      **BUG-31** (the ansible plane would have apt-upgraded the nginx serving the WB admin UI), **BUG-32**
+      (the approval CLI installed under a name no doc uses), **BUG-33** (no `libopenblas` → numpy dead → no
+      ASR/NLU/intents), **BUG-34** (one disabled provider's import killed nine components), **BUG-35** (the
+      runners overwrote the operator's `[components]`), **BUG-36** (all of the above reported as
+      `Success: 3, Failed: 0`, exit 0, healthy). Also filed from it: ARCH-44, ARCH-45, QUAL-78, TEST-20.
+      Image: `ghcr.io/droman42/wb-mqtt-voice-armv7:v20260709-6c0c0b6`. **WB8.5/aarch64 on-device validation is
+      NOT covered here** — no such hardware yet; the aarch64 image is built + gate-verified but unbooted.
 - [x] **ARCH-26** [MQTT][DESIGN] (P3) `[deferred]` — **DONE 2026-07-01 (design; interactive session with the user).**
       Two Irene↔bridge catalog-contract questions settled and recorded in `docs/design/mqtt_integration.md` (banner +
       §5a + §8 + §12 + §13.3 + new **§14**). **(1) Catalog refresh = lazy** — startup pull + re-pull on a

@@ -178,18 +178,6 @@ See `docs/review/phase1_architecture_map.md` §5.
       device admin UI + CSR submission (D-16/D-17, against Plane-B `nginx/`); config-preserving OTA (D-18). Likely a separate
       firmware repo eventually (per `esp32_wakeword_review.md` quarantine). Substantial standalone C++ effort; tracked here so
       it's not an orphan finding. Depends on hardware selection finalised (mic/speaker parts) + the Plane-B controller deploy.
-- [ ] **ARCH-25** [INFER][HW] (P-TBD) `[release]` — **Satellite hardware bring-up — WB7 (armv7) + WB8.5 (aarch64)
-      on-device re-validation.** The single convergence point for the hardware-gated verification the software tasks defer
-      here (split out of **ARCH-10** 2026-06-16, now implementation-complete). Deploy the `embedded-armv7` /
-      `embedded-aarch64` images (**BUILD-3**) on the real boxes and confirm the satellite stack boots and serves
-      end-to-end: **(1)** container boots, web API on :6000, baked config + mounted assets-root resolve; **(2)** sherpa-onnx
-      ASR runs at acceptable **RTF/latency** on the A7/A53 (vosk-small on WB7, whisper-small on WB8.5) with RU parity;
-      **(3)** the **ESP32 server-authoritative streaming endpoint** (ARCH-10, built + seam-tested) validates on device —
-      real `OnlineRecognizer` endpoint RTF/latency over `/ws/audio` `mode:"streaming"`; **(4)** Piper / `piper_ruaccent`
-      TTS synthesis + the SPEECH reply rides back to the ESP32 over the reply channel; **(5)** wake-word/microVAD `.tflite`
-      coverage on aarch64 (QUAL-19/20). Absorbs the boot / on-device remainders that **ARCH-24** + **BUILD-3** point here,
-      and gates **Definition-of-release item #1**. User/hardware-gated — no CI surrogate. Refs:
-      `torch_free_armv7_voice.md`, `esp32_satellite.md` §4.4/§12, BUILD-3, ARCH-10.
 - [ ] **ARCH-39** [MQTT][NLU] (P-post-release) `[deferred]` — **DESIGN: device-level force-confirm — the 2-turn
       idempotence-skip escape hatch via voice.** The bridge's DRV-5 (pinned @ QUAL-77) marks idempotence-skipped
       commands (`success: true, no_op: true, skipped_reason: "idempotence"` — nothing transmitted, belief may be

@@ -17,6 +17,21 @@ newest entries near the top of each dated section.
 
 ## Action journal
 
+- **2026-07-09 — ARCH-25 DONE: the WB7 is up, and the reboot test passed. Scope is complete.** The controller
+  boots the `embedded-armv7` image from `/mnt/data`, downloads and loads sherpa-onnx ASR (26 MB) + Piper irina
+  (79 MB), and answers a live Russian command — «который час» → «11:35», `datetime.current_time`, confidence 1.0.
+  Then the acceptance criterion, cold: `uptime` 3 min, unit `enabled`/`active`, `Result=success`, `NRestarts=0`,
+  **zero** dependency failures, no `/mnt/sdcard` anywhere in the boot transaction, container `(healthy)`, compose
+  re-read `.env` at boot, `Requested: 9, Running: 9, Missing: 0, Failed: 0`, `/health` 200 with
+  `inactive_providers: {}`, and Plane B back unaided (`:8081` → 200, `:443` no-cert → 400). This is precisely the
+  failure the bridge hit live and that BUILD-19 designed around blind; it held.
+  Worth stating plainly: **the bring-up found six defects that every gate we own had missed** — BUG-31, BUG-32,
+  BUG-33, BUG-34, BUG-35, BUG-36 — because every one of those gates runs on x86_64 and the box is armv7. Two of
+  them (no ASR at all; the process reporting that as healthy) would have shipped in the release tag. The build
+  gate added in BUG-36 now runs inside each image on its own architecture, which closes that hole for the next
+  one. With ARCH-25 closed, `check_scope.py` reports **no open `[release]` tasks** — 25 remain, all `[deferred]`.
+  Only the version tag stands between here and release; the number itself is under discussion.
+
 - **2026-07-09 — BUG-36 fixed: a broken assistant can no longer report itself healthy.** Four independently
   "graceful" decisions composed into the lie. The loader logged an ImportError at WARNING and dropped it. The
   component manager built its enabled set by iterating **what loaded** and filtering by config — so a component
