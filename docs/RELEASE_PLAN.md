@@ -338,19 +338,25 @@ _Discrete functional defects (distinct from QUAL refactors/quality work). Surfac
       **(a) no rounding.** `smart_home.py:636` only narrows a float when it is already integral
       (`value == int(value)`), so a sensor's `24.125` reaches the template verbatim. A person says «двадцать
       четыре градуса».
-      **(b) the decimal is vocalized wrongly.** `utils/text_processing.all_num_to_text` renders the fraction as a
-      second whole number and silently drops digits: `24.125 → «двадцать четыре двенадцать»`,
-      `24.5 → «двадцать четыре пятьдесят»`, `2.75 → «два семьдесят пять»`, `21.0 → «двадцать один ноль»`. So
-      even a correctly-rounded `24.5` would be spoken as "twenty-four fifty".
-      **(c) no Russian numeral agreement.** `assets/templates/smart_home_handler/ru.yaml:42` hardcodes
-      «градусов»: `1 → «один градусов»` (should be «градус»), `24 → «двадцать четыре градусов»` (should be
-      «градуса»). English `en.yaml:41` has the same flaw ("1 degrees").
-      Fix: round sensor values at the handler (1 decimal, or integer for temperature), decline the unit by the
-      numeral (1/21/31→ед., 2–4/22–24→род.ед., else род.мн.), and either fix the fraction path in
-      `all_num_to_text` or keep decimals out of spoken text entirely. Note (b) is a **general** text-processing
-      defect — it affects any spoken decimal, not just temperatures. Not release-blocking (v0.5.0 is tagged), but
-      it is the first sentence a user hears from a headline feature; worth fixing before the feature is
-      mentioned to anyone.
+      **(b) the decimal is vocalized wrongly — RUSSIAN ONLY** (verified 2026-07-09; English is correct:
+      `"It is 24.125 degrees"` → *"twenty four point one two five"*, via `ovos_number_parser.pronounce_number`).
+      Root cause: `utils/text_processing.decimal_to_text_ru` (`:177-183`) is a **money formatter** —
+      `value.quantize(10**-places)` with `places=2`, then it speaks the fraction as a bare whole number through
+      `num_to_text_ru(int(exp), exp_units)`. With `int_units=рубль, exp_units=копейка` it correctly says
+      «двенадцать рублей тридцать четыре копейки»; called with no units, as the spoken path does, it truncates
+      (`24.125 → 24.12`) and reads the remainder as an integer: `24.125 → «двадцать четыре двенадцать»`,
+      `24.5 → «двадцать четыре пятьдесят»`, `12.34 → «двенадцать тридцать четыре»`. Its own docstring promises
+      «двенадцать целых тридцать четыре сотых» — never implemented.
+      **(c) no numeral agreement — both languages, different rules.** `ru.yaml:42` hardcodes «градусов»:
+      `1 → «один градусов»` (should be «градус»), `24 → «двадцать четыре градусов»` (should be «градуса»);
+      Russian needs three forms. `en.yaml:41` needs only singular/plural: `"1 degrees"` → `"1 degree"`.
+      Fix: round sensor values at the handler (integer for temperature) — language-agnostic, and it makes (b)
+      moot for this feature; decline the unit by the numeral in both template sets; and repair the Russian
+      fraction path independently, since **`all_num_to_text` feeds the TTS text-processing stage
+      (`text_processor_component.py:241`) and the silero provider, so every spoken Russian decimal in the system
+      is mangled, not just temperatures.** Blast radius for (b): 4 call sites — check timers/percentages before
+      touching it. Not release-blocking (v0.5.0 is tagged), but it is the first sentence a user hears from a
+      headline feature; worth fixing before the feature is mentioned to anyone.
 
 ### Tests (TEST)
 > **Strategy (decided 2026-06-01): do NOT keep repairing the existing suite.** Most tests were written against
