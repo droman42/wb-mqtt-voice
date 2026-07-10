@@ -17,6 +17,24 @@ newest entries near the top of each dated section.
 
 ## Action journal
 
+- **2026-07-10 — First DRV-28 smoke on the WB7: the new dialect works end-to-end; the error the user heard was
+  a timing artifact — bridge DRV-29 filed.** Both sides turned out to be redeployed already (voice and bridge
+  each hold catalog `5622ba7a1a78102a`). «выключи кондиционер в детской» → voice resolved the room, picked the
+  **new** `power` capability off the live catalog and posted `power.off` — QUAL-81's binding verified on
+  hardware, and the AC's `/state` is fully typed now (`power/mode/fan/vane/widevane/setpoint/room_temperature`,
+  `reachable: true`).
+  The spoken answer, though, was «Что-то пошло не так на стороне моста» — and the timeline shows the command
+  **worked**: command at `08:36:23.9`, the bridge's global 500 ms echo window (`CANONICAL_ECHO_TIMEOUT_S`)
+  expired → `503 device_unreachable`, and the real echo arrived **~7 s later** (`08:36:31`), flipping the state
+  to `power: off`. The mitsubishi2wb firmware confirms on its own cycle — seconds, not the milliseconds a WB
+  relay takes — so **every AC command reports failure while succeeding**. Same signature as the 2026-07-09
+  living-room attempt; systematic. Filed as bridge **DRV-29** (uncommitted; the filing notes that the previous
+  uncommitted filing was silently erased, and points at this journal as the durable copy of the evidence).
+  Two voice-side notes: BUG-40 made the message *worse* (the structured `device_unreachable` collapsed to
+  «что-то пошло не так»), but even fixed it would speak a failure for a working command — the fix is genuinely
+  bridge-side. And the mode-change path — dead firmware-side until their DRV-26, never voice-tested — is still
+  the missing smoke item.
+
 - **2026-07-10 — QUAL-81: the DRV-28 HVAC contract consumed — re-pin `5622ba7a1a78102a`, per-device dialect
   binding.** The bridge's overnight note: the three ACs are `MitsubishiHvac` now, six capabilities replacing
   `climate` (`power`, `mode`/`fan`/`vane`/`widevane` `.set{value}`, `temperature.set{value}` 16–31 °C); floors
