@@ -17,6 +17,31 @@ newest entries near the top of each dated section.
 
 ## Action journal
 
+- **2026-07-10 — QUAL-81: the DRV-28 HVAC contract consumed — re-pin `5622ba7a1a78102a`, per-device dialect
+  binding.** The bridge's overnight note: the three ACs are `MitsubishiHvac` now, six capabilities replacing
+  `climate` (`power`, `mode`/`fan`/`vane`/`widevane` `.set{value}`, `temperature.set{value}` 16–31 °C); floors
+  keep `climate`; canonical vocabularies and labels unchanged. Their DRV-26 also fixed what our 2026-07-09
+  testing implied but nobody knew: the firmware speaks numeric indices and **silently dropped every mode/fan
+  command ever sent** — the wire tables carried label strings.
+  Verified before pinning (artifacts committed, golden's own version matches, exactly 3 devices changed), then
+  consumed in both repos. eval-commons `ee66fd8`: golden+openapi+STAMP+PIN, fixtures migrated
+  (F80/F81/F96/F32), and **F21 exposed a real schema gap** — the bare «поставь двадцать два градуса» clarify now
+  spans candidates binding *different* capabilities (`climate` on the floor heater, `temperature` on the AC), so
+  the clarify expect's `capability` accepts a list, guard updated, 40/40.
+  Voice side: hardcoded `climate.set_setpoint`/`set_mode`/`set_fan` became a per-device **binding table** — new
+  dialect first, old as fallback — because the WB7 bridge still serves the old vocabulary until its own
+  redeploy, and deploy order must not matter. The capability picker takes an any-of tuple (F21's case).
+  `_QUANTITY_FIELDS` deliberately unchanged: the sauna sensor still carries a genuine `temperature` field —
+  and the audit found that pre-DRV-28, «какая температура» in an AC room had been answering the **setpoint**
+  (the AC advertised `temperature` = its set target, first in our preference order); the rename retires that
+  wrong answer with no voice change. Harness stub migrated to the new shape (all 47 tests pass against it),
+  7 new tests incl. an old-dialect `children_split_legacy` proving the fallback — and **no mode/fan handler
+  tests had existed at all**, the same blind spot as the firmware's. Suite 1373, pyright 0, 11/11.
+  No action yet, logged: bridge VWB-32 (the 2026-07-09 controller reboot wiped all retained MQTT messages —
+  mosquitto persistence is off — so `bridge/catalog/version` is missing until they republish at startup) and
+  VWB-33 (language-data ownership convention design; half of it is our donations, they will coordinate).
+  **Hardware smoke owed after their WB7 redeploy** — mode changes were never testable before DRV-26.
+
 - **2026-07-09 — BUG-38 verified on the WB7; the retest immediately found BUG-40.** Deployed
   `v20260709-7b3e773`. The command that switched on the wrong lamp an hour earlier now refuses:
   «включи торшер в спальне» → `success: false`, «Спальня: не нашла там «торшер».», and

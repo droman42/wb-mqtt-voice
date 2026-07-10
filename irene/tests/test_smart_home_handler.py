@@ -87,17 +87,46 @@ CATALOG_PAYLOAD = {
                                "min": 5.0, "max": 30.0, "unit": "°C"}]}],
               "fields": [{"name": "setpoint", "unit": "°C"},
                          {"name": "room_temperature", "unit": "°C"}]}]},
+        # the DRV-28 MitsubishiHvac shape (mirrors the pinned golden): six capabilities,
+        # `{value}` params, setpoint/room_temperature fields — no bare `temperature` field anymore
         {"id": "bedroom_hvac", "room": "bedroom", "names": {"ru": "Кондиционер"},
          "aliases": {"ru": ["кондей"]},
          "capabilities": [
+             {"name": "power", "group": "climate",
+              "actions": [{"name": "on"}, {"name": "off"}]},
+             {"name": "mode", "group": "climate",
+              "actions": [{"name": "set", "params": [
+                  {"name": "value", "type": "string", "required": True,
+                   "values": [{"wire": "0", "canonical": "auto", "labels": {"ru": "авто"}},
+                              {"wire": "2", "canonical": "cool", "labels": {"ru": "охлаждение"}},
+                              {"wire": "3", "canonical": "heat", "labels": {"ru": "обогрев"}}]}]}]},
+             {"name": "fan", "group": "climate",
+              "actions": [{"name": "set", "params": [
+                  {"name": "value", "type": "string", "required": True,
+                   "values": [{"wire": "0", "canonical": "auto", "labels": {"ru": "авто"}},
+                              {"wire": "3", "canonical": "speed_2", "labels": {"ru": "скорость 2"}}]}]}]},
+             {"name": "temperature", "group": "temperature",
+              "actions": [{"name": "set", "params": [
+                  {"name": "value", "type": "float", "required": True,
+                   "min": 16.0, "max": 31.0, "unit": "°C"}]}],
+              "fields": [{"name": "setpoint", "unit": "°C", "labels": {"ru": "уставка"}},
+                         {"name": "room_temperature", "unit": "°C"}]}]},
+        # an OLD-dialect AC (pre-DRV-28 addressing): proves the per-device fallback binding keeps
+        # working while a live bridge still serves climate.set_mode/set_setpoint
+        {"id": "children_split_legacy", "room": "children_room", "names": {"ru": "Сплит"},
+         "capabilities": [
              {"name": "climate", "group": "climate",
               "actions": [{"name": "on"}, {"name": "off"},
+                          {"name": "set_mode", "params": [
+                              {"name": "mode", "type": "string", "required": True,
+                               "values": [{"wire": "2", "canonical": "cool",
+                                           "labels": {"ru": "охлаждение"}},
+                                          {"wire": "3", "canonical": "heat",
+                                           "labels": {"ru": "обогрев"}}]}]},
                           {"name": "set_setpoint", "params": [
                               {"name": "temp", "type": "float", "required": True,
                                "min": 16.0, "max": 31.0, "unit": "°C"}]}],
-              "fields": [{"name": "temperature", "unit": "°C",
-                          "labels": {"ru": "уставка"}},
-                         {"name": "room_temperature", "unit": "°C"}]}]},
+              "fields": [{"name": "room_temperature", "unit": "°C"}]}]},
         {"id": "mf_amplifier", "room": "living_room", "names": {"ru": "Усилитель"},
          "capabilities": [
              {"name": "input", "group": "input",
@@ -442,7 +471,8 @@ async def test_f31_humidity(harness):
 
 async def test_f32_room_temperature_not_setpoint(harness):
     # bedroom has NO dedicated sensor; both climate devices carry room_temperature —
-    # and the hvac's bare `temperature` field is the SETPOINT, which must NOT be read
+    # (pre-DRV-28 the hvac also had a bare `temperature` field that was the SETPOINT; the
+    # rename to `setpoint` removed that trap, and this read must keep hitting room_temperature)
     result, _ = await harness.run("read_state", "какая температура в спальне",
                                   {"quantity": "temperature", "room": "спальне"})
     read = result.metadata["read"]
@@ -650,3 +680,77 @@ async def test_utterance_scan_stays_quiet_without_a_device_word(harness):
     result, captured = await harness.run("power_on", "включи", {}, room="Спальня")
     assert captured == []
     assert result.metadata.get("clarification") or not result.success
+
+
+# --- DRV-28: the MitsubishiHvac dialect (QUAL-81) --------------------------------------------------
+#
+# The ACs moved from one `climate` capability to six (`power`, `mode`, `fan`, `vane`, `widevane`,
+# `temperature`), all sets taking `{value}`. The handler binds per DEVICE — new dialect first, old
+# as fallback — so it must be correct against either live catalog, whichever side deploys first.
+
+
+async def test_setpoint_routes_temperature_set_on_the_new_hvac(harness):
+    """«поставь кондей на 22» → temperature.set{value} (the AC has no climate anymore)."""
+    result, captured = await harness.run("set_setpoint", "поставь кондей на 22 градуса",
+                                         {"target": "кондей", "temp": 22}, room="Спальня")
+    assert result.success, result.error
+    assert captured and captured[-1] == {
+        "kind": "actuate", "device_id": "bedroom_hvac",
+        "capability": "temperature", "action": "set", "params": {"value": 22}}
+
+
+async def test_setpoint_still_routes_climate_on_the_floor(harness):
+    """The heating_loop dialect is untouched: radiators keep climate.set_setpoint{temp}."""
+    result, captured = await harness.run("set_setpoint", "поставь на радиаторах 22 градуса",
+                                         {"target": "радиаторы", "temp": 22}, room="Спальня")
+    assert result.success, result.error
+    assert captured[-1]["capability"] == "climate"
+    assert captured[-1]["action"] == "set_setpoint"
+    assert captured[-1]["params"] == {"temp": 22}
+
+
+async def test_setpoint_range_check_reads_the_value_spec(harness):
+    """Pre-validation follows the binding: the AC's 16–31 °C lives on temperature.set{value}."""
+    result, captured = await harness.run("set_setpoint", "поставь кондей на 99 градусов",
+                                         {"target": "кондей", "temp": 99}, room="Спальня")
+    assert result.metadata.get("clarification_reason") == "out_of_range"
+    assert not captured, "an out-of-range value must never reach the bridge"
+
+
+async def test_hvac_mode_routes_mode_set(harness):
+    """«кондиционер на охлаждение» → mode.set{value: cool}, matched via the ru label."""
+    result, captured = await harness.run("hvac_mode", "кондиционер на охлаждение",
+                                         {"value": "охлаждение"}, room="Спальня")
+    assert result.success, result.error
+    assert captured and captured[-1] == {
+        "kind": "actuate", "device_id": "bedroom_hvac",
+        "capability": "mode", "action": "set", "params": {"value": "cool"}}
+
+
+async def test_hvac_fan_routes_fan_set(harness):
+    result, captured = await harness.run("hvac_fan", "вентилятор на скорость 2",
+                                         {"value": "скорость 2"}, room="Спальня")
+    assert result.success, result.error
+    assert captured and captured[-1] == {
+        "kind": "actuate", "device_id": "bedroom_hvac",
+        "capability": "fan", "action": "set", "params": {"value": "speed_2"}}
+
+
+async def test_hvac_mode_falls_back_to_the_legacy_climate_dialect(harness):
+    """A device still speaking pre-DRV-28 (`climate.set_mode{mode}`) keeps working — the live
+    bridge serves the old vocabulary until its own redeploy, and deploy order must not matter."""
+    result, captured = await harness.run("hvac_mode", "сплит на обогрев",
+                                         {"value": "обогрев"}, room="Детская")
+    assert result.success, result.error
+    assert captured and captured[-1] == {
+        "kind": "actuate", "device_id": "children_split_legacy",
+        "capability": "climate", "action": "set_mode", "params": {"mode": "heat"}}
+
+
+async def test_legacy_setpoint_falls_back_to_climate(harness):
+    result, captured = await harness.run("set_setpoint", "поставь сплит на 22 градуса",
+                                         {"target": "сплит", "temp": 22}, room="Детская")
+    assert result.success, result.error
+    assert captured[-1]["capability"] == "climate"
+    assert captured[-1]["action"] == "set_setpoint"
+    assert captured[-1]["params"] == {"temp": 22}

@@ -25,7 +25,7 @@ Dependencies (injected, QUAL-24): `DeviceCatalogPort` (the world) +
 """
 
 import re
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 from ..models import Intent, IntentResult
 from ..context_models import UnifiedConversationContext
@@ -43,8 +43,11 @@ from ...utils.text_normalizers import latin_to_cyrillic_hint
 _ALL_SCOPE_RE = re.compile(r"\b(?:весь|все|всё|everywhere|all)\b", re.IGNORECASE)
 
 # read quantities → the catalog field names that carry them, preference-ordered (PR-5).
-# `room_temperature` is the measured value on climate devices; bare `temperature` is the
-# dedicated sensors' field (on HVAC `temperature` is the SETPOINT — hence the ordering).
+# `room_temperature` is the measured value on climate/HVAC devices; bare `temperature` is the
+# dedicated sensors' field (shower_sauna_sensors), where it IS the measurement — keep it first.
+# (Pre-DRV-28 the AC advertised a `temperature` field that was its SETPOINT, so «какая
+# температура» in an AC room answered the set target; the DRV-28 rename to `setpoint` retired
+# that wrong answer without a voice change.)
 _QUANTITY_FIELDS = {
     "temperature": ("temperature", "room_temperature"),
     "humidity": ("humidity",),
@@ -310,11 +313,33 @@ class SmartHomeIntentHandler(IntentHandler):
             return resolved, None, False
         return None, None, bool(intent.entities.get("target_resolution_failed"))
 
+    # DRV-28: one user goal, two catalog dialects. The three ACs became `MitsubishiHvac` with
+    # `temperature.set{value}` / `mode.set{value}` / `fan.set{value}`; the heating_loop floors keep
+    # `climate` (`set_setpoint{temp}`; floors never carried set_mode/set_fan). Binding is per-DEVICE
+    # and catalog-driven — new dialect first, old as fallback — so the handler is correct against
+    # EITHER live catalog and the bridge/voice redeploy order cannot matter.
+    _SETPOINT_BINDINGS = (("temperature", "set", "value"), ("climate", "set_setpoint", "temp"))
+    _CHOICE_BINDINGS = {
+        "mode": (("mode", "set", "value"), ("climate", "set_mode", "mode")),
+        "fan": (("fan", "set", "value"), ("climate", "set_fan", "fan")),
+    }
+
+    @staticmethod
+    def _binding(device: CatalogDevice,
+                 bindings: Tuple[Tuple[str, str, str], ...]) -> Optional[Tuple[str, str, str]]:
+        """(capability, action, param) — the first binding this device actually carries."""
+        for cap_name, action_name, param_name in bindings:
+            cap = device.capability(cap_name)
+            if cap is not None and cap.action(action_name) is not None:
+                return cap_name, action_name, param_name
+        return None
+
     def _capable_devices(self, catalog: DeviceCatalog, room_id: Optional[str],
-                         capability: str, language: str) -> List[Dict[str, Any]]:
+                         capability: Union[str, Tuple[str, ...]], language: str) -> List[Dict[str, Any]]:
+        wanted = (capability,) if isinstance(capability, str) else capability
         devices = catalog.devices_in_room(room_id) if room_id else catalog.devices
         return [{"device_id": d.id, "room": d.room, "name": self._device_name(d, language)}
-                for d in devices if d.capability(capability) is not None]
+                for d in devices if any(d.capability(c) is not None for c in wanted)]
 
     def _pick_capability(self, device: CatalogDevice, wanted: Tuple[str, ...]) -> Optional[str]:
         for name in wanted:
@@ -427,10 +452,13 @@ class SmartHomeIntentHandler(IntentHandler):
 
     async def _single_capable_or_clarify(self, intent: Intent,
                                          context: UnifiedConversationContext,
-                                         capability: str) -> Tuple[Optional[CatalogDevice],
-                                                                   Optional[IntentResult]]:
+                                         capability: Union[str, Tuple[str, ...]]
+                                         ) -> Tuple[Optional[CatalogDevice],
+                                                    Optional[IntentResult]]:
         """No named target: exactly one `capability`-capable device in the room → it; several →
-        clarify (the F20/F21 v1 policy); none → spoken miss."""
+        clarify (the F20/F21 v1 policy); none → spoken miss. A tuple means "any of" — one user
+        goal can bind different capabilities per device since DRV-28 (set-temperature is
+        `climate` on a floor, `temperature` on an AC)."""
         language = self._lang(context)
         catalog = self._catalog()
         if catalog is None:
@@ -457,7 +485,8 @@ class SmartHomeIntentHandler(IntentHandler):
             return None, IntentResult(
                 text=self._get_template("err_nothing_capable", language),
                 should_speak=True, success=False,
-                error=f"no {capability}-capable device in scope")
+                error=f"no {capability if isinstance(capability, str) else '/'.join(capability)}"
+                      f"-capable device in scope")
         if len(capable) > 1:
             return None, self._ambiguous_result(intent, context, capable, "target")
         return catalog.device(capable[0]["device_id"]), None
@@ -485,16 +514,25 @@ class SmartHomeIntentHandler(IntentHandler):
         temp = self.get_param(intent, "temp", None)
         if temp is None:
             return await self._ask_slot(intent, context, "temp")
-        device, error = await self._single_capable_or_clarify(intent, context, "climate")
+        device, error = await self._single_capable_or_clarify(intent, context,
+                                                              ("temperature", "climate"))
         if error is not None:
             return error
         assert device is not None
         catalog = self._catalog()
 
+        # DRV-28: ACs speak `temperature.set{value}`, floors `climate.set_setpoint{temp}`
+        binding = self._binding(device, self._SETPOINT_BINDINGS)
+        if binding is None:
+            return IntentResult(text=self._get_template("err_capability", language),
+                                should_speak=True, success=False,
+                                error=f"{device.id} lacks a settable temperature")
+        cap_name, action_name, param_name = binding
+
         # contract-backed pre-validation (§5b: most param_invalid never round-trips)
-        capability = device.capability("climate")
-        action = capability.action("set_setpoint") if capability else None
-        spec = action.param("temp") if action else None
+        capability = device.capability(cap_name)
+        action = capability.action(action_name) if capability else None
+        spec = action.param(param_name) if action else None
         if spec is not None and ((spec.min is not None and temp < spec.min)
                                  or (spec.max is not None and temp > spec.max)):
             context.set_pending_clarification(intent.name, "temp", intent.raw_text)
@@ -505,8 +543,8 @@ class SmartHomeIntentHandler(IntentHandler):
                 should_speak=True,
                 metadata={"clarification": True, "clarification_reason": "out_of_range"})
 
-        command = DeviceCommand(device_id=device.id, capability="climate",
-                                action="set_setpoint", params={"temp": temp})
+        command = DeviceCommand(device_id=device.id, capability=cap_name,
+                                action=action_name, params={param_name: temp})
         delivery = await self._deliver(command, context)
         ok_text = self._get_template("confirm_setpoint", language, temp=temp,
                                      name=self._device_name(device, language))
@@ -1077,10 +1115,12 @@ class SmartHomeIntentHandler(IntentHandler):
     # --- Slice 2a: HVAC mode/fan (VWB-24 typed values) ---------------------------------------------
 
     async def _hvac_choice(self, intent: Intent, context: UnifiedConversationContext, *,
-                           action: str, ok_key: str) -> IntentResult:
+                           kind: str, ok_key: str) -> IntentResult:
         """«кондиционер на охлаждение» — match the spoken value against the device's OWN
-        typed triplets (VWB-24: canonical + ru labels), device picked action-aware (only the
-        HVACs carry set_mode/set_fan; plain heaters must not clarify into this)."""
+        typed triplets (VWB-24: canonical + ru labels), device picked binding-aware. `kind` is
+        "mode" or "fan"; per DRV-28 the ACs carry `mode.set{value}` / `fan.set{value}` (the old
+        `climate.set_mode/set_fan` addressing is kept as a per-device fallback), and the floors'
+        plain `climate` never carried either — they must not clarify into this."""
         language = self._lang(context)
         catalog = self._catalog()
         if catalog is None:
@@ -1092,21 +1132,20 @@ class SmartHomeIntentHandler(IntentHandler):
         if room_error is not None:
             return room_error
         devices = catalog.devices_in_room(room_id) if room_id else catalog.devices
-        capable = [d for d in devices
-                   if (cap := d.capability("climate")) is not None
-                   and cap.action(action) is not None]
+        bindings = self._CHOICE_BINDINGS[kind]
+        capable = [(d, b) for d in devices if (b := self._binding(d, bindings)) is not None]
         if not capable:
             return IntentResult(text=self._get_template("err_nothing_capable", language),
-                                should_speak=True, success=False, error=f"no {action} device")
+                                should_speak=True, success=False, error=f"no {kind}-set device")
         if len(capable) > 1:
             return self._ambiguous_result(
                 intent, context,
-                [{"device_id": d.id, "name": self._device_name(d, language)} for d in capable],
+                [{"device_id": d.id, "name": self._device_name(d, language)}
+                 for d, _ in capable],
                 "target")
-        device = capable[0]
-        param_name = "mode" if action == "set_mode" else "fan"
-        cap = device.capability("climate")
-        act = cap.action(action) if cap else None
+        device, (cap_name, action_name, param_name) = capable[0]
+        cap = device.capability(cap_name)
+        act = cap.action(action_name) if cap else None
         spec = act.param(param_name) if act else None
         values = spec.values or () if spec else ()
         surfaces = {}
@@ -1124,7 +1163,7 @@ class SmartHomeIntentHandler(IntentHandler):
                 should_speak=True,
                 metadata={"clarification": True, "clarification_reason": "unknown_option"})
         canonical = surfaces[matched_surface]
-        command = DeviceCommand(device_id=device.id, capability="climate", action=action,
+        command = DeviceCommand(device_id=device.id, capability=cap_name, action=action_name,
                                 params={param_name: canonical})
         delivery = await self._deliver(command, context)
         ok_text = self._get_template(ok_key, language, value=matched_surface,
@@ -1133,9 +1172,9 @@ class SmartHomeIntentHandler(IntentHandler):
                                          clarify_intent=intent, context=context)
 
     async def _handle_hvac_mode(self, intent, context):
-        return await self._hvac_choice(intent, context, action="set_mode",
+        return await self._hvac_choice(intent, context, kind="mode",
                                        ok_key="confirm_hvac_mode")
 
     async def _handle_hvac_fan(self, intent, context):
-        return await self._hvac_choice(intent, context, action="set_fan",
+        return await self._hvac_choice(intent, context, kind="fan",
                                        ok_key="confirm_hvac_fan")

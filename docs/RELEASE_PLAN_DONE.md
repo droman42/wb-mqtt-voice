@@ -2478,6 +2478,35 @@ rationale/chronology lives in [`RELEASE_JOURNAL.md`](./RELEASE_JOURNAL.md).
       **Not yet live:** the WB7 serves the old catalog until the bridge image is rebuilt and redeployed; a sensor
       read and a switch read want re-verifying against the controller afterwards.
 
+- [x] **QUAL-81** [MQTT][TEST] `[release]` — **DONE 2026-07-10.** DRV-28 HVAC contract consumed: golden
+      re-pinned `16eee0f2…` → **`5622ba7a1a78102a`** (bridge `eef4e8cc…`; one pin covers their DRV-25/26/28 arc),
+      and the HVAC intent mapping moved off hardcoded `climate.*`. The three ACs are `MitsubishiHvac` with six
+      capabilities (`power`, `mode`/`fan`/`vane`/`widevane` `.set{value}`, `temperature.set{value}` 16–31 °C);
+      floors keep `climate`. Verified against their committed artifacts before pinning: exactly the 3 `*_hvac`
+      devices changed, openapi +1 schema (`MitsubishiHvacState`).
+      Voice: a per-device **binding table** (`_SETPOINT_BINDINGS`/`_CHOICE_BINDINGS`, new dialect first, old as
+      fallback) drives `_handle_set_setpoint` and `_hvac_choice`, so the handler is correct against EITHER live
+      catalog — the bridge's WB7 redeploy is still owed, and deploy order must not matter.
+      `_single_capable_or_clarify`/`_capable_devices` accept an any-of capability tuple (set-temperature is
+      `climate` on a floor, `temperature` on an AC — exactly fixture F21's clarify). `_QUANTITY_FIELDS`
+      unchanged: `shower_sauna_sensors` still carries a `temperature` field that IS the measurement; the AC's
+      old `temperature` field was its SETPOINT, so «какая температура» in an AC room had been answering the set
+      target — a latent wrong answer the DRV-28 rename itself retired (comment records it).
+      eval-commons (`ee66fd8`): fixtures migrated with the contract (F80→`mode.set{value:cool}`,
+      F81→`fan.set{value:speed_2}`, F96→`temperature.set{value:22}`, F32's hvac read target →`temperature`);
+      **F21 exposed a fixture-schema gap** — its two clarify candidates now bind different capabilities, so the
+      clarify expect's `capability` accepts a list ("every candidate carries at least one of these") with the
+      guard test updated; suite 40/40. Voice tests: the harness stub migrated to the DRV-28 shape (all 47
+      existing tests pass against it — F21's clarify spans both dialects through the any-of picker), plus 7 new
+      (new-dialect setpoint/mode/fan incl. the ru-label match, range check on the `value` spec, and a
+      `children_split_legacy` old-dialect device proving the fallback). **Notable: no mode/fan handler tests
+      existed at all** — the same blind spot that let the firmware drop every mode command (their DRV-26).
+      pyright 0, import-linter 11/11, suite 1373. Heads-ups logged, no voice action: bridge VWB-32 (retained
+      catalog-version topic wiped by the reboot), VWB-33 (language-data ownership design — half ours, they
+      coordinate). **Hardware smoke owed AFTER the bridge's WB7 redeploy:** «включи кондиционер в детской» →
+      `power.on`; a mode change → `mode.set` (dead firmware-side until DRV-26); «какая температура в детской» →
+      `room_temperature`.
+
 ### Bugs (BUG)
 - [x] **BUG-1** [NLU/TIMER] (P2) `[release]` — **DONE 2026-06-28.** Spelled-out numbers didn't reach parameter
       extraction — «поставь таймер на десять минут» recognized `timer.set` but extracted no duration; «на 10 минут»
