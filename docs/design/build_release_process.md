@@ -29,8 +29,10 @@ minimal dependency set, and per-target buildx GHA caching (`scope=<target>`; the
 ### D-1 — One workflow, gated graph (replaces three disconnected ones)
 `backend-health.yml`, `frontend-health.yml` and `build-images.yml` merge into a single **`ci.yml`**:
 - **`changes`** job (dorny/paths-filter): `backend` (`irene/**, configs/**, pyproject.toml, uv.lock, docker/**`),
-  `ui` (`config-ui/**`), `ledger` (`docs/**, scripts/check_scope.py`), each also matching the workflow file.
-- **`ledger-guard`** — `scripts/check_scope.py` runs in CI (bridge parity; today it is manual-only here).
+  `ui` (`config-ui/**`), `ledger` (`docs/**` + the vendored `scripts/scope_guard.py` + `.scope-guard.toml`),
+  each also matching the workflow file.
+- **`ledger-guard`** — `scripts/scope_guard.py --config .scope-guard.toml` runs in CI (the commons scope-guard
+  vendored at a pinned `scope-vX` tag; BUILD-30 superseded the local `check_scope.py` this design originally named).
 - **`backend-health`** — the shared trio via **`droman42/py-dev-gates@v0.1.1`** (import-linter,
   check-no-type-checking, pyright) + the voice-specific gates kept verbatim (build-analyzer
   `--validate-all-profiles`, config validator `--ci-mode`, dependency validator, the ARCH-24 armv7 arch gate)

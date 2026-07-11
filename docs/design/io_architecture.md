@@ -318,7 +318,7 @@ Net-new config surface ⇒ config-ui work (Invariant #4 — it consumes the back
 ## 12. Implementation plan (sliced — ARCH-15)
 
 Ordered so value lands early and nothing is built that §6/§5 will reshape. Each slice is independently
-landable and gated (`pyright` 0 · import-linter · dep-validator · `check_scope` · backend suite no-net-regression
+landable and gated (`pyright` 0 · import-linter · dep-validator · scope-guard · backend suite no-net-regression
 · config-ui `npm run check`+`build` where touched).
 
 - **PR-0 — CLI bug stopgap (ship now, design-compatible).** Stop auto-starting the `cli` source under the
