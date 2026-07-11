@@ -20,6 +20,19 @@ newest entries near the top of each dated section.
 
 ## Action journal
 
+- **2026-07-11 — ARCH-46 intake: the PROD-14/HK-3 voice delegation pulled from the board.** Verified per
+  `task-start-reconciliation` against repo reality: the delegation's slug-sweep list is largely already
+  satisfied — BUILD-31 (earlier today) re-pointed the inbox skill, the `problem-report-inbox` invariant,
+  config-master's example, and the six deployment profiles, and also covered the "enable `[reports]` in the
+  canonical WB7 profile" Phase-1 find. Narrowed scope filed as ARCH-46: `/inbox` drift fixes (ping-pong guard +
+  affirmative post-merge ledger wording, both present in the bridge's skill and absent here), the stale
+  `wb7.env` port (6000→8080 — the deployed image serves 8080), `report-protocol-v1` pin + conformance test,
+  `problem_reports.md` shared-section pointers to the commons spec, and the `lens-voice.md` co-ownership
+  re-review (VWB-26 pattern). Lens claims pre-verified at intake: checkout path `code/locveil-voice`,
+  `$CROSS_REPO_TOKEN` env name, `irene-cli -c/-e` flags, `test_qual64_matcher_scoring.py`, and the bundle
+  member names all check out; the one stale claim found is an `eval-commons` mention (renamed repo). ARCH-46
+  written back into the PROD-14 board entry as the Voice ID.
+
 - **2026-07-11 — BUILD-31: problem reporting switched ON in all six deployment profiles; reports repo
   references follow the rename to `locveil/locveil-reports`.** User question ("why don't the docker configs
   have a reports section?") uncovered a structural sync miss from ARCH-31: the `[reports]` section went into

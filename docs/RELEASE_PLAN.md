@@ -79,7 +79,7 @@ Living findings behind the tasks (`read-at-start-record-at-completion`). `[x]` =
 | `esp32_wakeword_review.md` `[x]` | ESP32 + wakeword keep/fix/cut + microWakeWord upstream study | QUAL-19 ✓, QUAL-20 ✓ |
 | `docker_build_review.md` `[x]` | Docker/build verification (entry-point renames, armv7 base, build-analyzer drift) | BUILD-5, BUILD-3 |
 | `docs/design/wakeword_models.md` `[x]` (AGREED 2026-07-04, interactive) | ARCH-29 — server-side wake-word model acquisition: v2 two-file packs (manifest + sibling tflite), 4-rung resolution (local path → wheel built-ins → v2 manifest URL → released catalog starting with `irina`@HF), AssetManager multi-file `files:` support, trigger layer stays semantics-free (word→room deferred to ARCH-22/QUAL-35), roster «Ирина»→«Валера»/«Наташа» («Борис» dropped) | ARCH-29 ✓ → ASSET-5 |
-| `docs/design/problem_reports.md` `[x]` (AGREED 2026-07-06, interactive) | ARCH-30 — problem reporting end-to-end: private triage home `wb-user-reports` (tickets + bundles; both code repos are public), one-Claude-two-lenses with handover-by-label + ping-pong guard, verbatim-capture dialog (pre-QUAL-44, TTL 90s, cancel words), bundle (last-10 turns + action records + 5-trace ring + day log + redacted config + catalog version), ARCH-27 durable spool, D-7 rate limits, leak fence, reply-in-reporter's-language, D-11 model policy (`claude-fable-5` pinned) | ARCH-30 ✓ → ARCH-31/32/33, BUILD-12, VWB-25 |
+| `docs/design/problem_reports.md` `[x]` (AGREED 2026-07-06, interactive) | ARCH-30 — problem reporting end-to-end: private triage home `wb-user-reports` (tickets + bundles; both code repos are public), one-Claude-two-lenses with handover-by-label + ping-pong guard, verbatim-capture dialog (pre-QUAL-44, TTL 90s, cancel words), bundle (last-10 turns + action records + 5-trace ring + day log + redacted config + catalog version), ARCH-27 durable spool, D-7 rate limits, leak fence, reply-in-reporter's-language, D-11 model policy (`claude-fable-5` pinned) | ARCH-30 ✓ → ARCH-31/32/33, BUILD-12, VWB-25; shared sections now defer to `../locveil-commons/process/problem-reports.md` (ARCH-46) |
 | `docs/design/python_satellite.md` `[x]` (AGREED 2026-07-06, interactive) | ARCH-35 — python satellite (`irene-satellite`): first-class room node + the ARCH-25 test client; both /ws/audio modes (default single), wake-on + `--no-wake`, `[satellite]`+`[satellite.tls]` config, §3/§4 = the wire contract's single written truth (ESP32 implements the same doc), device-side CSR-approval dance + mTLS wss through nginx Plane B (S-5), S-6 credentials location, S-7 hermetic TLS e2e, S-8 Pi image deferred, S-9 loopback e2e | ARCH-35 ✓ → ARCH-36, BUILD-13 |
 | `docs/design/mqtt_integration.md` `[x]` (DONE 2026-06-06; bridge contract AGREED) | smart-home integration — bridge is the single device authority, Irene speaks canonical commands | ARCH-7/8, ARCH-26 |
 | `docs/design/ws_esp32_transport.md` `[x]` | WS streaming-input driving adapter + ESP32 satellite transport | ARCH-6 |
@@ -243,6 +243,23 @@ See `docs/review/phase1_architecture_map.md` §5.
       the healthcheck's start-period (300s ARM / 180s x86) was sized for a download that turns out **not** to be
       on the critical path — revisit it once readiness is real. Deliverable: design doc + implementation
       follow-up(s).
+- [ ] **ARCH-46** `[release]` [PROCESS][FEEDBACK] — **PROD-14/HK-3 voice delegation: reports re-point residue +
+      `report-protocol-v1` consumption.** The voice half of the board delegation
+      (`../locveil-commons/board/BOARD.md` PROD-14 Phase 2; normative spec:
+      `../locveil-commons/process/problem-reports.md` + machine core tagged `report-protocol-v1`). **Narrowed at
+      intake:** the delegation's slug-sweep list (inbox skill ×4, `problem-report-inbox` invariant ×2,
+      config-master example) and the "enable `[reports]` in the WB7 profile" find were already done by BUILD-31
+      (2026-07-11, before the delegation text was written back). Remaining scope: **(1)** `/inbox` drift fixes —
+      the ping-pong guard in the needs-owner handover step + the bridge's affirmative post-merge ledger wording;
+      **(2)** stale `eval/profiles/targets/wb7.env` port 6000→8080 (the PROD-14 Phase-1 smoke find; the deployed
+      WB7 image serves 8080 per `ops/INSTALL.md`); **(3)** protocol consumption — pin the machine core at
+      `contracts/report-protocol.pin.json` (tag `report-protocol-v1`) + one conformance test asserting the
+      collector's emitted labels / title prefix / bundle path (`build_envelope`) and the six deployment profiles'
+      `[reports].repo` against the pin; **(4)** restructure `docs/design/problem_reports.md` shared sections
+      (envelope §5, choreography §7) into pointers to the commons spec — no ARCH-30 status flip; **(5)**
+      `lens-voice.md` co-ownership re-review in `locveil/locveil-reports` (VWB-26 pattern) — verify its repo
+      claims against reality, fix in a commit on the reports repo. Write ARCH-46 back into the PROD-14 board
+      entry (Voice ID).
 ### Code Quality & Review (QUAL)
 
 #### Cross-cutting systemic remediation — principles (the Gate 2 lens)
