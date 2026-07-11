@@ -243,23 +243,6 @@ See `docs/review/phase1_architecture_map.md` §5.
       the healthcheck's start-period (300s ARM / 180s x86) was sized for a download that turns out **not** to be
       on the critical path — revisit it once readiness is real. Deliverable: design doc + implementation
       follow-up(s).
-- [ ] **ARCH-46** `[release]` [PROCESS][FEEDBACK] — **PROD-14/HK-3 voice delegation: reports re-point residue +
-      `report-protocol-v1` consumption.** The voice half of the board delegation
-      (`../locveil-commons/board/BOARD.md` PROD-14 Phase 2; normative spec:
-      `../locveil-commons/process/problem-reports.md` + machine core tagged `report-protocol-v1`). **Narrowed at
-      intake:** the delegation's slug-sweep list (inbox skill ×4, `problem-report-inbox` invariant ×2,
-      config-master example) and the "enable `[reports]` in the WB7 profile" find were already done by BUILD-31
-      (2026-07-11, before the delegation text was written back). Remaining scope: **(1)** `/inbox` drift fixes —
-      the ping-pong guard in the needs-owner handover step + the bridge's affirmative post-merge ledger wording;
-      **(2)** stale `eval/profiles/targets/wb7.env` port 6000→8080 (the PROD-14 Phase-1 smoke find; the deployed
-      WB7 image serves 8080 per `ops/INSTALL.md`); **(3)** protocol consumption — pin the machine core at
-      `contracts/report-protocol.pin.json` (tag `report-protocol-v1`) + one conformance test asserting the
-      collector's emitted labels / title prefix / bundle path (`build_envelope`) and the six deployment profiles'
-      `[reports].repo` against the pin; **(4)** restructure `docs/design/problem_reports.md` shared sections
-      (envelope §5, choreography §7) into pointers to the commons spec — no ARCH-30 status flip; **(5)**
-      `lens-voice.md` co-ownership re-review in `locveil/locveil-reports` (VWB-26 pattern) — verify its repo
-      claims against reality, fix in a commit on the reports repo. Write ARCH-46 back into the PROD-14 board
-      entry (Voice ID).
 ### Code Quality & Review (QUAL)
 
 #### Cross-cutting systemic remediation — principles (the Gate 2 lens)

@@ -9,6 +9,27 @@ rationale/chronology lives in [`RELEASE_JOURNAL.md`](./RELEASE_JOURNAL.md).
 ---
 
 ### Architecture & Refactor (ARCH)
+- [x] **ARCH-46** `[release]` [PROCESS][FEEDBACK] — **✓ DONE 2026-07-11 (same-day intake→completion). PROD-14/HK-3
+      voice delegation: reports re-point residue + `report-protocol-v1` consumption.** The voice half of the board
+      delegation (`../locveil-commons/board/BOARD.md` PROD-14 Phase 2; normative spec:
+      `../locveil-commons/process/problem-reports.md` + machine core tagged `report-protocol-v1`). **Narrowed at
+      intake:** the delegation's slug-sweep list (inbox skill ×4, `problem-report-inbox` invariant ×2,
+      config-master example) and the "enable `[reports]` in the WB7 profile" find were already done by BUILD-31
+      earlier the same day. Shipped: **(1)** `/inbox` drift fixes — ping-pong guard in the needs-owner handover
+      step + the bridge's affirmative post-merge ledger wording + a labels-are-contract note; **(2)**
+      `eval/profiles/targets/wb7.env` port 6000→8080 (the PROD-14 Phase-1 smoke find; the deployed WB7 image
+      serves 8080 per `ops/INSTALL.md`); **(3)** protocol consumption — machine core pinned at
+      `contracts/report-protocol.pin.json` (tag `report-protocol-v1` @ commons `8fb983f`; new `contracts/` home +
+      README with the re-pin command) + `irene/tests/test_report_protocol_conformance.py` (11 tests: emitted
+      labels / title prefixes both sources / bundle-path template / envelope required fields via `build_envelope`,
+      and the six deployment profiles' `[reports].repo` vs the pin's slug registry) + a
+      `cross-repo-source-of-truth` bullet in CLAUDE.md naming the commons as the protocol owner; **(4)**
+      `docs/design/problem_reports.md` shared sections (§5 envelope, §7 choreography) restructured into pointers
+      to the commons spec, ARCH-30 status untouched; **(5)** `lens-voice.md` co-ownership re-review in
+      `locveil/locveil-reports` (VWB-26 pattern) — all repo claims verified (checkout path, `CROSS_REPO_TOKEN`,
+      test paths, `irene-cli -c/-e`, bundle member names, labels/handover schema vs the core); one stale claim
+      (`eval-commons` catalog comparison) fixed in reports-repo commit `1ca251e`. ARCH-46 written back into the
+      PROD-14 board entry (commons `50bf906`).
 ### Code Quality & Review (QUAL)
 - [x] **QUAL-5** (P2) — **✓ DONE 2026-06-06.** Cruft cleanup. **Reconciled (Invariant #8): counts fell during QUAL-4's
       import churn** (F401 360→237, star-imports 62→5+57 F405, F841 22→15). **Cleared the verifiable cruft to ZERO:**

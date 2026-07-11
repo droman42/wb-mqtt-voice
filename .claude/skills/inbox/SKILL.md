@@ -52,8 +52,9 @@ owner says skip.
    - **merge** → `gh pr merge <pr> --squash --delete-branch` (removes the triage's remote branch;
      also delete any local review branch you created, e.g. `git branch -D pr-<n>-review`); then
      close the ticket with a note (`gh issue close <n> --repo locveil/locveil-reports --comment
-     "..."`) and, if the work belongs in the ledger as its own task, file it per
-     `every-task-in-the-ledger`.
+     "..."`); then do the ledger's half yourself: the merged fix is work — file/complete it per
+     `every-task-in-the-ledger` + `read-at-start-record-at-completion` (journal entry; DONE row at
+     sorted position — the ledger-discipline triad applies).
    - **revise** → make the changes on the PR branch (or ask triage to, via a ticket comment), push,
      re-review.
    - **reject** → `gh pr close <pr> --delete-branch` + close the ticket explaining why (a false
@@ -68,7 +69,8 @@ owner says skip.
    The reporter has no GitHub account — the reply is for the owner's own out-of-band relay (the
    registry that closes this loop is a later release).
 3. If it's a decision (dedup, not-a-bug, needs-bridge-handover): recommend, act on the owner's call
-   (comment, relabel `lens:bridge` for a handover, or close), one line of reasoning.
+   (comment, relabel `lens:bridge` for a handover — mind the ping-pong guard: one bounce each way
+   maximum, then it stays `needs-owner` — or close), one line of reasoning.
 
 ## 3. Close out
 
@@ -82,3 +84,7 @@ anything the owner deferred in place — the queue is durable; it'll resurface n
   message.
 - **Read-only is safe.** Listing and reading (steps 1–2) touch nothing. Only merges, closes,
   comments, and pushes change state, and each waits for an explicit owner decision.
+- **Labels and the repo slug are contract, not convention** — they come from the pinned
+  report-protocol machine core (`contracts/report-protocol.pin.json`, commons-owned,
+  `report-protocol-vN` tags); a mismatch makes tickets invisible to the queries above. The
+  conformance test keeps the copies in this file honest.

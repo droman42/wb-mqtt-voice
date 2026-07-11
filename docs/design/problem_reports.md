@@ -3,6 +3,16 @@
 **Status: AGREED 2026-07-06 (interactive design session, ARCH-30). D-1..D-10 all user-approved
 (P-1..P-4 accepted as proposed and renumbered D-7..D-10).**
 
+> **Shared truth moved (HK-3/PROD-6, 2026-07-11).** The cross-repo parts of this design are now
+> commons-owned: the normative spec is `process/problem-reports.md` in `../locveil-commons`
+> (semantics, triage judgment, leak fence, retention/governance), and the wire-visible surface is
+> its versioned **machine core** (`report-protocol-vN` tags), pinned here at
+> `contracts/report-protocol.pin.json` and conformance-tested in
+> `irene/tests/test_report_protocol_conformance.py`. This document remains the voice-side
+> implementation design and the frozen ARCH-30 decision record (D-numbers below are referenced
+> across repos); where a section duplicates the shared truth, the commons spec wins — the shared
+> sections below (§5, §7) have been reduced to pointers.
+
 A user tells Irene something is wrong; Irene collects a support bundle and files a ticket; a
 GitHub-hosted Claude triages it — fixing, delegating, or escalating; the owner reviews fixes and
 escalations one-by-one with the local Claude. The reporter never needs a GitHub account, an email,
@@ -80,15 +90,16 @@ Assembled by a new `ReportBundleCollector` (core service):
 
 ## 5. The envelope (shared voice/bridge intake format)
 
-One filing = one issue + one bundle commit in `wb-user-reports`:
+The shared format — labels at filing, per-source title prefixes, the bundle path template, and the
+envelope's required fields — is **owned by the machine core** (pinned at
+`contracts/report-protocol.pin.json`; the conformance test asserts `build_envelope`'s output
+against it). Voice-side specifics that stay here:
 
-- **Bundle**: `reports/<UTC-timestamp>-<source>-<room>/bundle.tar.gz` (contents API, base64; a
-  release asset if ever >25 MB).
-- **Issue title**: `[voice] <first 60 chars of free text>` (or `[bridge-ui]`).
-- **Issue body** (the distilled summary — triage usually needn't open the tarball): free text
-  verbatim (language preserved), last-3-turns synopsis, versions/profile/arch/catalog, bundle
-  link, `report-id`.
-- **Labels at filing**: `problem-report`, `lens:voice` (or `lens:bridge`), `new`.
+- One filing = one issue + one bundle commit in the reports repo (contents API, base64; a release
+  asset if ever >25 MB).
+- The issue body is the distilled summary — triage usually needn't open the tarball: free text
+  verbatim (language preserved), last-turns synopsis, versions/profile/arch/catalog, bundle link,
+  `report-id`. Composed in `irene/core/report_service.py` (`build_envelope`).
 
 ## 6. Delivery from the device
 
@@ -106,7 +117,12 @@ One filing = one issue + one bundle commit in `wb-user-reports`:
   Claude's job (its process file: search open tickets first; a duplicate becomes a comment on the
   existing ticket, not a new fix).
 
-## 7. Triage choreography (`wb-user-reports`)
+## 7. Triage choreography (the reports repo)
+
+**Normative semantics now live in the commons spec §3** — filing, the triage outcomes, the
+ping-pong guard, the terminal state, the leak fence, and loop safety; the enums behind them
+(buckets, transitions, `ping_pong_max`, the handover-comment schema) are the machine core's. What
+follows is the ARCH-30 decision record plus the voice-side rationale that isn't shared.
 
 - **7.1 Trigger**: Actions workflow on `issues: opened, labeled` + `issue_comment: created`
   (owner replies re-trigger analysis), running the Claude code action under the owner's
@@ -135,7 +151,8 @@ One filing = one issue + one bundle commit in `wb-user-reports`:
      outcome 3a "ask the reporter directly" activates.)
   4. **Duplicate / not a bug / user error** → comment the reasoning, label `needs-owner` for a
      one-glance close (v1 keeps a human on every closure).
-- **7.3 Handover comment schema** (the voice→bridge contract, versioned in the doc): symptom (one
+- **7.3 Handover comment schema** (the voice→bridge contract — now versioned in the machine core's
+  `handover_comment`, not in this doc): symptom (one
   sentence), evidence extracted (log lines, trace slice, capture of the canonical command sent),
   catalog version pinned vs live, what the sending lens ruled OUT, back-links. The receiving lens
   reads THIS, not the raw bundle, first.

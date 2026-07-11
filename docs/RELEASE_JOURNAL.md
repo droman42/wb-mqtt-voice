@@ -20,6 +20,22 @@ newest entries near the top of each dated section.
 
 ## Action journal
 
+- **2026-07-11 — ARCH-46: PROD-14/HK-3 delegation executed — voice consumes `report-protocol-v1`.** The wire
+  surface the collector emits is no longer convention: the commons machine core is pinned at
+  `contracts/report-protocol.pin.json` (new `contracts/` home for externally-owned pins, README carries the
+  re-pin command) and `test_report_protocol_conformance.py` (11 green) asserts `build_envelope`'s labels,
+  title prefixes (both sources), bundle-path template, and envelope required fields against it — plus the six
+  deployment profiles' `[reports].repo` against the pin's slug registry, so the next rename can't silently
+  strand tickets. `/inbox` caught up with the bridge's skill (ping-pong guard in the handover step, the
+  affirmative post-merge ledger wording); `wb7.env` lost its stale port 6000 (deployed image serves 8080 —
+  the WS/UX suites would have dialed a closed port on the freshly deployed controller);
+  `problem_reports.md` §5/§7 now defer to the commons spec (banner + pointers, ARCH-30 record untouched);
+  CLAUDE.md's `cross-repo-source-of-truth` names the commons as protocol owner. Cross-repo commits:
+  reports `1ca251e` (lens-voice re-review — one stale `eval-commons` claim fixed; the rest verified true),
+  commons `50bf906` (Voice ID written back; the bridge wrote back VWB-35/36/37 the same day). The user-facing
+  guide `docs/guides/problem-reporting.md` checked — written at user altitude, no slug/port/label mentions,
+  nothing to update.
+
 - **2026-07-11 — ARCH-46 intake: the PROD-14/HK-3 voice delegation pulled from the board.** Verified per
   `task-start-reconciliation` against repo reality: the delegation's slug-sweep list is largely already
   satisfied — BUILD-31 (earlier today) re-pointed the inbox skill, the `problem-report-inbox` invariant,
