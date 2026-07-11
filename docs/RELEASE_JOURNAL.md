@@ -17,6 +17,12 @@ newest entries near the top of each dated section.
 
 ## Action journal
 
+- **2026-07-11 — BUILD-29 controller cutover CONFIRMED on hardware.** Owner made the new GHCR packages
+  public (org policy first blocked the Public option — fixed at org Settings → Packages → allow public
+  package creation) and ran `ops/migrate-to-locveil.sh` on the WB7: migration reported successful, the
+  controller now runs `locveil-voice` end to end (unit, runtime tree, image, container). Nothing on the
+  box says wb-mqtt anymore.
+
 - **2026-07-11 — BUILD-29: deployment identity renamed — nothing on the controller will say wb-mqtt
   after the migration script runs.** Second act of the rename day (owner call: complete the re-pointing
   down to the metal before continuing). Images (`locveil-voice-*`, `locveil-voice-ui`), container, systemd
