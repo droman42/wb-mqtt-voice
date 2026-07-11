@@ -4,7 +4,7 @@ The single active tracker for the road to release. Supersedes the legacy `docs/T
 `docs/TODO/TODO0x` (refactor-era, mostly complete — to be archived under DOC-2).
 
 **Target:** milestone — **scope-complete** (release when every `[release]` task is `[x]`; no calendar date; the gate
-is `scripts/check_scope.py` clean) · **Status:** active · **Version:** 0.5.0 (REL-4; was `15.0.0`)
+is `scripts/scope_guard.py --config .scope-guard.toml` clean) · **Status:** active · **Version:** 0.5.0 (REL-4; was `15.0.0`)
 
 > **Completed tasks** (`[x]`) live in the frozen archive **[`RELEASE_PLAN_DONE.md`](./RELEASE_PLAN_DONE.md)** —
 > split out to keep this file the *active* working set (open tasks + structure). IDs are preserved there; grep it
@@ -14,8 +14,9 @@ is `scripts/check_scope.py` clean) · **Status:** active · **Version:** 0.5.0 (
 
 > **Scope gate (`single-task-ledger`):** release ships only when **every task tagged `[release]` is `[x]`**. Tasks default to
 > `[release]` unless explicitly marked `[deferred]` (post-release); as of the sign-off every open task carries an
-> **explicit** tag. Run `scripts/check_scope.py` at each gate to prove nothing has drifted (orphan findings, dead
-> links, contradictory status). The exit criteria below are the human-readable summary of that gate.
+> **explicit** tag. Run `scripts/scope_guard.py --config .scope-guard.toml` at each gate to prove nothing has
+> drifted (orphan findings, dead links, contradictory status, missing tags, watermarks — the vendored commons
+> scope-guard, BUILD-30). The exit criteria below are the human-readable summary of that gate.
 >
 > **The release artifact** = a version tag **+ the first real publish dispatch to GHCR** (backend images
 > `standalone-x86_64` / `embedded-aarch64` / `embedded-armv7`, RU at minimum, + the config-ui image), each
@@ -482,7 +483,7 @@ size-matched to the Russian stack; language is a per-config/deployment choice (a
       adoption** (BUILD-20 D-12). Once the normative blocks exist in `locveil-commons/process/`: fence the
       shared invariants in this repo's CLAUDE.md between markers, keep per-repo invariants
       (`ws-protocol-doc-canonical`, `durable-actions`, …) outside, adopt the drift-guard script into the
-      gate list beside `check_scope.py`, and take the same-slug renames (`config-master-canonical` splits
+      gate list beside scope-guard, and take the same-slug renames (`config-master-canonical` splits
       — design §2). Bridge intake: OPS-16. Gated on BUILD-21 + the commons PROD task authoring the blocks.
 - [ ] **BUILD-24** `[deferred]` [COMMONS][TEST] — **Scripted contract re-pin + staleness gate — voice
       side** (BUILD-20 D-11). Replace the hand-copy re-pin with `make repin CONTRACT=vN` (fetch from the
@@ -497,7 +498,7 @@ size-matched to the Russian stack; language is a per-config/deployment choice (a
       `info.version` and `HealthResponse.inactive_providers`. `config-ui`'s TypeScript types are generated
       *from* that file (`npm run gen:api-types`), so the editor has been type-checking against a stale view of
       the backend and silently lacks types for those config sections. Fix: a CI gate that regenerates and fails
-      on drift (the `check_scope.py` / contract-pin mechanic applied to a generated file), or drop the artifact
+      on drift (the scope-guard / contract-pin mechanic applied to a generated file), or drop the artifact
       from git and generate it during the build. Pairs with `config-ui-stays-functional`, which assumes the
       schema the UI is built against is the schema the backend serves.
 - [ ] **BUILD-28** [OPS][PROCESS] `[deferred]` — **One compose file for the controller, with a real startup
@@ -511,7 +512,19 @@ size-matched to the Russian stack; language is a per-config/deployment choice (a
       board** (D-4/D-5), seeded when BUILD-21 lands, not decided unilaterally here. Scope for that design: which
       repo owns the unified compose, health-gated `depends_on` vs. tolerant clients, whether the units collapse
       into one, and how `update.sh` stays per-repo when the compose is not. Related: BUILD-18 (ops conformance).
-### Documentation (DOC)
+- [ ] **BUILD-30** `[release]` [PROCESS][CI] — **Scope-guard cutover — consume the commons ledger guard at
+      `scope-v2`** (PROD-13 / HK-1 delegation, board entry `../locveil-commons/board/BOARD.md`; normative
+      convention `../locveil-commons/process/ledger-discipline.md`). Replace `scripts/check_scope.py` with the
+      commons-owned, config-driven `scope_guard.py`, vendored at the pinned tag (regime 2 — behavior changes in
+      commons only, moves by re-pin): (1) vendor `scripts/scope_guard.py` + author `.scope-guard.toml`; (2) retire
+      the local checker and re-point the CI `ledger-guard` job + `ledger` paths-filter; (3) committed `hooks/` +
+      `core.hooksPath` running the check pre-commit; (4) invariant text updates (`single-task-ledger`,
+      `one-active-journal`, gate wording here) in the same change; (5) DONE-ledger rotation adopted + the overdue
+      journal rotation, via `--rotate` in its own commit; (6) required-task-tags rule ON. Pre-existing findings
+      the cutover fixes (invisible to the old checker): unsorted DONE I18N section, DONE ledger over the
+      4000-line hard ceiling. Cutover proof: vendored tool green before the local script is deleted.
+      Delegation originally named `scope-v1`; its journal rotation corrupted archives (char-per-line) — hit
+      here and by bridge OPS-22 concurrently, fixed commons-side as `scope-v2` (the pin this task consumes).
 
 ### UI / config-ui (UI)
 React/Vite donation+config editor. Front-end feature/UX work (the BUILD-4 build gate stays under Build & CI).

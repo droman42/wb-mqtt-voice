@@ -1,0 +1,32 @@
+# scope-guard config for locveil-voice (BUILD-30; vendored scripts/scope_guard.py at scope-v2).
+# Normative convention: ../locveil-commons/process/ledger-discipline.md (HK-1 / PROD-13).
+# Behavior changes happen in locveil-commons, never here — re-pin to move.
+
+[ledger]
+active = "docs/RELEASE_PLAN.md"
+done = "docs/RELEASE_PLAN_DONE.md"
+archive_dir = "docs/archive/ledger"      # created by the first DONE rotation
+prefixes = ["ARCH", "QUAL", "TEST", "UI", "DOC", "BUILD", "ASSET", "REL", "BUG", "I18N"]
+open_statuses = [" ", "~"]
+require_sections = true
+sections_required_for_all = false        # voice allows task rows outside (PFX) sections
+# REL-1 sign-off rule; voice also marks deferral via the (P-deferred) priority
+required_tags = ["[release]", "[deferred]", "(P-deferred)"]
+high_water = 3000
+low_water = 2000
+hard_ceiling = 4000
+
+[evidence]
+dirs = ["docs/review", "docs/design"]
+index = true                             # the ledger's `[x]` exists-marker index
+link_scan = false
+unindexed = "warn"
+
+[journal]
+active = "docs/RELEASE_JOURNAL.md"
+archive_dir = "docs/archive/journal"
+high_water = 1500
+low_water = 1000
+hard_ceiling = 2000
+completion_crosscheck = false            # predates the journal — would flag history
+archive_pointer = true

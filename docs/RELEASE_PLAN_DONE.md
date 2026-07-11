@@ -3402,34 +3402,12 @@ rationale/chronology lives in [`RELEASE_JOURNAL.md`](./RELEASE_JOURNAL.md).
       fixtures cleanly (`light_unreachable`, `timer_10min`). Gates: pyright 0, config-validator ✓, suite **1113** (+3
       new Moonshine unit tests), import-linter 9/9. Design §2d. Follow-up: **I18N-8** (green English `make ws` — needs a
       bz2-capable env for the `.tar.bz2` extraction; the dev `.venv` Python lacks `libbz2`).
-- [x] **I18N-8** [EVAL] (P3) `[deferred]` — **DONE 2026-07-01.** English eval assets — the mic-dependent tail of the
-      I18N-5 harness — now recorded, and the **English suite runs green end-to-end**. `fixtures/en/{timer_10min,
-      light_unreachable}.wav` (16 kHz mono PCM16) + `traces/en/timer_set_10min.json` (an **audio-input** golden captured
-      from a live `embedded-armv7-en` run, so replay re-runs Moonshine ASR → a stronger regression than the ru text-golden).
-      **`make ws TARGET=local CONFIG=embedded-armv7-en` = 4/4** (Moonshine ASR: WER ✓ + intent ✓ + DeepSeek-UX ✓) and
-      **`make replay CONFIG=embedded-armv7-en` = 1/1** (offline, matches the oracle). **Runtime fix landed with it:** the
-      base sherpa `is_available()` hardcoded the `sherpa_onnx` asset namespace, so the ASR component dropped the
-      `sherpa_moonshine` subclass at boot ("not available (dependencies missing)") and `/ws/audio` rejected audio with
-      `asr_required_for_audio` — now keyed on `get_provider_name()` (`sherpa_onnx.py` `is_available` + `download_model_pack`),
-      with a regression test. Also confirmed the full EN stack boots clean (Moonshine ASR + Piper `amy` TTS; an earlier
-      amy warm-up error was a stale pre-`_bz2` empty model dir, cleared). Gates: pyright 0, suite **1116** (+1 regression),
-      import-linter 9/9. Design §3. _The stale-partial fragility this surfaced (`AssetManager` trusting a dir's mere
-      existence) is now **BUG-15** (filed + fixed)._
 - [x] **I18N-3** [ASSET] (P3) `[deferred]` — **DONE 2026-07-01.** English Piper TTS voices for the two torch-free
       satellites (armv7/aarch64). Generalized the `ru_RU`-hardcoded catalog (`irene/providers/tts/piper.py`) to a
       `locale` parameter and added `en_US-amy-medium` (default) + `lessac`/`ryan` — same k2-fsa `.tar.bz2` medium packs,
       same sherpa-onnx runtime, no provider/runtime change. `get_capabilities` now reports the per-instance language
       (`ru-RU`/`en-US`) instead of a hardcoded `ru-RU` (so `piper_ruaccent`, always RU, still reports RU). Tests updated
       (descriptor set now ru∪en; new en-language capability test). Gates: pyright 0, suite 1107, import-linter 9/9.
-- [x] **I18N-7** [ASSET] (P3) `[deferred]` — **DONE 2026-07-01.** Silero v3 English for the x86_64 standalone (torch TTS
-      parity; Silero froze English at `v3_en`). Adjusted the existing `silero_v3` provider (not a new one) to pull
-      speakers + accent + language **by model**: `_SPEAKERS_BY_MODEL` (`v3_ru` → RU set; `v3_en` → `en_0…en_117`),
-      default-speaker fallback to the model's first, `put_accent`/`put_yo` default off for non-RU **and** omitted from
-      `apply_tts`/`save_wav` (Russian-only semantics), `get_capabilities` language + `stress_placement` feature by model,
-      assistant-name speaker map empty for non-RU, and the size-log lookup uses the selected `model_id` (was hardcoded
-      `v3_ru`). **Verified with real synthesis** (torch): `v3_en.pt` = 57 MB (≈ `v4_ru` size), 119 speakers,
-      `apply_tts(en_0)` produced audio cleanly. Tests added (EN speaker set / default / accent-off / capabilities). Gates:
-      pyright 0, suite 1107, import-linter 9/9.
 - [x] **I18N-4** [CONFIG] (P3) `[deferred]` — **DONE 2026-07-01.** English deployment configs for all three arches +
       made the Russian configs explicitly RU-only (symmetry, user-requested). New: `configs/embedded-armv7-en.toml`
       (ASR `zipformer-en-20M`/`zipformer-streaming` per I18N-2; TTS Piper `amy`), `configs/embedded-aarch64-en.toml`
@@ -3468,6 +3446,28 @@ rationale/chronology lives in [`RELEASE_JOURNAL.md`](./RELEASE_JOURNAL.md).
       (`threshold 0.8`) for its light inflection. Adding single-word English lemmas (`set`/`stop`/`time`) would *hurt*
       precision by over-matching common words. **Conclusion (user-confirmed):** English intent coverage is at functional
       parity with Russian; no donation changes needed. No code/asset change. Design §2.
+- [x] **I18N-7** [ASSET] (P3) `[deferred]` — **DONE 2026-07-01.** Silero v3 English for the x86_64 standalone (torch TTS
+      parity; Silero froze English at `v3_en`). Adjusted the existing `silero_v3` provider (not a new one) to pull
+      speakers + accent + language **by model**: `_SPEAKERS_BY_MODEL` (`v3_ru` → RU set; `v3_en` → `en_0…en_117`),
+      default-speaker fallback to the model's first, `put_accent`/`put_yo` default off for non-RU **and** omitted from
+      `apply_tts`/`save_wav` (Russian-only semantics), `get_capabilities` language + `stress_placement` feature by model,
+      assistant-name speaker map empty for non-RU, and the size-log lookup uses the selected `model_id` (was hardcoded
+      `v3_ru`). **Verified with real synthesis** (torch): `v3_en.pt` = 57 MB (≈ `v4_ru` size), 119 speakers,
+      `apply_tts(en_0)` produced audio cleanly. Tests added (EN speaker set / default / accent-off / capabilities). Gates:
+      pyright 0, suite 1107, import-linter 9/9.
+- [x] **I18N-8** [EVAL] (P3) `[deferred]` — **DONE 2026-07-01.** English eval assets — the mic-dependent tail of the
+      I18N-5 harness — now recorded, and the **English suite runs green end-to-end**. `fixtures/en/{timer_10min,
+      light_unreachable}.wav` (16 kHz mono PCM16) + `traces/en/timer_set_10min.json` (an **audio-input** golden captured
+      from a live `embedded-armv7-en` run, so replay re-runs Moonshine ASR → a stronger regression than the ru text-golden).
+      **`make ws TARGET=local CONFIG=embedded-armv7-en` = 4/4** (Moonshine ASR: WER ✓ + intent ✓ + DeepSeek-UX ✓) and
+      **`make replay CONFIG=embedded-armv7-en` = 1/1** (offline, matches the oracle). **Runtime fix landed with it:** the
+      base sherpa `is_available()` hardcoded the `sherpa_onnx` asset namespace, so the ASR component dropped the
+      `sherpa_moonshine` subclass at boot ("not available (dependencies missing)") and `/ws/audio` rejected audio with
+      `asr_required_for_audio` — now keyed on `get_provider_name()` (`sherpa_onnx.py` `is_available` + `download_model_pack`),
+      with a regression test. Also confirmed the full EN stack boots clean (Moonshine ASR + Piper `amy` TTS; an earlier
+      amy warm-up error was a stale pre-`_bz2` empty model dir, cleared). Gates: pyright 0, suite **1116** (+1 regression),
+      import-linter 9/9. Design §3. _The stale-partial fragility this surfaced (`AssetManager` trusting a dir's mere
+      existence) is now **BUG-15** (filed + fixed)._
 
 ### Build & CI (BUILD)
 - [x] **BUILD-1** (P0) — Verify clean `uv sync` + CLI and WebAPI boot at v15. **DONE 2026-06-01** (`bab6f97`):
