@@ -20,6 +20,19 @@ newest entries near the top of each dated section.
 
 ## Action journal
 
+- **2026-07-11 — ARCH-46 bounce (commons verification) → lift-out landed.** The commons-side verification of
+  the PROD-14 voice delegation accepted items 1–3 + the smoke finds but bounced item 4: the
+  `problem_reports.md` restructure had been delivered annotate-and-defer — ownership headers over §5/§7 with
+  the bodies kept in full, i.e. two complete copies of the shared vocabulary, exactly what
+  `process/problem-reports.md` §1 forbids. Fixed as agreed in HK-3 round 2: §5 and §7 bodies are now pointers
+  to the commons spec + the pinned core, keeping only the voice-side remainder (§5: `build_envelope` is the
+  writer seam, contents-API/base64 mechanics; §7: the D-11 model-policy *rationale* as decision record —
+  the policy itself is the spec's — and the outcome-3a later-note; per-lens judgment explicitly deferred to
+  the co-owned `lens-voice.md`). Stale cross-refs to the lifted anchors re-pointed: D-2's «§7.3» → the core's
+  `handover_comment`, §4's «§7.4» → commons spec §3, and the same leak-fence ref in the `report_bundle.py`
+  docstring. The DONE ledger row was annotated with the bounce rather than reopened — the record was wrong,
+  not the scope, and the correction landed the same day.
+
 - **2026-07-11 — ARCH-46: PROD-14/HK-3 delegation executed — voice consumes `report-protocol-v1`.** The wire
   surface the collector emits is no longer convention: the commons machine core is pinned at
   `contracts/report-protocol.pin.json` (new `contracts/` home for externally-owned pins, README carries the

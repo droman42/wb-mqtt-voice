@@ -7,7 +7,7 @@ body's raw material — distilled enough that triage usually needn't open the ta
 
 Redaction (§4) runs over the config text and every log line before packaging: secret-shaped
 values are replaced, room/device names stay (the reports repo is private — design D-1; the
-public boundary is guarded by the triage leak fence, §7.4).
+public boundary is guarded by the triage leak fence — commons spec `process/problem-reports.md` §3).
 """
 
 import gzip

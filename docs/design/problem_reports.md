@@ -31,7 +31,8 @@ or any identity at all (a user registry is a later release).
   Claude" are process *roles*, not separate installations. A ticket carries `lens:voice` or
   `lens:bridge`; the triage workflow checks out the corresponding public codebase and applies that
   lens's process file. Voice→bridge delegation = flip the label + post a structured handover
-  comment (§7.3) on the SAME ticket — full history preserved, no cross-repo copy.
+  comment (schema: the machine core's `handover_comment`) on the SAME ticket — full history
+  preserved, no cross-repo copy.
 - **D-3 — Shared intake.** The bridge UI's future "Report a problem" button files into the same
   repo with the same envelope (§5), `lens:bridge` set at filing. Its payload specifics are the
   bridge's own design session (VWB filing at ARCH-30 completion).
@@ -86,20 +87,19 @@ Assembled by a new `ReportBundleCollector` (core service):
 **§4 Redaction:** applied to config AND log excerpts before packaging: values of any key matching
 `*_API_KEY|token|password|secret|credential` (BUG-20 family), `Authorization:` headers, and
 `.env`-style assignments quoted in logs. LAN hostnames/room names stay — the repo is private
-(D-1); the *leak fence* (§7.4) guards the public boundary instead.
+(D-1); the *leak fence* (commons spec §3) guards the public boundary instead.
 
 ## 5. The envelope (shared voice/bridge intake format)
 
-The shared format — labels at filing, per-source title prefixes, the bundle path template, and the
-envelope's required fields — is **owned by the machine core** (pinned at
-`contracts/report-protocol.pin.json`; the conformance test asserts `build_envelope`'s output
-against it). Voice-side specifics that stay here:
+**Owned by the shared truth.** Filing semantics (one report = one issue + one bundle commit) are
+the commons spec §3; the wire shape — labels at filing, per-source title prefixes, the bundle path
+template, the envelope's required fields — is the machine core, pinned at
+`contracts/report-protocol.pin.json` and asserted against `build_envelope`'s output by
+`irene/tests/test_report_protocol_conformance.py`. Voice-side implementation notes only:
 
-- One filing = one issue + one bundle commit in the reports repo (contents API, base64; a release
-  asset if ever >25 MB).
-- The issue body is the distilled summary — triage usually needn't open the tarball: free text
-  verbatim (language preserved), last-turns synopsis, versions/profile/arch/catalog, bundle link,
-  `report-id`. Composed in `irene/core/report_service.py` (`build_envelope`).
+- The single writer seam is `build_envelope` in `irene/core/report_service.py`; the issue body it
+  composes is the distilled summary, so triage usually needn't open the tarball.
+- The bundle commit goes through the contents API (base64; a release asset if ever >25 MB).
 
 ## 6. Delivery from the device
 
@@ -119,48 +119,25 @@ against it). Voice-side specifics that stay here:
 
 ## 7. Triage choreography (the reports repo)
 
-**Normative semantics now live in the commons spec §3** — filing, the triage outcomes, the
-ping-pong guard, the terminal state, the leak fence, and loop safety; the enums behind them
-(buckets, transitions, `ping_pong_max`, the handover-comment schema) are the machine core's. What
-follows is the ARCH-30 decision record plus the voice-side rationale that isn't shared.
+**Owned by the shared truth — this section's ARCH-30 body was lifted out 2026-07-11 (ARCH-46;
+consult the commons spec, not this doc's git history).** The normative semantics — the workflow
+trigger and loop safety, the triage outcomes, handover-by-label, the ping-pong guard, the terminal
+state, the leak fence, and the one-strong-model policy — live in
+`../locveil-commons/process/problem-reports.md` §3–§5; the enums behind them (state buckets,
+transitions, `ping_pong_max`, the handover-comment header + fields) are the machine core's,
+pinned at `contracts/report-protocol.pin.json`. Per-lens judgment (how to reproduce against THIS
+repo, what to rule out before a handover) is maintained in the co-owned lens file —
+`.github/claude/lens-voice.md` in the reports repo — not here.
 
-- **7.1 Trigger**: Actions workflow on `issues: opened, labeled` + `issue_comment: created`
-  (owner replies re-trigger analysis), running the Claude code action under the owner's
-  subscription OAuth (repo secret). The Claude GitHub App is installed on `wb-user-reports`,
-  `locveil-voice`, `locveil-bridge`.
-- **D-11 — Model policy: one model, the strongest generally available (`claude-fable-5`), for the
-  whole run — triage AND code work.** Rationale: report volume is household-scale (a handful per
-  week at worst), so there is nothing to optimize by tiering models — while the code path performs
-  UNATTENDED root-cause analysis and authors PRs, exactly the work where capability dominates
-  cost. A split (cheap triage pass → strong fix pass) is a later optimization if volume ever
-  grows; the retention-pruning job is a plain script, no model at all. The model ID is pinned in
-  one place (workflow env var), so upgrades are deliberate acts, not silent drift. Subscription
-  note: action runs share the owner's plan usage with local sessions — irrelevant at expected
-  volume, worth remembering if a report storm ever coincides with a heavy local day.
-- **7.2 The four outcomes** (per-lens process files, `.github/claude/lens-voice.md` /
-  `lens-bridge.md`):
-  1. **Real, fixable** → check out the code repo, reproduce where possible (unit suite, `make
-     cli`, device suite against the mock bridge), fix, open a PR on the PUBLIC code repo
-     (referencing the private ticket), label the ticket `fix-pr-open`.
-  2. **Voice clean, bridge suspected** → handover (§7.3), label → `lens:bridge`, next run applies
-     the bridge lens. And symmetrically back — with a **ping-pong guard**: a ticket that has
-     already been handed over once in each direction escalates to the owner instead of bouncing.
-  3. **Unclear, reporter unknown** (v1: always — no user registry) → label `needs-owner`, and
-     **draft the reply to the reporter in the reporter's language** (from the free text) as a
-     comment, so the owner approves rather than composes. (When identity channels exist later,
-     outcome 3a "ask the reporter directly" activates.)
-  4. **Duplicate / not a bug / user error** → comment the reasoning, label `needs-owner` for a
-     one-glance close (v1 keeps a human on every closure).
-- **7.3 Handover comment schema** (the voice→bridge contract — now versioned in the machine core's
-  `handover_comment`, not in this doc): symptom (one
-  sentence), evidence extracted (log lines, trace slice, capture of the canonical command sent),
-  catalog version pinned vs live, what the sending lens ruled OUT, back-links. The receiving lens
-  reads THIS, not the raw bundle, first.
-- **7.4 Leak fence** (both lens files): anything posted to the PUBLIC repos (PRs, commits, code
-  comments) describes defects technically — never quotes logs, room/device names, free text, or
-  config values. The private ticket is the only place household data appears.
-- **7.5 Loop safety**: the workflow ignores issues/comments authored by the Claude app itself;
-  label-gated (`problem-report` only); concurrency-capped to one run per ticket.
+Voice-side remainder (decision record, referenced by the commons spec):
+
+- **D-11 — model-policy rationale.** The policy itself (one strong model, pinned in ONE place —
+  the workflow env) is the commons spec's; the reasoning was decided here: report volume is
+  household-scale, so there is nothing to optimize by tiering models — while the code path
+  performs UNATTENDED root-cause analysis and authors PRs, exactly the work where capability
+  dominates cost. Subscription note: action runs share the owner's plan usage with local sessions.
+- **Outcome 3a (later):** when identity channels exist (§11), the "unclear reporter" outcome
+  gains a direct "ask the reporter" variant instead of always escalating to the owner.
 
 ## 8. The owner's review loop (local Claude, both code repos)
 

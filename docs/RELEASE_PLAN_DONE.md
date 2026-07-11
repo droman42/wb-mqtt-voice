@@ -25,7 +25,11 @@ rationale/chronology lives in [`RELEASE_JOURNAL.md`](./RELEASE_JOURNAL.md).
       and the six deployment profiles' `[reports].repo` vs the pin's slug registry) + a
       `cross-repo-source-of-truth` bullet in CLAUDE.md naming the commons as the protocol owner; **(4)**
       `docs/design/problem_reports.md` shared sections (§5 envelope, §7 choreography) restructured into pointers
-      to the commons spec, ARCH-30 status untouched; **(5)** `lens-voice.md` co-ownership re-review in
+      to the commons spec, ARCH-30 status untouched — the first pass was **BOUNCED by the commons verification**
+      (delivered annotate-and-defer: ownership headers added but the §5/§7 bodies stayed — the two-copies pattern
+      the spec §1 forbids); the real lift-out landed same-day: §5/§7 bodies replaced by pointers + the voice-side
+      remainder (D-11 rationale as decision record, the outcome-3a later-note), stale §7.3/§7.4 cross-refs
+      re-pointed to the core/spec (incl. the `report_bundle.py` docstring); **(5)** `lens-voice.md` co-ownership re-review in
       `locveil/locveil-reports` (VWB-26 pattern) — all repo claims verified (checkout path, `CROSS_REPO_TOKEN`,
       test paths, `irene-cli -c/-e`, bundle member names, labels/handover schema vs the core); one stale claim
       (`eval-commons` catalog comparison) fixed in reports-repo commit `1ca251e`. ARCH-46 written back into the
