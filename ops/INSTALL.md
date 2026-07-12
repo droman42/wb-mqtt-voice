@@ -160,12 +160,13 @@ backend when you want the visual editor.
 Room satellites that connect over mutual TLS (`wss://`) need the fleet-provisioning plane —
 nginx + a tiny home CA serving the certificate bootstrap and the mTLS gate. It deliberately
 runs **outside** this container, directly on the controller (security-critical PKI must not
-depend on Irene being up). It is deployed separately, via ansible — see
-[`nginx/README.md`](../nginx/README.md) for the design, the operator runbook
-(`esp32-provision approve …`) and the deploy playbook. One wiring point connects the two
-planes: set `esp32_irene_upstream: 127.0.0.1:8080` in the nginx `group_vars` so `/ws/audio*`
-proxies to the container installed here. Satellites on a trusted network can skip all of this
-and connect over plain `ws://` directly to :8080.
+depend on Irene being up). It belongs to the satellite hardware product and is deployed from
+its repo, via ansible — see
+[`locveil-satellite/provisioning/README.md`](https://github.com/locveil/locveil-satellite/blob/main/provisioning/README.md)
+for the design, the operator runbook (`esp32-provision approve …`) and the deploy playbook. One
+wiring point connects the two planes: set `esp32_irene_upstream: 127.0.0.1:8080` in that
+playbook's `group_vars` so `/ws/audio*` proxies to the container installed here. Satellites on
+a trusted network can skip all of this and connect over plain `ws://` directly to :8080.
 
 ## Recovery notes
 

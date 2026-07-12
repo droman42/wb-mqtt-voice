@@ -85,7 +85,9 @@ reconnect test makes this a covered path for the first time.
 
 ## 5. TLS / provisioning (S-5) — the device side of Plane B
 
-Against `nginx/` as deployed by its ansible role (zones per `nginx/README.md`):
+Against the Plane-B tree as deployed by its ansible role *(written as this repo's `nginx/`;
+moved 2026-07-12 to `../locveil-satellite/provisioning/` — BUILD-22/PROD-15; the deployed WB7
+plane and these zones are unchanged)*:
 
 1. **Bootstrap (`http://<host>/esp32/provision/…`):** on first run with TLS configured and no
    cert present, the emulator generates an EC keypair (private key never leaves the box),

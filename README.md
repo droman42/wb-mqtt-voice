@@ -43,8 +43,9 @@ Russian-first, English supported. Version 0.5.0 · Python 3.11+ · MIT.
     versus spaCy (and what spaCy actually is).
   - **[MQTT integration](docs/architecture/mqtt.md)** *(planned)* — canonical device commands and
     the `locveil-bridge` pairing.
-  - **[ESP32 voice satellite](docs/architecture/esp32.md)** *(planned)* — streaming-audio room nodes
-    and how they fit the whole picture.
+  - **[ESP32 voice satellite](https://github.com/locveil/locveil-satellite)** — streaming-audio room
+    nodes, now their own hardware product repo; this backend keeps their WebSocket endpoints (the
+    [WebSocket API guide](docs/guides/websocket-api.md) is the wire reference).
 - **[Asset management](docs/guides/asset-management.md)** — the models and caches, and how they're
   handled at runtime.
 - **[Build system](docs/guides/build-system.md)** — how minimal, configuration-driven builds are

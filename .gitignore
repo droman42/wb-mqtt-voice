@@ -128,7 +128,3 @@ eval/results-*.json
 eval/.env
 eval/profiles/configs/custom.env
 eval/profiles/recording.env
-
-# nginx/ansible — operator-local deployment config (the .example.* files are the tracked ones)
-nginx/ansible/inventory.ini
-nginx/ansible/group_vars/all.yml

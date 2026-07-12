@@ -9,6 +9,19 @@ rationale/chronology lives in [`RELEASE_JOURNAL.md`](./RELEASE_JOURNAL.md).
 ---
 
 ### Architecture & Refactor (ARCH)
+- [x] **ARCH-23** [ESP32] (P-TBD) `[deferred]` — **✓ EXPORT-CLOSED 2026-07-12 (BUILD-22/PROD-15) → `../locveil-satellite`
+      FW-1.** The ESP32 firmware rewrite (build the headless voice-satellite firmware to the ARCH-22
+      `esp32_satellite.md` contract, replacing the quarantined draft) is now the satellite product repo's work —
+      re-filed there as **FW-1** (`HW-GATED`, gated on its DES-3 execution-layer decision; the HK-4 per-device-apps
+      amendment noted inline). No voice-side remainder: the design doc moved with it, the `ESP32/` draft tree was
+      deleted (2026-07-08 verdict), and the wire protocol the firmware builds against stays here as
+      `docs/guides/websocket-api.md` (pinned by the satellite repo).
+- [x] **ARCH-44** [HW][SEC] `[deferred]` — **✓ EXPORT-CLOSED 2026-07-12 (BUILD-22/PROD-15) → `../locveil-satellite`
+      DES-5.** The device-certificate lifecycle design (revocation + renewal — `esp32-provision revoke` only drops
+      pending CSRs; issued certs trusted 825 days with no `ssl_crl` and no renewal path; surfaced by the ARCH-25
+      provisioning round-trip 2026-07-09) travels with the Plane-B provisioning tree, which moved to satellite
+      `provisioning/` in the same change — re-filed there as **DES-5** with the finding text intact. Voice keeps
+      only the tether: the pinned `contracts/esp32-site.conf.j2` copy that `test_arch36_tls_e2e.py` renders.
 - [x] **ARCH-46** `[release]` [PROCESS][FEEDBACK] — **✓ DONE 2026-07-11 (same-day intake→completion). PROD-14/HK-3
       voice delegation: reports re-point residue + `report-protocol-v1` consumption.** The voice half of the board
       delegation (`../locveil-commons/board/BOARD.md` PROD-14 Phase 2; normative spec:
@@ -1655,6 +1668,26 @@ rationale/chronology lives in [`RELEASE_JOURNAL.md`](./RELEASE_JOURNAL.md).
 
 ### Internationalization (I18N)
 ### Build & CI (BUILD)
+- [x] **BUILD-22** `[deferred]` [SATELLITE][PROCESS] — **✓ DONE 2026-07-12 (same-day intake→completion; REDEFINED
+      at intake per PROD-15/HK-4 — two reversals vs the frozen BUILD-20 D-6/D-7 text: the nginx Plane-B tree MOVES,
+      and ARCH-23/ARCH-44 export-close).** locveil-satellite bootstrap + ESP32 estate relocation. Shipped:
+      **(1)** `locveil-satellite` instantiated from `../locveil-commons/process/new-repo-template/` @ scope-v3
+      (satellite `121f3d0`): CLAUDE.md with the pinned shared blocks (hashes byte-identical to this repo's) +
+      repo-local LAW (esp32-only-charter, phase-gates DES→PCB→FW, hw-gated, per-device-tags, per-device-apps,
+      consumer-pins, no-execution-toolchain-at-bootstrap), ledger triad seeded with the PROD-15 born backlog
+      (DES-1..4, OPS-1..2), vendored guard + hook + `ledger-guard` CI — first commit passed the hook; skeleton
+      `components/ boards/ provisioning/ contracts/`. **(2)** Design corpus migrated (satellite `37dcac5`):
+      `esp32_satellite.md` (§4.1–4.3 wire tables demoted to a pointer at `docs/guides/websocket-api.md` + the
+      satellite's contracts pin), `ws_esp32_transport.md` (frozen lineage), `docs/architecture/esp32.md`,
+      `esp32-{fit,turn}` diagrams — pointer stubs left at all three old doc paths, frozen history stays here.
+      **(3)** Top-level `ESP32/` tree DELETED (2026-07-08 verdict, reconfirmed HK-4). **(4)** `nginx/` →
+      satellite `provisioning/`; voice keeps the pinned `contracts/esp32-site.conf.j2` (new contracts-README row
+      with the re-pin command) and `test_arch36_tls_e2e.py` renders the pin — re-run green (1 passed); operator
+      inventory/group_vars copied on disk + gitignored satellite-side; `ops/INSTALL.md`/README/guides re-pointed;
+      WB7 ops handover journaled (deployed plane untouched). **(5)** ARCH-23 → satellite FW-1 and ARCH-44 →
+      satellite DES-5, both export-closed above. STAYED here (reconfirmed): `websocket-api.md`
+      (`ws-protocol-doc-canonical`), `irene/satellite/` + the Python satellite docs, client registry/CSR code,
+      frozen reviews/archives. Sibling: ARCH-47 (WS version stamp / wake-pack pin surface) remains open.
 - [x] **BUILD-23** `[deferred]` [PROCESS] — **DONE 2026-07-11 (narrowed at intake per the PROD-5 delegation:
       the "separate drift-guard script" wording was dead — scope-guard's `claudemd` hash rule IS the drift
       guard, shipped in `scope-v3`).** Shared CLAUDE.md blocks — voice-side adoption (HK-2/PROD-5, normative

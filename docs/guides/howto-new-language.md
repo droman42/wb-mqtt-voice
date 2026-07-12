@@ -53,7 +53,8 @@ Recognition and speech are language-specific, so the heavy assets change too:
   enable the matching normalizer for the new language in `[text_processor]`.
 
 The **wake word** is word-, not language-specific — it keeps working — though you may want one that suits the
-new language's speakers (see [adding a model](howto-new-model.md) and the [ESP32 doc](../architecture/esp32.md)).
+new language's speakers (see [adding a model](howto-new-model.md); on-device wake words are the
+[locveil-satellite](https://github.com/locveil/locveil-satellite) product's side).
 
 ## Checklist
 

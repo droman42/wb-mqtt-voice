@@ -82,14 +82,14 @@ Living findings behind the tasks (`read-at-start-record-at-completion`). `[x]` =
 | `docs/design/problem_reports.md` `[x]` (AGREED 2026-07-06, interactive) | ARCH-30 — problem reporting end-to-end: private triage home `wb-user-reports` (tickets + bundles; both code repos are public), one-Claude-two-lenses with handover-by-label + ping-pong guard, verbatim-capture dialog (pre-QUAL-44, TTL 90s, cancel words), bundle (last-10 turns + action records + 5-trace ring + day log + redacted config + catalog version), ARCH-27 durable spool, D-7 rate limits, leak fence, reply-in-reporter's-language, D-11 model policy (`claude-fable-5` pinned) | ARCH-30 ✓ → ARCH-31/32/33, BUILD-12, VWB-25; shared sections now defer to `../locveil-commons/process/problem-reports.md` (ARCH-46) |
 | `docs/design/python_satellite.md` `[x]` (AGREED 2026-07-06, interactive) | ARCH-35 — python satellite (`irene-satellite`): first-class room node + the ARCH-25 test client; both /ws/audio modes (default single), wake-on + `--no-wake`, `[satellite]`+`[satellite.tls]` config, §3/§4 = the wire contract's single written truth (ESP32 implements the same doc), device-side CSR-approval dance + mTLS wss through nginx Plane B (S-5), S-6 credentials location, S-7 hermetic TLS e2e, S-8 Pi image deferred, S-9 loopback e2e | ARCH-35 ✓ → ARCH-36, BUILD-13 |
 | `docs/design/mqtt_integration.md` `[x]` (DONE 2026-06-06; bridge contract AGREED) | smart-home integration — bridge is the single device authority, Irene speaks canonical commands | ARCH-7/8, ARCH-26 |
-| `docs/design/ws_esp32_transport.md` `[x]` | WS streaming-input driving adapter + ESP32 satellite transport | ARCH-6 |
+| `docs/design/ws_esp32_transport.md` `[x]` *(moved to `../locveil-satellite` 2026-07-12, BUILD-22 — pointer stub at the old path)* | WS streaming-input driving adapter + ESP32 satellite transport | ARCH-6 |
 | `docs/design/onnx_inference_layer.md` `[x]` (complete 2026-06-04; ASR/platform/build + VAD/wake-word all resolved) | shared sherpa-onnx inference layer — ASR-centric; WB7 armv7 feasibility proven on hardware | ARCH-9/10 |
 | `docs/design/io_architecture.md` (DRAFT 2026-06-07) | symmetric configurable hexagonal I/O — format-vs-input, OutputPort + modality matrix, daemon multiplexing, event-bus delivery+observation, F&F via OutputManager, runners-as-presets | ARCH-14/15 |
 | `docs/design/audio_pipeline.md` `[x]` (2026-06-10) | audio I/O negotiation+transformation seam (input twin of ARCH-15) — VAD provider family, canonical transform-once + derived/fatal negotiation, pre-roll contract, AudioTranscoder/VoiceSegmenter/AudioNegotiator, symmetric in+out, traced | ARCH-17 ✓, ARCH-18 |
 | `docs/design/trace_persistence.md` (COMPLETE 2026-06-14; D-1..D-18; **ARCH-19 shipped slices 1–6**) | persist utterance traces to self-contained JSON (base64 audio) for listen + pipeline replay (regression + VAD tuning) — capture levels, `current_trace` contextvar, TraceLogger, handler `trace_event`, seed+diff replay | ARCH-19 ✓ |
 | `docs/design/trace_system_testing.md` `[x]` (AGREED 2026-06-27; D-1..D-14) | trace-driven system testing — offline golden-trace replay surface (deterministic regression via `cli_provider`, `trace-system`/`trace-ux` tiers) + failure-trace capture (always-trace keep-on-failure live; `--record-out` offline) + trace↔WAV unification | TEST-11 ✓ → TEST-12/13/14 |
 | `docs/design/streaming_tts.md` (DRAFT 2026-06-14) | producer twin of ARCH-20 — streaming TTS synthesis + output-seam delivery unification: `synthesize_to_stream` port + base simulation/native overrides, remote `AudioSink` OutputPort, collapse the 3 fragmented playout paths, retire PR-4's parse_wav bridge | ARCH-21 |
-| `docs/design/esp32_satellite.md` (DRAFT 2026-06-14) | **consolidated** ESP32 voice-satellite design — supersedes `ws_esp32_transport.md`, folds `esp32_wakeword_review.md` + `onnx §10/11` + ARCH-21; D-1..D-18 (device shape, wire protocol in+reply, micro stack, models/push, identity/multi-room, provisioning/CSR/OTA); backend plan §12 | ARCH-22 |
+| `docs/design/esp32_satellite.md` (DRAFT 2026-06-14) *(moved to `../locveil-satellite` 2026-07-12, BUILD-22 — pointer stub at the old path; §4 wire tables demoted to `websocket-api.md`)* | **consolidated** ESP32 voice-satellite design — supersedes `ws_esp32_transport.md`, folds `esp32_wakeword_review.md` + `onnx §10/11` + ARCH-21; D-1..D-18 (device shape, wire protocol in+reply, micro stack, models/push, identity/multi-room, provisioning/CSR/OTA); backend plan §12 | ARCH-22 |
 | `docs/design/torch_free_armv7_voice.md` `[x]` (2026-06-15; research/analysis, no code) | torch-free inference for the armv7 voice stack — canonical three-image matrix (§5): torch contained to the x86_64 standalone image; both ARM satellites (armv7 WB7 + aarch64 WB8/Pi) are torch-free sherpa-onnx; Whisper→sherpa-Whisper, Silero TTS→Piper/RUAccent seams | ARCH-24 ✓ |
 | `docs/design/multilingual_deployment.md` `[x]` (2026-07-01; design, no code) | real English deployment across all 3 Docker arches + English eval — slim cross-arch model set size-matched to Russian (armv7 EN ASR spike zipformer-en-20M vs moonshine-tiny-en; EN Piper amy; whisper multilingual on 64-bit); one-bulk-per-language eval; auto-detect NOT wired to ASR/TTS so language is a per-config choice | I18N-1 ✓ → I18N-2..6 |
 | `../locveil-commons/docs/design/productization.md` `[x]` (AGREED 2026-07-08, joint session, both repos; MIGRATED to the commons 2026-07-11 per D-2 — local file is a pointer; name executed as **Locveil**) | BUILD-20 — the productization umbrella (written as "Domovoy"): product name (D-1), ONE commons repo = eval-commons renamed `locveil-commons` with three ownership regimes (D-2/D-3), PROD-board cross-repo idea discipline + board-as-outbox (D-4/D-5), `locveil-satellite` third product repo + ESP32 estate relocation (D-6/D-7), rule-of-two extractions loader+logging (D-8), two-apps-shared-kit config UI (D-9), ledgers kept over trackers (D-10), semver components + calver suite manifests + contract tagging/scripted re-pin (D-11), normative ops spec + CLAUDE.md invariant blocks/drift guard + landing page + report-policy spec (D-12), drift inventory (§2), commons seed backlog (§3) | BUILD-20 ✓ → BUILD-21/22/23/24, ARCH-42/43, BUILD-18 (narrowed); bridge intake VWB-29, CORE-7, OPS-14/15/16 |
@@ -169,16 +169,6 @@ See `docs/review/phase1_architecture_map.md` §5.
       coverage on interactive paths). Also carries the small ARCH-15 follow-ons: **PR-6c web-app JS** (open `/ws/output`,
       thread `client_id` into POSTs, render pushed frames — web-template edit) and **PR-7 capability-matrix display**
       (read-only outputs×modalities). Refs: `io_architecture.md` §4/§8/§12 (PR-10), ARCH-15, ARCH-6.
-- [ ] **ARCH-23** [ESP32] (P-TBD) `[deferred]` — **ESP32 firmware rewrite (ESP-IDF + PlatformIO).** Build the headless
-      voice-satellite firmware to the ARCH-22 contract (**`docs/design/esp32_satellite.md`**), replacing the quarantined
-      `ESP32/firmware/` draft (rev 2, inspiration only — its protocol predates the backend; UI/output/codec are stubs). Per
-      D-1..D-18: board + digital I2S mic + MAX98357A speaker, half-duplex (D-2/D-7); ESP-IDF/PlatformIO not Arduino (D-3);
-      the wire protocol §4 (register → PCM → `{"type":"end"}`; reply channel `speak_begin`/PCM/`speak_end`); ported
-      microWakeWord on `esp-tflite-micro` with the **TFLite-Micro micro-features frontend** + µVAD (D-9, NOT the draft's
-      MFCC/energy VAD); models in a flash data-partition, runtime-loaded (D-12); two-stage SoftAP→STA provisioning + the
-      device admin UI + CSR submission (D-16/D-17, against Plane-B `nginx/`); config-preserving OTA (D-18). Likely a separate
-      firmware repo eventually (per `esp32_wakeword_review.md` quarantine). Substantial standalone C++ effort; tracked here so
-      it's not an orphan finding. Depends on hardware selection finalised (mic/speaker parts) + the Plane-B controller deploy.
 - [ ] **ARCH-39** [MQTT][NLU] (P-post-release) `[deferred]` — **DESIGN: device-level force-confirm — the 2-turn
       idempotence-skip escape hatch via voice.** The bridge's DRV-5 (pinned @ QUAL-77) marks idempotence-skipped
       commands (`success: true, no_op: true, skipped_reason: "idempotence"` — nothing transmitted, belief may be
@@ -218,19 +208,6 @@ See `docs/review/phase1_architecture_map.md` §5.
       shared package surface (rollover naming family, retention constants, prune sweep, report-bundle
       same-day glob compatibility both sides), then file the voice-side adoption task (bridge intake:
       OPS-14). Gated on BUILD-21. Ref: `docs/design/productization.md` D-8.
-- [ ] **ARCH-44** [HW][SEC] `[deferred]` — **DESIGN: device certificate lifecycle — revocation and renewal.**
-      Plane B can *issue* device certs but never *withdraw* them. `esp32-provision revoke` only deletes a
-      **pending CSR** (`esp32-provision.sh` `revoke` = `rm -f "$PEND/$id.csr"`); once `approve` signs, the cert is
-      trusted for its full **825 days** because the mTLS zone runs `ssl_verify_client on` with
-      `ssl_client_certificate` and **no `ssl_crl`**. Deleting the published `/srv/esp32/provision/cert/<id>.crt`
-      changes nothing — the device already holds its copy. So a lost/stolen/decommissioned satellite keeps
-      firmware + model + `/ws/` access until expiry, and the only lever today is re-issuing the whole CA (which
-      re-provisions every device). Symmetrically there is **no renewal story**: every device provisioned in the
-      same week silently expires in the same week, 825 days on. Design (post-release, before a real fleet exists):
-      a CRL (`ssl_crl` + a `revoke-cert` verb regenerating it, nginx reload on change) or short-lived certs with
-      auto-renew over mTLS; the operator verb naming needs to distinguish *drop a pending CSR* from *revoke an
-      issued cert*. Surfaced 2026-07-09 by the ARCH-25 provisioning round-trip (`probe_node`). Deliverable:
-      design doc + implementation follow-up(s). Refs: `docs/design/esp32_satellite.md` D-17, `nginx/README.md`.
 - [ ] **ARCH-45** [INFER][OPS] `[deferred]` — **DESIGN: split readiness from liveness on `/health`.** `/health`
       returns a static `{"status": "healthy", version, timestamp}` (`webapi_router.py` ~L343) — it reports the
       process is alive and nothing more. Observed on the WB7 first boot (2026-07-09): uvicorn binds ~8 s in,
@@ -482,32 +459,6 @@ size-matched to the Russian stack; language is a per-config/deployment choice (a
       `docs/design/productization.md` D-12): the shared convention = a normative ops spec in
       `locveil-commons/process/` + per-repo conformance; the drift inventory is recorded there (§2). This
       task NARROWS to the voice-side conformance pass once that spec exists (gated on BUILD-21).**
-- [ ] **BUILD-22** `[deferred]` [SATELLITE][PROCESS] — **locveil-satellite bootstrap + ESP32 estate
-      relocation out of this repo.** **REDEFINED at intake 2026-07-12 per PROD-15** (council HK-4,
-      `../locveil-commons/board/BOARD.md` — delegation text there is normative; this entry is its local
-      filing). Supersedes the earlier BUILD-20 D-6/D-7 text with two reversals: the nginx Plane-B tree now
-      **MOVES** (was "stays"), and ARCH-23/ARCH-44 **export-close** (were staying as deferred). Repo
-      creation = owner action, **DONE** (`locveil/locveil-satellite` exists in the org, LICENSE+README
-      stub; sibling working copy still to clone, per the repos-are-siblings rule). Scope:
-      (1) instantiate from `../locveil-commons/process/new-repo-template/` (never freehand; checklist in
-      its README) — CLAUDE.md with the pinned blocks + `HW-GATED` marker + the normative DES→PCB→FW
-      phase-gate process, prefixes `DES/PCB/FW/OPS` + required per-device tags, ledger triad, vendored
-      scope-guard @ current tag + hook + `ledger-guard` CI (first commit must pass the hook); seed the
-      HK-4 skeleton (shared ESP-IDF `components/`, `boards/<device>/`, `provisioning/`, `contracts/`
-      pins) and the born backlog (DES-1..DES-4, OPS-1..OPS-2 — text in the PROD-15 entry, seed only) into
-      its ledger. (2) MIGRATE the design corpus (`docs/design/esp32_satellite.md`, superseded
-      `ws_esp32_transport.md`, `docs/architecture/esp32.md`, `docs/images/esp32-{fit,turn}.{dot,png}`) —
-      plain moves + journal pointers, frozen history never migrates; demote `esp32_satellite.md` §4 wire
-      tables to a pointer at `docs/guides/websocket-api.md` + the version pin. (3) **DELETE the top-level
-      `ESP32/` tree in the same change** (2026-07-08 verdict, reconfirmed HK-4 round 1). (4) the nginx
-      package: MOVE the Plane-B tree (`nginx/`) to satellite `provisioning/`; PIN a copy of
-      `esp32-site.conf.j2` here (one-way inward, `contracts/`-style — `irene/tests/test_arch36_tls_e2e.py`
-      renders it and must keep passing); update the `ops/INSTALL.md` pointer; export-close ARCH-44 with
-      pointer; record the WB7 ops handover in the journal. (5) export-close ARCH-23 with pointer.
-      STAYS here: `docs/guides/websocket-api.md` (`ws-protocol-doc-canonical` — satellite PINS it by
-      version), `irene/satellite/` + `python_satellite.md`/`satellite_tracing.md` (the Python desktop
-      satellite stays), client registry/provisioning/CSR code, frozen review/archive docs. Sibling task:
-      ARCH-47 (the voice-side version-stamp surface satellite pins) — filed same intake, not a blocker.
 - [ ] **BUILD-24** `[deferred]` [COMMONS][TEST] — **Scripted contract re-pin + staleness gate — voice
       side** (BUILD-20 D-11). Replace the hand-copy re-pin with `make repin CONTRACT=vN` (fetch from the
       bridge's `contract-vN` tag, write `locveil-commons/contracts/STAMP.json`/`PIN.json`) + a gate check

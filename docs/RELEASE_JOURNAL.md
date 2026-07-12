@@ -20,6 +20,21 @@ newest entries near the top of each dated section.
 
 ## Action journal
 
+- **2026-07-12 — BUILD-22 executed: locveil-satellite lives, the ESP32 estate left this repo.** Three
+  commits across two repos. Satellite `121f3d0`: template instantiation @ scope-v3 (shared-block hashes
+  byte-identical to ours), repo-local LAW per HK-4, born backlog seeded — the first commit passed its own
+  scope-guard hook. Satellite `37dcac5`: design corpus + the Plane-B tree imported (`nginx/` →
+  `provisioning/`), `esp32_satellite.md` §4.1–4.3 demoted to a pointer at our `websocket-api.md`, imported
+  tasks DES-5 (ex ARCH-44) + FW-1 (ex ARCH-23) filed there. Voice side (this commit): `ESP32/` deleted,
+  `nginx/` removed, pointer stubs left at the three moved doc paths, `contracts/esp32-site.conf.j2` pinned
+  (satellite-owned now; re-pin command in `contracts/README.md`) and `test_arch36_tls_e2e.py` re-pointed at
+  the pin — **re-run green (1 passed)**. `ops/INSTALL.md`, `README.md`, two guides, `python_satellite.md`
+  §5 and the `irene/satellite/provisioning.py` docstring re-pointed. **WB7 ops handover:** the deployed
+  Plane B on the controller is untouched (nginx site, CA, scripts all live); future `deploy.yml` runs
+  happen from `../locveil-satellite/provisioning/ansible/` — the operator-local `inventory.ini` +
+  `group_vars/all.yml` were copied there on disk (gitignored both sides, now deleted here with the tree).
+  ARCH-23/ARCH-44 export-closed with pointers; BUILD-22 moved to the DONE ledger.
+
 - **2026-07-12 — PROD-15 intake: the locveil-satellite delegation reconciled and filed.** The HK-4
   council decision (four rounds; arc in `../locveil-commons/board/BOARD_DONE.md`, delegation text in the
   PROD-15 board entry) delegates the satellite bootstrap + ESP32 estate lift-out to this repo. Verified

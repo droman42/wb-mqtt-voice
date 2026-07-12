@@ -2,7 +2,8 @@
 
 The voice trigger listens for a wake word and only then wakes the rest of the pipeline, so Irene isn't
 transcribing all day. It runs where Irene has a local microphone; on a Wirenboard install the ESP32
-satellite does this on-device instead (see [ESP32](../architecture/esp32.md)).
+satellite does this on-device instead (its own product — see
+[locveil-satellite](https://github.com/locveil/locveil-satellite)).
 
 ## Two providers
 

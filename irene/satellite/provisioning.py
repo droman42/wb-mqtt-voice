@@ -1,7 +1,8 @@
 """Device-side TLS provisioning for the fleet plane (ARCH-36 S-5/S-6, design §5).
 
 Implements the CSR-approval dance against the nginx bootstrap zone (`:8081` by default —
-`nginx/README.md`): generate an EC keypair locally (the private key never leaves the box),
+`../locveil-satellite/provisioning/README.md`, the Plane-B home since 2026-07-12): generate an
+EC keypair locally (the private key never leaves the box),
 submit `PUT /esp32/provision/pending/<client_id>.csr`, then poll
 `GET /esp32/provision/cert/<client_id>.crt` while the operator approves over SSH
 (`esp32-provision approve <client_id>` — printed verbatim while polling). Key material lives
