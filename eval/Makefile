@@ -80,9 +80,9 @@ cli:                          ## CLI contract tests (argparse console scripts) �
 	$(PROMPTFOO) eval -c cli.promptfooconfig.yaml
 
 # TEST-18 Slice B — producer contract tests: utterance → captured canonical DeviceCommand,
-# asserted against the PINNED crossover fixtures (../../locveil-commons/contracts/). The SUT must
+# asserted against the PINNED crossover fixtures (../../locveil-commons/contracts/pins/). The SUT must
 # point [outputs.bridge] at the mock bridge; `device-auto` wires everything for one local run.
-FIXTURES_JSON := ../../locveil-commons/contracts/crossover_fixtures.json
+FIXTURES_JSON := ../../locveil-commons/contracts/pins/crossover-fixtures/crossover_fixtures.json
 MOCK_BRIDGE_PORT ?= 8010
 
 device-tests:                 ## regenerate device.tests.yaml from the pinned crossover fixtures
@@ -115,7 +115,7 @@ endif
 
 device-auto: device-tests device-sut-config  ## one-shot local run: mock bridge + SUT up → suite → teardown
 	@pkill -f "[e]val_commons.mock_bridge" 2>/dev/null; sleep 0.5; true  # stale mock on the port = stale golden served silently ([e] keeps pkill from matching THIS shell)
-	@$(PROMPTFOO_PYTHON) -m eval_commons.mock_bridge --catalog ../../locveil-commons/contracts/catalog.golden.json --port $(MOCK_BRIDGE_PORT) & MOCK=$$!; \
+	@$(PROMPTFOO_PYTHON) -m eval_commons.mock_bridge --catalog ../../locveil-commons/contracts/pins/catalog/catalog.golden.json --port $(MOCK_BRIDGE_PORT) & MOCK=$$!; \
 	( cd .. && .venv/bin/irene-webapi -c $(DEVICE_SUT_CONFIG) --port 6000 >/tmp/irene-device-eval.log 2>&1 ) & SUT=$$!; \
 	echo ">> waiting for $(HEALTH_URL) ..."; \
 	for i in $$(seq 1 60); do curl -sf "$(HEALTH_URL)" >/dev/null 2>&1 && break; sleep 1; done; \

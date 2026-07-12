@@ -1,5 +1,5 @@
 # GENERATED from crossover_fixtures.json (catalog 5622ba7a1a78102a) — do not edit.
-# Regenerate: python -m eval_commons.fixtures_to_tests ../../locveil-commons/contracts/crossover_fixtures.json
+# Regenerate: python -m eval_commons.fixtures_to_tests ../../locveil-commons/contracts/pins/crossover-fixtures/crossover_fixtures.json
 - description: "F01 (t1, actuate): включи телек"
   vars:
     utterance: "включи телек"

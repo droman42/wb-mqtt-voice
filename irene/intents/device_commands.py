@@ -48,7 +48,7 @@ class DeviceCommand:
     params: Optional[Dict[str, Any]] = None
 
     def to_dict(self) -> Dict[str, Any]:
-        """The capture/fixture shape (`locveil-commons/contracts/crossover_fixtures.json`)."""
+        """The capture/fixture shape (`locveil-commons/contracts/pins/crossover-fixtures/crossover_fixtures.json`)."""
         return {"kind": "actuate", "device_id": self.device_id,
                 "capability": self.capability, "action": self.action,
                 "params": self.params}
@@ -69,7 +69,7 @@ class RoomGroupCommand:
     params: Optional[Dict[str, Any]] = None
 
     def to_dict(self) -> Dict[str, Any]:
-        """The capture/fixture shape (`locveil-commons/contracts/crossover_fixtures.json`)."""
+        """The capture/fixture shape (`locveil-commons/contracts/pins/crossover-fixtures/crossover_fixtures.json`)."""
         return {"kind": "room-group", "room_id": self.room_id, "group": self.group,
                 "action": self.action, "scope": self.scope.value}
 

@@ -1,0 +1,13 @@
+{
+  "contract": "esp32-site",
+  "version": null,
+  "tag": null,
+  "owner_repo": "locveil-satellite",
+  "owner_commit": "37dcac5c1acbaa4dca4db5214af48b61e46a9b3e",
+  "pinned_by": "locveil-voice BUILD-32 (pins-shape restructure; artifact-copy pin predates the owner's first family tag — version/tag fill in when the satellite stamps this surface)",
+  "pin_date": "2026-07-12",
+  "files": {
+    "esp32-site.conf.j2": "38b09b119e4d0196f7a310dd7389de453233fe79605664bf41660a505a4a8ce4"
+  },
+  "conformance": "irene/tests/test_arch36_tls_e2e.py"
+}

@@ -85,6 +85,6 @@ anything the owner deferred in place — the queue is durable; it'll resurface n
 - **Read-only is safe.** Listing and reading (steps 1–2) touch nothing. Only merges, closes,
   comments, and pushes change state, and each waits for an explicit owner decision.
 - **Labels and the repo slug are contract, not convention** — they come from the pinned
-  report-protocol machine core (`contracts/report-protocol.pin.json`, commons-owned,
+  report-protocol machine core (`contracts/pins/report-protocol/`, commons-owned,
   `report-protocol-vN` tags); a mismatch makes tickets invisible to the queries above. The
   conformance test keeps the copies in this file honest.

@@ -1738,6 +1738,24 @@ rationale/chronology lives in [`RELEASE_JOURNAL.md`](./RELEASE_JOURNAL.md).
       touched. **Owner follow-up (operational, not code): re-mint the device PAT under the `locveil` org** —
       a `droman42`-owned fine-grained PAT cannot reach the org repo. Verified: 14/14 configs parse with
       expected reports state, master completeness/alignment + arch gates 18/18, report tests 25/25.
+- [x] **BUILD-32** `[release]` [PROCESS][TEST] — **DONE 2026-07-12 (filed + completed same day; PROD-16
+      delegation, council HK-5).** `contracts/` restructured to the convention's uniform pins shape
+      (`../locveil-commons/process/contracts.md` §2 — immediate per q3, no grandfathering). Consumed pins
+      moved to `contracts/pins/<name>/` with strict `PIN.json` (files sha256 map + conformance pointer):
+      `report-protocol/` (artifact renamed to the owner's `report-protocol.json`, owner `STAMP.json` copied
+      verbatim, tag `report-protocol-v1` @ `8fb983f`) and `esp32-site/` (pre-tag artifact-copy pin @
+      satellite `37dcac5`; `version`/`tag` explicitly null until the owner stamps — fills at re-pin). Both
+      copies verified byte-identical to their owner artifacts before the move. Registry
+      `contracts/README.md` rewritten direction-labeled (Owned: `ws-protocol`/`wake-pack` arrive with
+      ARCH-47; Consumed: the two pins; the commons-held catalog/crossover pins cross-referenced); per-pin
+      READMEs carry the re-pin commands. Every consumer followed in the same change: the two conformance
+      tests, `eval/Makefile` (`FIXTURES_JSON`, mock-bridge `--catalog`) +
+      `device.promptfooconfig.yaml`/`device.tests.yaml` headers re-pointed at commons
+      `contracts/pins/{crossover-fixtures,catalog}/`, the CLAUDE.md `cross-repo-source-of-truth` bullet
+      (incl. the owner artifact's post-restructure home), the `/inbox` skill, `problem_reports.md` design
+      pointers, two docstrings. Verified: contract-guard v1 green with ZERO warnings, report-protocol
+      conformance 11/11, hermetic TLS e2e passes from the new template path, `make device-tests`
+      regenerates byte-identically (header path aside).
 ### Models & Assets (ASSET)
 ### Documentation (DOC)
 - [x] **DOC-5b** (P2) — DONE 2026-06-08: regenerated `guides/DONATION_FILE_SPECIFICATION.md` for the v1.1

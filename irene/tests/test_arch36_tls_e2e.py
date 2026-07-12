@@ -2,9 +2,9 @@
 and mTLS operation against the REAL nginx Plane-B config, no WB7 and no ansible run needed.
 
 The cycle, all in one test:
-  render the pinned Plane-B site template `contracts/esp32-site.conf.j2` (throwaway CA, high
-  ports; owned by ../locveil-satellite `provisioning/` since 2026-07-12 — re-pin on change,
-  see contracts/README.md)
+  render the pinned Plane-B site template `contracts/pins/esp32-site/esp32-site.conf.j2`
+  (throwaway CA, high ports; owned by ../locveil-satellite `provisioning/` since 2026-07-12 —
+  re-pin on change, see the pin folder's README)
   → docker nginx serves both zones (host network)
   → `ensure_credentials` does the first-run dance (EC key → PUT CSR via the :80 dav zone → poll)
   → the "operator" approves (scripted openssl sign — what `esp32-provision approve` runs)
@@ -29,7 +29,7 @@ pytestmark = pytest.mark.skipif(
     shutil.which("docker") is None or shutil.which("openssl") is None,
     reason="docker + openssl required for the hermetic TLS e2e")
 
-TEMPLATE = Path(__file__).resolve().parents[2] / "contracts/esp32-site.conf.j2"
+TEMPLATE = Path(__file__).resolve().parents[2] / "contracts/pins/esp32-site/esp32-site.conf.j2"
 
 HTTP_PORT = 8480   # the :80 bootstrap zone, remapped (unprivileged)
 HTTPS_PORT = 8443  # the :443 mTLS zone, remapped

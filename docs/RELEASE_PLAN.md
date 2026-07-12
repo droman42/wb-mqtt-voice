@@ -502,17 +502,6 @@ size-matched to the Russian stack; language is a per-config/deployment choice (a
       board** (D-4/D-5), seeded when BUILD-21 lands, not decided unilaterally here. Scope for that design: which
       repo owns the unified compose, health-gated `depends_on` vs. tolerant clients, whether the units collapse
       into one, and how `update.sh` stays per-repo when the compose is not. Related: BUILD-18 (ops conformance).
-- [ ] **BUILD-32** `[release]` [PROCESS][TEST] — **Restructure `contracts/` to the convention's pins shape**
-      (filed 2026-07-12 at PROD-16 intake; IMMEDIATE per the council's q3 ruling — uniform layout, no
-      grandfathering; normative: `../locveil-commons/process/contracts.md` §2). Scope: (a) consumed pins
-      move to `contracts/pins/<name>/` — `report-protocol.pin.json` → `contracts/pins/report-protocol/`,
-      `esp32-site.conf.j2` → `contracts/pins/esp32-site/` — each with a `PIN.json`; (b) the registry
-      `contracts/README.md` indexes owned + consumed, direction-labeled (the owned `contracts/ws-protocol/`
-      arrives with ARCH-47); (c) consumer test paths follow (`test_report_protocol_conformance.py`,
-      `test_arch36_tls_e2e.py`); (d) re-point the eval references stranded by the commons restructure —
-      `eval/Makefile` (`FIXTURES_JSON`, the mock-bridge `--catalog` path) and the
-      `device.promptfooconfig.yaml` / `device.tests.yaml` header comments — from flat
-      `../../locveil-commons/contracts/` to its `contracts/pins/{crossover-fixtures,catalog}/`.
 - [ ] **BUILD-33** `[release]` [PROCESS][CI] — **Vendor contract-guard v1** (filed 2026-07-12 at PROD-16
       intake). Commons `packages/contract-guard/contract_guard.py` is tagged **`contract-guard-v1`** —
       vendor it per the BUILD-30 scope-guard consumption model (pinned tag, NEVER edit the vendored file,

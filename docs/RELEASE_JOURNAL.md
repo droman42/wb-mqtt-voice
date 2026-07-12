@@ -20,6 +20,19 @@ newest entries near the top of each dated section.
 
 ## Action journal
 
+- **2026-07-12 — BUILD-32 executed (same-day): voice `contracts/` now wears the org shape.** The two
+  consumed pins moved under `contracts/pins/<name>/` — report-protocol carries the owner's STAMP verbatim
+  plus a strict `PIN.json` (sha256 file map, conformance pointer, tag `report-protocol-v1`); esp32-site
+  becomes the convention's first pre-tag artifact-copy pin (owner commit + content hash now, version/tag
+  null until the satellite stamps that surface). Both copies proved byte-identical to their owner
+  artifacts before moving. The registry README is direction-labeled per the spec, and every consumer
+  followed in the same change: both conformance tests, the eval device suite re-pointed at commons'
+  restructured `contracts/pins/{crossover-fixtures,catalog}/`, the CLAUDE.md ownership bullet, the
+  `/inbox` skill, the problem-reports design pointers. Proof: contract-guard v1 runs green with zero
+  warnings (stricter than the legacy-tolerant commons tree itself), report-protocol conformance 11/11,
+  the hermetic TLS e2e renders the template from its new home, and `make device-tests` regenerates
+  byte-identically. BUILD-33 (vendor the guard) now has a clean tree to guard.
+
 - **2026-07-12 — PROD-16 intake: the contracts convention lands in the voice ledger.** The HK-5 council
   (one round, all three product keepers) decided the org-wide contract convention — normative spec at
   `../locveil-commons/process/contracts.md`, contract-guard v1 tagged, the commons-side restructure and

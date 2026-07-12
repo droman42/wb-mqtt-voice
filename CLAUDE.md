@@ -36,10 +36,11 @@ but these rules apply to any task). **Single source of truth** (relocated here f
     *inward*, version-stamped sync from the bridge's committed artifacts (TEST-17) — and never hand-edits that copy,
     treats it as source, or writes into the bridge repo (re-pin when the bridge's artifact moves).
   - **The problem-report wire protocol is owned by `../locveil-commons`** (HK-3/PROD-6): the machine core
-    `process/report-protocol/report-protocol.json`, tagged `report-protocol-vN`; normative prose
-    `process/problem-reports.md`. This repo **pins** it at `contracts/report-protocol.pin.json` (one-way inward
-    sync — never hand-edit; re-pin on a vN bump, see `contracts/README.md`) and validates the collector's emitted
-    surface against the pin in `irene/tests/test_report_protocol_conformance.py`.
+    `contracts/report-protocol/report-protocol.json` (moved from `process/report-protocol/` at the PROD-16
+    restructure), tagged `report-protocol-vN`; normative prose `process/problem-reports.md`. This repo **pins**
+    it at `contracts/pins/report-protocol/` (one-way inward sync — never hand-edit; re-pin on a vN bump, see
+    the pin folder's README) and validates the collector's emitted surface against the pin in
+    `irene/tests/test_report_protocol_conformance.py`.
   - **`../locveil-commons/eval` is the shared test framework** — test *execution logic* (providers/scorers/judge) lives there,
     changed **there not here** (this repo carries only eval YAML + the thin `eval/Makefile`; see *Testing &
     evaluation*). This repo *does* write to `locveil-commons` (it co-develops the framework and owns the contract pin

@@ -1,8 +1,8 @@
 """ARCH-46 — report-protocol conformance (HK-3/PROD-6; spec ../locveil-commons/process/problem-reports.md §2).
 
 The problem-report wire surface (labels, title prefixes, bundle path, envelope fields) is a
-commons-owned machine core, vendored at `contracts/report-protocol.pin.json` (tag
-`report-protocol-vN` — see `contracts/README.md` for the re-pin command). This test asserts the
+commons-owned machine core, vendored at `contracts/pins/report-protocol/` (tag
+`report-protocol-vN` — see the pin folder's README for the re-pin command). This test asserts the
 collector's EMITTED surface against the pin: a label mismatch makes tickets silently invisible to
 the triage workflow's label-gated trigger and the `/inbox` queue queries, so the copies scattered
 through skills/configs are kept honest here rather than trusted.
@@ -17,7 +17,8 @@ import pytest
 from irene.core.report_service import build_envelope
 
 _REPO_ROOT = Path(__file__).resolve().parents[2]
-PIN = json.loads((_REPO_ROOT / "contracts" / "report-protocol.pin.json").read_text(encoding="utf-8"))
+PIN = json.loads(
+    (_REPO_ROOT / "contracts" / "pins" / "report-protocol" / "report-protocol.json").read_text(encoding="utf-8"))
 PROBLEM_REPORT = PIN["types"]["problem-report"]
 
 # The six deployment profiles (config-master/example are curated supersets with a placeholder repo).

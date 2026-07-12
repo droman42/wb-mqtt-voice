@@ -1,21 +1,27 @@
-# contracts/ — pinned copies of externally-owned contracts
+# locveil-voice — contract registry
 
-Inward, version-stamped syncs per the `cross-repo-source-of-truth` invariant: each file here is
-owned elsewhere, vendored at a tagged version, and **never hand-edited** — re-pin from the owner's
-tag when it moves.
+The direction-labeled index required by `../locveil-commons/process/contracts.md` §2.
+Every contract this repo OWNS and every pin it CONSUMES, one line each; details live in
+the per-contract READMEs. Layout is the uniform org shape: `contracts/<name>/` owned,
+`contracts/pins/<name>/` consumed. Pins are one-way-inward, version-stamped copies per
+the `cross-repo-source-of-truth` invariant — owned elsewhere, **never hand-edited**;
+re-pin from the owner when it moves.
 
-| File | Owner | Pinned at | Re-pin from |
-|---|---|---|---|
-| `report-protocol.pin.json` | `../locveil-commons` (HK-3/PROD-6 machine core) | `report-protocol-v1` (`8fb983f`) | `git -C ../locveil-commons show report-protocol-vN:process/report-protocol/report-protocol.json` |
-| `esp32-site.conf.j2` | `../locveil-satellite` (`provisioning/ansible/templates/`; moved from this repo's `nginx/` 2026-07-12, BUILD-22/PROD-15) | satellite `37dcac5` | `git -C ../locveil-satellite show main:provisioning/ansible/templates/esp32-site.conf.j2` |
+## Owned
 
-`report-protocol.pin.json` is validated by `irene/tests/test_report_protocol_conformance.py` — the
-collector's emitted labels, title prefix, and bundle path, plus the deployment profiles'
-`[reports].repo`, are asserted against the pin (a label mismatch makes tickets silently invisible
-to the triage queue queries). `esp32-site.conf.j2` is exercised by `irene/tests/test_arch36_tls_e2e.py`
-— the hermetic TLS e2e renders it and drives the real provisioning dance against it, so a satellite-side
-template change that breaks the voice contract surfaces here at the next re-pin.
+| Contract | Where | Version authority |
+|---|---|---|
+| `ws-protocol` | _arrives with ARCH-47_ — the artifact stays `docs/guides/websocket-api.md` (`ws-protocol-doc-canonical`); `ws-protocol/` will hold STAMP.json + a pointer README | tag `ws-protocol-v1` when stamped |
+| `wake-pack` | _arrives with ARCH-47_ — sidecar stamp over the unmodified ASSET-5 pack (third-party manifest, never forked) | tag `wake-pack-v1` when stamped |
 
-_The Irene↔bridge catalog/command contract is pinned separately into `../locveil-commons/contracts/`
-(TEST-17 — the eval framework consumes it there); this directory holds only pins that this repo's
-own code/tests validate against._
+## Consumed (pins)
+
+| Pin | Owner | Notes |
+|---|---|---|
+| [`report-protocol`](pins/report-protocol/README.md) | locveil-commons (tag `report-protocol-v1`) | problem-report machine core; conformance: `irene/tests/test_report_protocol_conformance.py` |
+| [`esp32-site`](pins/esp32-site/README.md) | locveil-satellite (pre-tag artifact-copy pin @ `37dcac5`) | Plane-B nginx site template; conformance: `irene/tests/test_arch36_tls_e2e.py` |
+
+_The Irene↔bridge catalog/command contract is pinned into
+`../locveil-commons/contracts/pins/{catalog,crossover-fixtures}/` (TEST-17 — the shared
+eval framework consumes it there, voice stamps its PIN.json); this directory holds only
+pins that this repo's own code/tests validate against._

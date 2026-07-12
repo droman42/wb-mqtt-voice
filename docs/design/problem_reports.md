@@ -7,7 +7,7 @@
 > commons-owned: the normative spec is `process/problem-reports.md` in `../locveil-commons`
 > (semantics, triage judgment, leak fence, retention/governance), and the wire-visible surface is
 > its versioned **machine core** (`report-protocol-vN` tags), pinned here at
-> `contracts/report-protocol.pin.json` and conformance-tested in
+> `contracts/pins/report-protocol/report-protocol.json` and conformance-tested in
 > `irene/tests/test_report_protocol_conformance.py`. This document remains the voice-side
 > implementation design and the frozen ARCH-30 decision record (D-numbers below are referenced
 > across repos); where a section duplicates the shared truth, the commons spec wins — the shared
@@ -94,7 +94,7 @@ Assembled by a new `ReportBundleCollector` (core service):
 **Owned by the shared truth.** Filing semantics (one report = one issue + one bundle commit) are
 the commons spec §3; the wire shape — labels at filing, per-source title prefixes, the bundle path
 template, the envelope's required fields — is the machine core, pinned at
-`contracts/report-protocol.pin.json` and asserted against `build_envelope`'s output by
+`contracts/pins/report-protocol/report-protocol.json` and asserted against `build_envelope`'s output by
 `irene/tests/test_report_protocol_conformance.py`. Voice-side implementation notes only:
 
 - The single writer seam is `build_envelope` in `irene/core/report_service.py`; the issue body it
@@ -125,7 +125,7 @@ trigger and loop safety, the triage outcomes, handover-by-label, the ping-pong g
 state, the leak fence, and the one-strong-model policy — live in
 `../locveil-commons/process/problem-reports.md` §3–§5; the enums behind them (state buckets,
 transitions, `ping_pong_max`, the handover-comment header + fields) are the machine core's,
-pinned at `contracts/report-protocol.pin.json`. Per-lens judgment (how to reproduce against THIS
+pinned at `contracts/pins/report-protocol/report-protocol.json`. Per-lens judgment (how to reproduce against THIS
 repo, what to rule out before a handover) is maintained in the co-owned lens file —
 `.github/claude/lens-voice.md` in the reports repo — not here.
 

@@ -1,6 +1,6 @@
 """ARCH-8 PR-4 — the smart-home handler end-to-end (minus ASR/NLU phrase matching).
 
-Each test mirrors a crossover fixture (`locveil-commons/contracts/crossover_fixtures.json`):
+Each test mirrors a crossover fixture (`locveil-commons/contracts/pins/crossover-fixtures/crossover_fixtures.json`):
 extracted params go through the REAL ContextualEntityResolver (PR-3, Q7b declarative dispatch
 against the real smart_home donation), then the REAL handler, dispatcher, OutputManager and
 the capturing fake bridge — asserting the captured canonical command equals the fixture's

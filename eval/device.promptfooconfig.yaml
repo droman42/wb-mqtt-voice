@@ -3,7 +3,7 @@
 # ../../locveil-commons/eval; the test CASES are GENERATED from the pinned crossover fixtures (the single
 # source of truth both repos share):
 #
-#   make device-tests          # regenerate device.tests.yaml from ../../locveil-commons/contracts/
+#   make device-tests          # regenerate device.tests.yaml from ../../locveil-commons/contracts/pins/crossover-fixtures/
 #   make device TARGET=local   # run against a local SUT wired to the mock bridge
 #   make device-auto           # one command: mock bridge + SUT up, suite, teardown
 #
