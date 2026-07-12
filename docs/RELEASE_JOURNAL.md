@@ -20,6 +20,18 @@ newest entries near the top of each dated section.
 
 ## Action journal
 
+- **2026-07-12 — PROD-15 intake: the locveil-satellite delegation reconciled and filed.** The HK-4
+  council decision (four rounds; arc in `../locveil-commons/board/BOARD_DONE.md`, delegation text in the
+  PROD-15 board entry) delegates the satellite bootstrap + ESP32 estate lift-out to this repo. Verified
+  per `task-start-reconciliation`: the org repo `locveil/locveil-satellite` already exists (owner action
+  done — LICENSE+README stub, sibling working copy not yet cloned); the frozen BUILD-22 text disagreed
+  with the decision in two places — the nginx Plane-B tree now MOVES (with a pinned `esp32-site.conf.j2`
+  copy kept here so `irene/tests/test_arch36_tls_e2e.py` keeps running), and ARCH-23/ARCH-44
+  export-close with pointers instead of staying deferred here. BUILD-22 REDEFINED in place (dated);
+  NEW ARCH-47 filed (WS-protocol version stamp + wake-pack pin surface + `register` version-reporting
+  fields — the contract surface satellite pins). Both local IDs written back into the PROD-15 board
+  entry (commons-side commit, same intake). Execution is BUILD-22 itself, next.
+
 - **2026-07-11 — ARCH-46 bounce (commons verification) → lift-out landed.** The commons-side verification of
   the PROD-14 voice delegation accepted items 1–3 + the smoke finds but bounced item 4: the
   `problem_reports.md` restructure had been delivered annotate-and-defer — ownership headers over §5/§7 with

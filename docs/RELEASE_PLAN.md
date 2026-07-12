@@ -243,6 +243,21 @@ See `docs/review/phase1_architecture_map.md` §5.
       the healthcheck's start-period (300s ARM / 180s x86) was sized for a download that turns out **not** to be
       on the critical path — revisit it once readiness is real. Deliverable: design doc + implementation
       follow-up(s).
+- [ ] **ARCH-47** [WS][SATELLITE] `[deferred]` — **WS-protocol version stamp + wake-pack pin surface +
+      `register` version-reporting fields** (filed 2026-07-12 at PROD-15 intake — the NEW voice-side task
+      from the HK-4 delegation). locveil-satellite pins two voice-owned artifacts by version: the WS wire
+      protocol (`docs/guides/websocket-api.md`, `ws-protocol-doc-canonical`) and the wake-word pack (the
+      UNMODIFIED ASSET-5 artifact, hash-verifiable flash-time pin). Today neither has a version surface:
+      the protocol doc carries no version stamp and `register`/`register-reply` report nothing the
+      registry could check staleness against. Scope: (a) version-stamp the WS protocol — the doc plus a
+      machine-readable constant the endpoints serve; (b) the wake-pack version/pin surface (pack version
+      in the v2 manifest, reported at register); (c) `register` version-reporting fields (protocol
+      version, firmware version, wake-pack version — pairs with HK-4's one retained firmware-version MQTT
+      topic as the stale-pin tripwire, bridge side). The registry/config-ui staleness flag rides this
+      task or files separately — decide at task start (`config-ui-stays-functional` applies if it rides).
+      Wire-protocol change ⇒ `websocket-api.md` updated in the same change (`ws-protocol-doc-canonical`).
+      Refs: PROD-15 (`../locveil-commons/board/BOARD.md`), `esp32_satellite.md` (in the satellite repo
+      after BUILD-22 moves it), `docs/design/wakeword_models.md` (ASSET-5 pack format).
 ### Code Quality & Review (QUAL)
 
 #### Cross-cutting systemic remediation — principles (the Gate 2 lens)
@@ -468,20 +483,31 @@ size-matched to the Russian stack; language is a per-config/deployment choice (a
       `locveil-commons/process/` + per-repo conformance; the drift inventory is recorded there (§2). This
       task NARROWS to the voice-side conformance pass once that spec exists (gated on BUILD-21).**
 - [ ] **BUILD-22** `[deferred]` [SATELLITE][PROCESS] — **locveil-satellite bootstrap + ESP32 estate
-      relocation out of this repo** (BUILD-20 D-6/D-7; repo creation = OWNER ACTION, sibling working copy
-      per the repos-are-siblings rule). Create the third product repo (own CLAUDE.md in the invariant
-      family + `HW-GATED` marker, ledger, journal; scope: SKIDL/KiCad PCB + ESP-IDF firmware + enclosure).
-      MOVE the satellite-side design corpus (`docs/design/esp32_satellite.md`, superseded
-      `ws_esp32_transport.md` lineage, `docs/architecture/esp32.md`, `docs/images/esp32-*.dot/png`) —
-      leaving pointers; **DELETE the top-level `ESP32/` tree outright** (user verdict 2026-07-08:
-      outdated — dead-code rule, not migrated). STAYS here: the WS protocol doc
-      (`ws-protocol-doc-canonical` — satellite PINS it by version), `irene/satellite/`, client
-      registry/provisioning/CSR code, nginx Plane-B ansible glue, frozen review/archive docs. Re-home
-      ARCH-22's remaining design intent into the new repo's ledger at task start (reconcile: parts are
-      superseded by ARCH-35/python-satellite). Ref: `docs/design/productization.md` D-6. **Dependency added
-      by BUILD-23 (HK-2/PROD-5): the new repo is instantiated from `../locveil-commons/process/new-repo-template/`
-      (CLAUDE.md skeleton with the pinned blocks, starter `.scope-guard.toml`, hook, `ledger-guard` CI,
-      ledger/journal shapes) — never freehanded; discipline is seeded, not retrofitted.**
+      relocation out of this repo.** **REDEFINED at intake 2026-07-12 per PROD-15** (council HK-4,
+      `../locveil-commons/board/BOARD.md` — delegation text there is normative; this entry is its local
+      filing). Supersedes the earlier BUILD-20 D-6/D-7 text with two reversals: the nginx Plane-B tree now
+      **MOVES** (was "stays"), and ARCH-23/ARCH-44 **export-close** (were staying as deferred). Repo
+      creation = owner action, **DONE** (`locveil/locveil-satellite` exists in the org, LICENSE+README
+      stub; sibling working copy still to clone, per the repos-are-siblings rule). Scope:
+      (1) instantiate from `../locveil-commons/process/new-repo-template/` (never freehand; checklist in
+      its README) — CLAUDE.md with the pinned blocks + `HW-GATED` marker + the normative DES→PCB→FW
+      phase-gate process, prefixes `DES/PCB/FW/OPS` + required per-device tags, ledger triad, vendored
+      scope-guard @ current tag + hook + `ledger-guard` CI (first commit must pass the hook); seed the
+      HK-4 skeleton (shared ESP-IDF `components/`, `boards/<device>/`, `provisioning/`, `contracts/`
+      pins) and the born backlog (DES-1..DES-4, OPS-1..OPS-2 — text in the PROD-15 entry, seed only) into
+      its ledger. (2) MIGRATE the design corpus (`docs/design/esp32_satellite.md`, superseded
+      `ws_esp32_transport.md`, `docs/architecture/esp32.md`, `docs/images/esp32-{fit,turn}.{dot,png}`) —
+      plain moves + journal pointers, frozen history never migrates; demote `esp32_satellite.md` §4 wire
+      tables to a pointer at `docs/guides/websocket-api.md` + the version pin. (3) **DELETE the top-level
+      `ESP32/` tree in the same change** (2026-07-08 verdict, reconfirmed HK-4 round 1). (4) the nginx
+      package: MOVE the Plane-B tree (`nginx/`) to satellite `provisioning/`; PIN a copy of
+      `esp32-site.conf.j2` here (one-way inward, `contracts/`-style — `irene/tests/test_arch36_tls_e2e.py`
+      renders it and must keep passing); update the `ops/INSTALL.md` pointer; export-close ARCH-44 with
+      pointer; record the WB7 ops handover in the journal. (5) export-close ARCH-23 with pointer.
+      STAYS here: `docs/guides/websocket-api.md` (`ws-protocol-doc-canonical` — satellite PINS it by
+      version), `irene/satellite/` + `python_satellite.md`/`satellite_tracing.md` (the Python desktop
+      satellite stays), client registry/provisioning/CSR code, frozen review/archive docs. Sibling task:
+      ARCH-47 (the voice-side version-stamp surface satellite pins) — filed same intake, not a blocker.
 - [ ] **BUILD-24** `[deferred]` [COMMONS][TEST] — **Scripted contract re-pin + staleness gate — voice
       side** (BUILD-20 D-11). Replace the hand-copy re-pin with `make repin CONTRACT=vN` (fetch from the
       bridge's `contract-vN` tag, write `locveil-commons/contracts/STAMP.json`/`PIN.json`) + a gate check
