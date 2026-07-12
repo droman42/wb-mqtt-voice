@@ -20,6 +20,19 @@ newest entries near the top of each dated section.
 
 ## Action journal
 
+- **2026-07-12 — PROD-16 intake: the contracts convention lands in the voice ledger.** The HK-5 council
+  (one round, all three product keepers) decided the org-wide contract convention — normative spec at
+  `../locveil-commons/process/contracts.md`, contract-guard v1 tagged, the commons-side restructure and
+  eval re-point already executed. Voice's delegation reconciled against repo reality — every claim held:
+  the catalog pin now lives at commons `contracts/pins/catalog/` while three voice eval files still point
+  at the old flat paths, and this repo's `contracts/` is still flat. Filed: ARCH-47 UNGATED and rescoped
+  in place as the convention's first voice instance (`ws-protocol-v1` + the wake-pack sidecar stamp);
+  BUILD-24 rescoped to be born against the final bridge layout (generalized `make repin`, release-time
+  staleness, never push gates); BUILD-32 filed `[release]` (pins-shape restructure + the eval re-point —
+  immediate per the q3 ruling, so the release gate deliberately grows); BUILD-33 filed `[release]`
+  (vendor contract-guard v1, BUILD-30 consumption model); BUILD-26 annotated to cite the convention.
+  Local IDs written back into the board's PROD-16 entry.
+
 - **2026-07-12 — ARCH-47 gated on the contracts council (owner decision).** The version-stamp work is
   better decided once, for all the contract surfaces (five dialects across the repos), than invented here
   ad hoc — ARCH-47 now carries a GATED note (do not pick up standalone) and rides board **HK-5**, the

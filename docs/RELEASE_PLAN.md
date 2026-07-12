@@ -236,11 +236,15 @@ See `docs/review/phase1_architecture_map.md` §5.
       Wire-protocol change ⇒ `websocket-api.md` updated in the same change (`ws-protocol-doc-canonical`).
       Refs: PROD-15 (`../locveil-commons/board/BOARD.md`), `esp32_satellite.md` (in the satellite repo
       after BUILD-22 moves it), `docs/design/wakeword_models.md` (ASSET-5 pack format).
-      **GATED 2026-07-12 (owner): executes with the contracts council, not standalone** — the version-stamp
-      mechanics belong to the general cross-repo contracts convention the next council round will decide
-      (board **HK-5** parked seed). Do not pick up before that decision lands; the satellite's interim
-      commit-pin (`../locveil-satellite/contracts/README.md`) is adequate until then, and its FW phase —
-      the first real consumer — is itself gated behind satellite DES-3.
+      **UNGATED + RESCOPED 2026-07-12 (council HK-5 decided → board PROD-16; normative:
+      `../locveil-commons/process/contracts.md`)** — executes as the convention's first voice instance:
+      `contracts/ws-protocol/` owned-contract dir with the STAMP core (`{contract, version, tag, date,
+      owner_repo}`); a doc-header "Protocol version" line in `websocket-api.md`; the served code constant;
+      a version-triple conformance test (doc header = code constant = STAMP); tag **`ws-protocol-v1`**
+      (family-named, no prose history — STAMP + tag are the only version authority from first tag on).
+      Wake-pack: a SIDECAR stamp (`wake-pack-v1`, content hashes) — the third-party manifest is never
+      forked. Rides BUILD-32's restructured `contracts/` layout; satellite upgrades its commit-pin to a
+      stamped pin when `ws-protocol-v1` lands (its FW phase stays gated behind satellite DES-3).
 ### Code Quality & Review (QUAL)
 
 #### Cross-cutting systemic remediation — principles (the Gate 2 lens)
@@ -466,11 +470,15 @@ size-matched to the Russian stack; language is a per-config/deployment choice (a
       `locveil-commons/process/` + per-repo conformance; the drift inventory is recorded there (§2). This
       task NARROWS to the voice-side conformance pass once that spec exists (gated on BUILD-21).**
 - [ ] **BUILD-24** `[deferred]` [COMMONS][TEST] — **Scripted contract re-pin + staleness gate — voice
-      side** (BUILD-20 D-11). Replace the hand-copy re-pin with `make repin CONTRACT=vN` (fetch from the
-      bridge's `contract-vN` tag, write `locveil-commons/contracts/STAMP.json`/`PIN.json`) + a gate check
-      that goes red when the pin trails the newest bridge contract tag — staleness becomes a machine
-      failure, not a memory note. Pairs with bridge intake VWB-29 (they tag + attach artifacts; gated on
-      it). Ref: `docs/design/productization.md` D-11.
+      side** (BUILD-20 D-11; **rescoped 2026-07-12 at PROD-16 intake — born against the FINAL bridge
+      layout**, normative: `../locveil-commons/process/contracts.md`). A GENERALIZED `make repin
+      CONTRACT=<family>` — fetch from the owner repo's family-named tag (first real target: bridge
+      `catalog-v1.5` out of its `contracts/catalog/`), write the artifact copy + `PIN.json` under
+      `../locveil-commons/contracts/pins/catalog/` — plus a staleness check that runs at RELEASE time
+      (pin trails the owner's newest family tag ⇒ red). Staleness = release-time re-pin flow + runtime
+      version-reporting, NEVER a cross-repo push gate (convention §5). Pairs with bridge VWB-29 (rescoped
+      owner-side cut; gated on its `catalog-v1.5` tag existing). The stale flat-layout eval paths re-point
+      with BUILD-32, not here. Ref: `docs/design/productization.md` D-11.
 - [ ] **BUILD-26** [BUILD][UI] `[deferred]` — **`config-ui/openapi.json` is a committed generated artifact that
       nothing regenerates.** Found during REL-4 (2026-07-09): re-running `scripts/dump_openapi.py` produced 241
       inserted lines — four schemas (`BridgeOutputConfig`, `ReportsConfig`, `SatelliteConfig`,
@@ -480,7 +488,9 @@ size-matched to the Russian stack; language is a per-config/deployment choice (a
       the backend and silently lacks types for those config sections. Fix: a CI gate that regenerates and fails
       on drift (the scope-guard / contract-pin mechanic applied to a generated file), or drop the artifact
       from git and generate it during the build. Pairs with `config-ui-stays-functional`, which assumes the
-      schema the UI is built against is the schema the backend serves.
+      schema the UI is built against is the schema the backend serves. **PROD-16 note (2026-07-12): execute
+      per the contracts convention — a repo-internal GENERATED contract reuses the same mechanics
+      (`../locveil-commons/process/contracts.md`): drift guard + STAMP sidecar, in-repo.**
 - [ ] **BUILD-28** [OPS][PROCESS] `[deferred]` — **One compose file for the controller, with a real startup
       order.** Three containers run on the WB7 today — `locveil-bridge`, `locveil-bridge-ui`, `locveil-voice`
       (post-BUILD-29 names) — from **two** compose projects (`locveil-bridge-config`, `locveil-voice-config`),
@@ -492,6 +502,23 @@ size-matched to the Russian stack; language is a per-config/deployment choice (a
       board** (D-4/D-5), seeded when BUILD-21 lands, not decided unilaterally here. Scope for that design: which
       repo owns the unified compose, health-gated `depends_on` vs. tolerant clients, whether the units collapse
       into one, and how `update.sh` stays per-repo when the compose is not. Related: BUILD-18 (ops conformance).
+- [ ] **BUILD-32** `[release]` [PROCESS][TEST] — **Restructure `contracts/` to the convention's pins shape**
+      (filed 2026-07-12 at PROD-16 intake; IMMEDIATE per the council's q3 ruling — uniform layout, no
+      grandfathering; normative: `../locveil-commons/process/contracts.md` §2). Scope: (a) consumed pins
+      move to `contracts/pins/<name>/` — `report-protocol.pin.json` → `contracts/pins/report-protocol/`,
+      `esp32-site.conf.j2` → `contracts/pins/esp32-site/` — each with a `PIN.json`; (b) the registry
+      `contracts/README.md` indexes owned + consumed, direction-labeled (the owned `contracts/ws-protocol/`
+      arrives with ARCH-47); (c) consumer test paths follow (`test_report_protocol_conformance.py`,
+      `test_arch36_tls_e2e.py`); (d) re-point the eval references stranded by the commons restructure —
+      `eval/Makefile` (`FIXTURES_JSON`, the mock-bridge `--catalog` path) and the
+      `device.promptfooconfig.yaml` / `device.tests.yaml` header comments — from flat
+      `../../locveil-commons/contracts/` to its `contracts/pins/{crossover-fixtures,catalog}/`.
+- [ ] **BUILD-33** `[release]` [PROCESS][CI] — **Vendor contract-guard v1** (filed 2026-07-12 at PROD-16
+      intake). Commons `packages/contract-guard/contract_guard.py` is tagged **`contract-guard-v1`** —
+      vendor it per the BUILD-30 scope-guard consumption model (pinned tag, NEVER edit the vendored file,
+      re-pin to move), wire into the pre-commit hook + a path-gated `contract-guard` CI job (`--check`
+      only). Coherence layer only — layout/STAMP/PIN validity; scope-guard stays ledger-only. Depends on
+      BUILD-32's layout being in place.
 
 ### Documentation (DOC)
 
