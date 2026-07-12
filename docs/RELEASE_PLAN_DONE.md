@@ -1738,6 +1738,19 @@ rationale/chronology lives in [`RELEASE_JOURNAL.md`](./RELEASE_JOURNAL.md).
       crossover-fixtures pin still pending its own task), commons pin README re-pin flow rewritten to
       the scripted path (commons `08eabe0`). Verified: commons eval suite 40/40, `repin-check` green
       across all three families, pyright 0.
+- [x] **BUILD-26** [BUILD][UI] `[deferred]` — **DONE 2026-07-12 (PROD-16 delegation — the convention's
+      repo-internal instance).** `config-ui/openapi.json` (found stale during REL-4: four config-section
+      schemas never re-dumped; that instance was fixed then — this task shipped the missing MECHANISM).
+      Chose the keep-committed + drift-guard arm (the contract-pin mechanic, per the PROD-16 note):
+      **`irene/tests/test_openapi_drift.py`** rebuilds the schema in-process exactly as
+      `scripts/dump_openapi.py` does (same `build_app`) and fails on ANY drift with the regeneration
+      command in the message — runs in the standard suite, so the CI backend job gates it; skips cleanly
+      without the webapi extra. Convention surface: **`contracts/ui-openapi/`** STAMP + pointer README
+      (artifact stays `config-ui/openapi.json`; STAMP versions the convention surface, not each
+      regeneration — content moves with code under the guard), registry row, tag **`ui-openapi-v1`**.
+      Reconciled at start: current dump == committed (NO drift today). `config-ui-stays-functional`:
+      `gen:api-types` re-run (types already current), `npm run check` + `npm run build` green.
+      Contract-guard 0 warnings with the third owned surface registered.
 - [x] **BUILD-30** `[release]` [PROCESS][CI] — **DONE 2026-07-11.** Scope-guard cutover — the commons ledger
       guard consumed at the pinned tag **`scope-v2`** (PROD-13 / HK-1 delegation, board entry
       `../locveil-commons/board/BOARD.md`; normative convention `../locveil-commons/process/ledger-discipline.md`).

@@ -13,6 +13,7 @@ re-pin from the owner when it moves.
 |---|---|---|
 | [`ws-protocol`](ws-protocol/README.md) | artifact stays `docs/guides/websocket-api.md` (`ws-protocol-doc-canonical`); `ws-protocol/` holds the STAMP + pointer README; served as `protocol_version` in every `registered` ack | `ws-protocol/STAMP.json` + tag `ws-protocol-v1` (triple-checked by `irene/tests/test_ws_protocol_version.py`) |
 | [`wake-pack`](wake-pack/README.md) | sidecar stamp over the unmodified ASSET-5 HF pack (third-party manifest, never forked); in-code catalog is the release list | `wake-pack/STAMP.json` + tag `wake-pack-v1` (URL/catalog coherence in the same test) |
+| [`ui-openapi`](ui-openapi/README.md) | repo-internal GENERATED contract — artifact stays `config-ui/openapi.json` (generator `scripts/dump_openapi.py`, consumer `npm run gen:api-types`) | `ui-openapi/STAMP.json` + tag `ui-openapi-v1`; drift guard `irene/tests/test_openapi_drift.py` |
 
 ## Consumed (pins)
 

@@ -20,6 +20,16 @@ newest entries near the top of each dated section.
 
 ## Action journal
 
+- **2026-07-12 — BUILD-26 executed: the UI's view of the API can no longer silently rot.** The last of
+  the PROD-16 voice batch. `config-ui/openapi.json` — the committed generated schema config-ui's types
+  are built from — now has a drift guard in the standard suite: `test_openapi_drift.py` assembles the
+  schema exactly as `scripts/dump_openapi.py` does and fails on any delta, with the regeneration command
+  in the failure message (the REL-4 four-missing-schemas incident becomes a red test instead of a
+  discovery). As the convention's repo-internal instance it also got its surface: `contracts/ui-openapi/`
+  STAMP + pointer README, registry row, tag `ui-openapi-v1` — the stamp versions the convention surface
+  while the guard keeps the bytes exact. Reconciled at start: today's dump matches the committed file
+  (REL-4 fixed the instance; this task shipped the mechanism). config-ui gen:api-types/check/build green.
+
 - **2026-07-12 — BUILD-24 executed: re-pins are a script, staleness is a gate — and the first real
   re-pin already ran.** The bridge cut `catalog-v1.5` today (VWB-29), which opened this task's gate the
   same day it was picked up. `scripts/repin.py` knows every consumed family (catalog, report-protocol,

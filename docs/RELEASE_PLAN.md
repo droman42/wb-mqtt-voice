@@ -457,18 +457,6 @@ size-matched to the Russian stack; language is a per-config/deployment choice (a
       `docs/design/productization.md` D-12): the shared convention = a normative ops spec in
       `locveil-commons/process/` + per-repo conformance; the drift inventory is recorded there (§2). This
       task NARROWS to the voice-side conformance pass once that spec exists (gated on BUILD-21).**
-- [ ] **BUILD-26** [BUILD][UI] `[deferred]` — **`config-ui/openapi.json` is a committed generated artifact that
-      nothing regenerates.** Found during REL-4 (2026-07-09): re-running `scripts/dump_openapi.py` produced 241
-      inserted lines — four schemas (`BridgeOutputConfig`, `ReportsConfig`, `SatelliteConfig`,
-      `SatelliteTLSConfig`) had been added to the API by earlier work and never re-dumped, besides
-      `info.version` and `HealthResponse.inactive_providers`. `config-ui`'s TypeScript types are generated
-      *from* that file (`npm run gen:api-types`), so the editor has been type-checking against a stale view of
-      the backend and silently lacks types for those config sections. Fix: a CI gate that regenerates and fails
-      on drift (the scope-guard / contract-pin mechanic applied to a generated file), or drop the artifact
-      from git and generate it during the build. Pairs with `config-ui-stays-functional`, which assumes the
-      schema the UI is built against is the schema the backend serves. **PROD-16 note (2026-07-12): execute
-      per the contracts convention — a repo-internal GENERATED contract reuses the same mechanics
-      (`../locveil-commons/process/contracts.md`): drift guard + STAMP sidecar, in-repo.**
 - [ ] **BUILD-28** [OPS][PROCESS] `[deferred]` — **One compose file for the controller, with a real startup
       order.** Three containers run on the WB7 today — `locveil-bridge`, `locveil-bridge-ui`, `locveil-voice`
       (post-BUILD-29 names) — from **two** compose projects (`locveil-bridge-config`, `locveil-voice-config`),

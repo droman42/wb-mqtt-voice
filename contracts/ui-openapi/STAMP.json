@@ -1,0 +1,12 @@
+{
+  "contract": "ui-openapi",
+  "version": "1",
+  "tag": "ui-openapi-v1",
+  "date": "2026-07-12",
+  "owner_repo": "locveil-voice",
+  "artifact": "config-ui/openapi.json",
+  "generator": "scripts/dump_openapi.py",
+  "drift_guard": "irene/tests/test_openapi_drift.py",
+  "consumer": "config-ui `npm run gen:api-types` (openapi-typescript → src/types/openapi.gen.ts)",
+  "note": "Repo-internal GENERATED contract (BUILD-26): the artifact's content moves with the code and the drift guard keeps the committed copy exact; this stamp versions the CONVENTION surface, not each regeneration — bump (and re-tag) only on a deliberate breaking reshape of the REST surface. The artifact's own info.version mirrors the package version."
+}
