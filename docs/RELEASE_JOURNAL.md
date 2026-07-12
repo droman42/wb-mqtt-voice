@@ -20,6 +20,19 @@ newest entries near the top of each dated section.
 
 ## Action journal
 
+- **2026-07-12 — BUILD-34 executed (same-day): the catalog contract now fails fast, locally.** The
+  owner's completeness ruling closed the corner flagged in HK-5: voice consumes the catalog REST API at
+  runtime yet had no push-time schema check — conformance lived only in the release-cadence cross-suite.
+  Voice now holds the bridge's FULL `catalog-v1.5` artifact set at `contracts/pins/catalog/` (a pin is
+  complete by definition; usage never shapes it), and `repin.py` grew multi-destination families: one
+  `make repin CONTRACT=catalog` writes the local pin and the commons crossover pin at the same tag, so
+  the two copies cannot diverge; `repin-check` walks every copy. The new named suite test binds both
+  directions of the boundary to the pinned schemas — inbound (`parse_catalog` accepts the pinned golden,
+  golden IS a `CatalogResponse`) and outbound (`DeviceCommand`/`RoomGroupCommand` wire bodies validate
+  as `CanonicalActionRequest`/`RoomCanonicalRequest`, examples drawn from the golden itself). A bridge
+  reshape now reddens voice's own CI on the next push instead of waiting for the cross-suite. Suite
+  1401/7 skipped, guard clean, all four pin copies current.
+
 - **2026-07-12 — BUILD-26 executed: the UI's view of the API can no longer silently rot.** The last of
   the PROD-16 voice batch. `config-ui/openapi.json` — the committed generated schema config-ui's types
   are built from — now has a drift guard in the standard suite: `test_openapi_drift.py` assembles the

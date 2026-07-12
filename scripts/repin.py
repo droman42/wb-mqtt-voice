@@ -29,8 +29,10 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
 # Family registry: who owns it, which committed files form the artifact, where the pin
-# lives, and which local test is its layer-2 conformance. `mirror` names owner-STAMP extras
-# copied into PIN.json (consumers assert them, e.g. commons test_contracts_pin.py).
+# copies live (`dests` — a family with several consumers updates ALL of them in one run at
+# the same tag, so the copies can never diverge), and which local test is each copy's
+# layer-2 conformance. `mirror` names owner-STAMP extras copied into PIN.json (consumers
+# assert them, e.g. commons test_contracts_pin.py).
 FAMILIES = {
     "catalog": {
         "owner_repo": "locveil-bridge",
@@ -38,8 +40,12 @@ FAMILIES = {
         "files": ["contracts/catalog/catalog.golden.json",
                   "contracts/catalog/openapi.json",
                   "contracts/catalog/STAMP.json"],
-        "dest": REPO_ROOT / "../locveil-commons/contracts/pins/catalog",
-        "conformance": "locveil-commons eval/tests/test_contracts_pin.py",
+        "dests": [
+            {"path": REPO_ROOT / "contracts/pins/catalog",
+             "conformance": "irene/tests/test_catalog_contract_conformance.py"},
+            {"path": REPO_ROOT / "../locveil-commons/contracts/pins/catalog",
+             "conformance": "locveil-commons eval/tests/test_contracts_pin.py"},
+        ],
         "mirror": ["bridge_commit", "catalog_version"],
     },
     "report-protocol": {
@@ -47,16 +53,20 @@ FAMILIES = {
         "owner_dir": REPO_ROOT / "../locveil-commons",
         "files": ["contracts/report-protocol/report-protocol.json",
                   "contracts/report-protocol/STAMP.json"],
-        "dest": REPO_ROOT / "contracts/pins/report-protocol",
-        "conformance": "irene/tests/test_report_protocol_conformance.py",
+        "dests": [
+            {"path": REPO_ROOT / "contracts/pins/report-protocol",
+             "conformance": "irene/tests/test_report_protocol_conformance.py"},
+        ],
         "mirror": [],
     },
     "esp32-site": {
         "owner_repo": "locveil-satellite",
         "owner_dir": REPO_ROOT / "../locveil-satellite",
         "files": ["provisioning/ansible/templates/esp32-site.conf.j2"],
-        "dest": REPO_ROOT / "contracts/pins/esp32-site",
-        "conformance": "irene/tests/test_arch36_tls_e2e.py",
+        "dests": [
+            {"path": REPO_ROOT / "contracts/pins/esp32-site",
+             "conformance": "irene/tests/test_arch36_tls_e2e.py"},
+        ],
         "mirror": [],
     },
 }
@@ -93,62 +103,68 @@ def repin(family: str, tag: str | None) -> int:
               "(version/tag stay null until the owner stamps)")
     owner_commit = _git(owner, "rev-parse", f"{ref}^{{commit}}")
 
-    dest = spec["dest"].resolve()
-    dest.mkdir(parents=True, exist_ok=True)
+    blobs: dict[str, bytes] = {}
     files: dict[str, str] = {}
     mirrored: dict[str, object] = {}
     for path in spec["files"]:
         blob = _git_bytes(owner, "show", f"{ref}:{path}")
         name = path.rsplit("/", 1)[-1]
-        (dest / name).write_bytes(blob)
+        blobs[name] = blob
         files[name] = hashlib.sha256(blob).hexdigest()
         if name == "STAMP.json" and spec["mirror"]:
             stamp = json.loads(blob)
             mirrored = {k: stamp[k] for k in spec["mirror"] if k in stamp}
         print(f"  {name}  {files[name][:12]}…  ({spec['owner_repo']} @ {ref})")
 
-    pin = {"contract": family, "version": version, "tag": tag,
-           "owner_repo": spec["owner_repo"], "owner_commit": owner_commit,
-           "pinned_by": "locveil-voice scripts/repin.py (BUILD-24)",
-           "pin_date": date.today().isoformat(),
-           **mirrored,
-           "files": files, "conformance": spec["conformance"]}
-    (dest / "PIN.json").write_text(json.dumps(pin, indent=2, ensure_ascii=False) + "\n",
-                                   encoding="utf-8")
-    print(f"pinned {family} @ {ref} → {dest}")
-    print(f"now run the conformance test: {spec['conformance']}")
+    for dest_spec in spec["dests"]:
+        dest = dest_spec["path"].resolve()
+        dest.mkdir(parents=True, exist_ok=True)
+        for name, blob in blobs.items():
+            (dest / name).write_bytes(blob)
+        pin = {"contract": family, "version": version, "tag": tag,
+               "owner_repo": spec["owner_repo"], "owner_commit": owner_commit,
+               "pinned_by": "locveil-voice scripts/repin.py (BUILD-24)",
+               "pin_date": date.today().isoformat(),
+               **mirrored,
+               "files": files, "conformance": dest_spec["conformance"]}
+        (dest / "PIN.json").write_text(json.dumps(pin, indent=2, ensure_ascii=False) + "\n",
+                                       encoding="utf-8")
+        print(f"pinned {family} @ {ref} → {dest}")
+        print(f"  conformance: {dest_spec['conformance']}")
     return 0
 
 
 def check() -> int:
     stale = 0
     for family, spec in FAMILIES.items():
-        dest = spec["dest"].resolve()
         owner = spec["owner_dir"].resolve()
-        pin_path = dest / "PIN.json"
-        if not pin_path.is_file():
-            print(f"  STALE {family}: no PIN.json at {dest} — never pinned")
-            stale += 1
-            continue
-        pin = json.loads(pin_path.read_text(encoding="utf-8"))
         newest = _newest_tag(owner, family)
-        if newest:
-            if pin.get("tag") != newest:
-                print(f"  STALE {family}: pinned {pin.get('tag') or 'untagged'}, "
-                      f"owner's newest is {newest} — run scripts/repin.py {family}")
+        for dest_spec in spec["dests"]:
+            dest = dest_spec["path"].resolve()
+            where = f"{family} ({dest})"
+            pin_path = dest / "PIN.json"
+            if not pin_path.is_file():
+                print(f"  STALE {where}: no PIN.json — never pinned")
                 stale += 1
+                continue
+            pin = json.loads(pin_path.read_text(encoding="utf-8"))
+            if newest:
+                if pin.get("tag") != newest:
+                    print(f"  STALE {where}: pinned {pin.get('tag') or 'untagged'}, "
+                          f"owner's newest is {newest} — run scripts/repin.py {family}")
+                    stale += 1
+                else:
+                    print(f"  ok    {where}: {newest}")
             else:
-                print(f"  ok    {family}: {newest}")
-        else:
-            drifted = [p.rsplit('/', 1)[-1] for p in spec["files"]
-                       if hashlib.sha256(_git_bytes(owner, "show", f"main:{p}")).hexdigest()
-                       != pin.get("files", {}).get(p.rsplit('/', 1)[-1])]
-            if drifted:
-                print(f"  STALE {family}: owner's committed {', '.join(drifted)} no longer "
-                      f"matches the pin — run scripts/repin.py {family}")
-                stale += 1
-            else:
-                print(f"  ok    {family}: untagged, bytes match owner main")
+                drifted = [p.rsplit('/', 1)[-1] for p in spec["files"]
+                           if hashlib.sha256(_git_bytes(owner, "show", f"main:{p}")).hexdigest()
+                           != pin.get("files", {}).get(p.rsplit('/', 1)[-1])]
+                if drifted:
+                    print(f"  STALE {where}: owner's committed {', '.join(drifted)} no longer "
+                          f"matches the pin — run scripts/repin.py {family}")
+                    stale += 1
+                else:
+                    print(f"  ok    {where}: untagged, bytes match owner main")
     if stale:
         print(f"\nSTALE: {stale} pin(s) trail their owner. Re-pin deliberately, "
               "then re-run the conformance tests.")

@@ -19,13 +19,14 @@ re-pin from the owner when it moves.
 
 | Pin | Owner | Notes |
 |---|---|---|
+| [`catalog`](pins/catalog/README.md) | locveil-bridge (tag `catalog-v1.5`) | LOCAL complete copy for the push-time schema check (`irene/tests/test_catalog_contract_conformance.py`); one `make repin` updates it and the commons crossover copy at the same tag |
 | [`report-protocol`](pins/report-protocol/README.md) | locveil-commons (tag `report-protocol-v1`) | problem-report machine core; conformance: `irene/tests/test_report_protocol_conformance.py` |
 | [`esp32-site`](pins/esp32-site/README.md) | locveil-satellite (pre-tag artifact-copy pin @ `37dcac5`) | Plane-B nginx site template; conformance: `irene/tests/test_arch36_tls_e2e.py` |
 
-_The Irene↔bridge catalog/command contract is pinned into
-`../locveil-commons/contracts/pins/{catalog,crossover-fixtures}/` (TEST-17 — the shared
-eval framework consumes it there, voice stamps its PIN.json); this directory holds only
-pins that this repo's own code/tests validate against._
+_The shared crossover instruments stay in `../locveil-commons/contracts/pins/`:
+`crossover-fixtures/` (co-owned, both product repos' cross-suites assert against it) and
+the commons `catalog/` copy the eval framework's mock bridge serves (voice stamps both
+catalog PIN.jsons via `scripts/repin.py` — the two copies move together or not at all)._
 
 Guards: layer 1 is the vendored `scripts/contract_guard.py` (commons
 `packages/contract-guard/`, pinned at tag **`contract-guard-v1`** — never edit the

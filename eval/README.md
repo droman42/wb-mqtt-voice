@@ -85,10 +85,12 @@ make repin-check                                 # release-time staleness gate: 
 ```
 
 The device suite asserts against **pinned** contract copies (the bridge catalog + the
-crossover fixtures, held in `../../locveil-commons/contracts/pins/`). `make repin` /
-`make repin-check` (backed by `../scripts/repin.py`) are how those pins move: a re-pin is
-a deliberate act followed by the conformance tests, and staleness is checked at release
-time — an owner tagging a new contract version never breaks this repo's CI on its own.
+crossover fixtures, held in `../../locveil-commons/contracts/pins/`; the catalog also has
+a local push-time copy at `../contracts/pins/catalog/` — one `make repin` updates both at
+the same tag). `make repin` / `make repin-check` (backed by `../scripts/repin.py`) are how
+those pins move: a re-pin is a deliberate act followed by the conformance tests, and
+staleness is checked at release time — an owner tagging a new contract version never
+breaks this repo's CI on its own.
 
 For model comparison, `make compare` writes `results-ws-<target>-<config>.json` per config so you
 can diff WER side by side. Keep the `reference:` fixed; expect WER to differ per model — that's the

@@ -32,9 +32,12 @@ but these rules apply to any task). **Single source of truth** (relocated here f
 - **`cross-repo-source-of-truth`** — for any artifact **shared with a sibling repo**, know which side *owns* it and
   don't write across the boundary the wrong way.
   - **The Irene↔bridge catalog / canonical-command contract is owned by `../locveil-bridge`** (its generator / source
-    of truth). This repo is a **consumer**: it **pins its own copy** into `locveil-commons/contracts/` — a one-way
-    *inward*, version-stamped sync from the bridge's committed artifacts (TEST-17) — and never hand-edits that copy,
-    treats it as source, or writes into the bridge repo (re-pin when the bridge's artifact moves).
+    of truth). This repo is a **consumer** holding TWO stamped copies that move together via `scripts/repin.py`
+    (one command, same tag — never let them diverge): the **local push-time pin** `contracts/pins/catalog/`
+    (BUILD-34; hermetic schema conformance in `test_catalog_contract_conformance.py`) and the **shared crossover
+    pin** in `../locveil-commons/contracts/pins/catalog/` (TEST-17; the eval framework's mock bridge + the
+    release-cadence cross-suite). Both are one-way *inward* syncs from the bridge's tagged artifacts — never
+    hand-edit a copy, treat it as source, or write into the bridge repo.
   - **The problem-report wire protocol is owned by `../locveil-commons`** (HK-3/PROD-6): the machine core
     `contracts/report-protocol/report-protocol.json` (moved from `process/report-protocol/` at the PROD-16
     restructure), tagged `report-protocol-vN`; normative prose `process/problem-reports.md`. This repo **pins**

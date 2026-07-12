@@ -1814,6 +1814,26 @@ rationale/chronology lives in [`RELEASE_JOURNAL.md`](./RELEASE_JOURNAL.md).
       job mirroring `ledger-guard`. CLAUDE.md `cross-repo-source-of-truth` teaches the vendored-file rule.
       Coherence layer only — scope-guard stays ledger-only. Verified: hook runs both guards green
       (contract-guard 0 warnings on the BUILD-32 tree).
+- [x] **BUILD-34** `[release]` [PROCESS][TEST] — **DONE 2026-07-12 (filed + completed same day; PROD-16
+      follow-up delegation — the completeness ruling's first instance, owner decision).** The LOCAL
+      complete catalog pin, closing voice's push-time schema-conformance gap (voice consumes the catalog
+      REST API at runtime — `parse_catalog`/`CatalogResponse` inbound, `CanonicalActionRequest`/
+      `RoomCanonicalRequest` outbound — but its conformance was exercised only by the release-cadence
+      cross-suite in commons). Shipped: **(1)** `contracts/pins/catalog/` holding the owner's FULL tagged
+      set at `catalog-v1.5` (golden + openapi + STAMP byte-identical; a pin is always complete — usage
+      never shapes it, contracts.md §2) + strict `PIN.json`; **(2)** `scripts/repin.py` generalized to
+      multi-destination families — `make repin CONTRACT=catalog` writes BOTH the local pin and the
+      commons crossover pin in ONE run at the same tag (per-dest conformance pointers; `repin-check` now
+      walks every copy of every family — 4 pin copies, all green); **(3)** the NEW named push-time test
+      `irene/tests/test_catalog_contract_conformance.py` (hermetic, normal CI suite): pin↔STAMP↔golden
+      coherence, golden validates as `CatalogResponse`, `parse_catalog` accepts the pinned bytes,
+      `DeviceCommand.request_body()` validates as `CanonicalActionRequest` (example built from the
+      golden's own first actionable capability), `RoomGroupCommand.request_body()` as
+      `RoomCanonicalRequest` — the commons crossover suite stays the deep gate; **(4)** registry README
+      catalog row + cross-reference note reworked, per-pin README, CLAUDE.md
+      `cross-repo-source-of-truth` bullet now teaches the two-copies-move-together rule, eval/README
+      updated. contract-guard picked the pin up with zero changes (0 warnings). Verified: new test 5/5,
+      full suite 1401 passed / 7 skipped, pyright 0, repin idempotent (commons copy byte-stable).
 ### Models & Assets (ASSET)
 ### Documentation (DOC)
 - [x] **DOC-5b** (P2) — DONE 2026-06-08: regenerated `guides/DONATION_FILE_SPECIFICATION.md` for the v1.1
