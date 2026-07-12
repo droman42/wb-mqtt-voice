@@ -43,6 +43,13 @@ class ClientRegistration:
     audio_out: Dict[str, Any] = field(default_factory=dict)
     firmware_version: Optional[str] = None
     model_version: Optional[str] = None
+    # ARCH-47: version-reporting fields — what the device was built against, reported at
+    # register so the registry can flag staleness (the stale-pin tripwire; the config-ui
+    # surfacing is ARCH-48). protocol_version pairs with the served WS_PROTOCOL_VERSION;
+    # wake_pack_version is the flashed wake-pack tag (`wake-pack-vN`) — ESP32-honest,
+    # optional for clients that do their own wake-word management.
+    protocol_version: Optional[str] = None
+    wake_pack_version: Optional[str] = None
     language: str = "ru"
     location: Optional[str] = None
     client_type: str = "unknown"  # "esp32", "web", "mobile", "desktop"

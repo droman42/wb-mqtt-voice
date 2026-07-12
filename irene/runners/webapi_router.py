@@ -20,6 +20,7 @@ from typing import Dict, Any, List, Optional
 # rebound them to `object`, which makes them unusable in type annotations).
 from ..core.engine import AsyncVACore
 from ..core.intent_asset_loader import IntentAssetLoader
+from ..core.ws_protocol import WS_PROTOCOL_VERSION
 from ..inputs.web import WebInput
 from fastapi import APIRouter  # type: ignore
 
@@ -844,7 +845,8 @@ def create_webapi_router(
                      "location": d.location} for d in registration.available_devices]},
             }
             await websocket.send_json({"type": "registered", "client_id": registration.client_id,
-                                       "session_id": session_id, "trace": trace_granted})
+                                       "session_id": session_id, "trace": trace_granted,
+                                       "protocol_version": WS_PROTOCOL_VERSION})
 
             # ARCH-22: the SPOKEN reply goes back to the device's reply channel (/ws/audio/reply), never
             # local playback — so processing runs with wants_audio=False and we route the SPEECH modality
@@ -1096,7 +1098,8 @@ def create_webapi_router(
         channel = CallbackReplyChannel(contract, websocket.send_json, websocket.send_bytes)
         output = RemoteAudioOutput(client_id, channel, tts, negotiator)
         await output_manager.add_output(client_id, output)
-        await websocket.send_json({"type": "registered", "client_id": client_id})
+        await websocket.send_json({"type": "registered", "client_id": client_id,
+                                   "protocol_version": WS_PROTOCOL_VERSION})
 
         # ARCH-28 (D-6): the reply channel just came up — deliver any completion notices that
         # fired while this client was offline (e.g. a timer that rang during a satellite reboot).

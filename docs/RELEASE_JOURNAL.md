@@ -20,6 +20,20 @@ newest entries near the top of each dated section.
 
 ## Action journal
 
+- **2026-07-12 — ARCH-47 executed: the wire protocol and the wake pack now know their own versions.**
+  The convention's first voice-owned surfaces. The WS protocol's version lives as a triple — the
+  "Protocol version: 1" header in `websocket-api.md`, the served `WS_PROTOCOL_VERSION` constant (now in
+  every `registered` ack on both satellite channels), and `contracts/ws-protocol/STAMP.json` — with a
+  conformance test that fails any bump missing a leg; tagged `ws-protocol-v1`. The wake pack got its
+  sidecar stamp (`wake-pack-v1`): sha256s of the published HF pack (irina.json + irina.tflite, revision
+  recorded) without forking the third-party manifest, and the same test pins the stamp to the in-code
+  released catalog. `register` now carries the device's build-truth (`protocol_version`,
+  `firmware_version`, `wake_pack_version`) — the Python runner reports the first two; the flashed-pack
+  field is honestly left to ESP32 firmware. The doc gained the register-fields prose and both ack shapes
+  in the same change. The staleness *comparison* (registry REST + config-ui surfacing) filed as ARCH-48
+  rather than riding — the fields had to exist first. The satellite can now upgrade its commit-pin to a
+  stamped pin. Suite 1395/7 skipped, WS suites 28/28, pyright 0, contracts 11/11, contract-guard clean.
+
 - **2026-07-12 — BUILD-33 executed: contract-guard v1 vendored, both enforcement rails live.** The
   commons coherence checker rides the same consumption model the scope guard proved: a single stdlib
   file vendored byte-exact at its pinned tag (`contract-guard-v1`, verified against the tag before

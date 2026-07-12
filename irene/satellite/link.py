@@ -17,6 +17,9 @@ from typing import Any, Awaitable, Callable, Dict, List, Optional
 
 import aiohttp
 
+from ..__version__ import __version__ as IRENE_VERSION
+from ..core.ws_protocol import WS_PROTOCOL_VERSION
+
 logger = logging.getLogger(__name__)
 
 BACKOFF_INITIAL_S = 1.0
@@ -85,6 +88,11 @@ class SatelliteLink:
                 "type": "register", "client_id": self.client_id, "room_name": self.room_name,
                 "sample_rate": self.sample_rate, "wants_audio": self.wants_audio,
                 "mode": self.mode, "wants_trace": self.wants_trace,
+                # ARCH-47 version reporting: what this client was built against. The Python
+                # runner IS the irene tree, so firmware == package version; wake_pack_version
+                # is the flashed pack's tag — ESP32 territory, not reported from here.
+                "protocol_version": WS_PROTOCOL_VERSION,
+                "firmware_version": IRENE_VERSION,
             })
             reply = json.loads(await asyncio.wait_for(
                 ws.receive_str(), timeout=self.response_timeout_s))

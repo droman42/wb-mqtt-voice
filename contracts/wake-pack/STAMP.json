@@ -1,0 +1,24 @@
+{
+  "contract": "wake-pack",
+  "version": "1",
+  "tag": "wake-pack-v1",
+  "date": "2026-07-12",
+  "owner_repo": "locveil-voice",
+  "pack": {
+    "word": "irina",
+    "display": "Ирина (ru)",
+    "hf_repo": "droman42/microwakeword-irina-ru",
+    "hf_revision": "161d89edde79a85d37264b0b4a030887297b377b",
+    "files": {
+      "irina.json": {
+        "url": "https://huggingface.co/droman42/microwakeword-irina-ru/resolve/main/irina.json",
+        "sha256": "fc8beb9941108fc4df8183af3d61edf2ca43cb21450df361a629d61a6dd9eac5"
+      },
+      "irina.tflite": {
+        "url": "https://huggingface.co/droman42/microwakeword-irina-ru/resolve/main/irina.tflite",
+        "sha256": "c114b73c9069584d926d0f2cb9bc74ebbdab3120198149882e122e3a8dc6d963"
+      }
+    }
+  },
+  "note": "Sidecar stamp over the UNMODIFIED third-party v2 pack format (microWakeWord manifest + sibling .tflite) — the manifest is never forked; this stamp adds the version/hash surface the flash-time pin verifies. Words are added by extending pack (a minor bump); replacing a published model file is a breaking change (major bump) because flashed hashes stop verifying."
+}

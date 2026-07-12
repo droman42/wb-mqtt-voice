@@ -1,5 +1,9 @@
 # WebSocket API
 
+**Protocol version: 1** (`ws-protocol-v1`) — the server confirms it as `protocol_version` in
+every `registered` ack, so a client can check what it was built against instead of trusting
+prose. The version only moves on a breaking wire change.
+
 Irene exposes four WebSocket channels. Two of them are the **voice wire protocol** — how a
 satellite (an ESP32 in a room, or any client with a microphone) streams speech in and gets the
 spoken reply back. The other two are **operator channels** — a push channel for deferred text
@@ -42,9 +46,18 @@ the server's execution trace after each response — see **Execution traces** be
 extras: `name` (human-friendly device name) and `available_devices` (what the device can
 actuate — reserved for the smart-home integration).
 
+A device should also report what it was **built against** — three optional version fields:
+`protocol_version` (the protocol version its client code implements), `firmware_version`
+(its own software version; the bundled satellite runner sends the Irene package version),
+and `wake_pack_version` (the wake-word pack it has flashed, e.g. `"wake-pack-v1"` — for
+devices that do their own wake-word detection). None of them gates registration; they let
+the server's client registry spot a stale device instead of debugging it blind.
+
 The server confirms: `{"type": "registered", "client_id": "...", "session_id": "...",
-"trace": false}` — `trace` is the explicit answer to `wants_trace` (it stays `false` unless
-the server's operator has enabled remote trace requests).
+"trace": false, "protocol_version": "1"}` — `trace` is the explicit answer to `wants_trace`
+(it stays `false` unless the server's operator has enabled remote trace requests), and
+`protocol_version` is the server's wire-protocol version (the number at the top of this
+document): if it isn't what your client was built against, expect breakage and say so loudly.
 
 When the connection comes through the fleet's mutual-TLS gate, the certificate is the
 identity: a `client_id` that doesn't match the certificate's common name is refused at
@@ -112,7 +125,8 @@ Register with the device's *output* audio contract:
 The same certificate rule as `/ws/audio` applies behind the mutual-TLS gate: a device can only
 claim its own reply channel — otherwise it would receive another room's speech.
 
-After `{"type": "registered", ...}`, each spoken reply arrives as a bracketed binary burst:
+After `{"type": "registered", "client_id": "...", "protocol_version": "1"}`, each spoken
+reply arrives as a bracketed binary burst:
 
 ```
 {"type": "speak_begin", "rate": 22050, "channels": 1, "width": 16, "seq": 1}

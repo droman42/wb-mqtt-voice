@@ -1,0 +1,10 @@
+{
+  "contract": "ws-protocol",
+  "version": "1",
+  "tag": "ws-protocol-v1",
+  "date": "2026-07-12",
+  "owner_repo": "locveil-voice",
+  "artifact": "docs/guides/websocket-api.md",
+  "code_constant": "irene/core/ws_protocol.py::WS_PROTOCOL_VERSION",
+  "note": "First tag stamps the wire protocol as already shipped and proven (ARCH-36/38, the eval WS suite); v1 is the four-channel dialect the doc describes, including the ARCH-47 version-reporting register fields and the protocol_version field in every registered ack."
+}

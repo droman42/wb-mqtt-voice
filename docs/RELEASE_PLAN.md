@@ -221,30 +221,18 @@ See `docs/review/phase1_architecture_map.md` §5.
       the healthcheck's start-period (300s ARM / 180s x86) was sized for a download that turns out **not** to be
       on the critical path — revisit it once readiness is real. Deliverable: design doc + implementation
       follow-up(s).
-- [ ] **ARCH-47** [WS][SATELLITE] `[deferred]` — **WS-protocol version stamp + wake-pack pin surface +
-      `register` version-reporting fields** (filed 2026-07-12 at PROD-15 intake — the NEW voice-side task
-      from the HK-4 delegation). locveil-satellite pins two voice-owned artifacts by version: the WS wire
-      protocol (`docs/guides/websocket-api.md`, `ws-protocol-doc-canonical`) and the wake-word pack (the
-      UNMODIFIED ASSET-5 artifact, hash-verifiable flash-time pin). Today neither has a version surface:
-      the protocol doc carries no version stamp and `register`/`register-reply` report nothing the
-      registry could check staleness against. Scope: (a) version-stamp the WS protocol — the doc plus a
-      machine-readable constant the endpoints serve; (b) the wake-pack version/pin surface (pack version
-      in the v2 manifest, reported at register); (c) `register` version-reporting fields (protocol
-      version, firmware version, wake-pack version — pairs with HK-4's one retained firmware-version MQTT
-      topic as the stale-pin tripwire, bridge side). The registry/config-ui staleness flag rides this
-      task or files separately — decide at task start (`config-ui-stays-functional` applies if it rides).
-      Wire-protocol change ⇒ `websocket-api.md` updated in the same change (`ws-protocol-doc-canonical`).
-      Refs: PROD-15 (`../locveil-commons/board/BOARD.md`), `esp32_satellite.md` (in the satellite repo
-      after BUILD-22 moves it), `docs/design/wakeword_models.md` (ASSET-5 pack format).
-      **UNGATED + RESCOPED 2026-07-12 (council HK-5 decided → board PROD-16; normative:
-      `../locveil-commons/process/contracts.md`)** — executes as the convention's first voice instance:
-      `contracts/ws-protocol/` owned-contract dir with the STAMP core (`{contract, version, tag, date,
-      owner_repo}`); a doc-header "Protocol version" line in `websocket-api.md`; the served code constant;
-      a version-triple conformance test (doc header = code constant = STAMP); tag **`ws-protocol-v1`**
-      (family-named, no prose history — STAMP + tag are the only version authority from first tag on).
-      Wake-pack: a SIDECAR stamp (`wake-pack-v1`, content hashes) — the third-party manifest is never
-      forked. Rides BUILD-32's restructured `contracts/` layout; satellite upgrades its commit-pin to a
-      stamped pin when `ws-protocol-v1` lands (its FW phase stays gated behind satellite DES-3).
+- [ ] **ARCH-48** [WS][UI] `[deferred]` — **Registry staleness flag: surface a device's reported versions
+      against current** (filed 2026-07-12 at ARCH-47 completion — the "rides or files separately" decision
+      point went to *separately*: the reporting fields needed to exist before flagging staleness is more
+      than guesswork). ARCH-47 gave `register` the version-reporting fields (`protocol_version`,
+      `firmware_version`, `wake_pack_version`) and the registry stores them; nothing yet COMPARES them —
+      a device reporting `protocol_version != WS_PROTOCOL_VERSION` or a `wake_pack_version` behind the
+      current `contracts/wake-pack/STAMP.json` tag should surface as a staleness flag on the client
+      registry's REST surface and in config-ui's status view (`config-ui-stays-functional` applies —
+      schema + `src/types/*` + the status components in the same change). Pairs with HK-4's retained
+      firmware-version MQTT topic (the bridge-side tripwire); satellite DES-3/FW decides what the ESP32
+      actually reports. Scope at task start: flag semantics (warn-only vs. gate), where the "current"
+      wake-pack tag is read from, and whether `/health` participates.
 ### Code Quality & Review (QUAL)
 
 #### Cross-cutting systemic remediation — principles (the Gate 2 lens)

@@ -11,8 +11,8 @@ re-pin from the owner when it moves.
 
 | Contract | Where | Version authority |
 |---|---|---|
-| `ws-protocol` | _arrives with ARCH-47_ — the artifact stays `docs/guides/websocket-api.md` (`ws-protocol-doc-canonical`); `ws-protocol/` will hold STAMP.json + a pointer README | tag `ws-protocol-v1` when stamped |
-| `wake-pack` | _arrives with ARCH-47_ — sidecar stamp over the unmodified ASSET-5 pack (third-party manifest, never forked) | tag `wake-pack-v1` when stamped |
+| [`ws-protocol`](ws-protocol/README.md) | artifact stays `docs/guides/websocket-api.md` (`ws-protocol-doc-canonical`); `ws-protocol/` holds the STAMP + pointer README; served as `protocol_version` in every `registered` ack | `ws-protocol/STAMP.json` + tag `ws-protocol-v1` (triple-checked by `irene/tests/test_ws_protocol_version.py`) |
+| [`wake-pack`](wake-pack/README.md) | sidecar stamp over the unmodified ASSET-5 HF pack (third-party manifest, never forked); in-code catalog is the release list | `wake-pack/STAMP.json` + tag `wake-pack-v1` (URL/catalog coherence in the same test) |
 
 ## Consumed (pins)
 

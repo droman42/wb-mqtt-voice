@@ -47,6 +47,24 @@ rationale/chronology lives in [`RELEASE_JOURNAL.md`](./RELEASE_JOURNAL.md).
       test paths, `irene-cli -c/-e`, bundle member names, labels/handover schema vs the core); one stale claim
       (`eval-commons` catalog comparison) fixed in reports-repo commit `1ca251e`. ARCH-46 written back into the
       PROD-14 board entry (commons `50bf906`).
+- [x] **ARCH-47** [WS][SATELLITE] `[deferred]` — **✓ DONE 2026-07-12 (PROD-16 delegation — the contracts
+      convention's first voice instance; filed at PROD-15 intake, ungated+rescoped at PROD-16 intake).**
+      The two voice-owned satellite-facing artifacts got their version surfaces. **ws-protocol** (tag
+      **`ws-protocol-v1`**): `contracts/ws-protocol/` STAMP + pointer README (artifact stays
+      `docs/guides/websocket-api.md` per `ws-protocol-doc-canonical`); doc-header "**Protocol version:
+      1**" line; served constant `irene/core/ws_protocol.py::WS_PROTOCOL_VERSION` added to BOTH
+      `registered` acks (`/ws/audio` + `/ws/audio/reply`); version-triple conformance test
+      `irene/tests/test_ws_protocol_version.py` (doc header = constant = STAMP). **wake-pack** (tag
+      **`wake-pack-v1`**): sidecar STAMP over the unmodified ASSET-5 HF pack (irina.json/irina.tflite
+      sha256s fetched from the published artifacts, HF revision recorded); same test asserts the stamp
+      mirrors the in-code released catalog (`_get_default_model_urls`) so the sidecar can't drift.
+      **register version-reporting**: `ClientRegistration` gained `protocol_version` +
+      `wake_pack_version` (firmware/model existed); the satellite runner's link reports
+      `protocol_version` + `firmware_version` (= package version; `wake_pack_version` is ESP32-honest —
+      firmware territory). Doc updated in the same change (register fields prose + both ack shapes).
+      The registry/config-ui staleness flag FILED SEPARATELY as ARCH-48 (decision point exercised).
+      Verified: new conformance 4/4, WS+satellite suites 28/28, full suite 1395 passed/7 skipped,
+      pyright 0 on touched files, import contracts 11/11, contract-guard 0 warnings.
 ### Code Quality & Review (QUAL)
 - [x] **QUAL-5** (P2) — **✓ DONE 2026-06-06.** Cruft cleanup. **Reconciled (Invariant #8): counts fell during QUAL-4's
       import churn** (F401 360→237, star-imports 62→5+57 F405, F841 22→15). **Cleared the verifiable cruft to ZERO:**
