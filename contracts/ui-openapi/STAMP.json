@@ -1,12 +1,12 @@
 {
   "contract": "ui-openapi",
-  "version": "1",
-  "tag": "ui-openapi-v1",
-  "date": "2026-07-12",
+  "version": "1.1",
+  "tag": "ui-openapi-v1.1",
+  "date": "2026-07-13",
   "owner_repo": "locveil-voice",
   "artifact": "config-ui/openapi.json",
   "generator": "scripts/dump_openapi.py",
-  "drift_guard": "irene/tests/test_openapi_drift.py",
+  "drift_guard": "backend/tests/test_openapi_drift.py",
   "consumer": "config-ui `npm run gen:api-types` (openapi-typescript → src/types/openapi.gen.ts)",
-  "note": "Repo-internal GENERATED contract (BUILD-26): the artifact's content moves with the code and the drift guard keeps the committed copy exact; this stamp versions the CONVENTION surface, not each regeneration — bump (and re-tag) only on a deliberate breaking reshape of the REST surface. The artifact's own info.version mirrors the package version."
+  "note": "Repo-internal GENERATED contract (BUILD-26): the artifact's content moves with the code and the drift guard keeps the committed copy exact; this stamp versions the CONVENTION surface, not each regeneration — bump (and re-tag) only on a deliberate breaking reshape of the REST surface. The artifact's own info.version mirrors the package version. v1.1 (BUILD-36/PROD-21, 2026-07-13): the irene→locveil_voice package rename moved every generated component-schema name (Pydantic FQN-based: `irene__…` → `locveil_voice__…`), a consumer-visible reshape of the generated TS surface — a deliberate minor bump per process/python-layout.md §4."
 }

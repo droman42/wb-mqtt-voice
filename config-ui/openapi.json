@@ -2518,7 +2518,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/irene__config__schemas__AudioDevicesResponse"
+                  "$ref": "#/components/schemas/locveil_voice__config__schemas__AudioDevicesResponse"
                 }
               }
             }
@@ -2540,7 +2540,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/irene__config__schemas__AudioDevicesResponse"
+                  "$ref": "#/components/schemas/locveil_voice__config__schemas__AudioDevicesResponse"
                 }
               }
             }
@@ -3715,7 +3715,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/irene__api__schemas__AudioDevicesResponse"
+                  "$ref": "#/components/schemas/locveil_voice__api__schemas__AudioDevicesResponse"
                 }
               }
             }
@@ -5994,7 +5994,7 @@
           "session_id"
         ],
         "title": "CommandResponse",
-        "description": "Response from command execution — the canonical execution-result shape (QUAL-55).\n\nBuilt by `irene.api.serializers.serialize_intent_result` plus the request context\n(`session_id`/`room_alias`). The same canonical result shape appears as\n`TraceCommandResponse.final_result` and as the WS `/ws/audio` `response` frame."
+        "description": "Response from command execution — the canonical execution-result shape (QUAL-55).\n\nBuilt by `locveil_voice.api.serializers.serialize_intent_result` plus the request context\n(`session_id`/`room_alias`). The same canonical result shape appears as\n`TraceCommandResponse.final_result` and as the WS `/ws/audio` `response` frame."
       },
       "CompletenessReportSchema": {
         "properties": {
@@ -13478,7 +13478,7 @@
         },
         "type": "object",
         "title": "VADConfig",
-        "description": "Voice Activity Detection — component config (ARCH-18).\n\nComponent-level fields are the *segmenter / pipeline* concerns; the per-engine knobs live under\n`[vad.providers.<name>]` (energy / silero / microvad), like every other provider family. The set of\nproviders is the `irene.providers.vad` entry-points (no hand-maintained enum)."
+        "description": "Voice Activity Detection — component config (ARCH-18).\n\nComponent-level fields are the *segmenter / pipeline* concerns; the per-engine knobs live under\n`[vad.providers.<name>]` (energy / silero / microvad), like every other provider family. The set of\nproviders is the `locveil_voice.providers.vad` entry-points (no hand-maintained enum)."
       },
       "ValidateRequest": {
         "properties": {
@@ -14058,7 +14058,7 @@
         "title": "WorkflowConfig",
         "description": "Workflow processing pipeline configuration"
       },
-      "irene__api__schemas__AudioDevicesResponse": {
+      "locveil_voice__api__schemas__AudioDevicesResponse": {
         "properties": {
           "success": {
             "type": "boolean",
@@ -14094,7 +14094,7 @@
         "title": "AudioDevicesResponse",
         "description": "Response for audio devices listing"
       },
-      "irene__config__schemas__AudioDevicesResponse": {
+      "locveil_voice__config__schemas__AudioDevicesResponse": {
         "properties": {
           "success": {
             "type": "boolean",

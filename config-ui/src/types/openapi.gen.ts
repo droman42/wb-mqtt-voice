@@ -3199,7 +3199,7 @@ export interface components {
          * CommandResponse
          * @description Response from command execution — the canonical execution-result shape (QUAL-55).
          *
-         *     Built by `irene.api.serializers.serialize_intent_result` plus the request context
+         *     Built by `locveil_voice.api.serializers.serialize_intent_result` plus the request context
          *     (`session_id`/`room_alias`). The same canonical result shape appears as
          *     `TraceCommandResponse.final_result` and as the WS `/ws/audio` `response` frame.
          */
@@ -8864,7 +8864,7 @@ export interface components {
          *
          *     Component-level fields are the *segmenter / pipeline* concerns; the per-engine knobs live under
          *     `[vad.providers.<name>]` (energy / silero / microvad), like every other provider family. The set of
-         *     providers is the `irene.providers.vad` entry-points (no hand-maintained enum).
+         *     providers is the `locveil_voice.providers.vad` entry-points (no hand-maintained enum).
          */
         VADConfig: {
             /**
@@ -9344,7 +9344,7 @@ export interface components {
          * AudioDevicesResponse
          * @description Response for audio devices listing
          */
-        irene__api__schemas__AudioDevicesResponse: {
+        locveil_voice__api__schemas__AudioDevicesResponse: {
             /**
              * Success
              * @description Whether the operation was successful
@@ -9372,7 +9372,7 @@ export interface components {
          * AudioDevicesResponse
          * @description Response schema for available audio devices endpoint
          */
-        irene__config__schemas__AudioDevicesResponse: {
+        locveil_voice__config__schemas__AudioDevicesResponse: {
             /**
              * Success
              * @description Operation success status
@@ -11126,7 +11126,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["irene__config__schemas__AudioDevicesResponse"];
+                    "application/json": components["schemas"]["locveil_voice__config__schemas__AudioDevicesResponse"];
                 };
             };
         };
@@ -11146,7 +11146,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["irene__config__schemas__AudioDevicesResponse"];
+                    "application/json": components["schemas"]["locveil_voice__config__schemas__AudioDevicesResponse"];
                 };
             };
         };
@@ -11994,7 +11994,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["irene__api__schemas__AudioDevicesResponse"];
+                    "application/json": components["schemas"]["locveil_voice__api__schemas__AudioDevicesResponse"];
                 };
             };
             /** @description Validation Error */

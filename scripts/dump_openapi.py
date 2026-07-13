@@ -21,24 +21,24 @@ OUTPUT = REPO_ROOT / "config-ui" / "openapi.json"
 # Components that expose a WebAPIPlugin router (mirrors the runner's discovery, listed explicitly so the dump is
 # deterministic and needs no component manager).
 WEBAPI_COMPONENTS = [
-    ("irene.components.intent_component", "IntentComponent"),
-    ("irene.components.configuration_component", "ConfigurationComponent"),
-    ("irene.components.monitoring_component", "MonitoringComponent"),
-    ("irene.components.tts_component", "TTSComponent"),
-    ("irene.components.asr_component", "ASRComponent"),
-    ("irene.components.audio_component", "AudioComponent"),
-    ("irene.components.llm_component", "LLMComponent"),
-    ("irene.components.nlu_component", "NLUComponent"),
-    ("irene.components.nlu_analysis_component", "NLUAnalysisComponent"),
-    ("irene.components.text_processor_component", "TextProcessorComponent"),
-    ("irene.components.voice_trigger_component", "VoiceTriggerComponent"),
+    ("locveil_voice.components.intent_component", "IntentComponent"),
+    ("locveil_voice.components.configuration_component", "ConfigurationComponent"),
+    ("locveil_voice.components.monitoring_component", "MonitoringComponent"),
+    ("locveil_voice.components.tts_component", "TTSComponent"),
+    ("locveil_voice.components.asr_component", "ASRComponent"),
+    ("locveil_voice.components.audio_component", "AudioComponent"),
+    ("locveil_voice.components.llm_component", "LLMComponent"),
+    ("locveil_voice.components.nlu_component", "NLUComponent"),
+    ("locveil_voice.components.nlu_analysis_component", "NLUAnalysisComponent"),
+    ("locveil_voice.components.text_processor_component", "TextProcessorComponent"),
+    ("locveil_voice.components.voice_trigger_component", "VoiceTriggerComponent"),
 ]
 
 
 def build_app():
     from fastapi import FastAPI
 
-    from irene.__version__ import __version__
+    from locveil_voice.__version__ import __version__
 
     app = FastAPI(
         title="Irene Voice Assistant API",
@@ -51,7 +51,7 @@ def build_app():
     # Main router (command/system/web endpoints). Handlers capture core/asset_loader but don't touch them at
     # build time, so None is fine for schema generation.
     try:
-        from irene.runners.webapi_router import create_webapi_router
+        from locveil_voice.runners.webapi_router import create_webapi_router
 
         app.include_router(create_webapi_router(core=None, asset_loader=None, web_input=None, start_time=0.0))  # type: ignore[arg-type]
         mounted.append("main_router")
