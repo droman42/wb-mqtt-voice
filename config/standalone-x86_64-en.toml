@@ -287,7 +287,7 @@ language = "en"
 # PROBLEM REPORTING — "report a problem"
 # ============================================================
 # Enabled on all deployment profiles: filing goes live once the delivery
-# token (env IRENE_REPORTS_TOKEN — see ops/INSTALL.md) is present;
+# token (env LOCVEIL_VOICE_REPORTS_TOKEN — see ops/INSTALL.md) is present;
 # without it the intent answers honestly that reporting isn't set up.
 [reports]
 enabled = true
@@ -305,7 +305,7 @@ fallback_intent = "conversation.general"
 enabled = ["conversation", "greetings", "timer", "datetime", "system", "text_enhancement_handler", "smart_home", "report"]
 disabled = []
 auto_discover = true
-discovery_paths = ["irene.intents.handlers"]
+discovery_paths = ["locveil_voice.intents.handlers"]
 
 [intent_system.handlers.asset_validation]
 strict_mode = true

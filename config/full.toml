@@ -166,7 +166,7 @@ enable_vad_processing = true  # Enable VAD processing to solve chunk problem
 [assets]
 auto_create_dirs = true
 # Paths use environment variable defaults:
-# IRENE_ASSETS_ROOT (default: ~/.cache/irene)
+# LOCVEIL_VOICE_ASSETS_ROOT (default: ~/.cache/irene)
 
 # Language and locale
 language = "en-US"

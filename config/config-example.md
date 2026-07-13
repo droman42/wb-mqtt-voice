@@ -9,20 +9,20 @@ The v14 configuration architecture provides:
 - **Clean separation of concerns**: System, Input, Component, and Workflow configurations
 - **Intuitive TOML structure**: Direct mapping to logical system architecture  
 - **Environment variable integration**: Secure handling of API keys and paths
-- **Asset management**: Unified model and cache storage via `IRENE_ASSETS_ROOT`
+- **Asset management**: Unified model and cache storage via `LOCVEIL_VOICE_ASSETS_ROOT`
 - **Automatic v13 migration**: Seamless upgrade from legacy configurations
 
 ## 🚀 Quick Start
 
 1. **Copy the master configuration:**
    ```bash
-   cp configs/config-master.toml config.toml
+   cp config/config-master.toml config.toml
    ```
 
 2. **Set environment variables:**
    ```bash
    # Asset management (recommended)
-   export IRENE_ASSETS_ROOT="/data/irene"
+   export LOCVEIL_VOICE_ASSETS_ROOT="/data/irene"
    
    # API keys for cloud providers
    export OPENAI_API_KEY="your_openai_key_here"
@@ -37,7 +37,7 @@ The v14 configuration architecture provides:
 
 4. **Run Irene:**
    ```bash
-   uv run python -m irene.runners.webapi --config config.toml
+   uv run --project backend locveil-voice-webapi --config config.toml
    ```
 
 ## 📋 v14 Architecture Overview
@@ -72,7 +72,7 @@ default = "voice_assistant"
 
 # Asset management (unified storage)
 [assets]
-assets_root = "${IRENE_ASSETS_ROOT}"
+assets_root = "${LOCVEIL_VOICE_ASSETS_ROOT}"
 ```
 
 ## 🔧 Configuration Sections
@@ -184,12 +184,12 @@ wake_words = ["irene"]
 
 [voice_trigger.providers.openwakeword]
 enabled = true
-model_paths = {}                   # Uses IRENE_ASSETS_ROOT/models
+model_paths = {}                   # Uses LOCVEIL_VOICE_ASSETS_ROOT/models
 inference_framework = "onnx"
 
 [voice_trigger.providers.microwakeword]
 enabled = false
-model_paths = {}                   # Uses IRENE_ASSETS_ROOT/models
+model_paths = {}                   # Uses LOCVEIL_VOICE_ASSETS_ROOT/models
 feature_buffer_size = 49
 ```
 
@@ -208,7 +208,7 @@ context_timeout = 300
 ### **7. Asset Management**
 ```toml
 [assets]
-assets_root = "${IRENE_ASSETS_ROOT}"   # Base directory for all assets
+assets_root = "${LOCVEIL_VOICE_ASSETS_ROOT}"   # Base directory for all assets
 auto_download = true                   # Download models automatically
 cache_enabled = true                   # Enable model caching
 cleanup_on_startup = false           # Clean temp files on startup
@@ -310,7 +310,7 @@ Set these environment variables for secure configuration:
 
 ```bash
 # Asset Management (highly recommended)
-export IRENE_ASSETS_ROOT="/data/irene"
+export LOCVEIL_VOICE_ASSETS_ROOT="/data/irene"
 
 # Cloud Provider API Keys
 export OPENAI_API_KEY="sk-..."
@@ -319,9 +319,9 @@ export ANTHROPIC_API_KEY="sk-ant-..."
 export GOOGLE_APPLICATION_CREDENTIALS="/path/to/credentials.json"
 
 # Optional: Override default asset locations
-export IRENE_MODELS_ROOT="/data/models"
-export IRENE_CACHE_ROOT="/data/cache"
-export IRENE_CREDENTIALS_ROOT="/data/credentials"
+export LOCVEIL_VOICE_MODELS_ROOT="/data/models"
+export LOCVEIL_VOICE_CACHE_ROOT="/data/cache"
+export LOCVEIL_VOICE_CREDENTIALS_ROOT="/data/credentials"
 ```
 
 ## 🔄 Migration from v13
@@ -335,7 +335,7 @@ v14 automatically migrates v13 configurations:
 
 ### **Manual Updates Needed:**
 - Move API keys to environment variables
-- Update asset paths to use `IRENE_ASSETS_ROOT`
+- Update asset paths to use `LOCVEIL_VOICE_ASSETS_ROOT`
 - Review provider configurations for new options
 
 ### **Migration Example:**
@@ -361,7 +361,7 @@ default_provider = "elevenlabs"
 ### **1. Syntax Validation:**
 ```bash
 # Check TOML syntax
-uv run python -c "
+uv run --project backend python -c "
 import tomllib
 with open('config.toml', 'rb') as f:
     config = tomllib.load(f)
@@ -372,8 +372,8 @@ print('✅ TOML syntax valid')
 ### **2. Schema Validation:**
 ```bash
 # Validate against v14 schema
-uv run python -c "
-from irene.config.manager import ConfigManager
+uv run --project backend python -c "
+from locveil_voice.config.manager import ConfigManager
 from pathlib import Path
 import asyncio
 
@@ -391,8 +391,8 @@ asyncio.run(validate())
 ### **3. Provider Discovery Test:**
 ```bash
 # Test that enabled providers are discoverable
-uv run python -c "
-from irene.config.manager import ConfigManager
+uv run --project backend python -c "
+from locveil_voice.config.manager import ConfigManager
 from pathlib import Path
 import asyncio
 
@@ -418,7 +418,7 @@ asyncio.run(test_discovery())
 2. **Intuitive naming**: `[tts]` instead of `[plugins.universal_tts]`
 3. **Boolean components**: `tts = true` instead of `enabled = ["tts"]`
 4. **Environment integration**: `${VAR}` support for sensitive data
-5. **Asset unification**: Single `IRENE_ASSETS_ROOT` for all models
+5. **Asset unification**: Single `LOCVEIL_VOICE_ASSETS_ROOT` for all models
 
 ### **Configuration Benefits:**
 - **Easier to understand**: Logical structure matches system architecture
@@ -434,10 +434,10 @@ asyncio.run(test_discovery())
 ## ⚠️ Important Notes
 
 - **Always use environment variables for API keys** - never put secrets in config files
-- **Set `IRENE_ASSETS_ROOT`** to control where models and cache are stored
+- **Set `LOCVEIL_VOICE_ASSETS_ROOT`** to control where models and cache are stored
 - **Component dependencies**: Some components require others (e.g., voice_assistant workflow needs TTS and Audio)
 - **Provider fallbacks**: Always configure console providers as fallbacks for testing
-- **Asset management**: Models are automatically downloaded to `IRENE_ASSETS_ROOT/models`
+- **Asset management**: Models are automatically downloaded to `LOCVEIL_VOICE_ASSETS_ROOT/models`
 
 ## 🎯 Performance Tips
 

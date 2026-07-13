@@ -6,13 +6,13 @@
 # get answers. No models to download, no API keys, nothing to install beyond
 # `uv sync`. Try it:
 #
-#     uv run irene-cli -c configs/config-example.toml
+#     uv run --project backend locveil-voice-cli -c config/config-example.toml
 #
 # then type «который час», «поставь таймер на 5 минут», «привет».
 # The web API runs alongside on http://localhost:8080 (REST docs at /docs).
 #
 # When you outgrow it, each "upgrade path" comment below names the section to
-# lift from configs/config-master.toml — the documented reference for EVERY
+# lift from config/config-master.toml — the documented reference for EVERY
 # option. Copy this file (e.g. to config.toml) and grow it there.
 # ============================================================
 
@@ -159,7 +159,7 @@ fallback_intent = "conversation.general"
 enabled = ["conversation", "greetings", "timer", "datetime", "system", "smart_home", "report"]
 disabled = []
 auto_discover = true
-discovery_paths = ["irene.intents.handlers"]
+discovery_paths = ["locveil_voice.intents.handlers"]
 
 [intent_system.handlers.asset_validation]
 strict_mode = true

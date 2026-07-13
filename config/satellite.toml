@@ -5,8 +5,8 @@
 # Pipeline here: mic → VAD → wake word «Ирина» → stream to the controller
 # over /ws/audio; replies come back over /ws/audio/reply and play locally.
 #
-#   uv run irene-satellite -c configs/satellite.toml
-#   uv run irene-satellite -c configs/satellite.toml --no-wake --server ws://wb7:8080
+#   uv run --project backend locveil-voice-satellite -c config/satellite.toml
+#   uv run --project backend locveil-voice-satellite -c config/satellite.toml --no-wake --server ws://wb7:8080
 #
 # ON:  microphone input, VAD, voice_trigger (microWakeWord), audio playback
 # OFF: asr, nlu, llm, tts, intent_system, text_processor — the controller runs them.
@@ -124,7 +124,7 @@ enabled = true
 # story (mic, VAD frames, wake-gate decisions, uplink, reply as played) with the CONTROLLER's
 # execution trace nested inside — the controller shares its half only if ITS config sets
 # [trace] allow_remote_request = true. Read the nested half:
-#   uv run irene-replay-trace -t traces/<id>.json --show-controller
+#   uv run --project backend locveil-voice-replay-trace -t traces/<id>.json --show-controller
 [trace]
 enabled = false
 capture_raw_mic = false

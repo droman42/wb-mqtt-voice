@@ -10,7 +10,7 @@
 # own configuration file.
 #
 # Environment variables are supported using ${VAR_NAME} syntax
-# Set IRENE_ASSETS_ROOT to control where models/cache are stored
+# Set LOCVEIL_VOICE_ASSETS_ROOT to control where models/cache are stored
 # ============================================================
 
 # ============================================================
@@ -461,7 +461,7 @@ capture_ttl_seconds = 90            # Verbatim-capture window after «опиши
 # Delivery (ARCH-32): a PRIVATE GitHub repo receives the ticket + the support bundle. The token
 # is a fine-grained PAT scoped to THAT repo only (issues + contents write), read from the env.
 repo = ""                           # e.g. "locveil/locveil-reports" — must be PRIVATE (bundles carry logs/config)
-token_env = "IRENE_REPORTS_TOKEN"   # Env var holding the PAT (never put the token itself in a config file)
+token_env = "LOCVEIL_VOICE_REPORTS_TOKEN"   # Env var holding the PAT (never put the token itself in a config file)
 rate_limit_per_hour = 3             # Max reports per hour (design D-7 — guards ASR misfires)
 rate_limit_per_day = 10             # Max reports per day (design D-7)
 ring_size = 5                       # Rolling request-synopsis ring dumped into bundles (design D-10)
@@ -469,10 +469,10 @@ ring_size = 5                       # Rolling request-synopsis ring dumped into 
 # ============================================================
 # SATELLITE ROOM-NODE MODE (ARCH-35/36)
 # ============================================================
-# The `irene-satellite` runner: this box runs mic → VAD → wake word locally and streams
+# The `locveil-voice-satellite` runner: this box runs mic → VAD → wake word locally and streams
 # utterances to a controller over /ws/audio (the same wire contract the ESP32 firmware
 # implements); replies play back through the local audio component. Requires enabled = true;
-# see configs/satellite.toml for the curated profile (mic+vad+trigger+audio on, everything
+# see config/satellite.toml for the curated profile (mic+vad+trigger+audio on, everything
 # else off — the controller owns understanding).
 [satellite]
 enabled = false                     # Allow the satellite runner to start with this config
@@ -559,7 +559,7 @@ latency_threshold_ms = 5.0          # Alert threshold for disambiguation latency
 enabled = ["conversation", "greetings", "timer", "datetime", "system", "text_enhancement_handler", "smart_home", "report"]  # Enabled handlers
 disabled = []                       # Disabled handlers
 auto_discover = true               # Automatically discover handlers
-discovery_paths = ["irene.intents.handlers"]  # Entry-point discovery paths
+discovery_paths = ["locveil_voice.intents.handlers"]  # Entry-point discovery paths
 
 # Asset validation configuration
 [intent_system.handlers.asset_validation]
@@ -826,19 +826,19 @@ model_compression = true           # Use compressed model formats when available
 concurrent_downloads = 2           # Maximum concurrent model downloads
 
 # Asset paths are controlled by environment variables:
-# IRENE_ASSETS_ROOT (default: ~/.cache/irene)
+# LOCVEIL_VOICE_ASSETS_ROOT (default: ~/.cache/irene)
 #   ├── models/          - AI models and weights (automatically managed)
 #   ├── cache/           - Runtime cache and temporary files
 #   └── credentials/     - API keys and authentication files
 #
 # NOTE: Model paths (model_path, model_paths) are NOT configurable in provider settings.
 # All AI models are automatically managed by the Asset Manager system:
-# - Models are downloaded to IRENE_ASSETS_ROOT/models/{provider}/{model_id}
+# - Models are downloaded to LOCVEIL_VOICE_ASSETS_ROOT/models/{provider}/{model_id}
 # - Providers automatically discover their models via asset manager
 # - No manual path configuration needed - just enable the provider!
 
 # Environment variable examples:
-# export IRENE_ASSETS_ROOT="/opt/irene/assets"
+# export LOCVEIL_VOICE_ASSETS_ROOT="/opt/irene/assets"
 # export ELEVENLABS_API_KEY="your_api_key_here"
 # export OPENAI_API_KEY="your_openai_key_here"
 # export ANTHROPIC_API_KEY="your_anthropic_key_here"
@@ -847,10 +847,10 @@ concurrent_downloads = 2           # Maximum concurrent model downloads
 # export YANDEX_SCHEDULES_API_KEY="your_yandex_key_here"
 #
 # Model preloading examples (override TOML settings):
-# export IRENE_TTS__PROVIDERS__SILERO_V4__PRELOAD_MODELS=true
-# export IRENE_ASR__PROVIDERS__WHISPER__PRELOAD_MODELS=true
-# export IRENE_ASR__PROVIDERS__VOSK__PRELOAD_MODELS=true
-# export IRENE_VOICE_TRIGGER__PROVIDERS__OPENWAKEWORD__PRELOAD_MODELS=true
+# export LOCVEIL_VOICE_TTS__PROVIDERS__SILERO_V4__PRELOAD_MODELS=true
+# export LOCVEIL_VOICE_ASR__PROVIDERS__WHISPER__PRELOAD_MODELS=true
+# export LOCVEIL_VOICE_ASR__PROVIDERS__VOSK__PRELOAD_MODELS=true
+# export LOCVEIL_VOICE_VOICE_TRIGGER__PROVIDERS__OPENWAKEWORD__PRELOAD_MODELS=true
 
 # ============================================================
 # EXAMPLE DEPLOYMENT PROFILES
