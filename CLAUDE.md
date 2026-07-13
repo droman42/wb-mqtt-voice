@@ -24,7 +24,7 @@ but these rules apply to any task). **Single source of truth** (relocated here f
 - **`ws-protocol-doc-canonical`** — `docs/guides/websocket-api.md` is the **single source of truth for the
   WebSocket wire protocol** (`/ws/audio`, `/ws/audio/reply`, `/ws/output`, `/ws/observe`) — a hand-written
   reference, deliberately not generated tooling. Any change to a WS endpoint or message shape (the
-  `webapi_router` WS endpoints, `irene/satellite/`) **updates that document in the same change** — it is what
+  `webapi_router` WS endpoints, `backend/src/locveil_voice/satellite/`) **updates that document in the same change** — it is what
   clients are built against (the satellite runner, the future ESP32 firmware, locveil-commons'
   `ws_audio_provider`). Design docs hold rationale and **defer to it** (e.g. `python_satellite.md` §3 points
   there); never duplicate frame tables elsewhere. Sibling rule: `../locveil-commons/CLAUDE.md` names this
@@ -43,7 +43,7 @@ but these rules apply to any task). **Single source of truth** (relocated here f
     restructure), tagged `report-protocol-vN`; normative prose `process/problem-reports.md`. This repo **pins**
     it at `contracts/pins/report-protocol/` (one-way inward sync — never hand-edit; re-pin on a vN bump, see
     the pin folder's README) and validates the collector's emitted surface against the pin in
-    `irene/tests/test_report_protocol_conformance.py`.
+    `backend/tests/test_report_protocol_conformance.py`.
   - **Contract layout/coherence is guarded by the vendored `scripts/contract_guard.py`** (commons
     `packages/contract-guard/`, pinned `contract-guard-v1`, BUILD-33) — same consumption model as the
     scope guard: **never edit the vendored file**, re-pin to move. Registry + per-pin mechanics:
@@ -94,7 +94,7 @@ but these rules apply to any task). **Single source of truth** (relocated here f
   `../locveil-commons/process/user-docs.md`; shared digest in the pinned block below). **The scope authority is
   `docs/manifest.json`** — every user-facing doc is a manifest node (roots: `README*`, `CONTRIBUTING.md`,
   `docs/QUICKSTART.md`, `docs/guides/`, `docs/architecture/`, `docs/images/`, **`ops/INSTALL.md`**), coherence-tested
-  by `irene/tests/test_docs_manifest.py`; a new doc gets its node in the same commit. A non-root `README*` (e.g.
+  by `backend/tests/test_docs_manifest.py`; a new doc gets its node in the same commit. A non-root `README*` (e.g.
   `eval/README.md`) stays in scope when the task touches that subsystem. For **every** task, before completion:
   does the change alter behavior a manifest node describes? Record the answer as the **docs-verdict line in the
   DONE-ledger entry** (`docs: <node-ids>` / `docs: none — <why>`; enforced by scope-guard from
