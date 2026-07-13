@@ -17,7 +17,7 @@ both. (For the full schema, see the [donation file specification](DONATION_FILE_
 
 Say the `timer` handler should learn `timer.repeat`. No wiring — just the method and its donation.
 
-**1. Add the method** to `irene/intents/handlers/timer.py`:
+**1. Add the method** to `backend/src/locveil_voice/intents/handlers/timer.py`:
 
 ```python
 async def _handle_repeat_timer(self, intent: Intent, context: UnifiedConversationContext) -> IntentResult:
@@ -61,7 +61,7 @@ checks it.
 
 A new domain — say weather. A class, a contract, language files, and one line of registration.
 
-**1. The handler** — `irene/intents/handlers/weather.py`:
+**1. The handler** — `backend/src/locveil_voice/intents/handlers/weather.py`:
 
 ```python
 from ..models import Intent, IntentResult
@@ -128,11 +128,11 @@ handler's file for the header and adapt:
 **4. Register it** in `pyproject.toml` so it is discovered:
 
 ```toml
-[project.entry-points."irene.intents.handlers"]
-weather = "irene.intents.handlers.weather:WeatherIntentHandler"
+[project.entry-points."locveil_voice.intents.handlers"]
+weather = "locveil_voice.intents.handlers.weather:WeatherIntentHandler"
 ```
 
-After editing entry-points, reinstall (`uv sync`) so the new handler is picked up.
+After editing entry-points, reinstall (`uv sync --project backend`) so the new handler is picked up.
 
 ## Long-running actions — fire-and-forget and durability
 
@@ -185,7 +185,7 @@ Three rules, whatever you launch:
 ## Try it
 
 ```
-uv run python -m irene.runners.cli -c configs/config-master.toml --command "погода в Москве"
+uv run --project backend python -m locveil_voice.runners.cli -c config/config-master.toml --command "погода в Москве"
 ```
 
 If recognition misses, check the donation `phrases`/patterns first — recognition lives there, not in the

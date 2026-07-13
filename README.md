@@ -11,7 +11,7 @@ Russian-first, English supported. Version 0.5.0 · Python 3.11+ · MIT.
 > and Docker images publish to GHCR. The ESP32 firmware satellite and on-device deployment await
 > hardware bring-up.
 >
-> First run: `uv run irene-cli -c configs/config-example.toml` — see the
+> First run: `uv run --project backend locveil-voice-cli -c config/config-example.toml` — see the
 > [Quickstart](docs/QUICKSTART.md).
 
 ## Highlights

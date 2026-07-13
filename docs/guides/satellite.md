@@ -11,10 +11,10 @@ and a network.
 ## Running one
 
 ```bash
-uv run irene-satellite -c configs/satellite.toml
+uv run --project backend locveil-voice-satellite -c config/satellite.toml
 ```
 
-The shipped `configs/satellite.toml` is the curated profile: microphone, voice detection, the
+The shipped `config/satellite.toml` is the curated profile: microphone, voice detection, the
 wake word «Ирина» and audio playback on — everything else off, because the controller owns it.
 Point it at your controller and name the room:
 
@@ -33,8 +33,8 @@ the same box, even if it rebooted in between.
 For quick experiments the flags override the config per run:
 
 ```bash
-uv run irene-satellite -c configs/satellite.toml --server ws://wb7:8080 --room "Кухня"
-uv run irene-satellite -c configs/satellite.toml --no-wake     # skip the wake word
+uv run --project backend locveil-voice-satellite -c config/satellite.toml --server ws://wb7:8080 --room "Кухня"
+uv run --project backend locveil-voice-satellite -c config/satellite.toml --no-wake     # skip the wake word
 ```
 
 ## Talking to it
@@ -93,7 +93,7 @@ by the [locveil-satellite provisioning runbook](https://github.com/locveil/locve
 When something misbehaves — «it heard me but did nothing» — run the satellite with `--trace`:
 
 ```bash
-uv run irene-satellite -c configs/satellite.toml --trace
+uv run --project backend locveil-voice-satellite -c config/satellite.toml --trace
 ```
 
 Every utterance the satellite sends now produces one trace file (under the satellite's assets
@@ -115,7 +115,7 @@ Without it the satellite still writes its own half and notes that the controller
 To read the controller's section of a merged trace:
 
 ```bash
-uv run irene-replay-trace -t traces/<id>.json --show-controller
+uv run --project backend locveil-voice-replay-trace -t traces/<id>.json --show-controller
 ```
 
 Tracing applies to the default `single` mode (in `streaming` mode the box has no local

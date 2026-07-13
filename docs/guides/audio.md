@@ -6,7 +6,7 @@ interchangeable **playback providers**; which one you use depends on the platfor
 
 ## Playback providers
 
-`[audio]` selects among four, discovered via `irene.providers.audio`. Every real backend **streams** raw
+`[audio]` selects among four, discovered via `locveil_voice.providers.audio`. Every real backend **streams** raw
 PCM straight to the device — there's no intermediate WAV file at playout:
 
 | Provider | Needs | Platforms | Notes |

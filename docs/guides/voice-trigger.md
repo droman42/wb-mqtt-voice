@@ -103,5 +103,5 @@ The component mounts endpoints under `/voice_trigger`:
 - **`irene` on OpenWakeWord does nothing** — OpenWakeWord only knows its English catalog; a custom Russian
   word needs microWakeWord (or a custom OpenWakeWord model file).
 - **False triggers** — raise `threshold`, or retrain with more negatives.
-- **Debug** — set the `irene.components.voice_trigger_component` and `irene.providers.voice_trigger` loggers
+- **Debug** — set the `locveil_voice.components.voice_trigger_component` and `locveil_voice.providers.voice_trigger` loggers
   to `DEBUG`.

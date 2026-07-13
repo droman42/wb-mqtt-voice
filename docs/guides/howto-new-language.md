@@ -6,7 +6,7 @@ kinds of thing: the **config** that admits it, the **words** you author, and the
 ![What a language touches](../images/howto-language.png)
 
 This guide uses German (`de`) as the example; substitute your code throughout. For a complete worked
-example, the shipped **English** deployment configs (`configs/*-en.toml`) are full copies of their Russian
+example, the shipped **English** deployment configs (`config/*-en.toml`) are full copies of their Russian
 counterparts with only the language-bearing fields swapped — a good template for a new single-language build.
 
 ## 1. Config
@@ -39,7 +39,7 @@ Language-specific text you write by hand:
 Recognition and speech are language-specific, so the heavy assets change too:
 
 - **spaCy** (the advanced NLU tier) — add the language to `language_preferences` in
-  `irene/providers/nlu/spacy_provider.py` and install its model:
+  `backend/src/locveil_voice/providers/nlu/spacy_provider.py` and install its model:
   ```python
   language_preferences = { "ru": [...], "en": [...], "de": ["de_core_news_md", "de_core_news_sm"] }
   ```

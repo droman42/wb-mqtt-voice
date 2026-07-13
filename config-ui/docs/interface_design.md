@@ -137,7 +137,7 @@ GET    /config/providers/{component_name}           # Get available providers fo
 GET    /config/status                               # Get configuration system health status
 ```
 
-**Response Models** (from `irene/api/schemas.py`):
+**Response Models** (from `backend/src/locveil_voice/api/schemas.py`):
 ```python
 # Core configuration
 CoreConfig                 # Complete system configuration with all sections
@@ -744,7 +744,7 @@ const Sidebar = ({ collapsed, onToggle }) => {
 #### 1.1 Donations API (IntentComponent Extension) ✅ COMPLETED
 ```python
 # Priority: HIGH - Core requirement
-# Location: irene/components/intent_component.py
+# Location: backend/src/locveil_voice/components/intent_component.py
 # Status: ✅ FULLY IMPLEMENTED - All endpoints functional with proper schemas
 
 @router.get("/donations")
@@ -774,7 +774,7 @@ async def get_intent_system_status():
 
 **✅ Implementation Complete:**
 - URL prefix `/intents` implemented for consistency
-- All endpoints use centralized Pydantic schemas from `irene/api/schemas.py`
+- All endpoints use centralized Pydantic schemas from `backend/src/locveil_voice/api/schemas.py`
 - File operations added to `IntentAssetLoader` with backup support
 - Comprehensive validation with error/warning reporting
 - Hot reload integration with existing handler management
@@ -782,9 +782,9 @@ async def get_intent_system_status():
 
 #### 1.2 Configuration API (ConfigurationComponent) ✅ PRODUCTION READY
 ```python
-# Location: irene/components/configuration_component.py
+# Location: backend/src/locveil_voice/components/configuration_component.py
 # Status: ✅ PRODUCTION READY - Complete implementation with comprehensive features
-# Response Models: Centralized in irene/api/schemas.py
+# Response Models: Centralized in backend/src/locveil_voice/api/schemas.py
 
 @router.get("/config", response_model=CoreConfig)
 async def get_current_config():
@@ -830,7 +830,7 @@ async def get_configuration_status():
 #### 1.3 Monitoring API Enhancement 🚧 NOT IMPLEMENTED
 ```python
 # Priority: MEDIUM - Replace HTML generation with JSON APIs
-# Location: irene/components/monitoring_component.py
+# Location: backend/src/locveil_voice/components/monitoring_component.py
 # Status: 🚧 TO BE IMPLEMENTED - Required for monitoring dashboard
 
 @router.get("/dashboard/data")
@@ -1140,7 +1140,7 @@ Analysis of the `config-master.toml` and existing Pydantic models reveals that *
 
 #### **🎯 Key Discovery: Comprehensive Pydantic Model Coverage**
 
-The codebase already contains complete Pydantic models in `irene/config/models.py`:
+The codebase already contains complete Pydantic models in `backend/src/locveil_voice/config/models.py`:
 - **CoreConfig**: Main configuration with 15+ nested section models
 - **Rich Field Metadata**: Descriptions, defaults, validation rules, constraints
 - **Type Information**: Automatic widget type detection from Pydantic field types
@@ -1292,7 +1292,7 @@ TOML file → tomlkit.parse() → TOMLDocument (with comments) → Frontend → 
 
 **Major Deliverables Completed**:
 1. **✅ tomlkit Dependency**: Added to pyproject.toml for comment-preserving TOML operations
-2. **✅ Round-Trip Utility Module**: Complete `irene/config/toml_roundtrip.py` with all core functions
+2. **✅ Round-Trip Utility Module**: Complete `backend/src/locveil_voice/config/toml_roundtrip.py` with all core functions
 3. **✅ ConfigManager Enhancement**: Added tomlkit-based methods for raw TOML operations
 4. **✅ API Endpoints**: Four new endpoints in ConfigurationComponent for raw TOML management
 5. **✅ Response Schemas**: Comprehensive Pydantic schemas for all raw TOML operations
@@ -1303,7 +1303,7 @@ TOML file → tomlkit.parse() → TOMLDocument (with comments) → Frontend → 
 # Add to pyproject.toml
 tomlkit = "^0.12.0"
 
-# Create irene/config/toml_roundtrip.py utility module
+# Create backend/src/locveil_voice/config/toml_roundtrip.py utility module
 ```
 
 **Implementation Priority**: HIGH - Foundation for all TOML preview improvements
@@ -1540,7 +1540,7 @@ const validateTomlLive = useCallback(async (content: string) => {
 
 #### **Backend Phase (Week 1)**:
 1. ✅ Add `tomlkit` dependency to `pyproject.toml`
-2. ✅ Create `irene/config/toml_roundtrip.py` utility module
+2. ✅ Create `backend/src/locveil_voice/config/toml_roundtrip.py` utility module
 3. ✅ Add raw TOML endpoints to `ConfigurationComponent`
 4. ✅ Integrate with existing `ConfigManager`
 5. ✅ Test round-trip fidelity with `config-master.toml`
@@ -1578,7 +1578,7 @@ def test_comment_preservation():
 
 #### **Complex Structure Tests**:
 - ✅ Provider arrays (TTS/ASR configurations)
-- ✅ Environment variables (`${IRENE_ASSETS_ROOT}`)
+- ✅ Environment variables (`${LOCVEIL_VOICE_ASSETS_ROOT}`)
 - ✅ Inline comments alignment
 - ✅ Section separators and blank lines
 - ✅ Nested object structures

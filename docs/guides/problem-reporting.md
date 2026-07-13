@@ -55,13 +55,13 @@ and Contents write permission.
 [reports]
 enabled = true
 repo = "you/your-reports-repo"       # must be PRIVATE — bundles contain logs and config
-token_env = "IRENE_REPORTS_TOKEN"    # the env variable holding the token
+token_env = "LOCVEIL_VOICE_REPORTS_TOKEN"    # the env variable holding the token
 ```
 
 Put the token in the environment (e.g. your `.env`), never in the config file:
 
 ```bash
-IRENE_REPORTS_TOKEN=github_pat_...
+LOCVEIL_VOICE_REPORTS_TOKEN=github_pat_...
 ```
 
 With the repo or token missing, Irene starts normally and reporting simply stays off.

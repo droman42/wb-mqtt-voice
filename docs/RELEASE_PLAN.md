@@ -528,11 +528,14 @@ size-matched to the Russian stack; language is a per-config/deployment choice (a
       Also: catalog re-pinned v1.5→v1.7 (ce4f2f9, bridge CORE-10 follow-through); install-irene.sh
       deleted (orphaned bare-metal installer, superseded by Docker/GHCR). Green: lint-imports 11/11,
       pytest 1408 passed, build-analyzer 14/14, config-ui check+build, contract-guard, both console-script
-      name sets run. **Operator step (needs the WB7):** run `ops/cutover-env-locveil-voice.sh` + smoke.
-      **Pending (step 7, needs image builds):** 3 Dockerfiles→root-context rewrite, 6 image
-      rebuilds+boot-verify, docs prose sweep (guides/CLAUDE/config-ui-docs + in-code comment path refs).
-      Dev bring-up before step-7 verify: `cd backend && uv sync` + `bash scripts/install_sqlite_shim.sh`
-      + `make setup` in eval/._
+      name sets run. Step 7 EDITS done: 3 Dockerfiles + verify_components entry-points + derive_build_reqs
+      + .dockerignore (**/.venv) (de58eb2, `buildx --check` clean on x86_64); docs prose sweep — 21 docs
+      (README/CONTRIBUTING/QUICKSTART/guides/INSTALL/config-ui-docs) to the new invocation model, persona
+      "Irene" + deployment identity (irene.toml/irene.log/~/.cache/irene/compose service) kept; manifest
+      coherence test green. **All repo-side edits for steps 1–7 are complete.** Remaining is OPERATOR-ONLY
+      (needs the WB7 / a Docker build host): (a) 6 image rebuilds + boot-verify (BUILD-11 bar); (b) run
+      `ops/cutover-env-locveil-voice.sh` + smoke on the controller. Flip BUILD-36 to done after those.
+      Dev bring-up: `uv sync --project backend` + `bash scripts/install_sqlite_shim.sh` + `make setup` in eval/._
 
 ### Documentation (DOC)
 

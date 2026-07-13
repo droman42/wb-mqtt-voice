@@ -14,8 +14,8 @@ Pass `--trace` to any runner. While it's on, **every request is saved** to one J
 `<assets_root>/traces/` (named by request id):
 
 ```bash
-irene-cli --trace
-irene-webapi --trace
+uv run --project backend locveil-voice-cli --trace
+uv run --project backend locveil-voice-webapi --trace
 ```
 
 That's the whole switch — there's no per-request flag and no ring buffer. A trace session is a deliberate,
@@ -36,7 +36,7 @@ The `raw` level for a **live microphone** keeps a continuous rolling buffer, so 
 gated behind its own flag:
 
 ```bash
-irene-cli --trace-raw-mic        # implies --trace, and selects the raw level
+uv run --project backend locveil-voice-cli --trace-raw-mic   # implies --trace, and selects the raw level
 ```
 
 ### Tuning the rest
@@ -59,12 +59,12 @@ heard, what was decided, what was logged, and what was done.
 
 ## Replaying a trace
 
-`irene-replay-trace` re-runs a saved trace through the **real pipeline** and diffs the fresh answer against the
+`locveil-voice-replay-trace` re-runs a saved trace through the **real pipeline** and diffs the fresh answer against the
 recorded one. It seeds the conversation context from the trace's "before" snapshot, re-injects the captured
 audio at the right entry point for its level, and reports what changed:
 
 ```bash
-irene-replay-trace -t ~/.cache/irene/traces/<id>.json
+uv run --project backend locveil-voice-replay-trace -t ~/.cache/irene/traces/<id>.json
 ```
 
 Replay is **not** bit-exact — the LLM isn't deterministic and time and device state move on — so it reproduces
@@ -90,8 +90,8 @@ or a tuning sweep, not a recording playback.
   replay become two comparable files you can hand off for analysis.
 
 ```bash
-irene-replay-trace -t their-trace.json --local --listen --step
-irene-replay-trace -t their-trace.json --record-out ./replays/
+uv run --project backend locveil-voice-replay-trace -t their-trace.json --local --listen --step
+uv run --project backend locveil-voice-replay-trace -t their-trace.json --record-out ./replays/
 ```
 
 ## Tuning VAD with a trace
@@ -111,7 +111,7 @@ hearing or the controller's understanding. The controller shares its half only w
 `[trace] allow_remote_request = true`; print that nested half with:
 
 ```bash
-uv run irene-replay-trace -t traces/<id>.json --show-controller
+uv run --project backend locveil-voice-replay-trace -t traces/<id>.json --show-controller
 ```
 
 A satellite trace replays like any other: its captured utterance audio runs through a full local pipeline

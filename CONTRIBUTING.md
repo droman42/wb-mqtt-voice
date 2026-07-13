@@ -9,7 +9,7 @@ Two principles first, inherited from the project's roots and still true:
 ## Setup
 
 ```
-uv sync
+uv sync --project backend
 ```
 
 Then run it (CLI, web API, or the config UI) per the [quickstart](docs/QUICKSTART.md). Start from a
@@ -40,7 +40,7 @@ followed by the conformance test each pin names.
 
 ## Tests and evaluation
 
-Unit and conformance tests live in `irene/tests/` and run with `uv run pytest`. The
+Unit and conformance tests live in `backend/tests/` and run with `uv run --project backend pytest`. The
 declarative system suites (CLI contracts, streaming-ASR, device commands, judged UX) live in
 [`eval/`](eval/README.md) — read that README before touching anything test-related; the
 execution logic deliberately lives in a sibling repo, and `eval/` here carries only the YAML.
@@ -63,7 +63,7 @@ These aren't style preferences — each is enforced by a CI gate (below):
    annotate with the real symbol. An `if TYPE_CHECKING:` block is a band-aid for an import cycle — break the
    cycle (move the shared type down / use a port), don't hide the import from the runtime.
 3. **pyright stays at zero, with no suppressions.** Fix the code; never add a rule suppression to
-   `pyrightconfig.json`.
+   `backend/pyrightconfig.json`.
 4. **Heavy libraries stay optional.** A provider's third-party deps go behind a `pyproject` extra and are
    declared on the provider — never imported at module top level for a provider nobody configured. This is
    what keeps a build small (see the [build system](docs/guides/build-system.md)).
@@ -76,18 +76,18 @@ These aren't style preferences — each is enforced by a CI gate (below):
 
 CI runs two workflows on every push / PR, and **every gate hard-fails**. Run them locally before you push.
 
-**Backend** (`.github/workflows/backend-health.yml`) — prefix each with `uv run`:
+**Backend** (`.github/workflows/backend-health.yml`) — run from the repo root:
 
 | Gate | Command |
 |---|---|
-| Hexagon import contracts | `lint-imports` |
-| No `TYPE_CHECKING` guards | `check-no-type-checking irene` |
-| Type checking (0 errors) | `pyright` |
-| All config profiles valid | `python -m irene.tools.build_analyzer --validate-all-profiles` |
-| All config files valid (schema + completeness) | `python -m irene.tools.config_validator_cli --config-dir configs/` |
-| Provider dependencies resolve | `python -m irene.tools.dependency_validator --validate-all` |
+| Hexagon import contracts | `cd backend && uv run lint-imports` |
+| No `TYPE_CHECKING` guards | `uv run --project backend check-no-type-checking locveil_voice` |
+| Type checking (0 errors) | `cd backend && uv run pyright` |
+| All config profiles valid | `uv run --project backend python -m locveil_voice.tools.build_analyzer --validate-all-profiles` |
+| All config files valid (schema + completeness) | `uv run --project backend python -m locveil_voice.tools.config_validator_cli --config-dir config/` |
+| Provider dependencies resolve | `uv run --project backend python -m locveil_voice.tools.dependency_validator --validate-all` |
 
-CI installs `uv sync --frozen --all-extras` so pyright can resolve every provider's optional imports.
+CI installs `uv sync --project backend --frozen --all-extras` so pyright can resolve every provider's optional imports.
 **Deferred (not yet gating):** the full `pytest` suite (until the stale-test cleanup lands) and `black`/`isort`
 (until the tree is formatted).
 

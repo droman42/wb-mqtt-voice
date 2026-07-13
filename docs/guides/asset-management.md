@@ -7,7 +7,7 @@ is an **asset**. They all live under one root and are fetched on demand, never b
 
 ## One root
 
-Everything sits under `IRENE_ASSETS_ROOT` (default `~/.cache/irene`), in three buckets:
+Everything sits under `LOCVEIL_VOICE_ASSETS_ROOT` (default `~/.cache/irene`), in three buckets:
 
 - **`models/`** — the ML files: ASR, TTS, local LLM, wake word, spaCy, VAD. These are the big ones
   (hundreds of MB), so they are downloaded once and reused.
@@ -16,7 +16,7 @@ Everything sits under `IRENE_ASSETS_ROOT` (default `~/.cache/irene`), in three b
 - **`credentials/`** — file-based secrets for cloud providers (e.g. a Google service-account JSON). Most
   setups keep API keys in `.env` instead; this bucket is for the credentials that have to be files.
 
-Point `IRENE_ASSETS_ROOT` at a data volume and the whole footprint moves with it.
+Point `LOCVEIL_VOICE_ASSETS_ROOT` at a data volume and the whole footprint moves with it.
 
 ## Declared, not hardcoded
 

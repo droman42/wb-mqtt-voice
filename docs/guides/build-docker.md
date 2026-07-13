@@ -43,7 +43,7 @@ are never baked in — and its size is checked against a per-target budget and r
 ## Config and assets
 
 The config profile is **baked into the image** at `/app/runtime-config.toml` — you do not supply a config
-file at run time. To change settings, mount your own file over it or point `IRENE_CONFIG_FILE` at a mounted
+file at run time. To change settings, mount your own file over it or point `LOCVEIL_VOICE_CONFIG_FILE` at a mounted
 path.
 
 Assets — donation phrasings, prompts, templates, and the downloaded speech models — live **outside** the
@@ -60,8 +60,8 @@ directory at `/app/assets`:
 
 | Env var | Default | Purpose |
 |---|---|---|
-| `IRENE_CONFIG_FILE` | `/app/runtime-config.toml` | The active config (baked; override by mounting). |
-| `IRENE_ASSETS_ROOT` | `/app/assets` | Root for models, cache, credentials, and the bundled assets. |
+| `LOCVEIL_VOICE_CONFIG_FILE` | `/app/runtime-config.toml` | The active config (baked; override by mounting). |
+| `LOCVEIL_VOICE_ASSETS_ROOT` | `/app/assets` | Root for models, cache, credentials, and the bundled assets. |
 
 The container runs as a **non-root user (uid 1000)** and exposes the web API on **port 8080**. The
 uid is the part that matters: it is what the host sees on bind-mounted directories, so any
@@ -114,22 +114,22 @@ one. The build context is the repo root, and each Dockerfile lives in `docker/`:
 ```bash
 # standalone / x86_64
 docker build -f docker/Dockerfile.x86_64 \
-  --build-arg CONFIG_PROFILE=standalone-x86_64 -t irene-standalone .
+  --build-arg CONFIG_PROFILE=standalone-x86_64 -t locveil-voice-standalone .
 
 # aarch64 — needs buildx for cross-builds
 docker buildx build --platform linux/arm64 -f docker/Dockerfile.aarch64 \
-  --build-arg CONFIG_PROFILE=embedded-aarch64 -t irene-aarch64 .
+  --build-arg CONFIG_PROFILE=embedded-aarch64 -t locveil-voice-aarch64 .
 
 # armv7
 docker buildx build --platform linux/arm/v7 -f docker/Dockerfile.armv7 \
-  --build-arg CONFIG_PROFILE=embedded-armv7 -t irene-armv7 .
+  --build-arg CONFIG_PROFILE=embedded-armv7 -t locveil-voice-armv7 .
 ```
 
-`CONFIG_PROFILE` names a file in `configs/`. To see what a profile will pull before building:
+`CONFIG_PROFILE` names a file in `config/`. To see what a profile will pull before building:
 
 ```bash
-uv run python -m irene.tools.build_analyzer --config configs/standalone-x86_64.toml --docker
-uv run python -m irene.tools.build_analyzer --list-profiles
+uv run --project backend python -m locveil_voice.tools.build_analyzer --config config/standalone-x86_64.toml --docker
+uv run --project backend python -m locveil_voice.tools.build_analyzer --list-profiles
 ```
 
 ## The configuration editor image
@@ -165,6 +165,6 @@ spaCy language models are installed as packaged wheels at build time (unlike the
 models), so each image carries only the model tier its profile actually loads rather than every language and
 size.
 
-A new config profile needs no Dockerfile change — add a `.toml` to `configs/`, check it with the analyzer, and
+A new config profile needs no Dockerfile change — add a `.toml` to `config/`, check it with the analyzer, and
 pass its name as `CONFIG_PROFILE`. New providers are entry-point-discovered, so they need no Dockerfile change
 either (see [adding a model](howto-new-model.md)).

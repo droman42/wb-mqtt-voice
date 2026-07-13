@@ -13,8 +13,8 @@ Three layers, lowest to highest precedence:
 1. **Defaults** — every field in `CoreConfig` has one, so an empty config is still valid.
 2. **The TOML file** — `config.toml`, or whichever you pass with `-c`. This is where most configuration
    lives.
-3. **The environment** — any `IRENE_`-prefixed variable (in the shell or `.env`), with `__` marking a
-   nested section: `IRENE_COMPONENTS__TTS=true` sets `components.tts`. Handy for secrets and per-host tweaks.
+3. **The environment** — any `LOCVEIL_VOICE_`-prefixed variable (in the shell or `.env`), with `__` marking a
+   nested section: `LOCVEIL_VOICE_COMPONENTS__TTS=true` sets `components.tts`. Handy for secrets and per-host tweaks.
 
 The merged result is **validated** — types are checked, and so are cross-field rules (enabling TTS without
 Audio is rejected, not silently ignored). A bad config fails loudly at startup, not halfway through a request.
@@ -37,7 +37,7 @@ Three subsystems have dedicated guides for their knobs: [audio output](audio.md)
 
 ## Profiles
 
-You rarely start from scratch. `configs/` ships ready-made profiles for common shapes — `minimal` and
+You rarely start from scratch. `config/` ships ready-made profiles for common shapes — `minimal` and
 `api-only` (text, no models), `voice` and `full` (the speech pipeline), `embedded-armv7` (a constrained
 device) — and **`config-master.toml`**, the fully documented reference with every option explained. Copy the
 closest one and trim it.

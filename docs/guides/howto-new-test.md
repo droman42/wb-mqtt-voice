@@ -26,7 +26,7 @@ command line; the result is JSON `{stdout, stderr, exit_code}`.
 
 ```yaml
 - description: validate config — embedded-armv7.toml
-  vars: { cmd: "irene-config-validate --config-file configs/embedded-armv7.toml --ci-mode" }
+  vars: { cmd: "locveil-voice-config-validate --config-file config/embedded-armv7.toml --ci-mode" }
   assert:
     - { type: javascript, value: "JSON.parse(output).exit_code === 0" }
 ```
@@ -35,7 +35,7 @@ A failure contract is just different assertions:
 
 ```yaml
 - description: missing config exits non-zero and says so
-  vars: { cmd: "irene-config-validate --config-file nope.toml" }
+  vars: { cmd: "locveil-voice-config-validate --config-file nope.toml" }
   assert:
     - { type: javascript, value: "JSON.parse(output).exit_code !== 0" }
     - { type: javascript, value: "/not found/i.test(JSON.parse(output).stdout)" }   # the report prints to stdout
@@ -123,7 +123,7 @@ No server, no mic, no judge: a case is just a console invocation whose exit code
 - description: golden — «поставь таймер на 10 минут» still sets the timer
   metadata: { kind: trace-system }
   vars:
-    cmd: "irene-replay-trace -t eval/traces/timer_set_10min.json --config configs/embedded-armv7.toml"
+    cmd: "locveil-voice-replay-trace -t eval/traces/timer_set_10min.json --config config/embedded-armv7.toml"
   assert:
     - { type: javascript, value: "JSON.parse(output).exit_code === 0" }
 ```

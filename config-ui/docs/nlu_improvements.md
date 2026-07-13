@@ -103,7 +103,7 @@ Implement a comprehensive **Real-time NLU Quality Assurance System** that integr
 
 #### 1.1 HybridKeywordMatcher Critical Fixes
 **Files to modify:**
-- `irene/providers/nlu/hybrid_keyword_matcher.py`
+- `backend/src/locveil_voice/providers/nlu/hybrid_keyword_matcher.py`
 
 **Changes:**
 ```python
@@ -137,7 +137,7 @@ def _check_partial_match(self, input_tokens: List[str], phrase_tokens: List[str]
 
 #### 1.2 SpaCy Provider Language Awareness
 **Files to modify:**
-- `irene/providers/nlu/spacy_provider.py`
+- `backend/src/locveil_voice/providers/nlu/spacy_provider.py`
 
 **Changes:**
 ```python
@@ -235,8 +235,8 @@ async def recognize(self, text: str, context: ConversationContext) -> Intent:
 #### 2.1 NLU Analysis Component
 **New files to create:**
 ```
-irene/components/nlu_analysis_component.py
-irene/analysis/
+backend/src/locveil_voice/components/nlu_analysis_component.py
+backend/src/locveil_voice/analysis/
 ├── __init__.py
 ├── base.py                    # Analysis interfaces
 ├── hybrid_analyzer.py         # Mirror HybridKeywordMatcher logic
@@ -306,7 +306,7 @@ class ScopeAnalyzer:
 
 #### 2.2 Web API Integration  
 **New file:**
-- `irene/web_api/nlu_analysis_router.py`
+- `backend/src/locveil_voice/web_api/nlu_analysis_router.py`
 
 **API Endpoints:**
 ```python
@@ -379,8 +379,8 @@ async def get_handler_conflicts(
 #### 2.3 Data Models & Schemas
 **New files:**
 ```
-irene/analysis/models.py       # Analysis result models
-irene/api/schemas.py          # API request/response schemas  
+backend/src/locveil_voice/analysis/models.py       # Analysis result models
+backend/src/locveil_voice/api/schemas.py          # API request/response schemas  
 ```
 
 **API Design Benefits:**
@@ -436,8 +436,8 @@ class AnalysisResult:
 **Phase 2 Implementation Summary:**
 
 *Backend Analysis Service:*
-- ✅ Created comprehensive analysis data models and schemas in `irene/analysis/models.py`
-- ✅ Implemented base interfaces and abstract classes in `irene/analysis/base.py`
+- ✅ Created comprehensive analysis data models and schemas in `backend/src/locveil_voice/analysis/models.py`
+- ✅ Implemented base interfaces and abstract classes in `backend/src/locveil_voice/analysis/base.py`
 - ✅ Built NLUConflictDetector with phrase overlap, keyword collision, and pattern crosshit detection
 - ✅ Developed NLUScopeAnalyzer for cross-domain attraction and pattern breadth analysis
 - ✅ Created NLUReportGenerator for structured conflict reports with actionable suggestions
@@ -446,7 +446,7 @@ class AnalysisResult:
 - ✅ Integrated all analyzers into NLUAnalysisComponent with performance tracking and caching
 
 *Web API Integration:*
-- ✅ Added comprehensive NLU analysis schemas to `irene/api/schemas.py`
+- ✅ Added comprehensive NLU analysis schemas to `backend/src/locveil_voice/api/schemas.py`
 - ✅ Implemented WebAPIPlugin interface in NLUAnalysisComponent following established patterns
 - ✅ Integrated all required endpoints directly in component with language parameter validation
 - ✅ Added error handling, dependency injection, and comprehensive API documentation
@@ -1241,7 +1241,7 @@ class IreneApiClient {
 
 #### 5.1 CI/CD CLI Wrapper
 **New file to create:**
-- `irene/tools/nlu_ci_check.py`
+- `backend/src/locveil_voice/tools/nlu_ci_check.py`
 
 **Lightweight CLI for CI:**
 ```python
@@ -1344,8 +1344,8 @@ on:
   pull_request:
     paths: 
       - "assets/donations/**/*.json"
-      - "irene/providers/nlu/**/*.py"
-      - "irene/analysis/**/*.py"
+      - "backend/src/locveil_voice/providers/nlu/**/*.py"
+      - "backend/src/locveil_voice/analysis/**/*.py"
   push:
     branches: [main, master]
 
@@ -1354,13 +1354,13 @@ jobs:
     runs-on: ubuntu-latest
     
     services:
-      irene-backend:
-        image: irene:latest
+      locveil-voice-backend:
+        image: locveil-voice:latest
         ports:
           - 8000:8000
         env:
-          IRENE_CONFIG_PATH: /app/configs/ci-testing.toml
-          IRENE_LOG_LEVEL: WARNING
+          LOCVEIL_VOICE_CONFIG_PATH: /app/config/ci-testing.toml
+          LOCVEIL_VOICE_LOG_LEVEL: WARNING
         options: >-
           --health-cmd "curl -f http://localhost:8000/health || exit 1"
           --health-interval 10s
@@ -1395,7 +1395,7 @@ jobs:
       - name: Run NLU Analysis
         id: analysis
         run: |
-          python irene/tools/nlu_ci_check.py \
+          python backend/src/locveil_voice/tools/nlu_ci_check.py \
             --backend-url http://localhost:8000 \
             --timeout 180 \
             --output nlu-analysis.json
@@ -1459,7 +1459,7 @@ jobs:
 #### 5.3 Production Configuration
 **New configuration files:**
 ```
-configs/
+config/
 ├── ci-testing.toml           # Minimal config for CI
 ├── nlu-analysis.toml         # Analysis-specific settings
 └── production-hardened.toml  # Production-ready config

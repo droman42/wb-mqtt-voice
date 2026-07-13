@@ -2,7 +2,7 @@
 
 VAD decides which slices of incoming audio actually contain speech, so the rest of the pipeline (ASR, then
 intent) sees real utterances instead of every chunk of silence. It is a **lightweight provider family**
-(`irene.providers.vad`) — three interchangeable engines, selected and configured like every other component,
+(`locveil_voice.providers.vad`) — three interchangeable engines, selected and configured like every other component,
 but without the web/manager apparatus (it's a per-frame hot-path primitive, not a request/response service).
 
 It runs only where Irene has a local microphone. On a Wirenboard install the ESP32 satellite does VAD
@@ -133,5 +133,5 @@ segment handling are `max_segment_duration_s` (caps a runaway segment) and `buff
 At startup VAD logs `INFO … VAD audio processor initialized: provider=…, max_segment=…s`, then the pre-roll
 size and the negotiated canonical format. To watch live levels, a chunk's RMS is `sqrt(mean(samples²)) / 32768`.
 
-Reference configs to copy: `configs/vad-development.toml`, `configs/vad-production.toml`, and the documented
-`[vad]` + `[vad.providers.*]` sections of `configs/config-master.toml`.
+Reference configs to copy: `config/vad-development.toml`, `config/vad-production.toml`, and the documented
+`[vad]` + `[vad.providers.*]` sections of `config/config-master.toml`.
