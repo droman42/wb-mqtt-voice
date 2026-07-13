@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """Derive the flat Docker build inputs from the build-analyzer's JSON output.
 
-The analyzer (`irene.tools.build_analyzer --json`) emits build-requirements.json for a config profile;
+The analyzer (`locveil_voice.tools.build_analyzer --json`) emits build-requirements.json for a config profile;
 this turns it into the small files the builder/runtime stages consume — keeping the Dockerfiles free of
 inline multiline Python (which the Dockerfile parser cannot handle).
 
 Usage:  python derive_build_reqs.py <build-requirements.json>  [--platform linux.ubuntu]  [--out /tmp]
-                                    [--config configs/<profile>.toml]
+                                    [--config config/<profile>.toml]
 Writes (into --out, default /tmp): system-packages.txt, runtime-packages.txt, pip-target.txt,
 pip-specs.txt. --config trims spaCy models to the tier the profile loads.
 """

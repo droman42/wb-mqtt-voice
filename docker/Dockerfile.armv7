@@ -16,7 +16,7 @@
 #      1.12.36 serves both RU vosk and EN Moonshine.) Proven on the WB7: Moonshine RTF ~0.7, 134 MB RSS.
 #
 # Assets (donations/prompts/templates) and ML models are NOT baked — they are mounted at runtime under
-# IRENE_ASSETS_ROOT (=/app/assets). Ship them via the `irene-assets-*.tar.gz` archive (built in the
+# LOCVEIL_VOICE_ASSETS_ROOT (=/app/assets). Ship them via the `locveil-voice-assets-*.tar.gz` archive (built in the
 # workflow) extracted into the mount.
 #
 # NOTE: build/boot verified under BUILD-3 on real hardware (buildx + linux/arm/v7).
@@ -33,18 +33,18 @@ RUN apt-get -o Acquire::Retries=3 update && \
     apt-get -o Acquire::Retries=3 install -y --no-install-recommends python3-pip && \
     rm -rf /var/lib/apt/lists/*
 # The analyzer needs the tool, the configs, the handlers + assets (intent JSON validation).
-COPY irene/ irene/
-COPY configs/ configs/
+COPY backend/src/ src/
+COPY config/ config/
 COPY assets/ assets/
-COPY pyproject.toml README.md ./
+COPY backend/pyproject.toml README.md ./
 COPY docker/derive_build_reqs.py derive_build_reqs.py
-# Install the project's BASE deps (pydantic, pyyaml, …) so `import irene` works for the analyzer. The
+# Install the project's BASE deps (pydantic, pyyaml, …) so `import locveil_voice` works for the analyzer. The
 # heavy provider deps (torch/sherpa/onnx/…) are NOT installed here — providers lazy-import them.
 RUN pip install --no-cache-dir ".[web-api]"
 ARG CONFIG_PROFILE=embedded-armv7
-RUN python -m irene.tools.build_analyzer --config configs/${CONFIG_PROFILE}.toml \
+RUN python -m locveil_voice.tools.build_analyzer --config config/${CONFIG_PROFILE}.toml \
         --platform linux.ubuntu --json > /tmp/build-requirements.json && \
-    python derive_build_reqs.py /tmp/build-requirements.json --platform linux.ubuntu --out /tmp --config configs/${CONFIG_PROFILE}.toml
+    python derive_build_reqs.py /tmp/build-requirements.json --platform linux.ubuntu --out /tmp --config config/${CONFIG_PROFILE}.toml
 
 # ============================================================
 # STAGE 2: BUILDER — build a self-contained /opt/venv (arm32v7)
@@ -73,8 +73,8 @@ RUN if [ -s /tmp/system-packages.txt ]; then \
     fi
 
 # Project source for `uv pip install .`
-COPY pyproject.toml uv.lock README.md ./
-COPY irene/ irene/
+COPY backend/pyproject.toml backend/uv.lock README.md ./
+COPY backend/src/ src/
 
 # Self-contained venv: install the project + its config-selected extras + any loose specs into /opt/venv
 RUN uv venv /opt/venv && . /opt/venv/bin/activate && \
@@ -105,12 +105,12 @@ RUN if [ -s /tmp/runtime-packages.txt ]; then \
         rm -rf /var/lib/apt/lists/*; \
     fi && rm -f /tmp/runtime-packages.txt
 
-# The self-contained venv (has irene + all deps) — the bridge pattern
+# The self-contained venv (has locveil-voice + all deps) — the bridge pattern
 COPY --from=builder /opt/venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
-# Baked default config (CONFIG_PROFILE). assets/ + models are NOT baked — mounted at IRENE_ASSETS_ROOT.
-COPY --from=analyzer /build-analyzer/configs/${CONFIG_PROFILE}.toml /app/runtime-config.toml
+# Baked default config (CONFIG_PROFILE). assets/ + models are NOT baked — mounted at LOCVEIL_VOICE_ASSETS_ROOT.
+COPY --from=analyzer /build-analyzer/config/${CONFIG_PROFILE}.toml /app/runtime-config.toml
 
 # LEAN: strip tests/docs/build artifacts from the venv (Wirenboard footprint)
 RUN find /opt/venv -name '__pycache__' -type d -prune -exec rm -rf {} + 2>/dev/null || true && \
@@ -134,22 +134,22 @@ RUN python /tmp/verify_components.py /app/runtime-config.toml && rm -f /tmp/veri
 RUN useradd -m -u 1000 locveil && mkdir -p /app/assets && chown -R locveil:locveil /app
 USER locveil
 
-# Probe the service, not the interpreter: `import irene` passes while the API is unbound, the
+# Probe the service, not the interpreter: `import locveil_voice` passes while the API is unbound, the
 # config is broken, or the runner is dead. start-period covers the first boot, which downloads
 # the speech models onto slow flash — an armv7 cold start is minutes, not seconds.
 HEALTHCHECK --interval=30s --timeout=10s --start-period=300s --retries=3 \
     CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/health', timeout=5)" || exit 1
 
-# Config comes from $IRENE_CONFIG_FILE (baked default; override with -e IRENE_CONFIG_FILE=/path + a mount).
-# Assets + models are mounted at IRENE_ASSETS_ROOT (donations/prompts/templates from the archive; models
+# Config comes from $LOCVEIL_VOICE_CONFIG_FILE (baked default; override with -e LOCVEIL_VOICE_CONFIG_FILE=/path + a mount).
+# Assets + models are mounted at LOCVEIL_VOICE_ASSETS_ROOT (donations/prompts/templates from the archive; models
 # download here on first boot). No entrypoint script — the runner reads the env directly.
-ENV IRENE_CONFIG_FILE=/app/runtime-config.toml
-ENV IRENE_ASSETS_ROOT=/app/assets
+ENV LOCVEIL_VOICE_CONFIG_FILE=/app/runtime-config.toml
+ENV LOCVEIL_VOICE_ASSETS_ROOT=/app/assets
 ENV PYTHONPATH=/app PYTHONUNBUFFERED=1 PYTHONOPTIMIZE=2
 ENV MALLOC_TRIM_THRESHOLD_=100000 MALLOC_TOP_PAD_=65536
 
 # Satellite server: the back-half (ASR→NLU→intent→TTS) over the WS transport for the ESP32.
-CMD ["python", "-O", "-m", "irene.runners.webapi_runner", "--host", "0.0.0.0", "--port", "8080"]
+CMD ["python", "-O", "-m", "locveil_voice.runners.webapi_runner", "--host", "0.0.0.0", "--port", "8080"]
 
 # Web API / ESP32 transport port (8000 is taken by locveil-bridge)
 EXPOSE 8080

@@ -3,16 +3,16 @@
 # ============================================================
 # The lone non-satellite target: a full local voice runner (mic→VAD→wake→ASR→NLU→TTS→playback) on the
 # one torch image. Follows the locveil-bridge pattern (self-contained /opt/venv copied whole + LEAN).
-# Assets (donations/prompts/templates) + ML models are NOT baked — mounted at IRENE_ASSETS_ROOT
-# (=/app/assets); ship them via the `irene-assets-*.tar.gz` archive.
+# Assets (donations/prompts/templates) + ML models are NOT baked — mounted at LOCVEIL_VOICE_ASSETS_ROOT
+# (=/app/assets); ship them via the `locveil-voice-assets-*.tar.gz` archive.
 #
 # The standalone runs voice_runner (local mic + the web API), so it needs host audio at run time:
-#   docker run --device /dev/snd -e IRENE_CONFIG_FILE=/app/runtime-config.toml \
-#     -v ./assets:/app/assets -p 8080:8080 irene:standalone
-# Override the baked config with: -e IRENE_CONFIG_FILE=/cfg/my.toml -v ./my.toml:/cfg/my.toml
+#   docker run --device /dev/snd -e LOCVEIL_VOICE_CONFIG_FILE=/app/runtime-config.toml \
+#     -v ./assets:/app/assets -p 8080:8080 locveil-voice:standalone
+# Override the baked config with: -e LOCVEIL_VOICE_CONFIG_FILE=/cfg/my.toml -v ./my.toml:/cfg/my.toml
 #
 # Usage:
-#   docker build -f docker/Dockerfile.x86_64 --build-arg CONFIG_PROFILE=standalone-x86_64 -t irene:standalone .
+#   docker build -f docker/Dockerfile.x86_64 --build-arg CONFIG_PROFILE=standalone-x86_64 -t locveil-voice:standalone .
 
 # ============================================================
 # STAGE 1: BUILD ANALYZER — derive the deps for the config profile
@@ -21,17 +21,17 @@ FROM python:3.11-slim AS analyzer
 WORKDIR /build-analyzer
 RUN apt-get update && apt-get install -y --no-install-recommends python3-pip && \
     rm -rf /var/lib/apt/lists/*
-COPY irene/ irene/
-COPY configs/ configs/
+COPY backend/src/ src/
+COPY config/ config/
 COPY assets/ assets/
-COPY pyproject.toml README.md ./
+COPY backend/pyproject.toml README.md ./
 COPY docker/derive_build_reqs.py derive_build_reqs.py
-# Install the project's BASE deps so `import irene` works for the analyzer (providers lazy-import the heavy deps).
+# Install the project's BASE deps so `import locveil_voice` works for the analyzer (providers lazy-import the heavy deps).
 RUN pip install --no-cache-dir ".[web-api]"
 ARG CONFIG_PROFILE=standalone-x86_64
-RUN python -m irene.tools.build_analyzer --config configs/${CONFIG_PROFILE}.toml \
+RUN python -m locveil_voice.tools.build_analyzer --config config/${CONFIG_PROFILE}.toml \
         --platform linux.ubuntu --json > /tmp/build-requirements.json && \
-    python derive_build_reqs.py /tmp/build-requirements.json --platform linux.ubuntu --out /tmp --config configs/${CONFIG_PROFILE}.toml
+    python derive_build_reqs.py /tmp/build-requirements.json --platform linux.ubuntu --out /tmp --config config/${CONFIG_PROFILE}.toml
 
 # ============================================================
 # STAGE 2: BUILDER — self-contained /opt/venv
@@ -52,8 +52,8 @@ RUN if [ -s /tmp/system-packages.txt ]; then \
         rm -rf /var/lib/apt/lists/*; \
     fi
 
-COPY pyproject.toml uv.lock README.md ./
-COPY irene/ irene/
+COPY backend/pyproject.toml backend/uv.lock README.md ./
+COPY backend/src/ src/
 
 RUN uv venv /opt/venv && . /opt/venv/bin/activate && \
     UV_COMPILE_BYTECODE=1 uv pip install $(cat /tmp/pip-target.txt) -r /tmp/pip-specs.txt
@@ -78,7 +78,7 @@ RUN if [ -s /tmp/runtime-packages.txt ]; then \
 COPY --from=builder /opt/venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
-COPY --from=analyzer /build-analyzer/configs/${CONFIG_PROFILE}.toml /app/runtime-config.toml
+COPY --from=analyzer /build-analyzer/config/${CONFIG_PROFILE}.toml /app/runtime-config.toml
 
 RUN find /opt/venv -name '__pycache__' -type d -prune -exec rm -rf {} + 2>/dev/null || true && \
     find /opt/venv -name '*.pyc' -delete 2>/dev/null || true && \
@@ -97,17 +97,17 @@ RUN python /tmp/verify_components.py /app/runtime-config.toml && rm -f /tmp/veri
 RUN useradd -m -u 1000 locveil && mkdir -p /app/assets && chown -R locveil:locveil /app
 USER locveil
 
-# Probe the service, not the interpreter: `import irene` passes while the API is unbound, the
+# Probe the service, not the interpreter: `import locveil_voice` passes while the API is unbound, the
 # config is broken, or the runner is dead. Both runners mount /health at the root (WebServerMixin).
 HEALTHCHECK --interval=30s --timeout=10s --start-period=180s --retries=3 \
     CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/health', timeout=5)" || exit 1
 
-# Config from $IRENE_CONFIG_FILE (baked default; override with -e + a mount). Assets + models mounted at
-# IRENE_ASSETS_ROOT. No entrypoint — the runner reads the env directly.
-ENV IRENE_CONFIG_FILE=/app/runtime-config.toml
-ENV IRENE_ASSETS_ROOT=/app/assets
+# Config from $LOCVEIL_VOICE_CONFIG_FILE (baked default; override with -e + a mount). Assets + models mounted at
+# LOCVEIL_VOICE_ASSETS_ROOT. No entrypoint — the runner reads the env directly.
+ENV LOCVEIL_VOICE_CONFIG_FILE=/app/runtime-config.toml
+ENV LOCVEIL_VOICE_ASSETS_ROOT=/app/assets
 ENV PYTHONPATH=/app PYTHONUNBUFFERED=1
 
 # Standalone: voice_runner = local mic pipeline + the web API (needs `--device /dev/snd` at run time).
-CMD ["python", "-m", "irene.runners.voice_runner", "--host", "0.0.0.0", "--port", "8080"]
+CMD ["python", "-m", "locveil_voice.runners.voice_runner", "--host", "0.0.0.0", "--port", "8080"]
 EXPOSE 8080

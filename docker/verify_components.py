@@ -40,7 +40,7 @@ def main() -> int:
     failures: list[str] = []
 
     components = [name for name, on in config.get("components", {}).items() if on is True]
-    _check("irene.components", components, failures)
+    _check("locveil_voice.components", components, failures)
 
     # Providers the profile explicitly enables, per component section that has a `providers` table.
     for section in components:
@@ -48,7 +48,7 @@ def main() -> int:
         enabled = [name for name, cfg in providers.items()
                    if isinstance(cfg, dict) and cfg.get("enabled") is True]
         if enabled:
-            _check(f"irene.providers.{section}", enabled, failures)
+            _check(f"locveil_voice.providers.{section}", enabled, failures)
 
     if failures:
         print(f"\n✗ {config_path.name}: {len(failures)} enabled entry point(s) do not import:\n", file=sys.stderr)

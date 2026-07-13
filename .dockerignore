@@ -1,6 +1,6 @@
 # Keep the Docker build context lean (the context is the repo ROOT for all images) and keep secrets
-# out of it. The Dockerfiles COPY only: irene/, configs/, assets/, pyproject.toml, uv.lock, README.md,
-# docker/. Everything below is excluded from what's sent to the daemon.
+# out of it. The Dockerfiles COPY only: backend/src/, backend/pyproject.toml, backend/uv.lock,
+# config/, assets/, README.md, docker/. Everything below is excluded from what's sent to the daemon.
 
 # Secrets — NEVER in an image layer (.env holds DEEPSEEK_API_KEY etc.)
 .env
@@ -12,7 +12,8 @@
 .github
 .gitignore
 
-# Virtual environments (the 6 GB dev .venv)
+# Virtual environments (the 6 GB dev venv — now backend/.venv under src-layout; **/ covers both)
+**/.venv
 .venv
 venv/
 env/
