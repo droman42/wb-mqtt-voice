@@ -18,7 +18,7 @@ framework's mock bridge and the release-cadence cross-suite run against it.
 | `STAMP.json` | bridge (byte-identical) | The bridge's version stamp |
 | `PIN.json` | **voice-stamped** | The pin record (tag, owner commit, sha256s) |
 
-Conformance (layer 2): `irene/tests/test_catalog_contract_conformance.py`.
+Conformance (layer 2): `backend/tests/test_catalog_contract_conformance.py`.
 
 Re-pin — ONE command updates this copy AND the commons crossover copy at the same tag
 (they must never diverge):

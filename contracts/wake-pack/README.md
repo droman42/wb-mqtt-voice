@@ -7,8 +7,8 @@ pack's version, per-file URLs and sha256 content hashes, so a consumer can pin a
 bytes without this repo re-hosting them.
 
 - **Source of truth for what's released:** the in-code catalog
-  `irene/providers/voice_trigger/microwakeword.py::_get_default_model_urls` (ASSET-5 rung 4);
-  `irene/tests/test_ws_protocol_version.py` asserts the stamp's URLs match the catalog, so
+  `backend/src/locveil_voice/providers/voice_trigger/microwakeword.py::_get_default_model_urls` (ASSET-5 rung 4);
+  `backend/tests/test_ws_protocol_version.py` asserts the stamp's URLs match the catalog, so
   the sidecar cannot silently drift from the code.
 - **Consumer:** `../locveil-satellite` — the ESP32 flashes the pack and verifies the hashes
   at flash time (its OPS-1 carries the hash-at-publish requirement); the flashed tag comes

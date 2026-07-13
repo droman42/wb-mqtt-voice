@@ -11,7 +11,7 @@ prose `process/problem-reports.md`. Never hand-edit any file here — re-pin on 
 | `STAMP.json` | commons (byte-identical) | The owner's version stamp for the artifact |
 | `PIN.json` | **voice-stamped** | The pin record: which commons tag/commit voice validates against, file hashes, and when |
 
-Conformance (layer 2): `irene/tests/test_report_protocol_conformance.py` — the
+Conformance (layer 2): `backend/tests/test_report_protocol_conformance.py` — the
 collector's emitted labels, title prefix, and bundle path, plus the deployment profiles'
 `[reports].repo`, are asserted against this pin (a label mismatch makes tickets silently
 invisible to the triage queue).
@@ -24,5 +24,5 @@ git -C ../locveil-commons show report-protocol-vN:contracts/report-protocol/repo
 git -C ../locveil-commons show report-protocol-vN:contracts/report-protocol/STAMP.json \
   > contracts/pins/report-protocol/STAMP.json
 # update PIN.json (version, tag, owner_commit, files sha256s, pin_date), then:
-uv run pytest irene/tests/test_report_protocol_conformance.py -q
+uv run pytest backend/tests/test_report_protocol_conformance.py -q
 ```

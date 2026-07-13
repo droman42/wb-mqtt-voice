@@ -7,7 +7,7 @@ doc: roots, a small repo-owned surface→glob map, and one node per doc — diag
 
 - **Schema (commons-owned):** `../locveil-commons/process/user-docs/manifest.schema.json`;
   prose convention: `../locveil-commons/process/user-docs.md` §4.
-- **Coherence test (layer 2):** `irene/tests/test_docs_manifest.py` — node↔tree bijection
+- **Coherence test (layer 2):** `backend/tests/test_docs_manifest.py` — node↔tree bijection
   under the roots, floor classes stay populated, covers reference declared surfaces,
   docs-verdict node-ids in the DONE ledger exist; schema validation when the commons
   sibling is present.

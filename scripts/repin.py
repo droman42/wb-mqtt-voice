@@ -42,7 +42,7 @@ FAMILIES = {
                   "contracts/catalog/STAMP.json"],
         "dests": [
             {"path": REPO_ROOT / "contracts/pins/catalog",
-             "conformance": "irene/tests/test_catalog_contract_conformance.py"},
+             "conformance": "backend/tests/test_catalog_contract_conformance.py"},
             {"path": REPO_ROOT / "../locveil-commons/contracts/pins/catalog",
              "conformance": "locveil-commons eval/tests/test_contracts_pin.py"},
         ],
@@ -55,7 +55,7 @@ FAMILIES = {
                   "contracts/report-protocol/STAMP.json"],
         "dests": [
             {"path": REPO_ROOT / "contracts/pins/report-protocol",
-             "conformance": "irene/tests/test_report_protocol_conformance.py"},
+             "conformance": "backend/tests/test_report_protocol_conformance.py"},
         ],
         "mirror": [],
     },
@@ -66,7 +66,7 @@ FAMILIES = {
                   "contracts/esp32-site/STAMP.json"],
         "dests": [
             {"path": REPO_ROOT / "contracts/pins/esp32-site",
-             "conformance": "irene/tests/test_arch36_tls_e2e.py"},
+             "conformance": "backend/tests/test_arch36_tls_e2e.py"},
         ],
         "mirror": [],
     },

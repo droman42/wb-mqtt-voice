@@ -10,7 +10,7 @@ contract: the backend generates it, config-ui consumes it.
 - **Consumer:** `config-ui` — `npm run gen:api-types` turns the committed schema into
   `src/types/openapi.gen.ts`; the editor type-checks against it
   (`config-ui-stays-functional`).
-- **Drift guard (layer 2):** `irene/tests/test_openapi_drift.py` rebuilds the schema
+- **Drift guard (layer 2):** `backend/tests/test_openapi_drift.py` rebuilds the schema
   in-process and fails on any byte of semantic drift — a schema change that isn't
   re-dumped can no longer ship silently.
 - **Versioning:** the STAMP versions the convention surface, not each regeneration —

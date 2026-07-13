@@ -12,7 +12,7 @@ provisioning dance against exactly this template. Never hand-edit — re-pin on 
 | `STAMP.json` | satellite (byte-identical) | The owner's version stamp for the surface |
 | `PIN.json` | **voice-stamped** | The pin record: tag, owner commit, content hashes |
 
-Conformance (layer 2): `irene/tests/test_arch36_tls_e2e.py` — renders this template and
+Conformance (layer 2): `backend/tests/test_arch36_tls_e2e.py` — renders this template and
 drives the real provisioning dance against it (throwaway CA), so a satellite-side change
 that breaks the voice contract surfaces at the next re-pin, not on a rack.
 
@@ -20,5 +20,5 @@ Re-pin:
 
 ```bash
 make -C eval repin CONTRACT=esp32-site       # newest satellite esp32-site-vN tag
-uv run pytest irene/tests/test_arch36_tls_e2e.py -q
+uv run pytest backend/tests/test_arch36_tls_e2e.py -q
 ```

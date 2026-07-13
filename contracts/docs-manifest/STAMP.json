@@ -6,6 +6,6 @@
   "owner_repo": "locveil-voice",
   "artifact": "docs/manifest.json",
   "schema": "../locveil-commons/process/user-docs/manifest.schema.json",
-  "coherence_test": "irene/tests/test_docs_manifest.py",
+  "coherence_test": "backend/tests/test_docs_manifest.py",
   "note": "Repo-internal contract (HK-6): the machine-readable registry of the user-facing docs tree. The version tracks the commons manifest SCHEMA generation, bumped only on a schema reshape — node additions/removals are ordinary content changes under the coherence test, not version events."
 }
