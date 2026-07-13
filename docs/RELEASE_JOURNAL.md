@@ -20,6 +20,17 @@ newest entries near the top of each dated section.
 
 ## Action journal
 
+- **2026-07-13 — BUILD-36 closed: the Python layout & naming migration (PROD-21/HK-8), owner-closed
+  ahead of the WB7 install.** `irene`→`locveil_voice` + `backend/` src-layout + `configs/`→`config/` +
+  env family `IRENE_*`→`LOCVEIL_VOICE_*` + console-script rename (with `irene-*` aliases), across 13
+  commits (`85dcc4d`…`b95f3b9`); catalog re-pinned v1.5→v1.7; ui-openapi bumped v1.1; the x86_64 image
+  build+boot verified locally (`/health` healthy, in-build component gate green), ARM via the multi-arch
+  CI dispatch. The commons PROD-21 bounce (stale `discovery_paths` + `IRENE_*` config comments) was fixed
+  — and its requested tripwire proof surfaced that `discovery_paths` is a **vestigial** config field (the
+  handler manager hardcodes its discovery namespace and never reads it), which filed **ARCH-50** to review
+  all such hardcodings/overrides against the dynamic build-and-loading contract. Owner closed the task with
+  the WB7 image rebuild + env cutover explicitly deferred: any controller breakage becomes a fresh BUG.
+
 - **2026-07-13 — ARCH-49 filed: the language-asset re-cut, designed before touched.** An owner analysis
   session asked what actually separates `assets/templates/` from `assets/localization/` — answer: the
   phase-2/3 hardcode extractions split by the SHAPE of what was lifted (strings vs dicts), not by role,

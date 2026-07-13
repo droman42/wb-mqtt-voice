@@ -517,55 +517,6 @@ size-matched to the Russian stack; language is a per-config/deployment choice (a
       board** (D-4/D-5), seeded when BUILD-21 lands, not decided unilaterally here. Scope for that design: which
       repo owns the unified compose, health-gated `depends_on` vs. tolerant clients, whether the units collapse
       into one, and how `update.sh` stays per-repo when the compose is not. Related: BUILD-18 (ops conformance).
-- [ ] **BUILD-36** [BUILD][ARCH][OPS][DOCKER] `[release]` — **Python backend layout & naming migration —
-      one tree churn** (board **PROD-21**, council decision **HK-8** 2026-07-13; normative & satisfies
-      `design-then-implement`: `../locveil-commons/process/python-layout.md`). Adopt the org convention:
-      src-layout under `backend/`, tests beside the package, uniform `irene`→`locveil_voice` import rename,
-      `configs/`→`config/`. The keeper checklist below is the `task-start-reconciliation` baseline; the
-      load-bearing counts were re-verified at intake 2026-07-13 (✓ = matches repo reality). Do it as ONE
-      churn (the expensive parts — docs sweep, lockfile, image rebuilds, controller cutover — must not run
-      twice); execute in the current quiet-ledger window (closes at ARCH-49 / next release push).
-      1. **Layout** — `irene/` → `backend/src/`; `pyproject.toml`, `uv.lock`, `mypy.ini`,
-         `pyrightconfig.json` into `backend/`; `configs`/`assets`/`ops`/`docker`/`docs`/`contracts`/`eval`
-         stay at repo root (product data, per §1). 3 known `__file__`-relative fixes.
-      2. **Tests** — 142 test files (`irene/tests/**`, ✓ 142) → `backend/tests/`, OUTSIDE the import package
-         (no `sys.path` shims).
-      3. **Rename** — uniform `irene`→`locveil_voice`; distribution `irene-voice-assistant`→`locveil-voice`
-         (+11 self-ref extras, ✓); 13 entry-point groups (✓ — `[project.scripts]` + 12
-         `[project.entry-points."irene.*"]`) → `locveil_voice.*`; 8 config-master/profile lines; config-ui
-         type regen (`config-ui-stays-functional`). Persona "Irene" stays in all user-visible strings (§2).
-      4. **Config tree** — `configs/` → `config/` (singular, org-wide) incl. the `config-master-file`
-         invariant text in CLAUDE.md.
-      5. **Eval venv** — wiring → `backend/.venv` (`eval/Makefile` / profiles).
-      6. **Env & scripts** — `IRENE_*`→`LOCVEIL_VOICE_*` (7 py files use it, ✓ owner-gated env keys per §3);
-         console scripts `irene-*`→`locveil-voice-*` with `irene-*` aliases retained for one release; scripted
-         WB7 cutover (compose keys + the ONE hand-edited secrets `.env` key + `update.sh`) + smoke.
-      7. **Images & docs** — all 6 backend images rebuilt + boot-verified (BUILD-11 bar); docs sweep via the
-         `docs/manifest.json` suspect-set (`user-facing-docs-are-done`). Write the voice local ID back into
-         the PROD-21 board entry.
-      _Progress 2026-07-13 (commits BUILD-36 1/n–7/n): steps 1–6 code-complete & verified —
-      layout+rename (85dcc4d), configs→config + split-layout tool root-detection (f267035),
-      config-ui regen + ui-openapi v1.1 bump/tag (d125478), contract path fixes (346a5f3),
-      eval venv→backend/.venv wiring (bbe21bd), uv.lock (ca0c44e), step-6 env family
-      IRENE_*→LOCVEIL_VOICE_* + console-script rename(+aliases) + ops cutover script (3c3e24f).
-      Also: catalog re-pinned v1.5→v1.7 (ce4f2f9, bridge CORE-10 follow-through); install-irene.sh
-      deleted (orphaned bare-metal installer, superseded by Docker/GHCR). Green: lint-imports 11/11,
-      pytest 1408 passed, build-analyzer 14/14, config-ui check+build, contract-guard, both console-script
-      name sets run. Step 7 EDITS done: 3 Dockerfiles + verify_components entry-points + derive_build_reqs
-      + .dockerignore (**/.venv) (de58eb2, `buildx --check` clean on x86_64); docs prose sweep — 21 docs
-      (README/CONTRIBUTING/QUICKSTART/guides/INSTALL/config-ui-docs) to the new invocation model, persona
-      "Irene" + deployment identity (irene.toml/irene.log/~/.cache/irene/compose service) kept; manifest
-      coherence test green. **All repo-side edits for steps 1–7 are complete + pushed (@ origin/main).**
-      Local image boot-verify (2026-07-13): the x86_64 standalone image BUILT from Dockerfile.x86_64
-      (2.9 GB, in-build verify_components gate ✓ "all 11 enabled components import"), the migrated
-      `locveil_voice` package imports at runtime, and the web API boots and serves `/health` = healthy —
-      validating the whole Docker migration (src-layout build, config/ tree, entry-point rename, module
-      paths, env). Verification artifacts removed (image + container + 7.5 GB build cache). The ARM
-      images (armv7/aarch64) share the identical recipe and rebuild via the multi-arch CI dispatch.
-      **Remaining = the owner's WB7 install (deferred to owner):** rebuild/deploy the 6 GHCR images +
-      boot-verify on the controller, then `git pull && sh ops/cutover-env-locveil-voice.sh` + smoke.
-      Flip BUILD-36 to done (move to DONE ledger + journal, docs: manifest guide set) after the WB7 install.
-      Dev bring-up: `uv sync --project backend` + `bash scripts/install_sqlite_shim.sh` + `make setup` in eval/._
 
 ### Documentation (DOC)
 

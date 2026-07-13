@@ -1858,6 +1858,35 @@ rationale/chronology lives in [`RELEASE_JOURNAL.md`](./RELEASE_JOURNAL.md).
       rest `none` with cause). Verified: scope-guard 1.2.0 green, both hooks green, manifest coherence
       8/8 incl. the verdict-ids-resolve check against these very lines.
       docs: none — process dialect + enforcement re-pin; no manifest doc's content changed.
+- [x] **BUILD-36** `[release]` [BUILD][ARCH][OPS][DOCKER] — **DONE 2026-07-13 (board PROD-21 / council
+      HK-8; owner-closed with the WB7 install explicitly deferred — controller breakage becomes a fresh
+      BUG).** Python backend layout & naming migration — one tree churn, executed + verified across commits
+      1/n–13/n (`85dcc4d`…`b95f3b9`). **Layout/rename:** `irene/`→`backend/src/locveil_voice/` (src-layout),
+      tests→`backend/tests/` (outside the package), uniform `irene`→`locveil_voice` (imports, 13 entry-point
+      groups, import-linter contracts, dist `locveil-voice` +11 self-ref extras, dynamic version), the 3
+      `__file__`-relative fixes + one cwd-relative `Path("irene/…")`, and the tooling root-detection the
+      pyproject-in-`backend`/data-at-root split needs. **Config:** `configs/`→`config/` (singular);
+      config-ui OpenAPI regen (schema names `irene__`→`locveil_voice__`) → **ui-openapi v1.1** bump + tag.
+      **Eval/lock:** eval venv→`backend/.venv`; `uv.lock` regen. **Env & scripts (step 6):** pydantic
+      `env_prefix` + explicit vars `IRENE_*`→`LOCVEIL_VOICE_*`; console scripts `locveil-voice-*` (+`irene-*`
+      aliases for one release); docker-compose/INSTALL keys + the scripted `ops/cutover-env-locveil-voice.sh`
+      (renames the one hand-edited `.env` token key, delivers compose, smokes `/health`). **Docker (step 7):**
+      3 Dockerfiles (src-layout, `config/`, module paths, `LOCVEIL_VOICE_*`) + `verify_components` entry-point
+      groups + `.dockerignore **/.venv`; **docs sweep** of 18 manifest nodes to the split-layout invocation
+      model. **Cross-repo:** catalog re-pinned v1.5→v1.7 (bridge CORE-10 follow-through, both copies);
+      board write-back; `install-irene.sh` deleted (orphaned bare-metal installer). **PROD-21 bounce
+      resolved** (`b95f3b9`): 8 `discovery_paths` flipped + stale env/run refs swept across the 8 configs
+      + `config-example.md` — and the requested tripwire proof showed `discovery_paths` is VESTIGIAL
+      (`IntentHandlerManager.initialize` hardcodes the namespace, never reads it), so it was never
+      boot-breaking → filed **ARCH-50** (review all such hardcodings/overrides vs dynamic build-and-loading).
+      **Verified:** lint-imports 11/11, pytest 1408 passed, build-analyzer 14/14 profiles, config-ui
+      check+build, contract-guard; the x86_64 image BUILDS + BOOTS locally (`/health` healthy; in-build
+      `verify_components` gate "all 11 components import"); ARM images share the recipe (multi-arch CI
+      dispatch). Persona "Irene" + deployment identity (`irene.toml`, `irene.log`, `~/.cache/irene`, the
+      compose service key `irene`) kept per `python-layout.md` §3. **NOT part of this closure (owner's
+      install):** rebuild/deploy the 6 GHCR images + boot-verify + `sh ops/cutover-env-locveil-voice.sh`
+      on the WB7 — any breakage → a fresh BUG.
+      docs: readme, contributing, quickstart, install, guides/asset-management, guides/audio, guides/build-docker, guides/build-system, guides/configuration, guides/howto-new-intent, guides/howto-new-language, guides/howto-new-model, guides/howto-new-test, guides/problem-reporting, guides/satellite, guides/tracing, guides/vad, guides/voice-trigger
 ### Models & Assets (ASSET)
 ### Documentation (DOC)
 - [x] **DOC-5b** (P2) — DONE 2026-06-08: regenerated `guides/DONATION_FILE_SPECIFICATION.md` for the v1.1
