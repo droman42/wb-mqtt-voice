@@ -1,0 +1,727 @@
+"""
+ASR Component
+
+Speech Recognition Coordinator managing multiple ASR providers.
+Provides unified web API (/asr/*), voice commands, and multi-source audio processing.
+"""
+
+from typing import Dict, Any, List, Optional, Type, AsyncIterator, Tuple
+from pathlib import Path
+import json
+import time
+import logging
+import asyncio
+
+from fastapi import APIRouter, HTTPException, UploadFile, File  # type: ignore
+from pydantic import BaseModel
+from .base import Component, MetricsPushMixin
+from ..core.interfaces.asr import ASRPlugin
+from ..core.interfaces.webapi import WebAPIPlugin
+from ..core.trace_context import TraceContext
+from ..intents.models import AudioData
+from ..intents.ports import ASRPort  # QUAL-24: domain capability port (application implements it)
+from ..core.metrics import get_metrics_collector
+from ..utils.audio_helpers import AudioTranscoder
+
+
+# Import ASR provider base class and dynamic loader
+from ..providers.asr import ASRProvider
+from ..utils.loader import dynamic_loader
+
+logger = logging.getLogger(__name__)
+
+
+class ASRComponent(MetricsPushMixin, Component, ASRPlugin, WebAPIPlugin, ASRPort):
+    """
+    ASR Component - Speech Recognition Coordinator
+    
+    Manages multiple ASR providers and provides:
+    - Unified web API (/asr/*)
+    - Voice commands for ASR control
+    - Multi-source audio processing (microphone, web, files)
+    - Provider switching and fallbacks
+    """
+    
+    @property
+    def name(self) -> str:
+        return "asr"
+        
+    @property
+    def version(self) -> str:
+        return "1.0.0"
+        
+    @property
+    def description(self) -> str:
+        return "ASR component coordinating multiple speech recognition providers"
+        
+
+        
+    @property
+    def optional_dependencies(self) -> List[str]:
+        return ["vosk", "openai-whisper", "google-cloud-speech", "numpy", "soundfile"]
+        
+    @property
+    def enabled_by_default(self) -> bool:
+        return True
+        
+    @property  
+    def category(self) -> str:
+        return "asr"
+        
+    @property
+    def platforms(self) -> List[str]:
+        return []  # All platforms
+    
+
+    def __init__(self):
+        super().__init__()
+        self.providers: Dict[str, ASRProvider] = {}  # Proper ABC type hint
+        self.default_provider = "vosk"
+        self.default_language = "ru"
+        self.core = None  # Store core reference for LLM integration
+        
+        # Dynamic provider discovery from entry-points (replaces hardcoded classes)
+        self._provider_classes: Dict[str, type] = {}
+        
+        # Phase 1: Runtime monitoring now handled by unified metrics collector
+        
+        # Phase 1: Unified metrics integration (loop provided by MetricsPushMixin)
+        self._metrics_push_task: Optional[asyncio.Task] = None
+        self._metrics_push_interval = 60.0  # seconds
+        self._metrics_component_key = "asr"
+        self._metrics_task_label = "ASR component"
+        self._metrics_loop_label = "ASR"
+
+    async def initialize(self, core) -> None:
+        """Initialize ASR providers from configuration"""
+        await super().initialize(core)
+        try:
+            self.core = core  # Store core reference
+            
+            # Get configuration (V14 Architecture)
+            config = getattr(core.config, 'asr', None)
+            if not config:
+                # Create default config if missing
+                from ..config.models import ASRConfig
+                config = ASRConfig()
+            
+            # Convert Pydantic model to dict for backward compatibility with existing logic
+            if hasattr(config, 'model_dump'):
+                config = config.model_dump()
+            elif hasattr(config, 'dict'):
+                config = config.dict()
+            else:
+                # FATAL: Invalid configuration - cannot proceed with hardcoded defaults
+                raise ValueError(
+                    "ASRComponent: Invalid configuration object received. "
+                    "Expected a valid ASRConfig instance, but got an invalid config. "
+                    "Please check your configuration file for proper v14 asr section formatting."
+                )
+            
+            # Initialize enabled providers with ABC error handling
+            # Handle both dict and Pydantic config objects
+            if isinstance(config, dict):
+                providers_config = config.get("providers", {})
+            else:
+                providers_config = getattr(config, 'providers', {})
+            
+            # Discover only enabled providers from entry-points (configuration-driven filtering)
+            enabled_providers = [name for name, provider_config in providers_config.items() 
+                                if (provider_config.get("enabled", False) if isinstance(provider_config, dict) 
+                                    else getattr(provider_config, "enabled", False))]
+            
+            self._provider_classes = dynamic_loader.discover_providers("locveil_voice.providers.asr", enabled_providers)
+            logger.info(f"Discovered {len(self._provider_classes)} enabled ASR providers: {list(self._provider_classes.keys())}")
+            
+            for provider_name, provider_class in self._provider_classes.items():
+                if isinstance(providers_config, dict):
+                    provider_config = providers_config.get(provider_name, {})
+                    provider_enabled = provider_config.get("enabled", False)
+                else:
+                    provider_config = getattr(providers_config, provider_name, {})
+                    provider_enabled = getattr(provider_config, "enabled", False) if hasattr(provider_config, "enabled") else False
+                
+                if provider_enabled:
+                    try:
+                        provider = provider_class(provider_config)
+                        if await provider.is_available():
+                            self.providers[provider_name] = provider
+                            logger.info(f"Loaded ASR provider: {provider_name}")
+                        else:
+                            logger.warning(f"ASR provider {provider_name} not available (dependencies missing)")
+                    except TypeError as e:
+                        logger.error(f"ASR provider {provider_name} missing required abstract methods: {e}")
+                    except Exception as e:
+                        logger.warning(f"Failed to load ASR provider {provider_name}: {e}")
+            
+            # Set defaults from config
+            if isinstance(config, dict):
+                self.default_provider = config.get("default_provider", "vosk")
+                self.default_language = config.get("default_language", "ru")
+            else:
+                self.default_provider = getattr(config, "default_provider", "vosk")
+                self.default_language = getattr(config, "default_language", "ru")
+
+            # BUG-36 kind 1 — a configured engine that cannot even import is a broken build: fatal.
+            self._require_loadable_providers("locveil_voice.providers.asr", enabled_providers, self._provider_classes)
+            # BUG-36 kind 2 — imported but unavailable (missing model/deps): loud, not fatal.
+            self._note_inactive_providers(enabled_providers, self.providers)
+
+            # The configured default must be usable. This replaces the CR-A2 "reconcile the default to
+            # whatever survived" swap: transcribing with a different engine than the operator chose,
+            # silently, is the same class of lie as a component vanishing at import time.
+            if self.default_provider not in self.providers:
+                raise ValueError(
+                    f"ASR default_provider={self.default_provider!r} is not usable — add an enabled "
+                    f"[asr.providers.{self.default_provider}] section, or point default_provider at one of: "
+                    f"{', '.join(sorted(self.providers)) or 'none'}")
+
+            # A (BUG-11): fail fast. An *enabled* ASR component that loaded zero providers used to report
+            # healthy and then fail EVERY audio request at runtime with a confusing "ASR provider '<x>'
+            # not available". Raise at init instead, so a misconfigured `[asr]` — e.g. `default_provider`
+            # names a provider with no enabled `[asr.providers.<name>]` section (the CR-A2 reconcile at
+            # the top only fires when providers is non-empty, so a zero-provider ASR slipped through) —
+            # surfaces at startup. (If ASR isn't needed, disable it: `[components] asr = false`.)
+            if not self.providers:
+                raise ValueError(
+                    f"ASR component is enabled but loaded no providers (default_provider="
+                    f"{self.default_provider!r}). Add an enabled [asr.providers.<name>] section with a "
+                    f"matching [asr] default_provider, or disable ASR via [components] asr = false.")
+            logger.info(f"Universal ASR Plugin initialized with {len(self.providers)} providers")
+                
+            # Phase 1: Start unified metrics push task
+            self._start_metrics_push_task()
+                
+        except Exception as e:
+            # CR-A3: re-raise so the ComponentManager's graceful-degradation path engages
+            # (core/components.py only stores a component whose initialize() returns without raising).
+            # Swallowing left ASR reported healthy with zero providers → per-request 404s/ValueErrors.
+            logger.error(f"Failed to initialize Universal ASR Plugin: {e}")
+            self.initialized = False
+            raise
+
+    # Workflow-compatible interface for AudioData objects
+    async def process_audio(self, audio_data: AudioData, trace_context: Optional[TraceContext] = None, **kwargs) -> str:
+        """
+        Workflow-compatible ASR processing. Trusts CANONICAL audio (ARCH-18 PR-4b): the mic pipeline
+        transforms once at the input boundary and direct entries (`/transcribe`) conform via
+        `_conform_to_rate`, so this method does NOT resample — it selects the provider and transcribes.
+
+        Args:
+            audio_data: AudioData object containing audio bytes and metadata (already at the canonical rate)
+            trace_context: Optional trace context for detailed execution tracking
+            **kwargs: Additional provider-specific parameters
+
+        Returns:
+            Transcribed text
+        """
+        # Get provider and language settings
+        provider_name = kwargs.get("provider", self.default_provider)
+        language = kwargs.get("language", self.default_language)
+        
+        # Import time module for metrics
+        import time
+        
+        # Debug logging for audio data reception
+        logger.info(f"🎧 ASR received audio data: {len(audio_data.data)} bytes, "
+                   f"sample_rate={audio_data.sample_rate}, channels={audio_data.channels}, "
+                   f"format={audio_data.format}, provider={provider_name}")
+        
+        if provider_name not in self.providers:
+            logger.error(f"❌ ASR provider '{provider_name}' not available. Available: {list(self.providers.keys())}")
+            raise ValueError(f"ASR provider '{provider_name}' not available")
+        
+        provider = self.providers[provider_name]
+
+        # ARCH-18 PR-4b: trust canonical. The mic pipeline transforms once at the input boundary and direct
+        # entries (/transcribe) conform via _conform_to_rate, so no resampling happens here.
+        audio_to_process = audio_data
+
+        # Execute transcription with optional tracing
+        if trace_context and trace_context.enabled:
+            # Trace path - detailed provider performance tracking
+            stage_start = time.time()
+            provider_attempts = []
+            
+            # Execute transcription with timing
+            attempt_start = time.time()
+            try:
+                transcription = await provider.transcribe_audio(audio_to_process.data, language=language)
+                provider_attempts.append({
+                    "provider": provider_name,
+                    "result": transcription,
+                    "confidence": getattr(provider, 'last_confidence', 0.0),
+                    "processing_time_ms": (time.time() - attempt_start) * 1000,
+                    "success": True
+                })
+                
+            except Exception as e:
+                provider_attempts.append({
+                    "provider": provider_name,
+                    "error": str(e),
+                    "processing_time_ms": (time.time() - attempt_start) * 1000,
+                    "success": False
+                })
+                raise
+            
+            # Record trace data
+            trace_context.record_stage(
+                stage_name="asr_transcription",
+                input_data=audio_to_process,  # AudioData object - will be converted to base64 by _sanitize_for_trace()
+                output_data=transcription,
+                metadata={
+                    "provider_attempts": provider_attempts,
+                    "audio_properties": {
+                        "sample_rate": audio_to_process.sample_rate,
+                        "channels": audio_to_process.channels,
+                        "duration_ms": len(audio_to_process.data) / (audio_to_process.sample_rate * audio_to_process.channels * 2) * 1000  # Assuming 16-bit
+                    },
+                    "default_provider": self.default_provider,
+                    "component_name": self.__class__.__name__
+                },
+                processing_time_ms=(time.time() - stage_start) * 1000
+            )
+            
+            return transcription
+        else:
+            # Fast path - direct transcription
+            return await provider.transcribe_audio(audio_to_process.data, language=language)
+    
+    async def transcribe_audio(self, audio_data: bytes, **kwargs) -> str:
+        """
+        Core ASR functionality - transcribe audio to text
+        
+        Args:
+            audio_data: Raw audio bytes
+            provider: ASR provider to use (default: self.default_provider)
+            language: Language code for transcription (default: self.default_language)
+            **kwargs: Additional provider-specific parameters
+            
+        Returns:
+            Transcribed text
+        """
+        provider_name = kwargs.get("provider", self.default_provider)
+        language = kwargs.get("language", self.default_language)
+        
+        if provider_name not in self.providers:
+            raise HTTPException(404, f"ASR provider '{provider_name}' not available")
+        
+        provider = self.providers[provider_name]
+        
+        # Start timing for performance metrics
+        start_time = time.time()
+        
+        # Perform transcription
+        result = await provider.transcribe_audio(audio_data, **kwargs)
+        
+        # Calculate processing time
+        processing_time = (time.time() - start_time) * 1000  # Convert to milliseconds
+        
+        # Log ASR result with info level
+        if result and result.strip():
+            logger.info(f"🎯 ASR transcription successful: '{result}' "
+                       f"(provider: {provider_name}, language: {language}, "
+                       f"processing_time: {processing_time:.1f}ms, "
+                       f"audio_size: {len(audio_data)} bytes)")
+        else:
+            logger.info(f"📭 ASR transcription empty "
+                       f"(provider: {provider_name}, language: {language}, "
+                       f"processing_time: {processing_time:.1f}ms, "
+                       f"audio_size: {len(audio_data)} bytes)")
+        
+        return result
+
+    def supports_streaming(self, provider: Optional[str] = None) -> bool:
+        """Whether the selected ASR provider does server-side streaming endpointing
+        (gates the no-VAD `/ws/audio` streaming path)."""
+        name = provider or self.default_provider
+        p = self.providers.get(name) if name else None
+        return bool(getattr(p, "supports_streaming", False))
+
+    async def transcribe_stream_segments(
+        self, audio_stream: AsyncIterator[bytes], **kwargs
+    ) -> AsyncIterator[Tuple[str, bool]]:
+        """Yield ``(text, is_final)`` per utterance from the active provider — the no-VAD
+        `/ws/audio` streaming path. Keeps the provider behind the ASR port."""
+        provider_name = kwargs.get("provider", self.default_provider)
+        if provider_name not in self.providers:
+            raise HTTPException(404, f"ASR provider '{provider_name}' not available")
+        async for segment in self.providers[provider_name].transcribe_stream_segments(audio_stream):
+            yield segment
+
+    # Public methods for intent handler delegation
+    def set_default_provider(self, provider_name: str) -> bool:
+        """Set default ASR provider - simple atomic operation"""
+        if provider_name in self.providers:
+            self.default_provider = provider_name
+            return True
+        return False
+    
+    def get_providers_info(self) -> str:
+        """Implementation of abstract method - Get ASR providers information"""
+        return self._get_providers_info()
+    
+    def get_runtime_metrics(self) -> Dict[str, Any]:
+        """Get runtime monitoring metrics from unified collector (Phase 1: Complete integration)"""
+        metrics_collector = get_metrics_collector()
+        
+        # Get component-specific metrics from unified collector
+        resampling_metrics = metrics_collector.get_component_resampling_metrics("asr")
+        
+        # Phase 6: Include cache performance metrics
+        from ..utils.audio_helpers import AudioTranscoder
+        cache_stats = AudioTranscoder.get_cache_stats()
+        
+        # Combine and return unified metrics
+        combined_metrics = {
+            'total_resampling_operations': resampling_metrics.get('total_operations', 0),
+            'total_resampling_time_ms': resampling_metrics.get('total_time_ms', 0.0),
+            'resampling_failures': resampling_metrics.get('failures', 0),
+            'average_resampling_time_ms': resampling_metrics.get('average_time_ms', 0.0),
+            'resampling_success_rate': (
+                1.0 - (resampling_metrics.get('failures', 0) / max(1, resampling_metrics.get('total_operations', 1)))
+            ),
+            'provider_fallbacks': 0,  # To be enhanced later
+            'configuration_warnings': 0,  # To be enhanced later
+            'cache_statistics': cache_stats
+        }
+        
+        return combined_metrics
+    
+    def parse_provider_name_from_text(self, text: str) -> Optional[str]:
+        """Override base method with ASR-specific aliases and logic"""
+        # First try base implementation
+        result = super().parse_provider_name_from_text(text)
+        if result:
+            return result
+        
+        # ASR-specific aliases
+        return self._parse_provider_name(text)
+    
+    async def switch_language(self, language: str) -> tuple[bool, str]:
+        """Switch ASR language - public method for intent handlers"""
+        # TODO: Implement language switching logic
+        return False, "Переключение языка пока не реализовано"
+    
+    def reset_provider_state(self, provider_name: Optional[str] = None, language: Optional[str] = None) -> bool:
+        """
+        Reset ASR provider state to prevent contamination between utterances.
+        
+        This method calls the reset() method on the specified provider(s) to clear
+        any internal state that might persist between transcription calls.
+        
+        Args:
+            provider_name: Provider to reset (None = reset all providers)
+            language: Language to reset (None = reset all languages)
+            
+        Returns:
+            True if at least one reset was successful, False otherwise
+        """
+        success_count = 0
+        total_attempts = 0
+        
+        try:
+            if provider_name is None:
+                # Reset all providers
+                for name, provider in self.providers.items():
+                    total_attempts += 1
+                    try:
+                        if provider.reset(language):
+                            success_count += 1
+                            logger.debug(f"Reset ASR provider state: {name}")
+                        else:
+                            logger.warning(f"Failed to reset ASR provider state: {name}")
+                    except Exception as e:
+                        logger.warning(f"Error resetting ASR provider {name}: {e}")
+                
+                if total_attempts > 0:
+                    logger.info(f"Reset {success_count}/{total_attempts} ASR providers")
+                    
+            else:
+                # Reset specific provider
+                if provider_name in self.providers:
+                    total_attempts = 1
+                    try:
+                        if self.providers[provider_name].reset(language):
+                            success_count = 1
+                            logger.debug(f"Reset ASR provider state: {provider_name}")
+                        else:
+                            logger.warning(f"Failed to reset ASR provider state: {provider_name}")
+                    except Exception as e:
+                        logger.warning(f"Error resetting ASR provider {provider_name}: {e}")
+                else:
+                    logger.warning(f"ASR provider not found: {provider_name}")
+                    return False
+            
+            return success_count > 0
+            
+        except Exception as e:
+            logger.error(f"Error in reset_provider_state: {e}")
+            return False
+    
+    def _get_providers_info(self) -> str:
+        """Get formatted information about available providers"""
+        if not self.providers:
+            return "Нет доступных провайдеров ASR"
+        
+        info_lines = [f"Доступные провайдеры ASR ({len(self.providers)}):"]
+        for name, provider in self.providers.items():
+            status = "✓ (по умолчанию)" if name == self.default_provider else "✓"
+            languages = ", ".join(provider.get_supported_languages()[:3])  # Show first 3
+            info_lines.append(f"  {status} {name}: {languages}...")
+        
+        return "\n".join(info_lines)
+    
+    def _parse_provider_name(self, command: str) -> Optional[str]:
+        """Extract provider name from voice command"""
+        command_lower = command.lower()
+        for provider_name in self.providers.keys():
+            if provider_name in command_lower:
+                return provider_name
+        
+        # Handle common aliases
+        aliases = {
+            "воск": "vosk",
+            "виспер": "whisper", 
+            "гугл": "google_cloud",
+            "облако": "google_cloud"
+        }
+        
+        for alias, provider_name in aliases.items():
+            if alias in command_lower and provider_name in self.providers:
+                return provider_name
+        
+        return None
+    
+    # WebAPIPlugin interface - unified API
+    def get_router(self) -> APIRouter:
+        from ..config.models import ASRConfig
+        from ..api.schemas import ASRConfigureResponse
+        
+        router = APIRouter()
+        
+        @router.post("/transcribe")
+        async def transcribe_audio_file(
+            audio: UploadFile = File(...),
+            provider: Optional[str] = None,
+            language: Optional[str] = None,
+            enhance: bool = False
+        ):
+            """Transcribe uploaded audio file - NEW CAPABILITY!"""
+            provider_name = provider or self.default_provider
+            # QUAL-38: unspecified transcription language resolves to the component's configured
+            # default (set from config), not a hardcoded "ru".
+            language = language or self.default_language
+            
+            if provider_name not in self.providers:
+                raise HTTPException(404, f"Provider '{provider_name}' not available")
+            
+            # Save uploaded file to configured temp directory
+            import uuid
+            from ..config.models import CoreConfig
+            
+            # Get temp audio directory from configuration
+            config = self.core.config if hasattr(self, 'core') and self.core else CoreConfig()
+            temp_dir = config.assets.temp_audio_dir
+            temp_dir.mkdir(parents=True, exist_ok=True)
+            
+            # Generate unique filename
+            filename = audio.filename or "audio_file"
+            suffix = Path(filename).suffix if filename else ".wav"
+            unique_filename = f"{uuid.uuid4()}{suffix}"
+            temp_path = temp_dir / unique_filename
+            
+            # Write uploaded content to file
+            audio_data = await audio.read()
+            temp_path.write_bytes(audio_data)
+            
+            try:
+                # Detect audio file metadata for proper AudioData creation
+                from ..utils.audio_helpers import get_audio_info
+                from ..intents.models import AudioData
+                import time
+                
+                # Get comprehensive audio file information
+                audio_info = get_audio_info(temp_path)
+                logger.debug(f"Detected audio file metadata: {audio_info}")
+                
+                # Use detected metadata or sensible defaults
+                detected_sample_rate = audio_info.get('sample_rate', 16000)
+                detected_channels = audio_info.get('channels', 1)
+                detected_format = audio_info.get('format', 'wav')
+                
+                # Create AudioData object with detected metadata
+                audio_data_obj = AudioData(
+                    data=audio_data,
+                    timestamp=time.time(),
+                    sample_rate=detected_sample_rate,
+                    channels=detected_channels,
+                    format=f"pcm16_{detected_format}",  # Standardize format naming
+                    metadata={
+                        'source': 'file_upload',
+                        'original_filename': filename,
+                        'file_size_bytes': len(audio_data),
+                        'detected_metadata': audio_info
+                    }
+                )
+                
+                logger.info(f"🎧 Processing uploaded audio file: {filename} "
+                           f"({detected_sample_rate}Hz, {detected_channels}ch, {len(audio_data)} bytes)")
+                
+                # ARCH-18: an uploaded file arrives at an arbitrary rate — conform it to the canonical format
+                # HERE via the SHARED negotiator (the same to_canonical the mic/web boundary uses; it also
+                # downmixes to mono). process_audio then trusts canonical.
+                negotiator = getattr(self.core, "audio_negotiator", None) if self.core else None
+                if negotiator is not None:
+                    audio_data_obj = await negotiator.to_canonical(audio_data_obj)
+                text = await self.process_audio(
+                    audio_data_obj, provider=provider_name, language=language
+                )
+
+                # Optional LLM enhancement (QUAL-15): the old `plugin_manager.get_plugin("universal_llm")`
+                # was a permanent no-op (no such plugin — the LLM is a *component*). Use the real LLM
+                # component, gated on a REAL model being available (is_available() excludes the console
+                # stub), so this stays a clean no-op offline / without an LLM key.
+                enhanced_text = None
+                if enhance and text.strip():
+                    llm_component = self.get_dependency('llm')
+                    if llm_component and await llm_component.is_available():
+                        try:
+                            enhanced_text = await llm_component.enhance_text(
+                                text, task="improve_speech_recognition"
+                            )
+                        except Exception as e:
+                            logger.warning(f"LLM ASR-enhancement failed: {e}")
+                    
+                    if enhanced_text:
+                        return {
+                            "original_text": text,
+                            "enhanced_text": enhanced_text,
+                            "provider": provider_name,
+                            "language": language,
+                            "enhanced": True
+                        }
+                
+                return {
+                    "text": text,
+                    "provider": provider_name,
+                    "language": language,
+                    "enhanced": False
+                }
+                
+            finally:
+                # Clean up temporary file
+                if temp_path.exists():
+                    temp_path.unlink()
+        
+        @router.get("/providers")
+        async def list_asr_providers():
+            """Discovery endpoint for all ASR provider capabilities"""
+            result = {}
+            for name, provider in self.providers.items():
+                try:
+                    result[name] = {
+                        "available": await provider.is_available(),
+                        "parameters": provider.get_parameter_schema(),
+                        "languages": provider.get_supported_languages(),
+                        "formats": provider.get_supported_formats(),
+                        "capabilities": provider.get_capabilities()
+                    }
+                except Exception as e:
+                    result[name] = {
+                        "available": False,
+                        "error": str(e)
+                    }
+            return {"providers": result, "default": self.default_provider}
+        
+        @router.post("/configure", response_model=ASRConfigureResponse)
+        async def configure_asr(config_update: ASRConfig):
+            """Configure ASR settings using unified TOML schema"""
+            try:
+                
+                # Apply runtime configuration without TOML persistence
+                config_dict = config_update.model_dump()
+                
+                self._apply_provider_config(config_dict)
+                
+                # Update language if provided
+                language = config_dict.get("language")
+                if language:
+                    logger.info(f"ASR language updated to: {language}")
+                
+                # Update enabled providers if provided (would require re-initialization)
+                providers_config = config_dict.get("providers", {})
+                if providers_config:
+                    logger.info(f"ASR runtime provider configuration updated for {len(providers_config)} providers")
+                
+                return ASRConfigureResponse(
+                    success=True,
+                    message="ASR configuration applied successfully using unified schema",
+                    default_provider=self.default_provider,
+                    enabled_providers=list(self.providers.keys()),
+                    language=language
+                )
+                
+            except Exception as e:
+                logger.error(f"Failed to configure ASR with unified schema: {e}")
+                return ASRConfigureResponse(
+                    success=False,
+                    message=f"Failed to apply ASR configuration: {str(e)}",
+                    default_provider=self.default_provider,
+                    enabled_providers=list(self.providers.keys()),
+                    language=None
+                )
+        
+        @router.post("/reset")
+        async def reset_asr_state(provider: Optional[str] = None, language: Optional[str] = None):
+            """Reset ASR provider state to clear internal buffers and prevent contamination"""
+            try:
+                success = self.reset_provider_state(provider, language)
+                if success:
+                    return {
+                        "success": True,
+                        "message": f"Reset ASR state for provider: {provider or 'all'}, language: {language or 'all'}"
+                    }
+                else:
+                    return {
+                        "success": False,
+                        "message": "Failed to reset ASR state"
+                    }
+            except Exception as e:
+                raise HTTPException(500, f"Error resetting ASR state: {str(e)}")
+        
+        return router 
+    
+    def get_api_prefix(self) -> str:
+        """Get URL prefix for ASR API endpoints"""
+        return "/asr"
+    
+    def get_api_tags(self) -> List[str]:
+        """Get OpenAPI tags for ASR endpoints"""
+        return ["Speech Recognition"]
+    
+    # Build dependency methods (TODO #5 Phase 2)
+    @classmethod
+    def get_python_dependencies(cls) -> List[str]:
+        """ASR component needs web API functionality"""
+        return ["web-api"]  # FastAPI/uvicorn/websockets/python-multipart stack
+    
+    # Phase 1: metrics push task/loop provided by MetricsPushMixin
+
+    async def stop(self) -> None:
+        """Stop the ASR component (alias for shutdown)"""
+        # Phase 1: Stop unified metrics push task
+        await self._stop_metrics_push_task()
+        await self.shutdown()
+    
+    # Config interface methods (Phase 3 - Configuration Architecture Cleanup)
+    @classmethod
+    def get_config_class(cls) -> Type[BaseModel]:
+        """Return the Pydantic config model for this component"""
+        from ..config.models import ASRConfig
+        return ASRConfig
+    
+    @classmethod
+    def get_config_path(cls) -> str:
+        """Return the TOML path to this component's config (V14 Architecture)"""
+        return "asr" 

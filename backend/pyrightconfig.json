@@ -1,0 +1,26 @@
+{
+  "include": [
+    "src/locveil_voice"
+  ],
+  "exclude": [
+    "**/node_modules",
+    "**/__pycache__",
+    "**/.*",
+    "tests"
+  ],
+  "pythonVersion": "3.11",
+  "pythonPlatform": "Linux",
+  "venvPath": ".",
+  "venv": ".venv",
+
+  // QUAL-4 (DONE 2026-06-06): the release type gate. Standard mode is enforced with
+  // an EMPTY suppression list — the ratchet is complete (4a gate · 4b None-safety ·
+  // 4c phantom-attrs · 4d override-compat · 4e type-tail; 762 baseline errors → 0).
+  // `uv run pyright` must stay at 0 errors. NEVER add a rule suppression here; fix the
+  // code instead. (The one scoped exception is the documented file-level directive in
+  // src/locveil_voice/api/schemas.py for Pydantic field/Config narrowing — see that file.)
+  "typeCheckingMode": "standard",
+
+  // stub-present-but-source-absent noise from optional native deps; not type debt
+  "reportMissingModuleSource": "none"
+}

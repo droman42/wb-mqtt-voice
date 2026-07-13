@@ -1,0 +1,651 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "locveil-voice"
+dynamic = ["version"]
+description = "Irene - Modern async voice assistant with optional components. Supports plugins and flexible deployment."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    # Core async framework (minimal dependencies)
+    "python-dateutil>=2.8.0", # Fixed: Updated to be compatible with pandas/matplotlib
+    # Configuration and validation (now required)
+    "pydantic>=2.0.0",
+    "pydantic-settings>=2.0.0",
+    "tomli-w>=1.0.0", # For TOML writing support
+    "tomlkit>=0.12.0", # For comment-preserving TOML round-trip editing
+    # Logging and utilities
+    "termcolor>=1.1.0",
+    "pyyaml>=6.0",  # used in core runtime (webapi_router, intent_asset_loader, NLU) — was only transitive
+    # NLU fuzzy matching (JSON donation system requirement)
+    "rapidfuzz>=3.0.0",
+    "jsonschema>=4.25.0",
+    "prompt-toolkit>=3.0.51",
+    "aiohttp>=3.12.15",
+    # numpy is DELIBERATELY NOT a base dependency (BUG-33). On armv7 it resolves to a PiWheels
+    # wheel that links the *system* libopenblas — which no image installs, because nothing declares
+    # it: `get_platform_dependencies()` is provider-scoped, and a base dep has no provider. The
+    # armv7 runtime path is numpy-free by design (see providers/{asr/sherpa_onnx,tts/piper}.py), so
+    # numpy now belongs to the extras of the providers that actually import it. Each such extra
+    # carries `numpy<2` explicitly — the version floor lives in one place per consumer, and a
+    # profile that enables no numpy provider installs no numpy.
+]
+
+[project.optional-dependencies]
+# Audio input — split per-provider (B): the vosk ASR provider + the sounddevice audio backend
+# (also reused by the microphone input). Umbrella `audio-input` kept for back-compat.
+asr-vosk = [
+    "vosk>=0.3.45",
+]
+audio-sounddevice = [
+    "sounddevice>=0.5.0",
+    "soundfile>=0.13.0",
+    "numpy<2",  # providers/audio/sounddevice.py converts PCM frames
+]
+audio-input = [
+    "locveil-voice[asr-vosk,audio-sounddevice]"
+]
+
+# Advanced ASR providers
+advanced-asr = [
+    "openai-whisper>=20230314",
+    "torch>=1.13.0",  # Required by Whisper
+    "torchaudio>=0.13.0"  # Required by Whisper
+]
+# sherpa-onnx ASR (ARCH-10): the alphacep VOSK Zipformer2 ONNX family (RU) + Moonshine (EN). NO torch.
+# Per-arch version split lives in the PEP 508 markers (uv evaluates them per build target):
+#   - armv7 (WB7): 1.12.36 — the smallest sherpa that supports Moonshine's merged .ort decoder (needed
+#     for the EN ASR) and still supports the RU vosk Zipformer2. Its wheel bundles onnxruntime and self-
+#     contains the native libs. Newer sherpa wheels fail on the WB7 out of the box (ELF alignment + a
+#     GLIBCXX bump) — `docker/Dockerfile.armv7` fixes both (bookworm base + patch_onnx_align.py); see
+#     BUG-14. This one pin serves both the RU and EN armv7 images (config selects the model).
+#   - everything else (x86_64 / aarch64 / win_amd64 / macos): latest. Since 1.13 the native libraries
+#     (onnxruntime + the C-API .so) ship in a SEPARATE `sherpa-onnx-core` wheel; without it the
+#     extension can't load `libonnxruntime.so` (it is NOT bundled in the main wheel any more). Pull both
+#     with matching markers — this is what made sherpa work on 64-bit/Windows, not just armv7.
+asr-onnx = [
+    "sherpa-onnx==1.12.36; platform_machine=='armv7l'",
+    "sherpa-onnx>=1.13; platform_machine!='armv7l'",
+    "sherpa-onnx-core>=1.13; platform_machine!='armv7l'",
+]
+
+# Enhanced audio input with cloud providers
+audio-input-enhanced = [
+    "locveil-voice[audio-input,cloud-asr]"
+]
+
+# Complete audio input with all ASR providers
+audio-input-complete = [
+    "locveil-voice[audio-input,cloud-asr,advanced-asr]"
+]
+
+# TTS output — split per-provider (B). silero needs torch (pulled as the CPU wheel via the
+# [tool.uv.index]/[tool.uv.sources] pin below); the others are self-contained. Umbrella `tts` kept.
+tts-silero = [
+    "torch>=1.13.0",
+    "numpy<2",  # utils/audio_stream.py float_to_pcm16 (piper has its own numpy-free converter)
+]
+tts-pyttsx = [
+    "pyttsx3>=2.90",
+]
+tts-elevenlabs = [
+    "elevenlabs>=1.0.3",
+    "httpx>=0.25.0",
+]
+tts-vosk = [
+    "vosk-tts>=0.3.0",  # VOSK TTS for high-quality Russian multi-speaker synthesis
+]
+tts = [
+    "locveil-voice[tts-pyttsx,tts-elevenlabs,tts-vosk,tts-silero]"
+]
+
+# Audio output components. ARCH-20: streamable-only backends — sounddevice (RawOutputStream, cross-OS),
+# aplay (ALSA stdin, Linux), miniaudio (self-contained, bundled WASAPI/CoreAudio/ALSA, cross-OS incl. RPi).
+# Dropped audioplayer (file-only) + simpleaudio (archived, WAV-buffer-only) — neither can stream raw PCM.
+audio-miniaudio = [
+    "miniaudio>=1.59",
+    "numpy<2",  # providers/audio/miniaudio.py converts PCM frames
+]
+# Umbrella: the two output backends + librosa (resampling helper, not owned by one provider).
+audio-output = [
+    "locveil-voice[audio-sounddevice,audio-miniaudio]",
+    "librosa>=0.10.0",  # For high-quality audio resampling in audio_helpers.py
+    "numpy<2",  # audio_helpers.py resample/convert paths (librosa needs it too)
+]
+
+# Wake word detection. 64-bit only — the WB7/armv7 satellite wakes on-device (ESP32). Two provider
+# families, each its own extra (contribution principle); `voice-trigger` is the both-families umbrella.
+#   openWakeWord  → wake-onnx  (ONNX runtime, no torch)
+#   microWakeWord → wake-tflite (pymicro-wakeword: micro frontend + bundled tflite C lib; ESP32-unified)
+wake-onnx = [
+    # aiohttp is a base dependency — not re-listed (CR-C4). numpy IS listed: it is no longer base
+    # (BUG-33), and providers/voice_trigger/openwakeword.py imports it.
+    "openwakeword>=0.6.0",
+    "onnxruntime>=1.15.0",
+    "numpy<2",
+]
+# pymicro-wakeword ships wheels for x86_64 / aarch64 / win_amd64 / macos — NO armv7 (which is correct:
+# the WB7 wakes on-device on the ESP32, never server-side here). The marker keeps the extra installable
+# on armv7 (it just resolves to nothing there) instead of failing on a missing wheel.
+wake-tflite = [
+    # numpy + aiohttp are base dependencies — not re-listed here (CR-C4).
+    "pymicro-wakeword>=2.0.0; platform_machine != 'armv7l'",
+]
+# microVAD (pymicro-vad) — the 'microvad' VAD engine; self-contained (bundles model + tflite C lib),
+# shares the micro frontend with wake-tflite. pymicro-vad ships wheels for **Linux x86_64/aarch64 only**
+# (no Windows/macOS/armv7), so the marker scopes it there; on other targets use energy or silero VAD.
+vad-tflite = [
+    "pymicro-vad>=2.0.0; sys_platform == 'linux' and (platform_machine == 'x86_64' or platform_machine == 'aarch64')",
+]
+# The two VAD engines that do their own DSP in numpy (utils/vad.py). Their own extras rather than a
+# shared one: the silero VAD reuses `asr-onnx`, and `asr-onnx` is what the armv7 image installs for
+# sherpa — folding numpy in there would put a PiWheels numpy back on the board it must never reach.
+vad-energy = [
+    "numpy<2",  # utils/vad.py SimpleVAD/AdvancedVAD signal processing
+]
+vad-silero = [
+    "numpy<2",  # utils/vad_silero.py frame conversion
+]
+voice-trigger = [
+    "locveil-voice[wake-onnx,wake-tflite]",
+]
+
+# Web API components
+web-api = [
+    "fastapi>=0.100.0",
+    # plain uvicorn: [standard] pulls uvloop/httptools/watchfiles (C/Rust) with no armv7 wheels →
+    # source builds that hang/fail under QEMU. WS still works via the `websockets` dep below.
+    "uvicorn>=0.20.0",
+    "websockets>=11.0.0",
+    "python-multipart>=0.0.6",  # Required for file uploads in Audio/ASR endpoints
+]
+
+# Cloud ASR components
+cloud-asr = [
+    "google-cloud-speech>=2.20.0",
+    "google-auth>=2.17.0",
+]
+
+# LLM components — split per-provider (B). deepseek reuses llm-openai (OpenAI-compatible client).
+llm-openai = [
+    "openai>=1.0.0",
+]
+llm-anthropic = [
+    "anthropic>=0.25.0",
+]
+llm = [
+    "locveil-voice[llm-openai,llm-anthropic]"
+]
+
+# NLU spaCy — the LIB lives in this extra; the LANGUAGE MODELS stay as raw direct-URL specs (returned
+# in-code by the spaCy provider) so the build can trim them per-config via derive_build_reqs `_spacy_keep`.
+# The provider returns ["nlu-spacy", <model URLs>]: derive routes the extra-name to uv, the URLs to pip-specs.
+nlu-spacy = [
+    "spacy>=3.8.0",
+    "numpy<2",  # providers/nlu/spacy_provider.py + analysis/spacy_analyzer.py
+]
+# Umbrella with all models — for the `voice` dev group (`uv sync`); the trimmed Docker build path uses
+# the provider's raw model specs instead. numpy dropped — it is a base dependency.
+nlu = [
+    "locveil-voice[nlu-spacy]",
+    # Phase 1: Multi-language model support - Russian models (in preference order)
+    "ru_core_news_md @ https://github.com/explosion/spacy-models/releases/download/ru_core_news_md-3.8.0/ru_core_news_md-3.8.0-py3-none-any.whl",
+    "ru_core_news_sm @ https://github.com/explosion/spacy-models/releases/download/ru_core_news_sm-3.8.0/ru_core_news_sm-3.8.0-py3-none-any.whl",
+    # Phase 1: Multi-language model support - English models (in preference order)
+    "en_core_web_md @ https://github.com/explosion/spacy-models/releases/download/en_core_web_md-3.8.0/en_core_web_md-3.8.0-py3-none-any.whl",
+    "en_core_web_sm @ https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl"
+]
+
+# Text processing and multilingual support.
+# Number→words normalization uses ovos-number-parser (the maintained OpenVoiceOS successor of the
+# abandoned MycroftAI lingua-franca — QUAL-13/ASSET-3, 2026-06-03). Pure-Python (no armv7 wheel
+# concern), ru+en. Optional: locveil_voice/utils/text_processing.py keeps a pure-Python Russian fallback
+# (num_to_text_ru) so the ru path works even without this extra installed.
+text-multilingual = [
+    "ovos-number-parser>=0.5.1",
+    "runorm>=0.1.0",
+    "eng-to-ipa>=0.0.2",
+]
+
+# Russian stress/homograph accentor for the `piper_ruaccent` TTS provider (ARCH-24 T2/PR3).
+# 64-bit ONLY: ruaccent pulls onnxruntime + transformers, and onnxruntime has no armv7 wheel —
+# the marker keeps it off the armv7 image (it resolves to nothing there, like pymicro). The plain
+# `piper` provider remains the armv7 TTS.
+tts-ruaccent = [
+    "ruaccent>=1.5.8; platform_machine != 'armv7l'",
+]
+
+# Note: wake-word-training dependencies moved to separate project
+
+# Development dependencies — single opt-in source (install via `--extra dev`).
+# Consolidated 2026-06-04: the former [dependency-groups].dev (PEP 735, auto-installed
+# by uv) duplicated mypy and split the toolchain; folded its type stubs in here so a
+# bare `uv sync` is runtime-only and `--extra dev` is the complete dev toolchain.
+dev = [
+    "pytest>=7.0.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-cov>=5.0.0",  # TEST-7: coverage measurement is a mandatory part of the suite rewrite
+    # The runtime CPython here is built WITHOUT the stdlib `_sqlite3` extension, which coverage.py
+    # requires. Mirror locveil-bridge: ship pysqlite3-binary and alias it onto `sqlite3` (see the
+    # root conftest.py). Self-contained — bundles its own SQLite, no system dependency.
+    "pysqlite3-binary>=0.5.0",
+    "black>=22.0.0",
+    "isort>=5.0.0",
+    "flake8>=4.0.0",
+    "mypy==1.15.0",  # Pinned to match locveil-bridge version
+    "pyright==1.1.410",  # QUAL-4: pinned — the standard-mode gate; diagnostics vary by version
+    "import-linter>=2.0",  # ARCH-5: enforce the hexagon import contracts
+    # QUAL-32 / Invariant #9: the no-TYPE_CHECKING AST gate, now upstream (extracted from this repo).
+    # Pinned — diagnostics/behaviour are an explicit-bump choice. Provides `check-no-type-checking` on PATH.
+    "py-dev-gates @ git+https://github.com/droman42/py-dev-gates@v0.1.1",
+    # type stubs (were in [dependency-groups].dev)
+    "types-beautifulsoup4>=4.12.0.20250516",
+    "types-pillow>=10.2.0.20240822",
+    "types-pyyaml>=6.0.12.20250516",
+    "types-requests>=2.32.4.20250611",
+    "types-setuptools>=80.9.0.20250801",
+    "types-urllib3>=1.26.25.14",
+]
+
+# Convenience groups - Fixed: Re-enabled with proper dependencies
+# Full voice assistant
+voice = [
+    "locveil-voice[audio-input,tts,audio-output,voice-trigger,nlu,web-api,text-multilingual]"
+]
+
+# API server only
+api = [
+    "locveil-voice[web-api]"
+]
+
+# Headless mode (text processing only) — base deps only (config-writing folded into core; CR-B10).
+headless = []
+
+# All optional components - Fixed: Re-enabled
+all = [
+    # BUILD-9: `all` must be genuinely all (CI type-checks the full provider surface with
+    # `pip install .[all,dev]`). Previously missed tts-ruaccent + vad-tflite (pyright
+    # missing-import failures) and the api/headless/audio-input-* umbrella aliases.
+    "locveil-voice[voice,cloud-asr,advanced-asr,asr-onnx,llm,tts-ruaccent,vad-tflite,api,headless,audio-input-complete,audio-input-enhanced]"
+]
+
+[project.scripts]
+# Configuration and build management tools
+irene-config-validate = "locveil_voice.tools.config_validator_cli:main"
+irene-build-analyze = "locveil_voice.tools.build_analyzer:main"
+irene-dependency-validate = "locveil_voice.tools.dependency_validator:main"
+# QUAL-67: donation schema + contract-wiring gate, warnings-as-errors (enabled by the QUAL-66 zero-baseline)
+irene-donation-validate = "locveil_voice.tools.donation_validator_cli:main"
+
+# Trace recording + replay (ARCH-19) — also covers the old VAD-recording workflow
+# (capture_level=segmenter on a mic session → read vad_frames, then replay to tune)
+irene-replay-trace = "locveil_voice.tools.replay_trace:main"
+
+# Main runners
+irene-cli = "locveil_voice.runners.cli:run_cli"
+irene-webapi = "locveil_voice.runners.webapi_runner:run_webapi"
+irene-voice = "locveil_voice.runners.voice_runner:run_voice"
+irene-satellite = "locveil_voice.runners.satellite_runner:run_satellite"
+
+# ============================================================
+# ENTRY-POINTS CATALOG - Provider Discovery System
+# ============================================================
+# Entry-points catalog for dynamic provider discovery.
+# This replaces hardcoded _provider_classes dictionaries and enables:
+# - Configuration-driven loading
+# - External package extensibility
+# - Build-time optimization
+# - Dynamic discovery without hardcoded imports
+
+[project.entry-points."locveil_voice.providers.audio"]
+console = "locveil_voice.providers.audio.console:ConsoleAudioProvider"
+sounddevice = "locveil_voice.providers.audio.sounddevice:SoundDeviceAudioProvider"
+aplay = "locveil_voice.providers.audio.aplay:AplayAudioProvider"
+miniaudio = "locveil_voice.providers.audio.miniaudio:MiniaudioAudioProvider"
+
+[project.entry-points."locveil_voice.providers.tts"]
+console = "locveil_voice.providers.tts.console:ConsoleTTSProvider"
+pyttsx = "locveil_voice.providers.tts.pyttsx:PyttsTTSProvider"
+silero_v3 = "locveil_voice.providers.tts.silero_v3:SileroV3TTSProvider"
+silero_v4 = "locveil_voice.providers.tts.silero_v4:SileroV4TTSProvider"
+vosk_tts = "locveil_voice.providers.tts.vosk:VoskTTSProvider"
+piper = "locveil_voice.providers.tts.piper:PiperTTSProvider"
+piper_ruaccent = "locveil_voice.providers.tts.piper_ruaccent:PiperRuAccentTTSProvider"
+elevenlabs = "locveil_voice.providers.tts.elevenlabs:ElevenLabsTTSProvider"
+
+[project.entry-points."locveil_voice.providers.asr"]
+vosk = "locveil_voice.providers.asr.vosk:VoskASRProvider"
+whisper = "locveil_voice.providers.asr.whisper:WhisperASRProvider"
+google_cloud = "locveil_voice.providers.asr.google_cloud:GoogleCloudASRProvider"
+sherpa_onnx = "locveil_voice.providers.asr.sherpa_onnx:SherpaOnnxASRProvider"
+sherpa_moonshine = "locveil_voice.providers.asr.sherpa_moonshine:SherpaMoonshineASRProvider"
+
+[project.entry-points."locveil_voice.providers.llm"]
+console = "locveil_voice.providers.llm.console:ConsoleLLMProvider"
+deepseek = "locveil_voice.providers.llm.deepseek:DeepSeekLLMProvider"
+openai = "locveil_voice.providers.llm.openai:OpenAILLMProvider"
+anthropic = "locveil_voice.providers.llm.anthropic:AnthropicLLMProvider"
+
+[project.entry-points."locveil_voice.providers.voice_trigger"]
+openwakeword = "locveil_voice.providers.voice_trigger.openwakeword:OpenWakeWordProvider"
+microwakeword = "locveil_voice.providers.voice_trigger.microwakeword:MicroWakeWordProvider"
+
+[project.entry-points."locveil_voice.providers.vad"]
+energy = "locveil_voice.providers.vad.energy:EnergyVADProvider"
+silero = "locveil_voice.providers.vad.silero:SileroVADProvider"
+microvad = "locveil_voice.providers.vad.microvad:MicroVADProvider"
+
+[project.entry-points."locveil_voice.providers.nlu"]
+hybrid_keyword_matcher = "locveil_voice.providers.nlu.hybrid_keyword_matcher:HybridKeywordMatcherProvider"
+spacy_nlu = "locveil_voice.providers.nlu.spacy_provider:SpaCyNLUProvider"
+llm = "locveil_voice.providers.nlu.llm:LLMNLUProvider"
+
+[project.entry-points."locveil_voice.providers.text_processor"]
+# QUAL-13: one config-driven processor (per-stage normalizer chains) replaced the 4 stage-specific
+# providers (asr/general/tts/number), which were decorative routing around one number call.
+unified_text_processor = "locveil_voice.providers.text_processor.unified:UnifiedTextProcessor"
+
+[project.entry-points."locveil_voice.components"]
+tts = "locveil_voice.components.tts_component:TTSComponent"
+asr = "locveil_voice.components.asr_component:ASRComponent"
+llm = "locveil_voice.components.llm_component:LLMComponent"
+audio = "locveil_voice.components.audio_component:AudioComponent"
+voice_trigger = "locveil_voice.components.voice_trigger_component:VoiceTriggerComponent"
+nlu = "locveil_voice.components.nlu_component:NLUComponent"
+text_processor = "locveil_voice.components.text_processor_component:TextProcessorComponent"
+intent_system = "locveil_voice.components.intent_component:IntentComponent"
+monitoring = "locveil_voice.components.monitoring_component:MonitoringComponent"
+configuration = "locveil_voice.components.configuration_component:ConfigurationComponent"
+nlu_analysis = "locveil_voice.components.nlu_analysis_component:NLUAnalysisComponent"
+
+[project.entry-points."locveil_voice.workflows"]
+unified_voice_assistant = "locveil_voice.workflows.voice_assistant:UnifiedVoiceAssistantWorkflow"
+
+[project.entry-points."locveil_voice.intents.handlers"]
+conversation = "locveil_voice.intents.handlers.conversation:ConversationIntentHandler"
+greetings = "locveil_voice.intents.handlers.greetings:GreetingsIntentHandler"
+timer = "locveil_voice.intents.handlers.timer:TimerIntentHandler"
+smart_home = "locveil_voice.intents.handlers.smart_home:SmartHomeIntentHandler"
+report = "locveil_voice.intents.handlers.report:ReportIntentHandler"
+datetime = "locveil_voice.intents.handlers.datetime:DateTimeIntentHandler"
+system = "locveil_voice.intents.handlers.system:SystemIntentHandler"
+random_handler = "locveil_voice.intents.handlers.random_handler:RandomIntentHandler"
+system_service_handler = "locveil_voice.intents.handlers.system_service_handler:SystemServiceIntentHandler"
+audio_playback_handler = "locveil_voice.intents.handlers.audio_playback_handler:AudioPlaybackIntentHandler"
+translation_handler = "locveil_voice.intents.handlers.translation_handler:TranslationIntentHandler"
+text_enhancement_handler = "locveil_voice.intents.handlers.text_enhancement_handler:TextEnhancementIntentHandler"
+voice_synthesis_handler = "locveil_voice.intents.handlers.voice_synthesis_handler:VoiceSynthesisIntentHandler"
+provider_control_handler = "locveil_voice.intents.handlers.provider_control_handler:ProviderControlIntentHandler"
+speech_recognition_handler = "locveil_voice.intents.handlers.speech_recognition_handler:SpeechRecognitionIntentHandler"
+
+[project.entry-points."locveil_voice.inputs"]
+cli = "locveil_voice.inputs.cli:CLIInput"
+microphone = "locveil_voice.inputs.microphone:MicrophoneInput"
+web = "locveil_voice.inputs.web:WebInput"
+
+
+
+# NOTE: Builtin plugins section removed - no builtin plugins in unified architecture
+# All functionality moved to intent handlers with JSON donations
+
+[project.entry-points."locveil_voice.runners"]
+cli = "locveil_voice.runners.cli:CLIRunner"
+voice = "locveil_voice.runners.voice_runner:VoiceRunner"
+webapi = "locveil_voice.runners.webapi_runner:WebAPIRunner"
+satellite = "locveil_voice.runners.satellite_runner:SatelliteRunner"
+
+# Pull torch/torchaudio from the CPU-only wheel index. The only torch consumer is the x86_64 standalone
+# (Silero TTS + Whisper ASR), and it runs device="cpu" — the default PyPI torch drags in ~3.4 GB of unused
+# NVIDIA CUDA + Triton wheels. The CPU wheels carry none of that (confirmed: image 6.44 GB → 3.16 GB;
+# triton ~688 MB still rides in via openai-whisper — see review CR-A1/triton follow-up). Satellites
+# ship no torch at all. The index is `explicit` + scoped via [tool.uv.sources] so it is consulted ONLY for
+# torch/torchaudio; a non-explicit index would let uv's first-index rule cap pytorch's stale mirrors of
+# common deps (urllib3, types-requests, …) and break resolution. torch reaches the build only through the
+# `tts-silero` / `advanced-asr` EXTRAS (`uv pip install .[…]`), and the pip interface DOES honor
+# [tool.uv.sources] for the project's own optional-deps — so the CPU pin applies with no Dockerfile step.
+# (It is NOT honored for loose `-r requirements` specs, which is why torch must stay in an extra, not pip-specs.)
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[tool.uv.sources]
+torch = { index = "pytorch-cpu" }
+torchaudio = { index = "pytorch-cpu" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["locveil_voice*"]
+# Fixed: Removed references to non-existent directories
+exclude = []
+
+# Fixed: Removed duplicate dev-dependencies section
+[tool.black]
+line-length = 100
+target-version = ['py311']
+include = '\.pyi?$'
+# Fixed: Removed references to non-existent directories
+extend-exclude = '''
+/(
+  # directories
+  \.eggs
+  | \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | build
+  | dist
+)/
+'''
+
+[tool.isort]
+profile = "black"
+line_length = 100
+multi_line_output = 3
+include_trailing_comma = true
+force_grid_wrap = 0
+use_parentheses = true
+ensure_newline_before_comments = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+# pytest-asyncio: treat bare `async def test_*` as asyncio tests (the suite predates
+# pytest-asyncio's strict default; without this ~23 async tests error as "not natively supported").
+asyncio_mode = "auto"
+filterwarnings = [
+    # Pydantic V1-style @validator / class Config across the config + donation models is known
+    # tech debt (separate migration); silence the deprecation flood so real signal is visible.
+    "ignore::pydantic.warnings.PydanticDeprecatedSince20",
+]
+
+# ARCH-5: Hexagonal import contracts (enforced via `lint-imports` and locveil_voice/tests/test_import_contracts.py).
+# Encodes the rules ARCH-1..4 established so the architecture can't silently regress.
+[tool.importlinter]
+root_package = "locveil_voice"
+
+[[tool.importlinter.contracts]]
+name = "Domain (intents) depends on nothing outward (ARCH-1)"
+type = "forbidden"
+source_modules = ["locveil_voice.intents"]
+forbidden_modules = [
+    "locveil_voice.components",
+    "locveil_voice.workflows",
+    "locveil_voice.providers",
+    "locveil_voice.runners",
+    "locveil_voice.inputs",
+    "locveil_voice.outputs",
+    "locveil_voice.satellite",
+]
+# QUAL-24 (DONE): the `intents.handlers.* -> core.engine` get_core() escape hatch was removed.
+# Handlers now depend on domain-owned capability ports (locveil_voice/intents/ports.py); the application
+# injects the real components inward. No ignore_imports — the domain-clean rule enforces with no hatch.
+
+[[tool.importlinter.contracts]]
+name = "Config has no upward imports (ARCH-2)"
+type = "forbidden"
+source_modules = ["locveil_voice.config"]
+forbidden_modules = [
+    "locveil_voice.core",
+    "locveil_voice.components",
+    "locveil_voice.providers",
+    "locveil_voice.workflows",
+    "locveil_voice.runners",
+    "locveil_voice.inputs",
+    "locveil_voice.outputs",
+    "locveil_voice.intents",
+    "locveil_voice.satellite",
+]
+
+[[tool.importlinter.contracts]]
+name = "Components (application) don't import delivery (ARCH-3)"
+type = "forbidden"
+source_modules = ["locveil_voice.components"]
+forbidden_modules = [
+    "locveil_voice.runners",
+    "locveil_voice.inputs",
+    "locveil_voice.outputs",
+    "locveil_voice.satellite",
+]
+
+[[tool.importlinter.contracts]]
+name = "Only nlu_analysis may import the analysis tooling (ARCH-3)"
+type = "forbidden"
+source_modules = ["locveil_voice.components"]
+forbidden_modules = ["locveil_voice.analysis"]
+ignore_imports = [
+    "locveil_voice.components.nlu_analysis_component -> locveil_voice.analysis.*",
+]
+
+[[tool.importlinter.contracts]]
+name = "Adapters (providers) don't import application (ARCH-4)"
+type = "forbidden"
+source_modules = ["locveil_voice.providers"]
+forbidden_modules = [
+    "locveil_voice.components",
+    "locveil_voice.workflows",
+]
+
+[[tool.importlinter.contracts]]
+name = "Provider categories are independent of each other (ARCH-4)"
+type = "independence"
+modules = [
+    "locveil_voice.providers.asr",
+    "locveil_voice.providers.tts",
+    "locveil_voice.providers.audio",
+    "locveil_voice.providers.llm",
+    "locveil_voice.providers.nlu",
+    "locveil_voice.providers.voice_trigger",
+    "locveil_voice.providers.vad",
+    "locveil_voice.providers.text_processor",
+]
+
+[[tool.importlinter.contracts]]
+# ARCH-6/SCC-2: the input PORT module must not import its concrete adapters (no base⇄subclass cycle,
+# no service-locator). The InputManager orchestrator lives in locveil_voice.inputs.manager, which is the input
+# layer's composition point and legitimately depends outward on the adapters.
+name = "Input port does not import its adapters (ARCH-6 / SCC-2)"
+type = "forbidden"
+source_modules = ["locveil_voice.inputs.base"]
+forbidden_modules = [
+    "locveil_voice.inputs.cli",
+    "locveil_voice.inputs.microphone",
+    "locveil_voice.inputs.web",
+    "locveil_voice.inputs.manager",
+]
+
+[[tool.importlinter.contracts]]
+# ARCH-8 PR-1: the domain-owned ports and boundary types must stay PURE domain — they are what the
+# application layer implements/consumes (QUAL-24: components/services inherit the port and are
+# injected inward), so the port module importing locveil_voice.core would invert that direction (e.g.
+# `ports.py` importing `core.catalog_service.CatalogService`). ARCH-1 can't catch this: intents as a
+# whole has sanctioned core edges (donations, trace_event, durable seam), so the whole-package rule
+# permits core. This pins the boundary modules specifically — same shape as the SCC-2 input-port
+# contract above. (`context_models` is NOT here: it carries the sanctioned QUAL-28/ARCH-5 core edges.)
+name = "Domain ports and boundary types stay pure (ARCH-8 / QUAL-24)"
+type = "forbidden"
+source_modules = [
+    "locveil_voice.intents.ports",
+    "locveil_voice.intents.models",
+    "locveil_voice.intents.device_commands",
+    "locveil_voice.intents.device_catalog",
+]
+forbidden_modules = ["locveil_voice.core"]
+
+[[tool.importlinter.contracts]]
+# ARCH-11: core depends only on its own ports (locveil_voice.core.interfaces), never outward on the
+# application/delivery/adapter layers. This REVOKES the ARCH-5 reclassification that left the
+# core->{inputs,workflows,components} composition-root edges unenforced. The edges were inverted in
+# ARCH-11 S1-S3 (input port + Component/Workflow ports lifted into locveil_voice.core.interfaces; all manager
+# construction moved to the composition root locveil_voice.runners.composition.build_core). NB: locveil_voice.core.*
+# (e.g. locveil_voice.core.components, locveil_voice.core.workflow_manager) is NOT locveil_voice.components/locveil_voice.workflows.
+name = "Core does not import the outer layers (ARCH-11)"
+type = "forbidden"
+source_modules = ["locveil_voice.core"]
+forbidden_modules = [
+    "locveil_voice.inputs",
+    "locveil_voice.outputs",
+    "locveil_voice.workflows",
+    "locveil_voice.components",
+    "locveil_voice.satellite",
+]
+
+[[tool.importlinter.contracts]]
+# ARCH-28: the durable-action store is a SEAM with exactly three legitimate clients — the F&F
+# launch/completion choke point (intents.handlers.base), the startup reconciler (core.engine),
+# and the notification redelivery queue (core.notifications). Everything else uses those seams:
+# delivery layers drain via NotificationService, application services launch via `durable=`,
+# observability reads the runtime registry — never the persisted store directly. This contract
+# pins that: no application/delivery/adapter layer may import the store module.
+name = "Durable-action store is reached only through its seam (ARCH-28)"
+type = "forbidden"
+source_modules = [
+    "locveil_voice.components",
+    "locveil_voice.workflows",
+    "locveil_voice.providers",
+    "locveil_voice.runners",
+    "locveil_voice.inputs",
+    "locveil_voice.outputs",
+]
+forbidden_modules = ["locveil_voice.core.durable_actions"]
+# The three seam edges are the sanctioned gateways — ignoring them here means a chain that
+# goes THROUGH the seam (e.g. webapi_router -> core.notifications -> durable_actions, the
+# drain call) doesn't count, while a NEW direct import from any outer layer still fails.
+ignore_imports = [
+    "locveil_voice.intents.handlers.base -> locveil_voice.core.durable_actions",
+    "locveil_voice.core.engine -> locveil_voice.core.durable_actions",
+    "locveil_voice.core.notifications -> locveil_voice.core.durable_actions",
+]
+
+[[tool.importlinter.contracts]]
+# ARCH-12: utils is the foundational kernel — it must not reach UP into any application/config/delivery
+# layer. The two residual upward edges were removed: utils.vad->core.metrics (a dead import) and
+# utils.logging->config.models (the LogLevel enum, relocated INTO utils.logging and re-exported by
+# config.models). NB: config.models now depends on utils.logging (downward) — that is the intended
+# direction and is allowed.
+name = "Utils (foundation) depends on nothing upward (ARCH-12)"
+type = "forbidden"
+source_modules = ["locveil_voice.utils"]
+forbidden_modules = [
+    "locveil_voice.core",
+    "locveil_voice.config",
+    "locveil_voice.components",
+    "locveil_voice.intents",
+    "locveil_voice.workflows",
+    "locveil_voice.inputs",
+    "locveil_voice.outputs",
+    "locveil_voice.providers",
+    "locveil_voice.runners",
+]
+
+[tool.mypy]
+# Basic settings - detailed configuration in mypy.ini (matching locveil-bridge)
+python_version = "3.11"
+
+# [tool.pyright] removed (QUAL-4): pyrightconfig.json is the single source of truth
+# for the standard-mode type gate. Two configs drifted; the JSON one wins when present.
+
+[tool.setuptools.dynamic]
+version = {attr = "locveil_voice.__version__.__version__"}

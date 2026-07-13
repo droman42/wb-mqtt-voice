@@ -1,0 +1,241 @@
+"""
+Universal Entry-Point Metadata Interface
+
+Central metadata interface for all entry-points in the Irene Voice Assistant project.
+Supports both asset configuration (TODO #4) and build dependencies (TODO #5).
+Enables configuration-driven systems and external package integration.
+
+Relocated from locveil_voice/providers/base.py in TODO #5 Phase 0.
+Enhanced with configuration metadata support for dynamic validation.
+"""
+
+from abc import ABC
+from typing import Dict, Any, List, Optional, Type
+
+from pydantic import BaseModel
+
+
+# CR-C9: single source of truth for the OS-platform keys used by `get_platform_support()`,
+# `get_platform_dependencies()`, the build analyzer, and the dependency validator. NOTE: this is the
+# OS-family list — CPU-architecture gating (armv7l/aarch64/x86_64, e.g. torch- or sherpa-on-armv7) lives
+# separately in `get_supported_architectures()` and is NOT governed by this constant.
+SUPPORTED_PLATFORMS: List[str] = ["linux.ubuntu", "linux.alpine", "macos", "windows"]
+
+
+class EntryPointMetadata(ABC):
+    """
+    Universal metadata interface for all entry-points.
+    
+    Supports both asset configuration (TODO #4) and build dependencies (TODO #5).
+    Enables configuration-driven systems and external package integration.
+    
+    This interface provides:
+    1. Asset configuration with intelligent defaults and TOML overrides
+    2. Build dependency declaration for system packages and Python dependencies  
+    3. Platform support specification for multi-platform builds
+    4. External package integration capabilities
+    """
+    
+    # ✅ Asset configuration methods (implemented in TODO #4)
+    @classmethod
+    def get_asset_config(cls) -> Dict[str, Any]:
+        """
+        Get asset configuration with intelligent defaults.
+        
+        Returns:
+            Dictionary containing:
+            - file_extension: Default file extension for models/assets
+            - directory_name: Default directory name for asset storage
+            - credential_patterns: List of environment variable patterns needed
+            - cache_types: List of cache types used (models, runtime, temp, etc.)
+            - model_urls: Dictionary of model URLs for downloads
+        """
+        return {
+            "file_extension": cls._get_default_extension(),
+            "directory_name": cls._get_default_directory(),
+            "credential_patterns": cls._get_default_credentials(),
+            "cache_types": cls._get_default_cache_types(),
+            "model_urls": cls._get_default_model_urls()
+        }
+    
+    # 🆕 Configuration metadata methods (Configuration-driven validation)
+    @classmethod
+    def get_config_schema(cls) -> Optional[Type[BaseModel]]:
+        """
+        Return Pydantic configuration schema if entry-point needs configuration.
+        
+        Returns:
+            Pydantic BaseModel class for configuration validation, or None if no config needed
+        """
+        return None
+    
+    @classmethod
+    def get_config_defaults(cls) -> Dict[str, Any]:
+        """
+        Return default configuration values.
+        
+        Returns:
+            Dictionary of default configuration values
+        """
+        return {}
+    
+    @classmethod
+    def requires_configuration(cls) -> bool:
+        """
+        Check if this entry-point requires configuration.
+        
+        Returns:
+            True if configuration is required, False otherwise
+        """
+        return cls.get_config_schema() is not None
+    
+    @classmethod
+    def get_config_requirements(cls) -> Dict[str, Any]:
+        """
+        Get comprehensive configuration requirements metadata.
+        
+        Returns:
+            Dictionary containing configuration metadata:
+            - required: Whether configuration is required
+            - schema: Pydantic schema class if available
+            - defaults: Default configuration values
+            - schema_name: Name of the configuration schema class
+        """
+        schema = cls.get_config_schema()
+        return {
+            "required": schema is not None,
+            "schema": schema,
+            "defaults": cls.get_config_defaults(),
+            "schema_name": schema.__name__ if schema else None
+        }
+
+    # 🆕 Build dependency methods (TODO #5)
+    @classmethod
+    def get_python_dependencies(cls) -> List[str]:
+        """
+        Python dependency groups from pyproject.toml optional-dependencies.
+        
+        Returns:
+            List of dependency group names that this entry-point requires.
+            These should correspond to groups defined in pyproject.toml [project.optional-dependencies].
+            
+        Examples:
+            - Audio providers: ["audio-input", "audio-output"]  
+            - TTS providers: ["tts"]
+            - ASR providers: ["asr"]
+            - Web components: ["web-api"]
+        """
+        return []
+        
+    @classmethod
+    def get_platform_support(cls) -> List[str]:
+        """
+        Supported platforms for this entry-point.
+        
+        Returns:
+            List of supported platforms: ["linux.ubuntu", "linux.alpine", "macos", "windows"]
+            Uses same platform keys as get_platform_dependencies() for consistency.
+            
+        Default supports all common platforms. Override for platform-specific limitations.
+        """
+        return list(SUPPORTED_PLATFORMS)
+
+    @classmethod
+    def get_supported_architectures(cls) -> List[str]:
+        """
+        CPU architectures this entry-point can actually run on (ARCH-24 T3).
+
+        Returns:
+            List of `platform.machine()`-style arch tokens. Default = all three Irene targets.
+            **Override to a subset** when a hard dependency has no wheel / cannot run on an arch —
+            most importantly `["x86_64", "aarch64"]` for providers that need torch or the standalone
+            `onnxruntime` (no armv7 wheel). The `dependency_validator`/`build_analyzer` arch gate fails
+            a build whose target arch is enabled with a provider that does not list it here, so the
+            torch-free-armv7 invariant can't silently regress.
+        """
+        return ["x86_64", "aarch64", "armv7l"]
+
+    @classmethod
+    def get_platform_dependencies(cls) -> Dict[str, List[str]]:
+        """
+        Platform-specific system package mappings.
+        
+        Returns:
+            Dictionary mapping platform names to lists of required system packages.
+            
+        Platform keys:
+            - "linux.ubuntu": Ubuntu/Debian system packages (apt)
+            - "linux.alpine": Alpine Linux packages (apk) - used for ARMv7 builds
+            - "macos": macOS Homebrew packages (brew)
+            - "windows": Windows system packages (typically none needed)
+            
+        Examples:
+            Audio providers might return:
+            {
+                "linux.ubuntu": ["libportaudio2", "libsndfile1"],
+                "linux.alpine": ["portaudio-dev", "libsndfile-dev"],  
+                "macos": [],  # Homebrew handles dependencies automatically
+                "windows": []  # Windows package management differs
+            }
+        """
+        return {
+            "linux.ubuntu": [],  # Ubuntu/Debian system packages
+            "linux.alpine": [],  # Alpine Linux (ARMv7) packages
+            "macos": [],          # macOS Homebrew packages
+            "windows": []         # Windows system packages
+        }
+        
+    # Asset configuration helper methods (moved from providers/base.py)
+    @classmethod
+    def _get_default_extension(cls) -> str:
+        """
+        Override in provider classes for intelligent file extension defaults.
+        
+        Returns:
+            Default file extension (e.g., ".pt", ".wav", ".json")
+        """
+        return ""
+    
+    @classmethod
+    def _get_default_directory(cls) -> str:
+        """
+        Override in provider classes for intelligent directory name defaults.
+        
+        Returns:
+            Default directory name for asset storage
+        """
+        # Default to lowercase class name without "Provider" suffix
+        name = cls.__name__.lower()
+        if name.endswith('provider'):
+            name = name[:-8]  # Remove 'provider' suffix
+        return name
+    
+    @classmethod
+    def _get_default_credentials(cls) -> List[str]:
+        """
+        Override in provider classes for intelligent credential defaults.
+        
+        Returns:
+            List of environment variable patterns needed by provider
+        """
+        return []
+    
+    @classmethod
+    def _get_default_cache_types(cls) -> List[str]:
+        """
+        Override in provider classes for intelligent cache type defaults.
+        
+        Returns:
+            List of cache types used: ["models", "runtime", "temp", "downloads"]
+        """
+        return ["runtime"]
+    
+    @classmethod
+    def _get_default_model_urls(cls) -> Dict[str, str]:
+        """
+        Override in provider classes for intelligent model URL defaults.
+        
+        Returns:
+            Dictionary mapping model IDs to download URLs
+        """
+        return {} 
