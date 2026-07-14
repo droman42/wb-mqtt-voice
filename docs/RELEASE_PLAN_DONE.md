@@ -1925,6 +1925,17 @@ rationale/chronology lives in [`RELEASE_JOURNAL.md`](./RELEASE_JOURNAL.md).
       node-ids resolve. CONTRIBUTING.md gained the contracts-registry, tests-and-eval, and
       documentation-is-part-of-done sections. Manifest schema-valid (strict — no `$comment` allowed).
       docs: contributing
+- [x] **DOC-13** [DOC][PROCESS] — **DONE 2026-07-14 (filed + completed same change; commons PROD-23
+      delegation — the HK-9 round-1 dependency audit's stale-gate side-find; all claims verified at
+      intake).** Stale gate-prose sweep of the active ledger: every "gated on X" line checked against
+      X's real status. Four stale, re-anchored: **ARCH-42** + **ARCH-43** "Gated on BUILD-21" (closed
+      2026-07-11) → commons **PROD-8**, the actual `core-py` package home; **BUILD-18**'s
+      "(gated on BUILD-21)" → commons **PROD-4**, the ops-spec home; **UI-4**'s "do NOT start before
+      Gate 2" → DISCHARGED (the Gate-2 remediation core QUAL-27..31 + per-subsystem tasks are all in
+      this ledger; the standing conditions — fictional `/workflow/*` endpoints + re-scope-before-pickup
+      — kept explicit). Sequencing block's "QUAL-29 remains" corrected (✓ DONE) with a core-complete
+      note. One gate verified LIVE and kept as-is: QUAL-82's VWB-33 gate (bridge-side open, PROD-18).
+      docs: none — ledger prose only; no manifest node describes individual plan entries.
 
 ### UI / config-ui (UI)
 - [x] **UI-1** [DEDITOR] (P2) — **DONE 2026-06-06.** Designed the human-friendly donation/pattern authoring model →

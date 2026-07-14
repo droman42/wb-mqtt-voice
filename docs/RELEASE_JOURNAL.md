@@ -20,6 +20,12 @@ newest entries near the top of each dated section.
 
 ## Action journal
 
+- **2026-07-14 — DOC-13: stale gate-prose sweep (commons PROD-23 delegation).** The HK-9 dependency
+  audit's side-find executed: ARCH-42/43 + BUILD-18 were still "gated on BUILD-21" (closed 2026-07-11) —
+  re-anchored to their real gates (commons PROD-8 / PROD-4); UI-4's Gate-2 block discharged (the
+  remediation core is fully DONE; the fictional-endpoints + re-scope conditions stand); the sequencing
+  block's "QUAL-29 remains" corrected. Executed by the commons session on owner instruction, filed and
+  completed in one change per the quick-task precedent.
 - **2026-07-14 — BUILD-37: contract-guard re-vendored @ v2 (PROD-22).** The TAG-MISSING rule arrives
   (bridge-caught false green at catalog-v1.7); voice passes clean — all four owned-contract tags
   already exist. Executed by the commons session on owner instruction, filed and completed in one

@@ -143,7 +143,8 @@ and the structural refactors **move code** — so blind refactoring/fixing is th
     **③ config-truth (deployment-aware)** · **④ data-contract integrity**.
   - **Foundational tasks first:** **QUAL-27** (data-contract fixes; ✓ DONE) + **QUAL-28** (context & action-store
     refactor; ✓ DONE 2026-06-02) as the structural base → **QUAL-29** (donation format split; precedes declarative
-    device-resolution) remains.
+    device-resolution) ✓ DONE. **The foundational + per-subsystem core is complete** (DOC-13 sweep note,
+    2026-07-14); the "Later / design-gated" tail below is tracked by its own entries.
   - **Per-subsystem on top:** **QUAL-9** [FAF], **QUAL-11** [PEX], **QUAL-13** [TXTPROC], **QUAL-15** [LLM],
     **QUAL-16** [PROMPTS], **QUAL-22**, **QUAL-23** + **QUAL-30** (clarification Grade 1).
   - **Later / design-gated:** **QUAL-31** (slot-filling feature) · **ARCH-6** (WS ESP32 input) + **ARCH-7** (output
@@ -202,14 +203,16 @@ See `docs/review/phase1_architecture_map.md` §5.
       actually is today (entry-point discovery, provider/plugin instantiation, the `provider_namespace_map`
       seams), decide the package's public surface so BOTH products can consume it (bridge wants it for
       driver/module loading — their intake CORE-7), then file the voice-side migration implementation task.
-      Gated on BUILD-21 (the package home must exist). Ref: `docs/design/productization.md` D-3/D-8.
+      Gated on commons **PROD-8** (the `core-py` package home must exist; BUILD-21 itself landed
+      2026-07-11 — re-anchored by the DOC-13 sweep, 2026-07-14). Ref: `docs/design/productization.md` D-3/D-8.
 - [ ] **ARCH-43** `[deferred]` [COMMONS][PROCESS] — **DESIGN: extract the logging scheme to
       `locveil-commons/packages/core-py`** (BUILD-20 D-8). The startup-rollover + midnight
       TimedRotatingFileHandler + retention-prune family exists twice by hand-copy (bridge OPS-12 → voice
       BUG-30 "ported verbatim") — the exact drift pattern the productization design retires. Design the
       shared package surface (rollover naming family, retention constants, prune sweep, report-bundle
       same-day glob compatibility both sides), then file the voice-side adoption task (bridge intake:
-      OPS-14). Gated on BUILD-21. Ref: `docs/design/productization.md` D-8.
+      OPS-14). Gated on commons **PROD-8** (re-anchored 2026-07-14, DOC-13; BUILD-21 landed).
+      Ref: `docs/design/productization.md` D-8.
 - [ ] **ARCH-45** [INFER][OPS] `[deferred]` — **DESIGN: split readiness from liveness on `/health`.** `/health`
       returns a static `{"status": "healthy", version, timestamp}` (`webapi_router.py` ~L343) — it reports the
       process is alive and nothing more. Observed on the WB7 first boot (2026-07-09): uvicorn binds ~8 s in,
@@ -505,7 +508,8 @@ size-matched to the Russian stack; language is a per-config/deployment choice (a
       uncommitted, per `cross-repo-source-of-truth`). **Design landed 2026-07-08 (BUILD-20,
       `docs/design/productization.md` D-12): the shared convention = a normative ops spec in
       `locveil-commons/process/` + per-repo conformance; the drift inventory is recorded there (§2). This
-      task NARROWS to the voice-side conformance pass once that spec exists (gated on BUILD-21).**
+      task NARROWS to the voice-side conformance pass once that spec exists (gated on commons
+      **PROD-4** — the spec's home; BUILD-21 landed 2026-07-11; re-anchored 2026-07-14, DOC-13).**
 - [ ] **BUILD-28** [OPS][PROCESS] `[deferred]` — **One compose file for the controller, with a real startup
       order.** Three containers run on the WB7 today — `locveil-bridge`, `locveil-bridge-ui`, `locveil-voice`
       (post-BUILD-29 names) — from **two** compose projects (`locveil-bridge-config`, `locveil-voice-config`),
@@ -526,10 +530,11 @@ Governed by `config-ui-stays-functional` (config-ui must stay functional).
 
 - [ ] **UI-4** [WORKFLOWVIZ] (P-deferred) — A config-ui **"Workflow Control" / pipeline-visualization page** (live
       React-Flow DAG of the component/provider pipeline, per-stage input/output inspection, provider switching, SSE
-      updates). **Source design archived** at `docs/archive/workflow_control.md` (Sep-2025, never built). **Strongly
-      gated — do NOT start before Gate 2:** the design assumes a clean pipeline, but QUAL-25 proved the real dataflow
-      is broken at many hops (visualizing it now would faithfully render broken flow), and it specs `/workflow/*`
-      endpoints that `architecture.md` §7 flags as **fictional** (they'd have to be built for real). Relates to the
+      updates). **Source design archived** at `docs/archive/workflow_control.md` (Sep-2025, never built). **Gate-2
+      block DISCHARGED (2026-07-14, DOC-13 sweep):** the remediation core that gated this (QUAL-27..31 + the
+      per-subsystem tasks) is all in the DONE ledger — "broken pipeline" no longer blocks it. What still stands:
+      it specs `/workflow/*` endpoints that `architecture.md` §7 flags as **fictional** (they'd have to be built
+      for real), and the re-scope-before-pickup rule below. Relates to the
       `MonitoringPage` placeholder and the **ARCH-7 [MQTT]** output-seam work (both touch live pipeline observability).
       Re-scope against the *fixed* pipeline + real endpoints when it's actually picked up. Captured from a config-ui
       doc reviewed during QUAL-25 (2026-06-02).
