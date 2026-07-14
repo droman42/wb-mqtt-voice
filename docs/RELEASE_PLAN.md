@@ -285,6 +285,24 @@ See `docs/review/phase1_architecture_map.md` §5.
       (`review-then-remediate`). First concrete instance to carry: the `discovery_paths`/`auto_discover`
       dead-field resolution (voice flagged it at the bounce — spans `intents/manager.py`,
       `config/models.py`, `intent_component`, the build-analyzer skip-set, and 8 config files).
+- [ ] **ARCH-51** [SATELLITE][CONFIG] `[deferred]` — **★ DESIGN: satellite-local config endpoint (device-owned
+      direct write; PROD-24 delegation a).** Filed 2026-07-14 at PROD-24 intake (the Workbench shell council;
+      commons `docs/design/workbench.md`). The Workbench write model classifies the desktop-satellite config as
+      *device-owned*: unlike the repo-owned WB7 TOML (staged proposals + explicit human promotion), the
+      satellite's config is written DIRECTLY via a **device-local endpoint**; the config page is voice-owned
+      under the Voice tab and edits the same CoreConfig `[satellite]`/`[vad]`/`[voice_trigger]` sections the
+      runner boots from. Design (`design-then-implement`; dev-phase shape — the FINAL write convention is
+      deferred to a further productization step, owned by commons PROD-4 (4)): the endpoint surface on the
+      satellite runner (today a client-only process — `runners/satellite_runner.py` has NO server surface, so
+      this adds one), read/write scope (whole file vs the three sections), schema validation before write,
+      apply semantics (live reload vs restart-required), and the auth posture — a NEW attack surface, so
+      PROD-4 applies and PROD-24's binding condition holds: **no write API ships before PROD-4's auth decision
+      lands** (the design documents the trusted-LAN assumption + reserves the auth-guard slot). Keep this
+      endpoint distinct from the DES-5 privileged broker (config = device-owned; cert verbs = broker-owned,
+      satellite-side design). The Workbench page itself is filed as a follow-up from the design (it rides
+      UI-17's plugin shell). Deliverable: design doc under `docs/design/` + implementation follow-up(s).
+      Refs: board PROD-24 (2)(3)(6), `../locveil-commons/docs/design/workbench.md`,
+      `docs/design/python_satellite.md`.
 ### Code Quality & Review (QUAL)
 
 #### Cross-cutting systemic remediation — principles (the Gate 2 lens)
@@ -557,6 +575,23 @@ Governed by `config-ui-stays-functional` (config-ui must stay functional).
       attribute *keys* stay technical per `donation-choice-surfaces-rule`). _Assessed non-issue (not filed): E8 — the
       `LanguageTabs` display-name map is inherently a UI concern (the backend has no display names) and degrades to
       `code.toUpperCase()`; the `DonationsPage` `['en','ru']` fallback is a defensible default for a rare miss._
+
+- [ ] **UI-17** [UI][COMMONS] `[deferred]` — **config-ui → Workbench plugin + ui-kit adoption (the declared
+      sprint-02 adoption task, filed at PROD-24 intake; grown by PROD-24 delegation b).** Sprint-01 declared
+      the adoption without a local ID ("voice ui-kit adoption + UI-16 travel together — touch config-ui
+      structure once; head sprint-02 riding `ui-kit-v1`"; `../locveil-commons/board/sprints/sprint-01.md`);
+      this is that ID, grown by the Workbench council: config-ui becomes a **Workbench plugin** (repo = plugin,
+      one Voice tab; shell = commons `packages/workbench`) with a **6-page cut** — `OverviewPage` and the own
+      top bar (`components/layout/Header.tsx`) retire into shell chrome/Monitoring, and the plugin contract's
+      per-plugin **status slot** is wired to preserve the Header's connection/health visibility. Plugin
+      contract v1 surfaces to satisfy: i18n bundles RU/EN + shell-provided locale, per-page backend targets,
+      runtime-registrable pages (UI-16-proof), optional report hook. Plugin source lives HERE; the shell
+      consumes BUILT artifacts (dev-phase mechanism: `file:` deps on the built plugin package — never TS
+      sources; commons `docs/design/workbench.md`). Travels with **UI-16** in the same arc; toolchain target =
+      eslint-9 flat config (sprint-01 decision 1; vite major is per-consumer). Gated on commons **`ui-kit-v1`**
+      (PROD-10) + the workbench shell/plugin contract (PROD-24). `config-ui-stays-functional` applies
+      throughout (the plugin must keep building/type-checking clean against backend contracts). Refs: board
+      PROD-24 (1)(2)(4)(5), `../locveil-commons/docs/design/workbench.md`.
 
 ### Release Readiness (REL)
 

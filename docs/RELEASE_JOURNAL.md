@@ -20,7 +20,16 @@ newest entries near the top of each dated section.
 
 ## Action journal
 
-- **2026-07-14 — DOC-13: stale gate-prose sweep (commons PROD-23 delegation).** The HK-9 dependency
+- **2026-07-14 — PROD-24 intake: the Workbench delegations filed as ARCH-51 + UI-17.** The board's
+  Workbench shell council (PROD-24, decided 2026-07-14; commons `docs/design/workbench.md`) delegated two
+  voice items. Reconciled clean against the repo: config-ui is 7 pages (Overview + 6 — matching the
+  council's "6 pages after Overview + Header retire"), `Header.tsx` is where connection/health status
+  lives today (→ the plugin status slot), `config-master.toml` carries the `[satellite]`/`[vad]`/
+  `[voice_trigger]` sections the device-owned config page would edit, and the satellite runner is
+  client-only (no server surface — the endpoint design adds one). Filed: **ARCH-51** (satellite-local
+  config endpoint design; dev-phase shape, PROD-4 auth binding condition) and **UI-17** (the sprint-01
+  "declared, IDs at intake" config-ui adoption task, grown by the council: Workbench plugin + ui-kit
+  adoption, 6-page cut, status-slot wiring; travels with UI-16). IDs written back into the board entry. The HK-9 dependency
   audit's side-find executed: ARCH-42/43 + BUILD-18 were still "gated on BUILD-21" (closed 2026-07-11) —
   re-anchored to their real gates (commons PROD-8 / PROD-4); UI-4's Gate-2 block discharged (the
   remediation core is fully DONE; the fictional-endpoints + re-scope conditions stand); the sequencing
