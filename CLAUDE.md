@@ -45,7 +45,7 @@ but these rules apply to any task). **Single source of truth** (relocated here f
     the pin folder's README) and validates the collector's emitted surface against the pin in
     `backend/tests/test_report_protocol_conformance.py`.
   - **Contract layout/coherence is guarded by the vendored `scripts/contract_guard.py`** (commons
-    `packages/contract-guard/`, pinned `contract-guard-v1`, BUILD-33) — same consumption model as the
+    `packages/contract-guard/`, pinned `contract-guard-v2`, BUILD-33/BUILD-37) — same consumption model as the
     scope guard: **never edit the vendored file**, re-pin to move. Registry + per-pin mechanics:
     `contracts/README.md`; convention: `../locveil-commons/process/contracts.md`.
   - **`../locveil-commons/eval` is the shared test framework** — test *execution logic* (providers/scorers/judge) lives there,

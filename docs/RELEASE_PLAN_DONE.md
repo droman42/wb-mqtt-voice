@@ -1887,6 +1887,13 @@ rationale/chronology lives in [`RELEASE_JOURNAL.md`](./RELEASE_JOURNAL.md).
       install):** rebuild/deploy the 6 GHCR images + boot-verify + `sh ops/cutover-env-locveil-voice.sh`
       on the WB7 — any breakage → a fresh BUG.
       docs: readme, contributing, quickstart, install, guides/asset-management, guides/audio, guides/build-docker, guides/build-system, guides/configuration, guides/howto-new-intent, guides/howto-new-language, guides/howto-new-model, guides/howto-new-test, guides/problem-reporting, guides/satellite, guides/tracing, guides/vad, guides/voice-trigger
+- [x] **BUILD-37** [PROCESS] — **DONE 2026-07-14 (filed + completed same session; board PROD-22
+  delegation, executed by the commons session on owner instruction): re-vendor contract-guard @
+  `contract-guard-v2`.** `scripts/contract_guard.py` replaced byte-identical to the tag (1.1.0 —
+  adds `TAG-MISSING`: an owned STAMP naming a git tag that doesn't exist now FAILS; the false-green
+  class the bridge caught at catalog-v1.7). Check green, 0 warnings — all four voice contract tags
+  resolve (`ws-protocol-v1`, `wake-pack-v1`, `ui-openapi-v1.1`, `docs-manifest-v1`). CLAUDE.md pin
+  reference bumped v1→v2. docs: none — vendored tool + the dialect pin line only.
 ### Models & Assets (ASSET)
 ### Documentation (DOC)
 - [x] **DOC-5b** (P2) — DONE 2026-06-08: regenerated `guides/DONATION_FILE_SPECIFICATION.md` for the v1.1
