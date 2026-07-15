@@ -20,6 +20,20 @@ newest entries near the top of each dated section.
 
 ## Action journal
 
+- **2026-07-15 — sprint-02 intake: the port arc lands in the ledger (UI-17 narrowed; UI-18/UI-19/UI-20
+  filed).** The sprint-02 §4 split turned the XL-in-disguise UI-17 into a three-task arc: **UI-18**
+  (kit-first foundation — eslint-9 flat, `ui-kit-v1` dep + preset/tokens, the 9 hand-built primitives
+  rebuilt on kit primitives) and **UI-19** (port body — 35 composites + 7 pages, the sprint's flagged
+  largest risk) are new IDs; **UI-17** keeps the plugin conversion and its PROD-24 write-back role. The
+  HK-11 council corrections are folded into UI-17's text (shell loads built bundles at runtime via native
+  ESM + import map — the `file:`-deps sentence is superseded; lib-mode build externalizes the frozen
+  singleton set with router pinned major 6; the standalone app RETIRES at UI-17 with the
+  `config-ui-stays-functional` DoD re-anchored to the plugin build), and the council's Monaco-CDN
+  side-find checked out live (`@monaco-editor/react` default loader = jsdelivr at runtime) → filed as
+  **UI-20**. Both write-backs (UI-17 corrections + UI-20) recorded in the HK-11 board entry. One sprint
+  side-find dissolved at reconciliation: the ci.yml guard-version prose was already fixed by BUILD-38
+  earlier today.
+
 - **2026-07-15 — BUILD-38: the contract-guard CI job can now actually see the tags it checks.**
   Board PROD-25 (filed off the bridge's OPS-30 incident) delegated "checkout fix + v2 re-pin" to
   voice — but intake reconciliation found the re-pin already landed (BUILD-37, 2026-07-14); the

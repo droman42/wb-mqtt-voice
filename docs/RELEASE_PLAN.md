@@ -554,22 +554,60 @@ Governed by `config-ui-stays-functional` (config-ui must stay functional).
       `LanguageTabs` display-name map is inherently a UI concern (the backend has no display names) and degrades to
       `code.toUpperCase()`; the `DonationsPage` `['en','ru']` fallback is a defensible default for a rare miss._
 
-- [ ] **UI-17** [UI][COMMONS] `[deferred]` — **config-ui → Workbench plugin + ui-kit adoption (the declared
-      sprint-02 adoption task, filed at PROD-24 intake; grown by PROD-24 delegation b).** Sprint-01 declared
-      the adoption without a local ID ("voice ui-kit adoption + UI-16 travel together — touch config-ui
-      structure once; head sprint-02 riding `ui-kit-v1`"; `../locveil-commons/board/sprints/sprint-01.md`);
-      this is that ID, grown by the Workbench council: config-ui becomes a **Workbench plugin** (repo = plugin,
-      one Voice tab; shell = commons `packages/workbench`) with a **6-page cut** — `OverviewPage` and the own
-      top bar (`components/layout/Header.tsx`) retire into shell chrome/Monitoring, and the plugin contract's
-      per-plugin **status slot** is wired to preserve the Header's connection/health visibility. Plugin
-      contract v1 surfaces to satisfy: i18n bundles RU/EN + shell-provided locale, per-page backend targets,
-      runtime-registrable pages (UI-16-proof), optional report hook. Plugin source lives HERE; the shell
-      consumes BUILT artifacts (dev-phase mechanism: `file:` deps on the built plugin package — never TS
-      sources; commons `docs/design/workbench.md`). Travels with **UI-16** in the same arc; toolchain target =
-      eslint-9 flat config (sprint-01 decision 1; vite major is per-consumer). Gated on commons **`ui-kit-v1`**
-      (PROD-10) + the workbench shell/plugin contract (PROD-24). `config-ui-stays-functional` applies
-      throughout (the plugin must keep building/type-checking clean against backend contracts). Refs: board
-      PROD-24 (1)(2)(4)(5), `../locveil-commons/docs/design/workbench.md`.
+- [ ] **UI-17** [UI][COMMONS] `[deferred]` — **config-ui → Workbench plugin conversion** (filed at PROD-24
+      intake; **NARROWED at sprint-02 planning** — the §4 split moved the kit-first foundation to **UI-18**
+      and the full port body to **UI-19**; this ID keeps the plugin conversion and stays the PROD-24
+      write-back ID. **Corrected at HK-11 intake, 2026-07-15**). config-ui becomes a **Workbench plugin**
+      (repo = plugin, one Voice tab; shell = commons `packages/workbench`, IMPL-1) with a **6-page cut** —
+      `OverviewPage` and the own top bar (`components/layout/Header.tsx`) retire into shell chrome/Monitoring,
+      and the plugin contract's per-plugin **status slot** preserves the Header's connection/health
+      visibility. Plugin contract v1 surfaces: i18n = plugin-local instances RU/EN + shell locale signal,
+      per-page backend targets, runtime-registrable pages (UI-16-proof), report hook. **Packaging (HK-11):**
+      plugin source lives HERE; the build is a vite **library** build that externalizes the frozen singleton
+      set (react / react-dom(/client) / react/jsx-runtime / react-router-dom **pinned major 6** /
+      locveil-ui-kit — the shell serves them via import map) and emits the **manifest fragment** in dist
+      (`{id, version, entry, styles[], peers{}, backendCompat?}`); the shell loads BUILT bundles at
+      **runtime via native ESM dynamic import** — the earlier "shell consumes `file:` deps on the built
+      package" sentence is superseded (HK-11; `file:` remains only the dev-phase npm pattern for
+      *libraries* like ui-kit). Peer mismatch = shell refuses-and-surfaces. **The standalone config-ui app
+      RETIRES in this task** (HK-11 owner ruling q5), and the `config-ui-stays-functional` DoD re-anchors to
+      the plugin build **in the same change**. Needs IMPL-1's contract frozen (it is — IMPL-1 done
+      2026-07-15), not the shell finished. Travels with **UI-16**; foundation prerequisite = **UI-18**, port
+      body = **UI-19**. Refs: board PROD-24 (1)(2)(4)(5), HK-11 (BOARD_DONE),
+      `../locveil-commons/docs/design/workbench.md` §4 as amended.
+- [ ] **UI-18** [UI][COMMONS] `[deferred]` — **kit-first foundation: eslint-9 flat + `ui-kit-v1` + swap the 9 hand-built
+      primitives** (sprint-02 port-arc split, filed at intake 2026-07-15; display name "voice UI-18" in
+      `../locveil-commons/board/sprints/sprint-02.md`). Scope: (a) migrate config-ui to **eslint-9 flat
+      config** (sprint-01 decision 1), keeping the type-aware rule set (`no-floating-promises`,
+      `no-misused-promises`) — the strict `npm run check` gate must not weaken; (b) add **`locveil-ui-kit`**
+      (dev-phase sibling `file:` dep per the kit README), wire `presets: [locveil-ui-kit/preset]` + kit-dist
+      content glob into `tailwind.config.js`, import `locveil-ui-kit/tokens.css` at the app entry (both
+      themes ship; `.dark` class strategy); (c) rebuild the **9 hand-built primitives**
+      (`src/components/ui/`: Badge, Input, TextArea, Toggle, Section, ConfigurationStatus, TestConfigButton,
+      WorkflowActionButtons, WorkflowStatusIndicator — 867 lines) **on kit primitives** (Badge/StatusChip,
+      Input+Label, Textarea, Checkbox, Card, Alert, Button; the kit's `StatusVariant` set
+      pristine/edited/tested/persisted/conflict is literally the workflow-state enum), keeping their local
+      prop APIs so the 35 composites don't churn — those move in **UI-19**. Standalone app stays green at
+      every cut (`config-ui-stays-functional`: `npm run check && npm run build`). Intake reconciliation:
+      the sprint side-find "ci.yml guard-version prose batches in" was already fixed by **BUILD-38**
+      (2026-07-15, PROD-25) — nothing left to batch.
+- [ ] **UI-19** [UI][COMMONS] `[deferred]` — **full port body: composites + pages onto kit primitives** (sprint-02
+      port-arc split, filed at intake 2026-07-15; display name "voice UI-19"; flagged at planning as the
+      sprint's largest execution risk, L+). Port the ~35 composite components and 7 pages (~32k lines) off
+      hand-rolled Tailwind palette classes onto `locveil-ui-kit` primitives + tokens (status surfaces →
+      `StatusChip`/`StatusDot`, dialogs → kit `Dialog`, selects → kit `Select`, tabs → kit `Tabs`, raw
+      buttons → kit `Button`, icons per the stylebook sizing rules), retiring the UI-18 wrapper shims where
+      call sites land on the kit directly. Gate: UI-18 done. Standalone app stays green at every cut
+      (`config-ui-stays-functional`); both themes must render (kit tokens; no raw palette status classes
+      survive). Refs: sprint-02, `../locveil-commons/docs/design/ui/stylebook.md`.
+- [ ] **UI-20** [UI] `[deferred]` — **bundle Monaco locally — no CDN at runtime** (HK-11 side-find,
+      2026-07-15, filed per `review-then-remediate`; the HK-11 write-back ID). `@monaco-editor/react`
+      (used by `TomlPreview.tsx` + `DiffViewer.tsx`) ships no editor code — its default `loader` fetches
+      monaco from the **jsdelivr CDN at runtime**, a silent external dependency in a privacy-first,
+      LAN-deployable product (and a hard failure offline). Fix class: bundle `monaco-editor` and point the
+      loader at it (`loader.config({ monaco })` with a local import, or the vite worker-plugin route), or
+      replace the two DiffEditor usages with a bundled diff view; verify the built app makes zero external
+      requests. Rides naturally with UI-19/UI-17 (same files move), but is its own deliverable.
 
 ### Release Readiness (REL)
 
