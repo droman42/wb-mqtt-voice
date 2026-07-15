@@ -8,7 +8,7 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Plus, Eye, Code, Layout, MessageSquare, AlertCircle } from 'lucide-react';
-import { Button, Alert, AlertTitle, AlertDescription, Tabs, TabsList, TabsTrigger } from 'locveil-ui-kit';
+import { Button, Alert, AlertTitle, AlertDescription, Tabs, TabsList, TabsTrigger, Tooltip, TooltipTrigger, TooltipContent } from 'locveil-ui-kit';
 import PromptDefinitionEditor from './PromptDefinitionEditor';
 import Section from '@/components/ui/Section';
 import TextArea from '@/components/ui/TextArea';
@@ -247,15 +247,19 @@ const PromptEditor: React.FC<PromptEditorProps> = ({
     <div className="space-y-4">
       <div className="flex justify-between items-center">
         <h3 className="text-lg font-medium text-foreground">{t('editor.definitions')}</h3>
-        <Button
-          type="button"
-          size="sm"
-          onClick={addNewPrompt}
-          title={t('editor.addPromptTitle')}
-        >
-          <Plus />
-          <span>{t('editor.addPrompt')}</span>
-        </Button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              type="button"
+              size="sm"
+              onClick={addNewPrompt}
+            >
+              <Plus />
+              <span>{t('editor.addPrompt')}</span>
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>{t('editor.addPromptTitle')}</TooltipContent>
+        </Tooltip>
       </div>
 
       {Object.keys(value).length === 0 ? (

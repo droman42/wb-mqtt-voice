@@ -8,7 +8,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AlertCircle, Trash2, FileText, ChevronDown, ChevronRight } from 'lucide-react';
-import { Button, Alert, AlertTitle, AlertDescription, Skeleton } from 'locveil-ui-kit';
+import { Button, Alert, AlertTitle, AlertDescription, Skeleton, Tooltip, TooltipTrigger, TooltipContent } from 'locveil-ui-kit';
 
 // Import components
 import HandlerList from '@/components/donations/HandlerList';
@@ -221,19 +221,24 @@ function MethodDonationEditor({
                       )}
                     </div>
                   </button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="text-destructive hover:text-destructive"
-                    onClick={() => {
-                      const newMethods = v.method_donations.filter((_, i) => i !== idx);
-                      set('method_donations', newMethods);
-                    }}
-                    disabled={disabled}
-                    title={t('page.removeMethod')}
-                  >
-                    <Trash2 />
-                  </Button>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="text-destructive hover:text-destructive"
+                        onClick={() => {
+                          const newMethods = v.method_donations.filter((_, i) => i !== idx);
+                          set('method_donations', newMethods);
+                        }}
+                        disabled={disabled}
+                        aria-label={t('page.removeMethod')}
+                      >
+                        <Trash2 />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>{t('page.removeMethod')}</TooltipContent>
+                  </Tooltip>
                 </div>
 
                 {/* Collapsible Content */}
@@ -985,7 +990,7 @@ const DonationsPage: React.FC = () => {
         />
 
       {/* Main Editor Area */}
-      <div className="flex-1 flex flex-col pb-20">
+      <div className="flex-1 flex flex-col">
         {selectedHandler ? (
           <>
             {/* Language Tabs */}

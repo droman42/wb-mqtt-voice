@@ -1,7 +1,7 @@
 import { Plus, Trash2, AlertTriangle, RefreshCw } from 'lucide-react';
 import { useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Button } from 'locveil-ui-kit';
+import { Button, Tooltip, TooltipTrigger, TooltipContent } from 'locveil-ui-kit';
 import Badge from '@/components/ui/Badge';
 import { ConflictBadge } from '@/components/analysis';
 import type { ConflictReport } from '@/types';
@@ -113,17 +113,21 @@ export default function LemmasEditor({
             </div>
           )}
           {onAutoSync && suggestedLemmas.length > 0 && (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={onAutoSync}
-              disabled={disabled}
-              title={t('editors.lemmas.syncTitle', { count: suggestedLemmas.length })}
-            >
-              <RefreshCw />
-              {t('editors.lemmas.sync', { count: suggestedLemmas.length })}
-            </Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={onAutoSync}
+                  disabled={disabled}
+                >
+                  <RefreshCw />
+                  {t('editors.lemmas.sync', { count: suggestedLemmas.length })}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>{t('editors.lemmas.syncTitle', { count: suggestedLemmas.length })}</TooltipContent>
+            </Tooltip>
           )}
         </div>
       </div>
@@ -168,17 +172,22 @@ export default function LemmasEditor({
                   </div>
                 )}
               </div>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                onClick={() => removeLemma(index)}
-                disabled={disabled}
-                className="text-destructive"
-                title={t('editors.lemmas.removeLemma')}
-              >
-                <Trash2 />
-              </Button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => removeLemma(index)}
+                    disabled={disabled}
+                    className="text-destructive"
+                    aria-label={t('editors.lemmas.removeLemma')}
+                  >
+                    <Trash2 />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>{t('editors.lemmas.removeLemma')}</TooltipContent>
+              </Tooltip>
             </div>
           );
         })}
@@ -213,17 +222,20 @@ export default function LemmasEditor({
           </p>
           <div className="flex flex-wrap gap-1">
             {suggestedLemmas.map((lemma, index) => (
-              <Button
-                key={index}
-                type="button"
-                variant="secondary"
-                size="sm"
-                onClick={() => onChange([...value, lemma])}
-                disabled={disabled}
-                title={t('editors.lemmas.addToLemmas', { lemma })}
-              >
-                + {lemma}
-              </Button>
+              <Tooltip key={index}>
+                <TooltipTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => onChange([...value, lemma])}
+                    disabled={disabled}
+                  >
+                    + {lemma}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>{t('editors.lemmas.addToLemmas', { lemma })}</TooltipContent>
+              </Tooltip>
             ))}
           </div>
         </div>

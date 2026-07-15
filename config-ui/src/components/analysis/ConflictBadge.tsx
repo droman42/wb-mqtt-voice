@@ -8,6 +8,7 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { AlertCircle, AlertTriangle, Info } from 'lucide-react';
+import { Tooltip, TooltipTrigger, TooltipContent } from 'locveil-ui-kit';
 import Badge from '@/components/ui/Badge';
 import type { BadgeProps, ConflictReport } from '@/types';
 
@@ -81,19 +82,25 @@ const ConflictBadge: React.FC<ConflictBadgeProps> = ({
   };
 
   return (
-    <div 
-      className={`inline-flex items-center cursor-help ${className}`}
-      title={getTooltipContent()}
-      onClick={onClick}
-    >
-      <Badge
-        variant={config.variant}
-        className="cursor-pointer transition-colors duration-200 text-xs"
-      >
-        <Icon className="w-3 h-3 mr-1" />
-        {formatConflictType(conflict.conflict_type)}
-      </Badge>
-    </div>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <div
+          className={`inline-flex items-center cursor-help ${className}`}
+          onClick={onClick}
+        >
+          <Badge
+            variant={config.variant}
+            className="cursor-pointer transition-colors duration-200 text-xs"
+          >
+            <Icon className="w-3 h-3 mr-1" />
+            {formatConflictType(conflict.conflict_type)}
+          </Badge>
+        </div>
+      </TooltipTrigger>
+      <TooltipContent>
+        <span className="whitespace-pre-line">{getTooltipContent()}</span>
+      </TooltipContent>
+    </Tooltip>
   );
 };
 

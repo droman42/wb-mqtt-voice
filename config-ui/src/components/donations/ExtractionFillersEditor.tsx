@@ -10,7 +10,7 @@
 
 import { useTranslation } from 'react-i18next';
 import { Plus, Trash2 } from 'lucide-react';
-import { Button } from 'locveil-ui-kit';
+import { Button, Tooltip, TooltipTrigger, TooltipContent } from 'locveil-ui-kit';
 import CardEditor from './CardEditor';
 import Input from '@/components/ui/Input';
 import { useDecompiledPatterns } from '@/hooks/useDecompiledPatterns';
@@ -55,15 +55,20 @@ export default function ExtractionFillersEditor({ value, onChange, disabled = fa
               placeholder={t('extraction.slotLabelPlaceholder')}
               disabled={disabled}
             />
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 text-destructive"
-              onClick={() => removeFiller(fi)} disabled={disabled} title={t('extraction.removeTitle')}
-            >
-              <Trash2 />
-            </Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 text-destructive"
+                  onClick={() => removeFiller(fi)} disabled={disabled} aria-label={t('extraction.removeTitle')}
+                >
+                  <Trash2 />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>{t('extraction.removeTitle')}</TooltipContent>
+            </Tooltip>
           </div>
           <div className="flex flex-col gap-2">
             {filler.cards.map((card, ci) => (

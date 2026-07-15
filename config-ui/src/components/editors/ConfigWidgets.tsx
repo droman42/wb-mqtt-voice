@@ -8,7 +8,7 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ChevronDown, Eye, EyeOff, Info } from 'lucide-react';
-import { Alert, AlertDescription, Button, Checkbox, Input, Label, Slider } from 'locveil-ui-kit';
+import { Alert, AlertDescription, Button, Checkbox, Input, Label, Slider, Tooltip, TooltipTrigger, TooltipContent } from 'locveil-ui-kit';
 import Badge from '@/components/ui/Badge';
 import apiClient from '@/utils/apiClient';
 import KeyValueEditor from './KeyValueEditor';
@@ -660,17 +660,26 @@ export const ArrayOfObjectsEditor: React.FC<ConfigWidgetProps> = ({
               {propNames.map((prop) => {
                 const ps = itemProps[prop];
                 const isNumber = ps.type === 'number' || ps.type === 'integer';
+                const field = (
+                  <Input
+                    type={isNumber ? 'number' : 'text'}
+                    value={row?.[prop] ?? ''}
+                    onChange={(e) => updateField(index, prop, isNumber ? Number(e.target.value) : e.target.value)}
+                    disabled={disabled}
+                    className="h-8 px-2"
+                  />
+                );
                 return (
                   <div key={prop} className="flex flex-col">
                     <label className="text-xs text-muted-foreground">{prop}</label>
-                    <Input
-                      type={isNumber ? 'number' : 'text'}
-                      value={row?.[prop] ?? ''}
-                      onChange={(e) => updateField(index, prop, isNumber ? Number(e.target.value) : e.target.value)}
-                      disabled={disabled}
-                      title={ps.description}
-                      className="h-8 px-2"
-                    />
+                    {ps.description ? (
+                      <Tooltip>
+                        <TooltipTrigger asChild>{field}</TooltipTrigger>
+                        <TooltipContent>{ps.description}</TooltipContent>
+                      </Tooltip>
+                    ) : (
+                      field
+                    )}
                   </div>
                 );
               })}

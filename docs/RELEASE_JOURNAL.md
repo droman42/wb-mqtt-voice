@@ -20,6 +20,21 @@ newest entries near the top of each dated section.
 
 ## Action journal
 
+- **2026-07-15 — UI-21 + UI-22 done: the last shims of the old world — window.confirm, bare title=,
+  and the plugin's own fixed bottom bars — are gone.** Hours after commons shipped IMPL-4 (Toast +
+  AlertDialog, ui-kit 0.1.1) and IMPL-5 (ActionBar/ActionBarHost, ui-kit 0.1.2 + workbench-v1.1),
+  voice consumed both. The three window.confirm calls in the save flow became one promise-shaped
+  AlertDialog with identical control flow; 45 native title= attributes across 28 files became kit
+  Tooltips (icon-only buttons keep their accessible names via aria-label — the sweep added them
+  everywhere a title used to be the only label, an a11y improvement the old attributes never
+  delivered); and both bottom bars now register into the ActionBar bus, rendered by the shell's host
+  in normal flex flow — the fixed-positioning wrappers and the DonationsPage padding hack are deleted,
+  so stylebook §8 holds without exception in the plugin. The HK-11 singleton architecture did the
+  heavy lifting: one shared bus instance across shell and plugin by construction, no prop drilling,
+  no contract change. Toast has no call sites yet — the bus is there when a real UX need appears.
+  Gates: check + plugin build + vitest 44/44 + served-shell smoke with the new kit. UI-22 written back
+  onto commons IMPL-5 as its first consumer.
+
 - **2026-07-15 — UI-16 done: the config editor stops guessing — the schema now says.** The port arc's
   last row closed by building the backend metadata it was blocked on. The sections endpoint declares
   which sections are live-testable components (one map, beside the API identities it names — the

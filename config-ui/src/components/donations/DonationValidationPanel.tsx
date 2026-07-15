@@ -14,6 +14,7 @@ import { useTranslation } from 'react-i18next';
 import { RefreshCw, AlertCircle, AlertTriangle, CheckCircle2, Languages } from 'lucide-react';
 import {
   Button, Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Tooltip, TooltipTrigger, TooltipContent,
 } from 'locveil-ui-kit';
 import apiClient from '@/utils/apiClient';
 
@@ -103,13 +104,18 @@ export default function DonationValidationPanel({
       <div>
         <div className="flex items-center justify-between mb-2">
           <div className="text-sm font-semibold text-foreground">{t('validation.wiringTitle')}</div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => void loadWiring()} disabled={wiringLoading} title={t('validation.wiringRefreshTitle')}
-          >
-            <RefreshCw className={wiringLoading ? 'animate-spin' : ''} /> {t('validation.wiringRefreshTitle')}
-          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => void loadWiring()} disabled={wiringLoading}
+              >
+                <RefreshCw className={wiringLoading ? 'animate-spin' : ''} /> {t('validation.wiringRefreshTitle')}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>{t('validation.wiringRefreshTitle')}</TooltipContent>
+          </Tooltip>
         </div>
         {errors.length === 0 && warnings.length === 0 ? (
           <div className={`flex items-center gap-2 text-sm ${persistedText}`}>

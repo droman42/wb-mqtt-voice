@@ -134,6 +134,8 @@ export const common = {
     validationWarnings: 'Предупреждения проверки',
     validationSuccessful: 'Проверка успешна',
     noErrorsReady: 'Ошибок не найдено. Готово к сохранению.',
+    confirmTitle: 'Подтвердите сохранение',
+    saveAnyway: 'Всё равно сохранить',
     confirmWarningsReview: 'Есть предупреждения, которые следует просмотреть. Всё равно сохранить?',
     confirmErrors: 'Есть ошибки проверки. Всё равно сохранить?',
     confirmWarnings: 'Есть предупреждения. Всё равно сохранить?',

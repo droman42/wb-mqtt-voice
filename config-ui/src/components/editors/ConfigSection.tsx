@@ -10,7 +10,7 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ChevronDown, ChevronRight, Save, TestTube, AlertCircle, CheckCircle, Loader } from 'lucide-react';
-import { Alert, AlertDescription, Button } from 'locveil-ui-kit';
+import { Alert, AlertDescription, Button, Tooltip, TooltipTrigger, TooltipContent } from 'locveil-ui-kit';
 import { ConfigWidget } from './ConfigWidgets';
 import MicrophoneConfigSection from './MicrophoneConfigSection';
 import TestConfigButton, { type ComponentName, type ComponentConfigType, type ComponentConfigureResponse } from '@/components/ui/TestConfigButton';
@@ -406,35 +406,45 @@ export const ConfigSection: React.FC<ConfigSectionProps> = ({
           {hasChanges && isExpanded && level === 1 && (
             <div className="flex items-center space-x-2">
               {onValidate && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    void handleValidate();
-                  }}
-                  disabled={isValidating || disabled}
-                  className="h-7 w-7"
-                  title={t('section.validateSection')}
-                >
-                  <TestTube />
-                </Button>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        void handleValidate();
+                      }}
+                      disabled={isValidating || disabled}
+                      className="h-7 w-7"
+                      aria-label={t('section.validateSection')}
+                    >
+                      <TestTube />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>{t('section.validateSection')}</TooltipContent>
+                </Tooltip>
               )}
 
               {onApply && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    void handleApply();
-                  }}
-                  disabled={isSaving || disabled}
-                  className="h-7 w-7 text-primary"
-                  title={t('section.applyChanges')}
-                >
-                  <Save />
-                </Button>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        void handleApply();
+                      }}
+                      disabled={isSaving || disabled}
+                      className="h-7 w-7 text-primary"
+                      aria-label={t('section.applyChanges')}
+                    >
+                      <Save />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>{t('section.applyChanges')}</TooltipContent>
+                </Tooltip>
               )}
             </div>
           )}

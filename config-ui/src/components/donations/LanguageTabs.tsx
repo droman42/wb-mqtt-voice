@@ -8,7 +8,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Plus, X, AlertTriangle, CheckCircle, Clock, Shield } from 'lucide-react';
-import { Button } from 'locveil-ui-kit';
+import { Button, Tooltip, TooltipTrigger, TooltipContent } from 'locveil-ui-kit';
 import Badge from '@/components/ui/Badge';
 import type { ValidationReport, CompletenessReport } from '@/types/api';
 
@@ -167,16 +167,21 @@ const LanguageTabs: React.FC<LanguageTabsProps> = ({
               
               {/* Delete button for non-active languages */}
               {language.code !== activeLanguage && !disabled && language.status !== 'loading' && (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onDeleteLanguage(language.code);
-                  }}
-                  className="ml-1 p-0.5 text-muted-foreground hover:text-destructive transition-colors duration-200"
-                  title={t('languageTabs.deleteLanguage', { language: getLanguageLabel(language.code) })}
-                >
-                  <X className="w-3 h-3" />
-                </button>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onDeleteLanguage(language.code);
+                      }}
+                      className="ml-1 p-0.5 text-muted-foreground hover:text-destructive transition-colors duration-200"
+                      aria-label={t('languageTabs.deleteLanguage', { language: getLanguageLabel(language.code) })}
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>{t('languageTabs.deleteLanguage', { language: getLanguageLabel(language.code) })}</TooltipContent>
+                </Tooltip>
               )}
             </div>
           ))}
@@ -185,15 +190,19 @@ const LanguageTabs: React.FC<LanguageTabsProps> = ({
           {!disabled && (
             <div className="relative">
               {!showCreateForm ? (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setShowCreateForm(true)}
-                  title={t('languageTabs.addLanguageTitle')}
-                >
-                  <Plus />
-                  <span>{t('languageTabs.addLanguage')}</span>
-                </Button>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setShowCreateForm(true)}
+                    >
+                      <Plus />
+                      <span>{t('languageTabs.addLanguage')}</span>
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>{t('languageTabs.addLanguageTitle')}</TooltipContent>
+                </Tooltip>
               ) : (
                 <div className="flex items-center space-x-2 p-2 bg-muted rounded-md border border-border">
                   <select
@@ -271,15 +280,20 @@ const LanguageTabs: React.FC<LanguageTabsProps> = ({
               )}
 
               {onRefreshValidation && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-7 w-7 text-primary"
-                  onClick={onRefreshValidation}
-                  title={t('languageTabs.refreshValidationTitle')}
-                >
-                  <Shield />
-                </Button>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 text-primary"
+                      onClick={onRefreshValidation}
+                      aria-label={t('languageTabs.refreshValidationTitle')}
+                    >
+                      <Shield />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>{t('languageTabs.refreshValidationTitle')}</TooltipContent>
+                </Tooltip>
               )}
               
             </div>

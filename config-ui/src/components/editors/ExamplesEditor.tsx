@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import { Trash2, Plus } from 'lucide-react';
-import { Button } from 'locveil-ui-kit';
+import { Button, Tooltip, TooltipTrigger, TooltipContent } from 'locveil-ui-kit';
 import TextArea from '@/components/ui/TextArea';
 import KeyValueEditor from './KeyValueEditor';
 import type { ExamplesEditorProps } from '@/types';
@@ -46,15 +46,20 @@ export default function ExamplesEditor({
         <div key={idx} className="border border-border rounded-lg p-3">
           <div className="flex items-center justify-between mb-2">
             <div className="text-sm font-medium">{t('editors.examples.example', { index: idx + 1 })}</div>
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={() => del(idx)}
-              disabled={disabled}
-              title={t('editors.examples.removeExample')}
-            >
-              <Trash2 />
-            </Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => del(idx)}
+                  disabled={disabled}
+                  aria-label={t('editors.examples.removeExample')}
+                >
+                  <Trash2 />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>{t('editors.examples.removeExample')}</TooltipContent>
+            </Tooltip>
           </div>
           <TextArea
             label={t('editors.examples.userText')}

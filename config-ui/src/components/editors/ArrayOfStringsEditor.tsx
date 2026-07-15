@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import { Plus, Trash2 } from 'lucide-react';
-import { Button } from 'locveil-ui-kit';
+import { Button, Tooltip, TooltipTrigger, TooltipContent } from 'locveil-ui-kit';
 import type { ArrayOfStringsEditorProps } from '@/types';
 
 export default function ArrayOfStringsEditor({
@@ -45,15 +45,20 @@ export default function ArrayOfStringsEditor({
             placeholder={placeholder}
             disabled={disabled}
           />
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={() => remove(idx)}
-            title={t('common:actions.remove')}
-            disabled={disabled}
-          >
-            <Trash2 />
-          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => remove(idx)}
+                aria-label={t('common:actions.remove')}
+                disabled={disabled}
+              >
+                <Trash2 />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>{t('common:actions.remove')}</TooltipContent>
+          </Tooltip>
         </div>
       ))}
       <Button

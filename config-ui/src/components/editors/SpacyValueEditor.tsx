@@ -10,7 +10,8 @@ import { useTranslation } from 'react-i18next';
 import { Plus, Trash2 } from 'lucide-react';
 import {
   Alert, AlertDescription, Button, Input,
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Textarea
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Textarea,
+  Tooltip, TooltipTrigger, TooltipContent
 } from 'locveil-ui-kit';
 import { SpacyAttributeStructure, getOperatorOptions } from '@/utils/spacyAttributeHelpers';
 
@@ -136,17 +137,22 @@ const SpacyValueEditor: React.FC<SpacyValueEditorProps> = ({
                 placeholder={t('editors.spacyValue.itemPlaceholder', { index: index + 1 })}
                 disabled={disabled}
               />
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                onClick={() => removeItem(index)}
-                className="text-destructive"
-                disabled={disabled}
-                title={t('editors.spacyValue.removeItem')}
-              >
-                <Trash2 />
-              </Button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => removeItem(index)}
+                    className="text-destructive"
+                    disabled={disabled}
+                    aria-label={t('editors.spacyValue.removeItem')}
+                  >
+                    <Trash2 />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>{t('editors.spacyValue.removeItem')}</TooltipContent>
+              </Tooltip>
             </div>
           ))}
         </div>

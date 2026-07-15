@@ -17,7 +17,7 @@ import {
   Info,
   Settings
 } from 'lucide-react';
-import { Alert, AlertDescription, Button } from 'locveil-ui-kit';
+import { Alert, AlertDescription, Button, Tooltip, TooltipTrigger, TooltipContent } from 'locveil-ui-kit';
 import Badge from '@/components/ui/Badge';
 
 // Status-hued text/icon recipes (stylebook §2 — meaning via status tokens, never raw palette).
@@ -119,16 +119,20 @@ const CrossLanguageValidation: React.FC<CrossLanguageValidationProps> = ({
 
           {/* Action Buttons */}
           <div className="flex items-center space-x-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={onRefreshValidation}
-              disabled={disabled || isLoading}
-              title={t('crossLang.refreshTitle')}
-            >
-              <RefreshCw className={isLoading ? 'animate-spin' : ''} />
-              <span>{t('crossLang.refresh')}</span>
-            </Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={onRefreshValidation}
+                  disabled={disabled || isLoading}
+                >
+                  <RefreshCw className={isLoading ? 'animate-spin' : ''} />
+                  <span>{t('crossLang.refresh')}</span>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>{t('crossLang.refreshTitle')}</TooltipContent>
+            </Tooltip>
 
           </div>
         </div>

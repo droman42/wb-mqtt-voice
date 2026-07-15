@@ -7,7 +7,7 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { TestTube, Loader } from 'lucide-react';
-import { Button, cn } from 'locveil-ui-kit';
+import { Button, cn, Tooltip, TooltipTrigger, TooltipContent } from 'locveil-ui-kit';
 import type {
   TTSConfig, ASRConfig, AudioConfig, LLMConfig, NLUConfig,
   VoiceTriggerConfig, TextProcessorConfig, IntentSystemConfig,
@@ -120,21 +120,29 @@ export const TestConfigButton: React.FC<TestConfigButtonProps> = ({
   };
 
   return (
-    <Button
-      variant={kitVariant[variant]}
-      size={kitSize[size]}
-      onClick={() => void handleClick()}
-      disabled={disabled || loading}
-      className={className}
-      title={
-        disabled && !hasChanges
-          ? t('workflow.noChangesToTest', { component: getComponentDisplayName() })
-          : t('workflow.testConfigTitle', { component: getComponentDisplayName(), preview: getPreviewText() })
-      }
-    >
-      {loading ? <Loader className={cn('animate-spin')} /> : <TestTube />}
-      {loading ? t('workflow.testing') : disabled && !hasChanges ? t('workflow.noChanges') : t('workflow.testConfig')}
-    </Button>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button
+          variant={kitVariant[variant]}
+          size={kitSize[size]}
+          onClick={() => void handleClick()}
+          disabled={disabled || loading}
+          className={className}
+        >
+          {loading ? <Loader className={cn('animate-spin')} /> : <TestTube />}
+          {loading ? t('workflow.testing') : disabled && !hasChanges ? t('workflow.noChanges') : t('workflow.testConfig')}
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent>
+        <span className="whitespace-pre-line">
+          {
+            disabled && !hasChanges
+              ? t('workflow.noChangesToTest', { component: getComponentDisplayName() })
+              : t('workflow.testConfigTitle', { component: getComponentDisplayName(), preview: getPreviewText() })
+          }
+        </span>
+      </TooltipContent>
+    </Tooltip>
   );
 };
 

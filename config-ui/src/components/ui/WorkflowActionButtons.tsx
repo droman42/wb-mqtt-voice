@@ -7,7 +7,7 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Save, RotateCcw, AlertTriangle, Loader } from 'lucide-react';
-import { Button, StatusChip, Icon, cn } from 'locveil-ui-kit';
+import { Button, StatusChip, Icon, cn, Tooltip, TooltipTrigger, TooltipContent } from 'locveil-ui-kit';
 import { ComponentName } from './TestConfigButton';
 
 interface WorkflowStatus {
@@ -77,57 +77,71 @@ export const WorkflowActionButtons: React.FC<WorkflowActionButtonsProps> = ({
     <div className={cn('flex items-center gap-1', className)}>
       {/* Persist to TOML Button */}
       {status.canPersist && (
-        <Button
-          size={kitSize[size]}
-          onClick={() => void handlePersist()}
-          disabled={persisting || loading || !status.canPersist}
-          title={t('workflow.persistTitle', { component: getComponentDisplayName() })}
-        >
-          {persisting ? <Loader className="animate-spin" /> : <Save />}
-          {persisting ? t('workflow.persisting') : t('workflow.persistToToml')}
-        </Button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              size={kitSize[size]}
+              onClick={() => void handlePersist()}
+              disabled={persisting || loading || !status.canPersist}
+            >
+              {persisting ? <Loader className="animate-spin" /> : <Save />}
+              {persisting ? t('workflow.persisting') : t('workflow.persistToToml')}
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>{t('workflow.persistTitle', { component: getComponentDisplayName() })}</TooltipContent>
+        </Tooltip>
       )}
 
       {/* Rollback Buttons */}
       <div className="flex items-center gap-1">
         {/* Rollback to Tested */}
         {status.hasChanges && status.isTested && (
-          <Button
-            variant="outline"
-            size={kitSize[size]}
-            onClick={() => onRollbackToTested(component)}
-            disabled={loading}
-            title={t('workflow.rollbackToTestedTitle', { component: getComponentDisplayName() })}
-          >
-            <RotateCcw />
-            {t('workflow.rollbackToTested')}
-          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="outline"
+                size={kitSize[size]}
+                onClick={() => onRollbackToTested(component)}
+                disabled={loading}
+              >
+                <RotateCcw />
+                {t('workflow.rollbackToTested')}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>{t('workflow.rollbackToTestedTitle', { component: getComponentDisplayName() })}</TooltipContent>
+          </Tooltip>
         )}
 
         {/* Rollback to Persisted */}
         {(status.hasChanges || status.isTested) && !status.isPersisted && (
-          <Button
-            variant="ghost"
-            size={kitSize[size]}
-            onClick={() => onRollbackToPersisted(component)}
-            disabled={loading}
-            title={t('workflow.rollbackToTomlTitle', { component: getComponentDisplayName() })}
-          >
-            <RotateCcw />
-            {t('workflow.rollbackToToml')}
-          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size={kitSize[size]}
+                onClick={() => onRollbackToPersisted(component)}
+                disabled={loading}
+              >
+                <RotateCcw />
+                {t('workflow.rollbackToToml')}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>{t('workflow.rollbackToTomlTitle', { component: getComponentDisplayName() })}</TooltipContent>
+          </Tooltip>
         )}
       </div>
 
       {/* Conflict Indicator */}
       {status.hasConflicts && (
-        <StatusChip
-          variant="conflict"
-          title={t('workflow.conflictTitle', { component: getComponentDisplayName() })}
-        >
-          <Icon icon={AlertTriangle} className="mr-1" />
-          {t('workflow.conflict')}
-        </StatusChip>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <StatusChip variant="conflict">
+              <Icon icon={AlertTriangle} className="mr-1" />
+              {t('workflow.conflict')}
+            </StatusChip>
+          </TooltipTrigger>
+          <TooltipContent>{t('workflow.conflictTitle', { component: getComponentDisplayName() })}</TooltipContent>
+        </Tooltip>
       )}
     </div>
   );

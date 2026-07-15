@@ -14,7 +14,7 @@ import { Copy, CheckCircle, Eye, EyeOff, RefreshCw, AlertCircle, GitCompare, Cod
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { oneDark, oneLight } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { DiffEditor } from '@monaco-editor/react';
-import { Button, Alert, AlertTitle, AlertDescription } from 'locveil-ui-kit';
+import { Button, Alert, AlertTitle, AlertDescription, Tooltip, TooltipTrigger, TooltipContent } from 'locveil-ui-kit';
 import DiffViewer from './DiffViewer';
 import ValidationErrorDisplay from './ValidationErrorDisplay';
 import apiClient from '@/utils/apiClient';
@@ -224,16 +224,26 @@ export const TomlPreview: React.FC<TomlPreviewProps> = ({
             </div>
           )}
           {tomlErrors.length > 0 && (
-            <div className="flex items-center space-x-1 text-destructive" title={t('toml.validationErrorsTooltip', { count: tomlErrors.length })}>
-              <AlertCircle className="h-4 w-4" />
-              <span className="text-xs">{t('toml.errorCount', { count: tomlErrors.length })}</span>
-            </div>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="flex items-center space-x-1 text-destructive">
+                  <AlertCircle className="h-4 w-4" />
+                  <span className="text-xs">{t('toml.errorCount', { count: tomlErrors.length })}</span>
+                </div>
+              </TooltipTrigger>
+              <TooltipContent>{t('toml.validationErrorsTooltip', { count: tomlErrors.length })}</TooltipContent>
+            </Tooltip>
           )}
           {!validating && tomlErrors.length === 0 && rawToml && (
-            <div className="flex items-center space-x-1 text-[hsl(var(--lv-status-persisted)_55%_32%)] dark:text-[hsl(var(--lv-status-persisted)_70%_72%)]" title={t('toml.validTooltip')}>
-              <CheckCircle className="h-3 w-3" />
-              <span className="text-xs">{t('toml.valid')}</span>
-            </div>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="flex items-center space-x-1 text-[hsl(var(--lv-status-persisted)_55%_32%)] dark:text-[hsl(var(--lv-status-persisted)_70%_72%)]">
+                  <CheckCircle className="h-3 w-3" />
+                  <span className="text-xs">{t('toml.valid')}</span>
+                </div>
+              </TooltipTrigger>
+              <TooltipContent>{t('toml.validTooltip')}</TooltipContent>
+            </Tooltip>
           )}
         </div>
         
@@ -241,88 +251,128 @@ export const TomlPreview: React.FC<TomlPreviewProps> = ({
         <div className="flex items-center space-x-1">
           {/* View mode toggle */}
           <div className="flex border border-input rounded-md">
-            <button
-              onClick={() => handleViewModeChange('preview')}
-              className={`px-2 py-1 text-xs rounded-l-md transition-colors duration-200 ${
-                viewMode === 'preview'
-                  ? 'bg-primary text-primary-foreground'
-                  : 'bg-background text-muted-foreground hover:bg-muted'
-              }`}
-              title={t('toml.previewMode')}
-            >
-              <Code className="h-3 w-3" />
-            </button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={() => handleViewModeChange('preview')}
+                  className={`px-2 py-1 text-xs rounded-l-md transition-colors duration-200 ${
+                    viewMode === 'preview'
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-background text-muted-foreground hover:bg-muted'
+                  }`}
+                  aria-label={t('toml.previewMode')}
+                >
+                  <Code className="h-3 w-3" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>{t('toml.previewMode')}</TooltipContent>
+            </Tooltip>
             {originalToml && (
-              <button
-                onClick={() => handleViewModeChange('diff')}
-                className={`px-2 py-1 text-xs border-l border-input transition-colors duration-200 ${
-                  viewMode === 'diff'
-                    ? 'bg-primary text-primary-foreground'
-                    : 'bg-background text-muted-foreground hover:bg-muted'
-                }`}
-                title={t('toml.diffView')}
-              >
-                <GitCompare className="h-3 w-3" />
-              </button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={() => handleViewModeChange('diff')}
+                    className={`px-2 py-1 text-xs border-l border-input transition-colors duration-200 ${
+                      viewMode === 'diff'
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-background text-muted-foreground hover:bg-muted'
+                    }`}
+                    aria-label={t('toml.diffView')}
+                  >
+                    <GitCompare className="h-3 w-3" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>{t('toml.diffView')}</TooltipContent>
+              </Tooltip>
             )}
-            <button
-              onClick={() => handleViewModeChange('editor')}
-              className={`px-2 py-1 text-xs rounded-r-md border-l border-input transition-colors duration-200 ${
-                viewMode === 'editor'
-                  ? 'bg-primary text-primary-foreground'
-                  : 'bg-background text-muted-foreground hover:bg-muted'
-              }`}
-              title={t('toml.advancedEditor')}
-            >
-              <Settings className="h-3 w-3" />
-            </button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={() => handleViewModeChange('editor')}
+                  className={`px-2 py-1 text-xs rounded-r-md border-l border-input transition-colors duration-200 ${
+                    viewMode === 'editor'
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-background text-muted-foreground hover:bg-muted'
+                  }`}
+                  aria-label={t('toml.advancedEditor')}
+                >
+                  <Settings className="h-3 w-3" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>{t('toml.advancedEditor')}</TooltipContent>
+            </Tooltip>
           </div>
 
           {error && (
-            <div className="flex items-center space-x-1 text-[hsl(var(--lv-status-edited)_55%_32%)] dark:text-[hsl(var(--lv-status-edited)_70%_72%)]" title={error}>
-              <AlertCircle className="h-4 w-4" />
-              <span className="text-xs">{t('toml.fallback')}</span>
-            </div>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="flex items-center space-x-1 text-[hsl(var(--lv-status-edited)_55%_32%)] dark:text-[hsl(var(--lv-status-edited)_70%_72%)]">
+                  <AlertCircle className="h-4 w-4" />
+                  <span className="text-xs">{t('toml.fallback')}</span>
+                </div>
+              </TooltipTrigger>
+              <TooltipContent>{error}</TooltipContent>
+            </Tooltip>
           )}
 
           {/* Theme toggle */}
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={toggleTheme}
-            title={themeMode === 'light' ? t('toml.switchToDark') : t('toml.switchToLight')}
-          >
-            {themeMode === 'light' ? '🌙' : '☀️'}
-          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={toggleTheme}
+                aria-label={themeMode === 'light' ? t('toml.switchToDark') : t('toml.switchToLight')}
+              >
+                {themeMode === 'light' ? '🌙' : '☀️'}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>{themeMode === 'light' ? t('toml.switchToDark') : t('toml.switchToLight')}</TooltipContent>
+          </Tooltip>
 
           {/* Syntax highlighting toggle */}
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={toggleSyntaxHighlighting}
-            className={syntaxHighlighting ? 'text-primary' : 'text-muted-foreground'}
-            title={syntaxHighlighting ? t('toml.disableHighlighting') : t('toml.enableHighlighting')}
-          >
-            <Code />
-          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={toggleSyntaxHighlighting}
+                className={syntaxHighlighting ? 'text-primary' : 'text-muted-foreground'}
+                aria-label={syntaxHighlighting ? t('toml.disableHighlighting') : t('toml.enableHighlighting')}
+              >
+                <Code />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>{syntaxHighlighting ? t('toml.disableHighlighting') : t('toml.enableHighlighting')}</TooltipContent>
+          </Tooltip>
 
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={handleRefresh}
-            title={t('toml.refresh')}
-            disabled={loading}
-          >
-            <RefreshCw className={loading ? 'animate-spin' : ''} />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={toggleSensitive}
-            title={showSensitive ? t('toml.hideSensitive') : t('toml.showSensitive')}
-          >
-            {showSensitive ? <EyeOff /> : <Eye />}
-          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleRefresh}
+                aria-label={t('toml.refresh')}
+                disabled={loading}
+              >
+                <RefreshCw className={loading ? 'animate-spin' : ''} />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>{t('toml.refresh')}</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={toggleSensitive}
+                aria-label={showSensitive ? t('toml.hideSensitive') : t('toml.showSensitive')}
+              >
+                {showSensitive ? <EyeOff /> : <Eye />}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>{showSensitive ? t('toml.hideSensitive') : t('toml.showSensitive')}</TooltipContent>
+          </Tooltip>
           <Button
             variant="ghost"
             size="sm"

@@ -13,6 +13,7 @@ import { useTranslation } from 'react-i18next';
 import { Plus, Trash2 } from 'lucide-react';
 import {
   Button, Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Tooltip, TooltipTrigger, TooltipContent,
 } from 'locveil-ui-kit';
 import Section from '@/components/ui/Section';
 import Input from '@/components/ui/Input';
@@ -57,14 +58,19 @@ function ContractParamEditor({
     <div className="border border-border rounded-xl p-3">
       <div className="flex items-center justify-between mb-2">
         <div className="text-sm font-medium">{t('contract.parameter')}</div>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-8 w-8 text-destructive"
-          onClick={onRemove} disabled={disabled} title={t('contract.removeParameter')}
-        >
-          <Trash2 />
-        </Button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-destructive"
+              onClick={onRemove} disabled={disabled} aria-label={t('contract.removeParameter')}
+            >
+              <Trash2 />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>{t('contract.removeParameter')}</TooltipContent>
+        </Tooltip>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         <Input label={t('contract.name')} value={param.name} onChange={(v) => set('name', v)} disabled={disabled} required />

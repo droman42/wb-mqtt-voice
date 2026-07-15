@@ -11,7 +11,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Plus, Trash2, ChevronDown, ChevronRight } from 'lucide-react';
-import { Alert, AlertDescription, Button, Input, Label } from 'locveil-ui-kit';
+import { Alert, AlertDescription, Button, Input, Label, Tooltip, TooltipTrigger, TooltipContent } from 'locveil-ui-kit';
 import Badge from '@/components/ui/Badge';
 import {
   parseSpacyAttribute,
@@ -79,16 +79,21 @@ function StructuredAttributeEditor({
           {getTypeIndicator()}
         </button>
 
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={onRemove}
-          className="h-7 w-7 text-destructive"
-          disabled={disabled}
-          title={t('editors.spacy.removeAttribute')}
-        >
-          <Trash2 />
-        </Button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onRemove}
+              className="h-7 w-7 text-destructive"
+              disabled={disabled}
+              aria-label={t('editors.spacy.removeAttribute')}
+            >
+              <Trash2 />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>{t('editors.spacy.removeAttribute')}</TooltipContent>
+        </Tooltip>
       </div>
 
       {/* Expandable Content */}

@@ -134,6 +134,8 @@ export const common = {
     validationWarnings: 'Validation Warnings',
     validationSuccessful: 'Validation successful',
     noErrorsReady: 'No errors found. Ready to save.',
+    confirmTitle: 'Confirm save',
+    saveAnyway: 'Save anyway',
     confirmWarningsReview: 'There are warnings that should be reviewed. Do you want to proceed with saving anyway?',
     confirmErrors: 'There are validation errors. Do you want to proceed with saving anyway?',
     confirmWarnings: 'There are warnings. Do you want to proceed with saving anyway?',

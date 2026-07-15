@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Button } from 'locveil-ui-kit';
+import { Button, Tooltip, TooltipTrigger, TooltipContent } from 'locveil-ui-kit';
 
 function coerceValue(v: string): string | number | boolean {
   if (v === '') return '';
@@ -83,15 +83,20 @@ export default function KeyValueEditor({
               disabled={disabled}
               placeholder={t('keyValue.valuePlaceholder')}
             />
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={() => del(k)}
-              disabled={disabled}
-              title={t('keyValue.removeEntry')}
-            >
-              ✕
-            </Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => del(k)}
+                  disabled={disabled}
+                  aria-label={t('keyValue.removeEntry')}
+                >
+                  ✕
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>{t('keyValue.removeEntry')}</TooltipContent>
+            </Tooltip>
           </div>
         ))}
       </div>

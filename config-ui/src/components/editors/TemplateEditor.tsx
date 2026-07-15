@@ -8,7 +8,7 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Plus, FileText, Eye, Code, Layout, AlertCircle } from 'lucide-react';
-import { Button, Alert, AlertTitle, AlertDescription, Tabs, TabsList, TabsTrigger } from 'locveil-ui-kit';
+import { Button, Alert, AlertTitle, AlertDescription, Tabs, TabsList, TabsTrigger, Tooltip, TooltipTrigger, TooltipContent } from 'locveil-ui-kit';
 import TemplateKeyEditor from './TemplateKeyEditor';
 import Section from '@/components/ui/Section';
 import TextArea from '@/components/ui/TextArea';
@@ -180,15 +180,19 @@ const TemplateEditor: React.FC<TemplateEditorProps> = ({
     <div className="space-y-4">
       <div className="flex justify-between items-center">
         <h3 className="text-lg font-medium text-foreground">{t('editor.keys')}</h3>
-        <Button
-          type="button"
-          size="sm"
-          onClick={addNewKey}
-          title={t('editor.addKeyTitle')}
-        >
-          <Plus />
-          <span>{t('editor.addKey')}</span>
-        </Button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              type="button"
+              size="sm"
+              onClick={addNewKey}
+            >
+              <Plus />
+              <span>{t('editor.addKey')}</span>
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>{t('editor.addKeyTitle')}</TooltipContent>
+        </Tooltip>
       </div>
 
       {Object.keys(value).length === 0 ? (

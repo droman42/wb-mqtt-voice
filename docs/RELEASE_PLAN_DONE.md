@@ -2357,6 +2357,31 @@ rationale/chronology lives in [`RELEASE_JOURNAL.md`](./RELEASE_JOURNAL.md).
       → entry → styles 200). Browser render = the standing honest caveat (owner's `npm run serve` away).
       docs: none — appearance-only restyle; no manifest node describes config-ui's look, and the
       UI-17-era run instructions are unchanged.
+- [x] **UI-21** [UI][COMMONS] `[deferred]` — **DONE 2026-07-15 (same session as its ungating —
+      commons IMPL-4 shipped Toast/AlertDialog as ui-kit 0.1.1/`ui-kit-v1.1`).** **Toast/AlertDialog/
+      Tooltip adoption sweep.** `window.confirm` ×3 (all in `ApplyChangesBar`'s save flow) → one
+      promise-shaped kit **AlertDialog** (`askConfirm()` resolves the dialog's Cancel/Save-anyway
+      choice — identical control flow to the old blocking confirm; new `applyBar.confirmTitle`/
+      `saveAnyway` keys, RU+EN). **45 native `title=` sites → kit `Tooltip`** across 28 files (agent
+      sweep + owner-files pass): icon-only triggers keep their accessible name via `aria-label`;
+      dynamic/conditional expressions moved verbatim; multi-line titles (TestConfigButton preview,
+      ConflictBadge) render `whitespace-pre-line`; one `TooltipProvider` at the plugin page root.
+      Remaining `title=` occurrences are React component props (Section headings), not native
+      tooltips — audited. Toast itself: no call sites yet (nothing user-facing needed it — the kit bus
+      is available for future use; adopting it for save-success feedback is deliberate UX work, not a
+      sweep). docs: none — interaction affordance polish; no manifest node describes tooltip behavior.
+- [x] **UI-22** [UI][COMMONS] `[deferred]` — **DONE 2026-07-15 (filed + completed same session;
+      IMPL-5 first consumer).** **Both bottom bars render through the shell's ActionBar slot.**
+      `ApplyChangesBar` and the LocalizationsPage save bar now render `<ActionBar>` children into the
+      kit's HK-11-singleton bus; the shell's `ActionBarHost` (workbench-v1.1, normal flex flow) owns
+      the border/surface shell — the local `fixed bottom-0 … z-50 shadow-lg` wrappers and the
+      DonationsPage `pb-20` overlap hack are DELETED; zero `fixed bottom-0` remains in the plugin
+      (stylebook §8 now holds). Single-occupancy is safe by construction (the two bars live on
+      different pages; latest-wins covers any transition). Verified: check + plugin build + vitest
+      44/44; served-shell smoke — the shell dist carries `wb-bottom-slot`/Toaster, the rebuilt plugin
+      (peers `^0.1` ≙ kit 0.1.2 under the 0.x strict-minor rule) serves entry+styles 200 and imports
+      ActionBar/AlertDialog/TooltipProvider through the import map. Browser render = the standing
+      caveat. docs: none — layout mechanics; no manifest node describes the bar placement.
 ### Release Readiness (REL)
 - [x] **REL-1** (P0) `[release]` — **DONE 2026-07-04 (interactive session). Definition-of-release SIGNED OFF.**
       Decisions: **(1) release artifact** = version tag **+ first real GHCR publish** (backend

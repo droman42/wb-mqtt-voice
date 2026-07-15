@@ -7,7 +7,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Trash2, Plus } from 'lucide-react';
-import { Button, Input } from 'locveil-ui-kit';
+import { Button, Input, Tooltip, TooltipTrigger, TooltipContent } from 'locveil-ui-kit';
 import CardPatternsEditor from './CardPatternsEditor';
 import type { SpacyPattern } from '@/utils/patternModel';
 
@@ -46,15 +46,20 @@ export default function SlotCardPatternsEditor({ value, onChange, disabled = fal
             <div className="text-sm font-medium">
               {t('slots.slotLabel')} <span className="font-mono bg-muted px-2 py-0.5 rounded">{label}</span>
             </div>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 text-destructive"
-              onClick={() => delSlot(label)} disabled={disabled} title={t('slots.removeSlot')}
-            >
-              <Trash2 />
-            </Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 text-destructive"
+                  onClick={() => delSlot(label)} disabled={disabled} aria-label={t('slots.removeSlot')}
+                >
+                  <Trash2 />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>{t('slots.removeSlot')}</TooltipContent>
+            </Tooltip>
           </div>
           <CardPatternsEditor
             value={patterns ?? []}

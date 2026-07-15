@@ -17,6 +17,7 @@ import type {
   WorkbenchPlugin,
 } from 'locveil-workbench/contract';
 
+import { TooltipProvider } from 'locveil-ui-kit';
 import i18n from '@/i18n';
 import apiClient from '@/utils/apiClient';
 import DonationsPage from '@/pages/DonationsPage';
@@ -27,13 +28,18 @@ import MonitoringPage from '@/pages/MonitoringPage';
 import ConfigurationPage from '@/pages/ConfigurationPage';
 import './index.css';
 
-/** Sync the plugin-local i18next instance to the shell's locale signal. */
+/** Sync the plugin-local i18next instance to the shell's locale signal; provide the
+ *  plugin-wide Tooltip context (UI-21 — kit tooltips replace bare `title=`). */
 function page(Page: ComponentType): ComponentType<PageProps> {
   return function VoicePage({ locale }: PageProps) {
     useEffect(() => {
       if (i18n.language !== locale) void i18n.changeLanguage(locale);
     }, [locale]);
-    return <Page />;
+    return (
+      <TooltipProvider delayDuration={300}>
+        <Page />
+      </TooltipProvider>
+    );
   };
 }
 

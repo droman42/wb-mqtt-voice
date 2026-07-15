@@ -7,7 +7,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Trash2, Plus, ChevronDown, ChevronRight, MessageSquare } from 'lucide-react';
-import { Button, Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from 'locveil-ui-kit';
+import { Button, Select, SelectTrigger, SelectValue, SelectContent, SelectItem, Tooltip, TooltipTrigger, TooltipContent } from 'locveil-ui-kit';
 import Input from '@/components/ui/Input';
 import TextArea from '@/components/ui/TextArea';
 import Badge from '@/components/ui/Badge';
@@ -100,16 +100,21 @@ const PromptDefinitionEditor: React.FC<PromptDefinitionEditorProps> = ({
             </Badge>
           </div>
         </div>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          onClick={handleDelete}
-          className="text-destructive"
-          title={t('keyEditor.deleteTitle', { prompt: promptName })}
-        >
-          <Trash2 />
-        </Button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              onClick={handleDelete}
+              className="text-destructive"
+              aria-label={t('keyEditor.deleteTitle', { prompt: promptName })}
+            >
+              <Trash2 />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>{t('keyEditor.deleteTitle', { prompt: promptName })}</TooltipContent>
+        </Tooltip>
       </div>
 
       {/* Content */}
@@ -199,16 +204,21 @@ const PromptDefinitionEditor: React.FC<PromptDefinitionEditorProps> = ({
                         placeholder={t('keyEditor.variableDescriptionPlaceholder')}
                       />
                     </div>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => removeVariable(index)}
-                      className="text-destructive mt-1"
-                      title={t('keyEditor.removeVariable')}
-                    >
-                      <Trash2 />
-                    </Button>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => removeVariable(index)}
+                          className="text-destructive mt-1"
+                          aria-label={t('keyEditor.removeVariable')}
+                        >
+                          <Trash2 />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>{t('keyEditor.removeVariable')}</TooltipContent>
+                    </Tooltip>
                   </div>
                 ))}
               </div>

@@ -9,6 +9,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Globe, Loader, AlertCircle, Filter, RefreshCw } from 'lucide-react';
 import {
+  ActionBar,
   Button, Alert, AlertTitle, AlertDescription,
   Select, SelectTrigger, SelectValue, SelectContent, SelectItem
 } from 'locveil-ui-kit';
@@ -369,10 +370,10 @@ const LocalizationsPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Simple Save Controls */}
+      {/* Simple Save Controls — rendered through the shell's bottom slot (UI-22) */}
       {hasChanges && (
-        <div className="fixed bottom-0 left-0 right-0 bg-card border-t border-border p-4 z-50">
-          <div className="max-w-7xl mx-auto flex items-center justify-between">
+        <ActionBar>
+          <div className="flex w-full items-center justify-between">
             <div className="flex items-center gap-4">
               <span className="text-sm text-muted-foreground">
                 {t('page.unsavedChanges', { count: Object.values(changes).filter(c => c.hasChanges).length })}
@@ -407,7 +408,7 @@ const LocalizationsPage: React.FC = () => {
               </Button>
             </div>
           </div>
-        </div>
+        </ActionBar>
       )}
     </div>
   );

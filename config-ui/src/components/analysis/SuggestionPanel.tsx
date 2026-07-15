@@ -8,7 +8,7 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Lightbulb, CheckCircle, ArrowRight, X } from 'lucide-react';
-import { Button } from 'locveil-ui-kit';
+import { Button, Tooltip, TooltipTrigger, TooltipContent } from 'locveil-ui-kit';
 import Badge from '@/components/ui/Badge';
 import type { ConflictReport } from '@/types';
 
@@ -115,15 +115,20 @@ const SuggestionPanel: React.FC<SuggestionPanelProps> = ({
                   <ArrowRight className={`w-4 h-4 text-muted-foreground transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
                 </button>
 
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-7 w-7"
-                  onClick={() => handleDismissConflict(conflict)}
-                  title={t('conflicts.dismissConflict')}
-                >
-                  <X />
-                </Button>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7"
+                      onClick={() => handleDismissConflict(conflict)}
+                      aria-label={t('conflicts.dismissConflict')}
+                    >
+                      <X />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>{t('conflicts.dismissConflict')}</TooltipContent>
+                </Tooltip>
               </div>
 
               {/* Expanded Suggestions */}

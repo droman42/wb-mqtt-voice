@@ -10,7 +10,7 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Settings, AlertCircle, CheckCircle, Loader, RefreshCw } from 'lucide-react';
-import { Button, Alert, AlertTitle, AlertDescription } from 'locveil-ui-kit';
+import { Button, Alert, AlertTitle, AlertDescription, Tooltip, TooltipTrigger, TooltipContent } from 'locveil-ui-kit';
 import apiClient from '@/utils/apiClient';
 import ConfigSection from '@/components/editors/ConfigSection';
 import TomlPreview from '@/components/editors/TomlPreview';
@@ -841,12 +841,16 @@ const ConfigurationPage: React.FC = () => {
               <h1 className="text-3xl font-bold text-foreground">
                 {t('page.title')}
               </h1>
-              <span
-                className="px-3 py-1 border border-border bg-muted text-muted-foreground text-sm font-medium rounded-full cursor-help"
-                title={state.configStatus?.config_path || t('page.configFileTitle')}
-              >
-                {getConfigFileName()}
-              </span>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span
+                    className="px-3 py-1 border border-border bg-muted text-muted-foreground text-sm font-medium rounded-full cursor-help"
+                  >
+                    {getConfigFileName()}
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent>{state.configStatus?.config_path || t('page.configFileTitle')}</TooltipContent>
+              </Tooltip>
             </div>
             <p className="text-muted-foreground">
               {t('page.subtitle')}

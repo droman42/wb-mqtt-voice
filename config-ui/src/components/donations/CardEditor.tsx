@@ -11,6 +11,7 @@ import { useTranslation } from 'react-i18next';
 import { Trash2, Wrench } from 'lucide-react';
 import {
   Button, Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Tooltip, TooltipTrigger, TooltipContent,
 } from 'locveil-ui-kit';
 import Badge from '@/components/ui/Badge';
 import Input from '@/components/ui/Input';
@@ -82,37 +83,50 @@ export default function CardEditor({ card, onChange, onRemove, disabled = false 
         )}
         <div className="flex-1" />
         {isAdvanced ? (
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => onChange(decompileToken(card.raw))}
-            disabled={disabled}
-            title={t('cards.backToCardsTitle')}
-          >
-            {t('cards.backToCards')}
-          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => onChange(decompileToken(card.raw))}
+                disabled={disabled}
+              >
+                {t('cards.backToCards')}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>{t('cards.backToCardsTitle')}</TooltipContent>
+          </Tooltip>
         ) : (
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => onChange({ kind: 'advanced', raw: compileToken(card) })}
-            disabled={disabled}
-            title={t('cards.advancedTitle')}
-          >
-            {t('cards.advanced')}
-          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => onChange({ kind: 'advanced', raw: compileToken(card) })}
+                disabled={disabled}
+              >
+                {t('cards.advanced')}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>{t('cards.advancedTitle')}</TooltipContent>
+          </Tooltip>
         )}
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          className="h-8 w-8 text-destructive"
-          onClick={onRemove} disabled={disabled} title={t('cards.removeTitle')}
-        >
-          <Trash2 />
-        </Button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-destructive"
+              onClick={onRemove} disabled={disabled} aria-label={t('cards.removeTitle')}
+            >
+              <Trash2 />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>{t('cards.removeTitle')}</TooltipContent>
+        </Tooltip>
       </div>
 
       {isAdvanced ? (

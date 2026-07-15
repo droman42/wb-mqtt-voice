@@ -16,10 +16,30 @@ import {
   X,
   AlertTriangle
 } from 'lucide-react';
-import { Alert, AlertDescription, AlertTitle, Button } from 'locveil-ui-kit';
+import {
+  ActionBar,
+  Alert,
+  AlertDescription,
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertTitle,
+  Button,
+} from 'locveil-ui-kit';
 import type { ApplyChangesBarProps, ValidationResult } from '@/types';
 import { useValidationWorkflow } from '@/hooks';
 import { ValidationIndicator, BlockingConflictsDialog } from '@/components/analysis';
+
+/** A pending save-confirmation (UI-21: kit AlertDialog replaces window.confirm). */
+interface ConfirmRequest {
+  message: string;
+  resolve: (proceed: boolean) => void;
+}
 
 const ApplyChangesBar: React.FC<ApplyChangesBarProps> = ({
   visible,
@@ -35,6 +55,17 @@ const ApplyChangesBar: React.FC<ApplyChangesBarProps> = ({
   const { t } = useTranslation('common');
   const [isApplying, setIsApplying] = useState(false);
   const [showBlockingDialog, setShowBlockingDialog] = useState(false);
+  const [confirmRequest, setConfirmRequest] = useState<ConfirmRequest | null>(null);
+
+  // Promise-shaped confirm over the kit AlertDialog — same control flow the old
+  // blocking window.confirm gave the save handler.
+  const askConfirm = (message: string): Promise<boolean> =>
+    new Promise<boolean>((resolve) => setConfirmRequest({ message, resolve }));
+
+  const settleConfirm = (proceed: boolean): void => {
+    confirmRequest?.resolve(proceed);
+    setConfirmRequest(null);
+  };
   const [legacyValidationResult, setLegacyValidationResult] = useState<ValidationResult | null>(null);
   const [isValidatingLegacy, setIsValidatingLegacy] = useState(false);
   
@@ -130,18 +161,18 @@ const ApplyChangesBar: React.FC<ApplyChangesBarProps> = ({
 
       // Show warning dialog for warnings
       if (hasWarnings && warningConflicts.length > 0) {
-        const proceed = window.confirm(t('applyBar.confirmWarningsReview'));
+        const proceed = await askConfirm(t('applyBar.confirmWarningsReview'));
         if (!proceed) return;
       }
     } else {
       // Legacy validation workflow
       if (isLegacyValidationResult(validationResult) && !validationResult.valid) {
-        const proceed = window.confirm(t('applyBar.confirmErrors'));
+        const proceed = await askConfirm(t('applyBar.confirmErrors'));
         if (!proceed) return;
       }
 
       if (isLegacyValidationResult(validationResult) && validationResult.warnings && validationResult.warnings.length > 0) {
-        const proceed = window.confirm(t('applyBar.confirmWarnings'));
+        const proceed = await askConfirm(t('applyBar.confirmWarnings'));
         if (!proceed) return;
       }
     }
@@ -188,8 +219,11 @@ const ApplyChangesBar: React.FC<ApplyChangesBarProps> = ({
     : (legacyValidationResult && legacyValidationResult.warnings && legacyValidationResult.warnings.length > 0);
   const canApply = !isApplying && !loading && canSave;
 
+  // UI-22: the bar renders through the kit ActionBar bus — the shell's ActionBarHost
+  // (workbench-v1.1 bottom slot) owns the border/surface shell; no fixed positioning.
   return (
-    <div className="fixed bottom-0 left-0 right-0 border-t border-border bg-card px-6 py-4 shadow-lg z-50">
+    <ActionBar>
+      <div className="w-full py-2">
       <div className="flex items-center justify-between">
         {/* Left side - Status */}
         <div className="flex items-center space-x-3">
@@ -344,7 +378,31 @@ const ApplyChangesBar: React.FC<ApplyChangesBarProps> = ({
           onClose={() => setShowBlockingDialog(false)}
         />
       )}
-    </div>
+
+      {/* UI-21: save-confirmation over the kit AlertDialog (was window.confirm ×3) */}
+      <AlertDialog
+        open={!!confirmRequest}
+        onOpenChange={(open) => {
+          if (!open) settleConfirm(false);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t('applyBar.confirmTitle')}</AlertDialogTitle>
+            <AlertDialogDescription>{confirmRequest?.message}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => settleConfirm(false)}>
+              {t('actions.cancel')}
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={() => settleConfirm(true)}>
+              {t('applyBar.saveAnyway')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      </div>
+    </ActionBar>
   );
 };
 

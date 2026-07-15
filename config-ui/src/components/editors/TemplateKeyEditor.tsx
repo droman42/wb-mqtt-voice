@@ -8,7 +8,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Trash2, Plus, ChevronDown, ChevronRight } from 'lucide-react';
-import { Button } from 'locveil-ui-kit';
+import { Button, Tooltip, TooltipTrigger, TooltipContent } from 'locveil-ui-kit';
 import Input from '@/components/ui/Input';
 import TextArea from '@/components/ui/TextArea';
 import ArrayOfStringsEditor from './ArrayOfStringsEditor';
@@ -156,16 +156,21 @@ const TemplateKeyEditor: React.FC<TemplateKeyEditorProps> = ({
                       placeholder={t('keyEditor.valuePlaceholder')}
                       className="flex-1"
                     />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleObjectKeyDelete(objKey)}
-                      className="text-destructive"
-                      title={t('keyEditor.deleteKey')}
-                    >
-                      <Trash2 />
-                    </Button>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleObjectKeyDelete(objKey)}
+                          className="text-destructive"
+                          aria-label={t('keyEditor.deleteKey')}
+                        >
+                          <Trash2 />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>{t('keyEditor.deleteKey')}</TooltipContent>
+                    </Tooltip>
                   </div>
                 ))
               )}
@@ -192,16 +197,21 @@ const TemplateKeyEditor: React.FC<TemplateKeyEditorProps> = ({
           <span>{templateKey}</span>
         </Button>
 
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          onClick={() => onDelete(templateKey)}
-          className="text-destructive"
-          title={t('keyEditor.deleteTemplateKey')}
-        >
-          <Trash2 />
-        </Button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              onClick={() => onDelete(templateKey)}
+              className="text-destructive"
+              aria-label={t('keyEditor.deleteTemplateKey')}
+            >
+              <Trash2 />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>{t('keyEditor.deleteTemplateKey')}</TooltipContent>
+        </Tooltip>
       </div>
 
       {isExpanded && (

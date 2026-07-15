@@ -10,7 +10,7 @@
 
 import { useTranslation } from 'react-i18next';
 import { Plus, Trash2 } from 'lucide-react';
-import { Button } from 'locveil-ui-kit';
+import { Button, Tooltip, TooltipTrigger, TooltipContent } from 'locveil-ui-kit';
 import CardEditor from './CardEditor';
 import { useDecompiledPatterns } from '@/hooks/useDecompiledPatterns';
 import {
@@ -52,15 +52,20 @@ export default function CardPatternsEditor({
         <div key={pi} className="border border-border rounded-xl p-3 bg-muted">
           <div className="flex items-center justify-between mb-2">
             <div className="text-sm font-medium capitalize">{t('cards.list.entry', { item, index: pi + 1 })}</div>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 text-destructive"
-              onClick={() => removePattern(pi)} disabled={disabled} title={t('cards.list.removeItem', { item })}
-            >
-              <Trash2 />
-            </Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 text-destructive"
+                  onClick={() => removePattern(pi)} disabled={disabled} aria-label={t('cards.list.removeItem', { item })}
+                >
+                  <Trash2 />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>{t('cards.list.removeItem', { item })}</TooltipContent>
+            </Tooltip>
           </div>
           <div className="flex flex-col gap-2">
             {pattern.map((card, ci) => (
