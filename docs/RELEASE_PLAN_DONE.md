@@ -1946,6 +1946,21 @@ rationale/chronology lives in [`RELEASE_JOURNAL.md`](./RELEASE_JOURNAL.md).
   signature), same clone after `git fetch --tags` is green; working-tree check green, 0 warnings.
   Voice ID written back into board PROD-25. docs: none — CI workflow + internal contracts
   registry label only.
+- [x] **BUILD-39** [PROCESS] — **DONE 2026-07-15 (filed + completed same session; the push-day CI
+  restore after run 29417879036 failed both gated jobs).** (a) **contract-guard: BUILD-38's
+  `fetch-tags: true` does not work** — actions/checkout@v4 ignores the flag on its shallow
+  fetch-by-SHA path (the run's checkout log shows a fetch with NO tag refspec; all four voice contract
+  tags exist on origin). BUILD-38's simulation had validated `git fetch --tags` — the right *git*
+  behavior — but not the *action's* wiring of it. Fix: an explicit `git fetch --tags --depth=1 origin`
+  step before the guard (version-proof; re-simulated: bare shallow clone → fetch step → guard green,
+  repo stays shallow). Cross-repo: the same latent bug sits in commons' workflow and possibly the
+  bridge's checkout@v6 variant — correction recorded on board PROD-25 (commons executes its own fix;
+  bridge verifies OPS-30; satellite's pending delegation inherits the explicit-step form). (b)
+  **frontend-health: the UI-18/UI-17 sibling `file:` deps don't exist in a lone CI checkout** (npm
+  produced dangling symlinks; tsc: `Cannot find module 'locveil-ui-kit'` ×12). Fix: the job checks out
+  voice + locveil-commons side by side (both public; paths `locveil-voice/` + `locveil-commons/`),
+  builds the ui-kit dist, then runs the unchanged gate (`npm ci` + check + build + test) — the
+  dev-phase consumption model now holds in CI too. docs: none — CI workflow only.
 ### Models & Assets (ASSET)
 ### Documentation (DOC)
 - [x] **DOC-5b** (P2) — DONE 2026-06-08: regenerated `guides/DONATION_FILE_SPECIFICATION.md` for the v1.1

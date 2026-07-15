@@ -20,6 +20,21 @@ newest entries near the top of each dated section.
 
 ## Action journal
 
+- **2026-07-15 — BUILD-39: the push-day CI restore — and BUILD-38's fix turned out to be a fix for
+  git, not for the action.** The day's push (BUILD-38 + intake + UI-18 + UI-17) failed both path-gated
+  jobs, run 29417879036. contract-guard: `fetch-tags: true` is silently IGNORED by actions/checkout@v4
+  on its shallow fetch-by-SHA path — the run's own checkout log shows the fetch carried no tag refspec,
+  so the 4× TAG-MISSING false alarm fired exactly as before; the BUILD-38 simulation had proven the git
+  command, not the action's wiring of it. The version-proof form is an explicit
+  `git fetch --tags --depth=1 origin` step, re-simulated green from a bare shallow clone. The finding is
+  bigger than voice: commons' own workflow carries the identical latent line, PROD-25's "one-line fix
+  class" convention is amended, the bridge gets a verify-OPS-30 heads-up (checkout@v6 may behave
+  differently), and satellite's pending delegation inherits the corrected form. frontend-health: the
+  Workbench-era sibling `file:` deps (locveil-ui-kit, the workbench contract) don't exist in a lone CI
+  checkout — npm made dangling symlinks and tsc failed 12×. The job now checks out voice and
+  locveil-commons side by side and builds the kit before the unchanged gate, so the dev-phase
+  consumption model holds in CI too.
+
 - **2026-07-15 — UI-17 done: config-ui is now the Voice tab of the Workbench — the standalone app is
   gone.** The plugin conversion landed hours after its foundation: `src/plugin.tsx` default-exports the
   contract's `WorkbenchPlugin` with the six real pages (Overview, Header, Layout, Sidebar and the
