@@ -20,6 +20,13 @@ newest entries near the top of each dated section.
 
 ## Action journal
 
+- **2026-07-15 — op: RU armv7 image published (bakes QUAL-78).** Owner-requested dispatch, run
+  29425139761 green end-to-end: backend-health (suite + pyright + gate trio), frontend-health (the
+  restructured sibling-commons job), and the armv7×ru publish matrix — `locveil-voice-armv7` on GHCR
+  at `latest`/`sha-1a52a45`/`v20260715-…`, models-not-baked and size-budget guards passing. First
+  published armv7 image carrying the QUAL-78 healthcheck log filter — the sprint close-slot's image
+  half; the WB7 pull + `/health` smoke remain the owner's deploy step.
+
 - **2026-07-15 — UI-20 done: the editor works offline — Monaco ships in the bundle.** The HK-11
   side-find closed: `@monaco-editor/react` no longer reaches for jsdelivr at runtime. Monaco 0.53
   (0.55 deliberately pinned back — its dompurify has open advisories, and the 0-vulns bar stands) is
