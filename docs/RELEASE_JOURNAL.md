@@ -20,6 +20,17 @@ newest entries near the top of each dated section.
 
 ## Action journal
 
+- **2026-07-15 — UI-23 done: voice fetches reach the controller, not the shell.** Commons IMPL-6
+  answered the owner's first-controller-run question — how do plugins learn the WB7's IP and port —
+  with `PageProps.backends` (deployment facts in the owner-edited shell config, never in build
+  artifacts). Voice consumed it the same hour: the page wrapper re-points the api singleton at
+  `backends.api` synchronously during render — deliberately not an effect, because React fires child
+  effects first and the pages' mount-time loads would have raced ahead against the shell origin. The
+  retired-nginx-era fallback chain stays for shells with no backends configured, its comments now
+  honest about being a fallback. One recorded wrinkle: the shell polls status() outside any page, so
+  the very first poll can use the fallback before a page mounts — a contract gap to raise if it ever
+  bites in practice.
+
 - **2026-07-15 — op: RU armv7 image published (bakes QUAL-78).** Owner-requested dispatch, run
   29425139761 green end-to-end: backend-health (suite + pyright + gate trio), frontend-health (the
   restructured sibling-commons job), and the armv7×ru publish matrix — `locveil-voice-armv7` on GHCR

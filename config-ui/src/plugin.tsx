@@ -28,10 +28,16 @@ import MonitoringPage from '@/pages/MonitoringPage';
 import ConfigurationPage from '@/pages/ConfigurationPage';
 import './index.css';
 
-/** Sync the plugin-local i18next instance to the shell's locale signal; provide the
+/** Sync the plugin-local i18next instance to the shell's locale signal; point the
+ *  api singleton at the shell-declared backend (UI-23 / IMPL-6); provide the
  *  plugin-wide Tooltip context (UI-21 — kit tooltips replace bare `title=`). */
 function page(Page: ComponentType): ComponentType<PageProps> {
-  return function VoicePage({ locale }: PageProps) {
+  return function VoicePage({ locale, backends }: PageProps) {
+    // Synchronous on purpose (idempotent singleton mutation): child effects run
+    // BEFORE parent effects, so a useEffect here would fire AFTER the page's own
+    // mount-time data loads — and those fetches would hit the shell origin.
+    if (backends?.api) apiClient.setBaseUrl(backends.api);
+
     useEffect(() => {
       if (i18n.language !== locale) void i18n.changeLanguage(locale);
     }, [locale]);

@@ -2398,6 +2398,24 @@ rationale/chronology lives in [`RELEASE_JOURNAL.md`](./RELEASE_JOURNAL.md).
       (peers `^0.1` ≙ kit 0.1.2 under the 0.x strict-minor rule) serves entry+styles 200 and imports
       ActionBar/AlertDialog/TooltipProvider through the import map. Browser render = the standing
       caveat. docs: none — layout mechanics; no manifest node describes the bar placement.
+- [x] **UI-23** [UI][COMMONS] `[deferred]` — **DONE 2026-07-15 (filed + completed same session;
+      IMPL-6 consumer adjustment — voice was BROKEN against the controller until this).** **apiClient
+      follows the shell-declared backend (`PageProps.backends.api`).** IMPL-6 (workbench-v1.2, additive)
+      finally delivers the PROD-24-promised per-plugin backend targets: deployment facts (WB7 IP + port)
+      live in the owner-edited shell config and reach pages as `PageProps.backends`. Before this, voice's
+      `page()` wrapper destructured only `{ locale }` and apiClient resolved via the retired-nginx-era
+      chain (build-time injection global + same-hostname fallback) — under the shell, same-hostname is
+      the SHELL origin, so every fetch hit the serve script instead of the WB7. Fix: `setBaseUrl()` on
+      the singleton + the wrapper re-points it **synchronously during render** — deliberately NOT a
+      `useEffect`: React runs child effects before parent effects, so an effect here would fire AFTER the
+      page's mount-time data loads and the first fetches would still hit the shell origin. The old chain
+      stays as the explicit no-backends-configured fallback (comments rewritten to say so). Known
+      wrinkle, recorded: `status()` is shell-polled outside any page — its first poll on activation can
+      race the first page render and use the fallback once; the base sticks after that (contract gap if
+      it ever matters: backends don't reach the plugin object, only pages). Verified: check + build +
+      vitest 44/44; served runtime-config carries `{"api": "http://192.168.1.50:8080"}` for the voice
+      mount. docs: none — deployment wiring internals; QUICKSTART's "talks to :8080" story unchanged
+      (same-host dev still works via the fallback).
 ### Release Readiness (REL)
 - [x] **REL-1** (P0) `[release]` — **DONE 2026-07-04 (interactive session). Definition-of-release SIGNED OFF.**
       Decisions: **(1) release artifact** = version tag **+ first real GHCR publish** (backend

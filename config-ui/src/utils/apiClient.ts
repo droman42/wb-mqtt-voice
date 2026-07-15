@@ -105,15 +105,17 @@ interface RequestOptions extends RequestInit {
 
 declare global {
   interface Window {
-    /** Runtime API base, injected by /runtime-config.js (BUILD-9: set per-deployment
-     *  via the nginx image's API_BASE_URL env). Empty/absent → same-hostname fallback. */
+    /** Manual API-base override (dev escape hatch; the nginx runtime-config.js that
+     *  used to inject this retired with the standalone app at UI-17). */
     __IRENE_API_BASE__?: string;
   }
 }
 
-/** Resolve the backend base URL: deploy-time injection wins; otherwise assume Irene
- *  runs on the same host as the page, on its standard port 8080 (covers both local
- *  dev at localhost and the deployed UI served next to the backend). */
+/** FALLBACK base-URL resolution — the real source is the Workbench shell's per-plugin
+ *  `PageProps.backends.api` (IMPL-6), applied via `setBaseUrl` in plugin.tsx before any
+ *  page renders. This chain only covers a shell with no backends configured: manual
+ *  window override, else same-hostname:8080 (under the shell that is the SHELL origin
+ *  host — right only when the backend runs on the same machine). */
 function defaultApiBase(): string {
   const injected = typeof window !== 'undefined' ? window.__IRENE_API_BASE__ : undefined;
   if (injected) return injected;
@@ -125,6 +127,13 @@ class IreneApiClient {
   private baseUrl: string;
 
   constructor(baseUrl: string = defaultApiBase()) {
+    this.baseUrl = baseUrl;
+  }
+
+  /** Re-point the singleton at the shell-declared backend origin (UI-23 / IMPL-6:
+   *  `PageProps.backends.api` — deployment facts live in the owner-edited shell
+   *  config, never in build artifacts). Idempotent. */
+  setBaseUrl(baseUrl: string): void {
     this.baseUrl = baseUrl;
   }
 
