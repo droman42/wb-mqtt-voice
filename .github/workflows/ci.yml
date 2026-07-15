@@ -211,6 +211,12 @@ jobs:
       - name: Build locveil-ui-kit (sibling dep)
         working-directory: locveil-commons/packages/ui-kit
         run: npm ci && npm run build
+      # The workbench contract ships as SOURCE types (exports "./contract" →
+      # src/contract.ts), so voice's tsc type-checks that file and it resolves
+      # `react` from the workbench's own tree — which must therefore be installed.
+      - name: Install locveil-workbench deps (contract.ts type resolution)
+        working-directory: locveil-commons/packages/workbench
+        run: npm ci
       - run: npm ci
       - name: Type-check + lint + orphans
         run: npm run check

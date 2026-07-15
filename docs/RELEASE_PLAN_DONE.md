@@ -1960,7 +1960,12 @@ rationale/chronology lives in [`RELEASE_JOURNAL.md`](./RELEASE_JOURNAL.md).
   produced dangling symlinks; tsc: `Cannot find module 'locveil-ui-kit'` ×12). Fix: the job checks out
   voice + locveil-commons side by side (both public; paths `locveil-voice/` + `locveil-commons/`),
   builds the ui-kit dist, then runs the unchanged gate (`npm ci` + check + build + test) — the
-  dev-phase consumption model now holds in CI too. docs: none — CI workflow only.
+  dev-phase consumption model now holds in CI too. **Second round trip (run 29418418208):**
+  contract-guard fix confirmed GREEN live; frontend-health exposed one more sibling gap — the
+  workbench contract ships as SOURCE types (`exports "./contract"` → `src/contract.ts`), so voice's
+  tsc checks that file and its `react` import resolves from the workbench's OWN tree → the job also
+  runs `npm ci` in `packages/workbench` (failure reproduced locally by hiding its node_modules, fix
+  proven by fresh `npm ci` → check green). docs: none — CI workflow only.
 ### Models & Assets (ASSET)
 ### Documentation (DOC)
 - [x] **DOC-5b** (P2) — DONE 2026-06-08: regenerated `guides/DONATION_FILE_SPECIFICATION.md` for the v1.1
