@@ -20,6 +20,17 @@ newest entries near the top of each dated section.
 
 ## Action journal
 
+- **2026-07-15 — BUILD-40: scope-guard re-pinned `scope-v5`→`scope-v6` (commons HK-10 / IMPL-2).** The
+  new version (1.3.0) adds the UNREFERENCED-evidence check — the "fourth direction" of evidence-doc
+  discipline: a file on disk under `docs/review`/`docs/design` that no ledger entry (active or DONE)
+  references by path or basename is forgotten scope, flagged at `warn`. Re-vendored the file verbatim
+  from commons `scope-v6:packages/scope-guard/scope_guard.py`; added the explicit `unreferenced = "warn"`
+  toggle to `[evidence]` (matching how `unindexed` is spelled out, though the commons default already
+  warns) and re-stamped the config header. Simulated the rule at intake before pinning — the voice tree
+  has zero unreferenced review/design docs, so the pin lands green (1.3.0 EXIT 0). Housekeeping caught in
+  the same change: the `ledger-guard` CI step's name still said "vendored at scope-v3", stale since the
+  v4/v5 re-pins → corrected to `scope-v6`. No `[claude]` re-hash — v6 changes only the guard code and
+  evidence defaults, not any pinned CLAUDE.md block.
 - **2026-07-15 — UI-23 done: voice fetches reach the controller, not the shell.** Commons IMPL-6
   answered the owner's first-controller-run question — how do plugins learn the WB7's IP and port —
   with `PageProps.backends` (deployment facts in the owner-edited shell config, never in build

@@ -95,7 +95,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Ledger discipline guard (scope-guard, vendored at scope-v3)
+      - name: Ledger discipline guard (scope-guard, vendored at scope-v6)
         run: python3 scripts/scope_guard.py --config .scope-guard.toml --check
 
   # ------------------------------------------------------------------ #

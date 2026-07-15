@@ -1966,6 +1966,19 @@ rationale/chronology lives in [`RELEASE_JOURNAL.md`](./RELEASE_JOURNAL.md).
   tsc checks that file and its `react` import resolves from the workbench's OWN tree → the job also
   runs `npm ci` in `packages/workbench` (failure reproduced locally by hiding its node_modules, fix
   proven by fresh `npm ci` → check green). docs: none — CI workflow only.
+- [x] **BUILD-40** `[release]` [PROCESS][CI] — **DONE 2026-07-15 (filed + completed same session; commons
+      scope-v6 / HK-10 delegation).** Vendored `scripts/scope_guard.py` re-pinned `scope-v5`→`scope-v6`
+      (1.2.0→1.3.0 — the **UNREFERENCED-evidence** check, HK-10 ruling 1 / IMPL-2: the fourth direction —
+      a doc on disk under `docs/review`/`docs/design` that NO ledger entry, active or DONE, references by
+      path or basename is forgotten scope). `.scope-guard.toml` gained the explicit `unreferenced = "warn"`
+      toggle in `[evidence]` (the commons default is already `warn`; spelled out to match `unindexed`) and
+      its header re-stamped to `scope-v6 per BUILD-40`. Also swept the **stale CI comment** — the
+      `ledger-guard` step said "vendored at scope-v3" (never updated through the v4/v5 re-pins) → `scope-v6`.
+      No `[claude]` block re-hash: v6 touches only the guard code + evidence defaults, no CLAUDE.md content.
+      **Verified at intake:** simulated the new rule against the tree — every doc under `docs/review`/`docs/design`
+      is referenced, zero unreferenced warnings. **Verified after:** scope-guard 1.3.0 green (EXIT 0), the
+      pre-commit hook path unchanged (`--check` only).
+      docs: none — enforcement-tool re-pin; no manifest doc's content changed.
 ### Models & Assets (ASSET)
 ### Documentation (DOC)
 - [x] **DOC-5b** (P2) — DONE 2026-06-08: regenerated `guides/DONATION_FILE_SPECIFICATION.md` for the v1.1

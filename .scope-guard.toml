@@ -1,4 +1,4 @@
-# scope-guard config for locveil-voice (BUILD-30; vendored scripts/scope_guard.py at scope-v5 per BUILD-35).
+# scope-guard config for locveil-voice (BUILD-30; vendored scripts/scope_guard.py at scope-v6 per BUILD-40).
 # Normative convention: ../locveil-commons/process/ledger-discipline.md (HK-1 / PROD-13).
 # Behavior changes happen in locveil-commons, never here — re-pin to move.
 
@@ -22,6 +22,7 @@ dirs = ["docs/review", "docs/design"]
 index = true                             # the ledger's `[x]` exists-marker index
 link_scan = false
 unindexed = "warn"
+unreferenced = "warn"                     # scope-v6 (HK-10): a doc on disk no ledger entry references
 
 [journal]
 active = "docs/RELEASE_JOURNAL.md"
