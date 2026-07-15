@@ -556,7 +556,21 @@ Governed by `config-ui-stays-functional` (config-ui must stay functional).
       and Tooltip (no more bare `title=`) as adopted standards, but `ui-kit-v1` ships none of them — the
       gap is upstream. Once commons **IMPL-4** lands the kit components (next `ui-kit-vX`), sweep config-ui:
       the 3× `window.confirm` → AlertDialog/Toast, native `title=` attrs → kit `Tooltip` where they carry
-      real content (icon-only buttons, truncated labels). Gated on commons IMPL-4.
+      real content (icon-only buttons, truncated labels). ~~Gated on commons IMPL-4.~~ **UNGATED
+      2026-07-15: IMPL-4 done — ui-kit 0.1.1/`ui-kit-v1.1` ships Toast (module-scope bus; the SHELL
+      renders the single viewport, plugins just call `toast()`) + AlertDialog; peers `^0.1` still match.
+      Execution scope note: converted tooltips must keep the accessible name (icon-only buttons gain
+      `aria-label` when `title` moves into `TooltipContent`).**
+- [ ] **UI-22** [UI][COMMONS] `[deferred]` — **ActionBar adoption: the two bottom bars move into the
+      shell's slot** (filed at IMPL-5 intake, 2026-07-15 — voice is the named first consumer; the UI-19
+      completion parked `ApplyChangesBar` + the LocalizationsPage save bar as "waiting on a plugin-contract
+      bottom-slot surface that doesn't exist yet", and IMPL-5 built it: kit 0.1.2/`ui-kit-v1.2`
+      `<ActionBar>` registers children into the HK-11-singleton module bus, the shell (workbench-v1.1)
+      renders the single `<ActionBarHost/>` in normal flex flow; single-occupancy latest-wins). Scope:
+      both bars render through `<ActionBar>` (the host owns the border-t/bg-card shell — the local
+      `fixed bottom-0 … z-50 shadow-lg` wrappers and the DonationsPage `pb-20` overlap hack are deleted);
+      plugin-owned `fixed bottom-0` ends per stylebook §8. Single-occupancy is safe: the two bars live on
+      different pages. Write-back recorded on commons IMPL-5.
 
 ### Release Readiness (REL)
 
