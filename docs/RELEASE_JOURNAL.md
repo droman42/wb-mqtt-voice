@@ -20,6 +20,17 @@ newest entries near the top of each dated section.
 
 ## Action journal
 
+- **2026-07-16 — ARCH-55 addendum: CI's pyright caught what the local venv couldn't.** The
+  backend-health gate (full provider extras) flagged four `str | None` type errors from the ARCH-55
+  literal removal — the deleted `or "console"`/`or "openai"` had been silently doing type-narrowing
+  duty at the API response sites. Fixed with one honest primitive: `resolved_default_provider` on the
+  component base (raises on the impossible-post-init None instead of inventing a name). The audit also
+  closed a real gap: LLM never had the BUG-36 default check tts/audio carry — and the first draft of
+  it was wrong in an instructive way, treating offline-unavailable as fatal until the smoke suite's
+  offline-degrade tests failed the boot: the correct split is kind-1 (default cannot LOAD → fatal) vs
+  kind-2 (loaded but unavailable → the QUAL-15 chain degrades). Suite 1426 green, touched-file pyright
+  clean, contracts 11/11.
+
 - **2026-07-16 — BUG-43 DONE: EN whisper finally hears English.** Same-day close of the guard's
   sharpest first-run catch. Verified before fixing: the main voice pipeline passes no language to
   ASR, so the component's `default_language` really was the decode hint — and it was pinned to "ru"

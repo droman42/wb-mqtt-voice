@@ -101,7 +101,21 @@ class Component(ComponentPort):
         # network). Not fatal — the fallback chain covers them — but never silent: /health lists them.
         self.inactive_providers: Dict[str, str] = {}
         self.injected_dependencies: Dict[str, Any] = {}  # For dependency injection
-    
+
+    @property
+    def resolved_default_provider(self) -> str:
+        """The default provider name, GUARANTEED resolved — for API surfaces typed `str`.
+
+        Every provider component resolves its default during initialize() (BUG-36: a configured
+        default that didn't load raises; an unconfigured one resolves to a loaded provider) — so
+        None here means the component is being used before/without initialization: raise, don't
+        invent a name (ARCH-55: no literals)."""
+        if self.default_provider is None:
+            raise RuntimeError(
+                f"{getattr(self, 'name', self.__class__.__name__)}: no default provider resolved "
+                f"(component not initialized?)")
+        return self.default_provider
+
 
     @abstractmethod
     def get_providers_info(self) -> str:

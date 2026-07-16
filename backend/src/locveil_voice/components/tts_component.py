@@ -755,7 +755,7 @@ class TTSComponent(Component, TTSPlugin, WebAPIPlugin, TTSPort):
                     logger.error(f"TTS API error: {e}")
                     return TTSResponse(
                         success=False,
-                        provider=request.provider or self.default_provider,
+                        provider=request.provider or self.resolved_default_provider,
                         text=request.text,
                         error=str(e)
                     )
@@ -774,7 +774,7 @@ class TTSComponent(Component, TTSPlugin, WebAPIPlugin, TTSPort):
                 return TTSProvidersResponse(
                     success=True,
                     providers=result,
-                    default=self.default_provider
+                    default=self.resolved_default_provider
                 )
             
             @router.post("/configure", response_model=TTSConfigureResponse)

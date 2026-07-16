@@ -491,7 +491,7 @@ class AudioComponent(Component, AudioPlugin, WebAPIPlugin, AudioPort):
             return AudioProvidersResponse(
                 success=True,
                 providers=result,
-                default=self.default_provider,
+                default=self.resolved_default_provider,
                 fallbacks=self.fallback_providers
             )
         

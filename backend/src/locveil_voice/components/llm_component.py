@@ -181,6 +181,21 @@ class LLMComponent(Component, LLMPlugin, WebAPIPlugin, LLMPort):
                 raise ValueError(
                     "LLM component is enabled but loaded no providers. Add an enabled "
                     "[llm.providers.<name>] section, or disable it via [components] llm = false.")
+
+            # BUG-36/ARCH-55 (the tts pattern, closed here too): a configured default that cannot
+            # even LOAD (kind 1) is fatal; one that loaded but is UNAVAILABLE (kind 2 — no API key,
+            # offline) is NOT — the QUAL-15 fallback chain degrades through it (the smoke suite's
+            # offline tests exercise exactly this). An unconfigured default resolves to the first
+            # available provider (config-derived, no name literal) so `str` API surfaces hold.
+            if self.default_provider is not None:
+                if self.default_provider not in self._provider_classes:
+                    raise ValueError(
+                        f"LLM default_provider={self.default_provider!r} did not load — enable a "
+                        f"[llm.providers.{self.default_provider}] section, or point default_provider "
+                        f"at one of: {', '.join(sorted(self._provider_classes)) or 'none'}")
+            else:
+                self.default_provider = next(iter(self.providers))
+                logger.info(f"LLM default_provider not configured; using '{self.default_provider}'")
             logger.info(f"Universal LLM Plugin initialized with {len(self.providers)} providers")
 
         except Exception as e:
@@ -599,7 +614,7 @@ class LLMComponent(Component, LLMPlugin, WebAPIPlugin, LLMPort):
             return LLMProvidersResponse(
                 success=True,
                 providers=result,
-                default=self.default_provider
+                default=self.resolved_default_provider
             )
         
         @router.post("/configure", response_model=LLMConfigureResponse)

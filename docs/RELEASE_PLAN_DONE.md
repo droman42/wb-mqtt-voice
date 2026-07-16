@@ -174,6 +174,15 @@ rationale/chronology lives in [`RELEASE_JOURNAL.md`](./RELEASE_JOURNAL.md).
       config-validator valid, contracts 11/11, openapi re-dumped + config-ui types updated
       (check+build green). docs: guides/vad — silero prose now teaches declared fallback +
       `fallback_providers` table row; guides/audio already documented the declared form.
+      **ADDENDUM 2026-07-16 (CI catch, fixed same day):** CI's full-extras pyright flagged 4
+      `str | None` → `str` errors this task introduced (the removed `or "console"`/`or "openai"`
+      literals had been doing double duty as type narrowing at the API response sites). Fix:
+      `Component.resolved_default_provider` property (raises on the impossible-post-init None — no
+      literal reintroduced) at all 4 sites, AND the audit closed a real gap: LLM never enforced the
+      BUG-36 default check tts/audio have — added with the correct kind-1/kind-2 split (default must
+      LOAD; merely-unavailable degrades per QUAL-15 — the first draft wrongly made offline-unavailable
+      fatal and the smoke suite's offline tests caught it immediately). Suite 1426 green, pyright
+      clean on touched files.
 - [x] **ARCH-56** [ARCH] `[release]` — **✓ DONE 2026-07-16. InputManager consumes the
       `locveil_voice.inputs` entry-points; the decorative `runners` group is deleted** (ARCH-50
       F-F1/F-F2; owner chose adopt-over-delete for inputs). `_discover_input_sources` is a generic
