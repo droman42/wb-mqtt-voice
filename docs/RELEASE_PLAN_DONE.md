@@ -1578,6 +1578,22 @@ rationale/chronology lives in [`RELEASE_JOURNAL.md`](./RELEASE_JOURNAL.md).
       reproduce in isolation (8/20 measured at fix time), so cross-file leakage is falsified; one
       load-sensitive root cause (the test's mtime-ordering coin flip), fixed under TEST-20.
       docs: none — folded into TEST-20; test-internal.
+- [x] **BUG-43** [ASR][CONFIG][I18N] `[deferred]` — **✓ DONE 2026-07-16 (filed same day by TEST-22's
+      first run; pulled forward by the owner). `[asr] default_language` never arrived — the EN
+      profiles' whisper decode hint was "ru".** Severity VERIFIED before fixing: the main voice
+      pipeline calls `asr.process_audio(audio_data, trace_context)` with NO language kwarg
+      (`voice_assistant.py:846`), so `self.default_language` — stuck at "ru" because `ASRConfig` never
+      declared the field and the section's `model_dump()` dropped the TOML value — really did drive EN
+      transcription. Fix per QUAL-36 (language policy is CANONICAL at CoreConfig top level, no
+      per-section twins): `ASRComponent.initialize` now sets `self.default_language =
+      core.config.default_language` before provider loading; the per-section reads with their "ru"
+      literals are gone; the `[asr] default_language` lines are dropped from the three EN profiles
+      (the surviving `default_language` entries are the canonical top-level one and open provider
+      blocks the providers themselves read); the coherence-guard allowlist entry is removed (the
+      mechanism stays, empty). Regression test added (canonical wiring asserted for en+ru); wiring
+      also verified live for both languages. Verified: full suite 1426 passed / 7 skipped, guard
+      14/14, import contracts 11/11. docs: none — `howto-new-language` already teaches exactly the
+      canonical top-level field this fix wires to.
 ### Tests (TEST)
 - [x] **TEST-0** (P0) — Minimal end-to-end smoke/integration harness (refactor safety net, Gate 0). **DONE
       2026-06-01** → `irene/tests/test_smoke_e2e.py` (**5 passed / 1 xfailed**, ~21s; boots the WebAPI runner once

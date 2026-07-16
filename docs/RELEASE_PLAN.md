@@ -461,19 +461,6 @@ _Discrete functional defects (distinct from QUAL refactors/quality work). Surfac
       for ambiguity) may later avoid asking at all in some of these cases; this task is about the question being
       answerable when it *is* asked.
 
-- [ ] **BUG-43** [ASR][CONFIG][I18N] `[deferred]` — **`[asr] default_language` never arrives — the EN
-      profiles' whisper decode hint has been "ru".** Discovered 2026-07-16 by TEST-22's unknown-key check:
-      `ASRConfig` never declared `default_language`, so the three EN profiles' `[asr] default_language =
-      "en"` ("whisper decodes in this language") is silently DROPPED at parse; `asr_component` reads
-      `config.get("default_language", "ru")` off the section's `model_dump()` — key absent — and always
-      resolves "ru" (`asr_component.py:160-163`; the default feeds transcription when no per-request
-      `language` kwarg arrives, :220/:304). Severity depends on whether the workflow always passes the
-      session language per request — verify first. Fix per QUAL-36 (language policy is CANONICAL at
-      CoreConfig top level): wire the component to the canonical `default_language` (like the asset
-      loader does) rather than re-declaring a per-section twin; then drop the TOML lines + the guard
-      allowlist entry (`test_coherence_guard.py` names this task). Ref:
-      `docs/review/dynamic_loading_hardcodings_review.md` (the failure class; this is a post-review
-      instance found by the guard on its first run).
 
 ### Tests (TEST)
 > **Strategy (decided 2026-06-01): do NOT keep repairing the existing suite.** Most tests were written against

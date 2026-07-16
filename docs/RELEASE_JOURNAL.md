@@ -20,6 +20,17 @@ newest entries near the top of each dated section.
 
 ## Action journal
 
+- **2026-07-16 — BUG-43 DONE: EN whisper finally hears English.** Same-day close of the guard's
+  sharpest first-run catch. Verified before fixing: the main voice pipeline passes no language to
+  ASR, so the component's `default_language` really was the decode hint — and it was pinned to "ru"
+  on the EN images, because the `[asr] default_language = "en"` those profiles set was never a
+  declared field and got silently dropped at parse. The fix is the QUAL-36 pattern: ASR now takes
+  its language default from the ONE canonical `CoreConfig.default_language` at initialize, the
+  per-section reads and their "ru" literals are gone, the stale TOML lines are dropped, and the
+  guard's allowlist is empty again. Regression test locks the wiring for both languages. Suite 1426
+  green. Note for the next EN image deploy: English recognition quality should visibly improve —
+  whisper had been decoding English speech with a Russian hint since the EN profiles were born.
+
 - **2026-07-16 — TEST-22 DONE: the coherence guard is live — and its first run caught six more lies.**
   The closing leg of the ARCH-50 remediation. `test_coherence_guard.py` asserts the three directions
   no gate covered: the namespace registry mirrors pyproject (with a no-stray-literals sweep — 29

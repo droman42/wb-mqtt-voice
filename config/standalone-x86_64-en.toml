@@ -95,7 +95,6 @@ nlu_analysis = true
 [asr]
 default_provider = "whisper"
 fallback_providers = []
-default_language = "en"
 
 [asr.providers.whisper]
 enabled = true

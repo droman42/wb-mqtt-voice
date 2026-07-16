@@ -244,6 +244,22 @@ class TestProvidersInfoAndLanguage(unittest.TestCase):
         self.assertFalse(ok)
         self.assertIn("не реализовано", msg)
 
+    def test_default_language_is_the_canonical_core_policy(self):
+        """BUG-43: initialize() wires CoreConfig.default_language (QUAL-36 canonical source) —
+        the old per-section [asr] default_language never was a declared field, so the EN
+        profiles' "en" silently never arrived and whisper's decode hint stayed "ru"."""
+        from locveil_voice.config.models import CoreConfig
+        for lang in ("en", "ru"):
+            cfg = CoreConfig(default_language=lang, components={"asr": True})
+            cfg.asr.providers = {}
+            core = SimpleNamespace(config=cfg)
+            comp = ASRComponent()
+            try:
+                asyncio.run(comp.initialize(core))
+            except ValueError:
+                pass  # BUG-36 fail-loud for the deliberately-empty provider set
+            self.assertEqual(comp.default_language, lang)
+
 
 if __name__ == "__main__":
     unittest.main()

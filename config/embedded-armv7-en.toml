@@ -100,7 +100,6 @@ nlu_analysis = true             # kept for traces (see build-time lean-down abov
 [asr]
 default_provider = "sherpa_moonshine"
 fallback_providers = []
-default_language = "en"
 
 [asr.providers.sherpa_moonshine]
 enabled = true

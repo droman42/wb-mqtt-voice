@@ -200,11 +200,7 @@ def test_live_tomls_carry_no_unknown_keys(toml_path: Path):
     unknown: list = []
     _walk("", data, _known_keys(CoreConfig), unknown)
     # Known-stale keys awaiting their own fix — each entry names the ledger task.
-    toml_allowlist = {
-        # TEST-22 discovery: ASRConfig never declared default_language, so the EN profiles'
-        # [asr] default_language = "en" is silently dropped and whisper's default decode
-        # hint stays "ru". The line stays as declared INTENT until BUG-43 wires it.
-        "asr.default_language": "BUG-43",
-    }
+    # (Empty since BUG-43 wired the canonical language policy; keep the mechanism.)
+    toml_allowlist: Dict[str, str] = {}
     unknown = [u for u in unknown if u not in toml_allowlist]
     assert not unknown, f"{toml_path.name} carries keys no config model declares:\n  " + "\n  ".join(unknown)

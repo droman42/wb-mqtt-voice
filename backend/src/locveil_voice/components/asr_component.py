@@ -78,6 +78,8 @@ class ASRComponent(MetricsPushMixin, Component, ASRPlugin, WebAPIPlugin, ASRPort
         super().__init__()
         self.providers: Dict[str, ASRProvider] = {}  # Proper ABC type hint
         self.default_provider: Optional[str] = None  # ARCH-55: config-only, no name literal
+        # Pre-initialize placeholder only — initialize() sets this from the canonical
+        # CoreConfig.default_language (QUAL-36/BUG-43); "ru" mirrors that model's default.
         self.default_language = "ru"
         self.core = None  # Store core reference for LLM integration
         
@@ -98,7 +100,13 @@ class ASRComponent(MetricsPushMixin, Component, ASRPlugin, WebAPIPlugin, ASRPort
         await super().initialize(core)
         try:
             self.core = core  # Store core reference
-            
+
+            # BUG-43: the transcription language default comes from the ONE canonical language
+            # policy (CoreConfig.default_language, QUAL-36) — the old per-section
+            # `[asr] default_language` was never a declared ASRConfig field, so the EN profiles'
+            # "en" was silently dropped and whisper's decode hint stayed "ru".
+            self.default_language = core.config.default_language
+
             # Get configuration (V14 Architecture)
             config = getattr(core.config, 'asr', None)
             if not config:
@@ -155,13 +163,12 @@ class ASRComponent(MetricsPushMixin, Component, ASRPlugin, WebAPIPlugin, ASRPort
                     except Exception as e:
                         logger.warning(f"Failed to load ASR provider {provider_name}: {e}")
             
-            # Set defaults from config
+            # Set defaults from config (default_language is NOT here — it is the canonical
+            # CoreConfig.default_language, set above; BUG-43)
             if isinstance(config, dict):
                 self.default_provider = config.get("default_provider")
-                self.default_language = config.get("default_language", "ru")
             else:
                 self.default_provider = getattr(config, "default_provider", None)
-                self.default_language = getattr(config, "default_language", "ru")
 
             # BUG-36 kind 1 — a configured engine that cannot even import is a broken build: fatal.
             self._require_loadable_providers(PROVIDER_NAMESPACES["asr"], enabled_providers, self._provider_classes)
