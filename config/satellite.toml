@@ -88,7 +88,6 @@ adaptive_threshold = true
 # WAKE WORD — the same pack the ESP32 will run
 # ============================================================
 [voice_trigger]
-enabled = true
 default_provider = "microwakeword"
 confidence_threshold = 0.8
 sample_rate = 16000
@@ -106,7 +105,6 @@ wake_words = [
 # AUDIO — reply playback
 # ============================================================
 [audio]
-enabled = true
 default_provider = "sounddevice"
 fallback_providers = ["console"]
 

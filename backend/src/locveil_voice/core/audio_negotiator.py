@@ -50,11 +50,11 @@ class AudioNegotiator:
         if config.vad.enabled:
             labeled.append(("vad", vad_provider.audio_contract() if vad_provider is not None
                             else AudioContract([_VAD_RATE], _VAD_RATE)))
-        if config.voice_trigger.enabled:
+        if config.components.voice_trigger:
             base = wake_provider.audio_contract() if wake_provider is not None else None
             labeled.append(("wake", cls._with_override(base, config.voice_trigger.sample_rate,
                                                        config.voice_trigger.channels)))
-        if config.asr.enabled:
+        if config.components.asr:
             base = asr_provider.audio_contract() if asr_provider is not None else None
             labeled.append(("asr", cls._with_override(base, config.asr.sample_rate, config.asr.channels)))
 

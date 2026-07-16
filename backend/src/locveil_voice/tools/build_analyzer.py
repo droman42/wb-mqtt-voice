@@ -558,33 +558,14 @@ class IreneBuildAnalyzer:
     def _analyze_components(self, config: Dict[str, Any], requirements: BuildRequirements):
         """
         Analyze enabled components from configuration.
-        
-        Structure uses individual component sections:
-        [tts]
-        enabled = true
-        
-        [audio] 
-        enabled = false
+
+        ARCH-54: the [components] block is the ONE enablement authority —
+        [components] tts = true — replacing the per-section `enabled` flags the
+        runtime used to silently overwrite (and this analyzer used to read raw).
         """
-        # Check individual component sections for enabled status
-        component_names = [
-            "tts", "asr", "audio", "llm", "voice_trigger", 
-            "nlu", "text_processor", "intent_system"
-        ]
-        
-        enabled_components = []
-        for component_name in component_names:
-            component_config = config.get(component_name, {})
-            if isinstance(component_config, dict) and component_config.get("enabled", False):
-                enabled_components.append(component_name)
-        
-        # Remove duplicates while preserving order
-        seen = set()
-        unique_enabled = []
-        for component in enabled_components:
-            if component not in seen:
-                seen.add(component)
-                unique_enabled.append(component)
+        components_config = config.get("components", {})
+        unique_enabled = [name for name, on in components_config.items()
+                          if isinstance(on, bool) and on]
         
         if unique_enabled:
             requirements.enabled_providers["locveil_voice.components"] = unique_enabled
@@ -621,18 +602,22 @@ class IreneBuildAnalyzer:
         enabled = true
         api_key = "${ELEVENLABS_API_KEY}"
         """
-        component_names = [
-            "tts", "asr", "audio", "llm", "voice_trigger", 
-            "nlu", "text_processor", "intent_system"
-        ]
-        
-        for component_name in component_names:
+        # ARCH-54/ARCH-57: iterate the canonical provider families (incl. vad — the old
+        # 8-name hand-list silently skipped it, so VAD provider deps never reached images).
+        # Enablement: [components] for component families; [vad].enabled for vad (not a
+        # component — model default True).
+        from ..utils.namespaces import PROVIDER_NAMESPACES
+        components_config = config.get("components", {})
+
+        for component_name, family_namespace in PROVIDER_NAMESPACES.items():
             component_config = config.get(component_name, {})
             if not isinstance(component_config, dict):
                 continue
-            
-            # Only analyze providers if the component itself is enabled
-            if not component_config.get("enabled", False):
+
+            if component_name == "vad":
+                if not component_config.get("enabled", True):
+                    continue
+            elif not components_config.get(component_name, False):
                 continue
                 
             # Extract enabled providers from multiple sources
@@ -663,15 +648,13 @@ class IreneBuildAnalyzer:
             
             # Add to requirements if we found enabled providers
             if enabled_providers:
-                namespace = f"locveil_voice.providers.{component_name}"
-                requirements.enabled_providers[namespace] = enabled_providers
-                
+                requirements.enabled_providers[family_namespace] = enabled_providers
+
                 # Add provider modules to requirements
                 for provider_name in enabled_providers:
-                    module_path = f"locveil_voice.providers.{component_name}.{provider_name}"
-                    requirements.python_modules.add(module_path)
-                
-                logger.debug(f"Component-based providers found: {namespace} -> {enabled_providers}")
+                    requirements.python_modules.add(f"{family_namespace}.{provider_name}")
+
+                logger.debug(f"Component-based providers found: {family_namespace} -> {enabled_providers}")
     
 
     
@@ -747,23 +730,23 @@ class IreneBuildAnalyzer:
     def _analyze_intent_handlers(self, config: Dict[str, Any], requirements: BuildRequirements):
         """
         Analyze enabled intent handlers from configuration.
-        
-        Handles patterns like:
-        [intents]
-        enabled = true
-        
-        [intents.handlers]
+
+        Handles the real config shape (ARCH-54 — the old code read a phantom [intents]
+        section that no TOML ever had, so this analysis NEVER ran):
+
+        [components]
+        intent_system = true
+
+        [intent_system.handlers]
         enabled = ["timer", "greetings", "conversation"]
         disabled = []
         """
-        intents_config = config.get("intents", {})
-        
-        # Check if intents are enabled at all
-        if not intents_config.get("enabled", False):
+        # [components] is the enablement authority (ARCH-54)
+        if not config.get("components", {}).get("intent_system", False):
             logger.debug("Intent system is disabled, skipping intent handler analysis")
             return
-        
-        handlers_config = intents_config.get("handlers", {})
+
+        handlers_config = config.get("intent_system", {}).get("handlers", {})
         enabled_handlers = []
         
         # Method 1: Array-based enabled list (e.g., intents.handlers.enabled = ["timer", "greetings"])

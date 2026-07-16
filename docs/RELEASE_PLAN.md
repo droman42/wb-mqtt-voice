@@ -302,12 +302,6 @@ See `docs/review/phase1_architecture_map.md` §5.
       `requires_configuration()`/`EntryPointMetadata` pattern) declaring needed component ports; the injection
       loop becomes generic; new handlers self-describe. The conversation-context special-casing in
       `context_models.py` stays — the sanctioned exception (owner, 2026-07-16). Evidence: review doc §A.
-- [ ] **ARCH-54** [ARCH][CONFIG] `[release]` — **`[components]` is the single enable authority** (ARCH-50
-      F-C1). Delete the per-section `enabled` fields (tts/asr/audio/llm/voice_trigger/nlu/text_processor/
-      intent_system) and the force-sync validator (`models.py:75-82` — a silent config override, only 8 of 11
-      synced); the build analyzer reads `[components]` instead of raw `[X].enabled` (`build_analyzer.py:583`);
-      8 TOMLs drop the redundant lines; config-ui ConfigSection editors updated in the same change
-      (`config-ui-stays-functional`). Closes the image-vs-runtime enablement divergence. Evidence: review doc §C.
 - [ ] **ARCH-55** [ARCH][QUAL] `[release]` — **Provider loading honors config strictly — no force-adds, no
       name literals** (ARCH-50 §D; owner ruling: strict config only). Remove the console/openwakeword/vosk/
       openai/energy literals and force-adds across `tts_component` (:86-87,127-128,143-144,185,194,309-312,776,795),

@@ -154,8 +154,6 @@ whatever [asr] default_provider selects — there is no hardcoded model.
         # run *after* _modify_config_for_runner had forced every one of them on (BUG-35).
         if not config.components.asr:
             errors.append("ASR component must be enabled (components.asr = true)")
-        if not config.asr.enabled:
-            errors.append("ASR component must be enabled (asr.enabled = true)")
         if not config.components.intent_system:
             errors.append("Intent system component must be enabled (components.intent_system = true)")
         if not config.components.nlu:

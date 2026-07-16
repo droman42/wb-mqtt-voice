@@ -95,7 +95,6 @@ nlu_analysis = true
 # ASR — Whisper (torch), small model
 # ============================================================
 [asr]
-enabled = true
 default_provider = "whisper"
 fallback_providers = []
 default_language = "en"
@@ -112,7 +111,6 @@ preload_models = true
 # TTS — Silero v4 (torch), voice baya
 # ============================================================
 [tts]
-enabled = true
 default_provider = "silero_v3"
 fallback_providers = ["console"]
 
@@ -139,7 +137,6 @@ format = "txt"
 # AUDIO — local playback (real speaker)
 # ============================================================
 [audio]
-enabled = true
 default_provider = "sounddevice"
 fallback_providers = ["console"]
 concurrent_playback = false
@@ -155,7 +152,6 @@ color = "green"
 # LLM — deepseek (NLU classifier + conversation); console floor
 # ============================================================
 [llm]
-enabled = true
 default_provider = "deepseek"
 fallback_providers = ["console"]
 
@@ -177,7 +173,6 @@ enabled = true
 # RU standalone's «Ирина». Same "micro" stack as the ESP32.)
 # ============================================================
 [voice_trigger]
-enabled = true
 default_provider = "microwakeword"
 confidence_threshold = 0.8
 timeout_seconds = 5.0
@@ -214,7 +209,6 @@ threshold = 0.01                   # fallback VAD (pure-python)
 # NLU — keyword → spaCy(md) → llm cascade
 # ============================================================
 [nlu]
-enabled = true
 default_provider = "hybrid_keyword_matcher"
 confidence_threshold = 0.7
 fallback_intent = "conversation.general"
@@ -257,7 +251,6 @@ max_phrases_per_intent = 3
 # TEXT PROCESSING
 # ============================================================
 [text_processor]
-enabled = true
 stages = ["asr_output", "tts_input"]     # the two real stages (informational; chains below)
 
 [text_processor.normalizers.numbers]
@@ -290,7 +283,6 @@ repo = "locveil/locveil-reports"         # PRIVATE triage home (bundles carry lo
 # INTENT SYSTEM (essential)
 # ============================================================
 [intent_system]
-enabled = true
 confidence_threshold = 0.7
 fallback_intent = "conversation.general"
 
@@ -331,7 +323,6 @@ info_detail_level = "basic"
 # MONITORING (full image — kept on)
 # ============================================================
 [monitoring]
-enabled = true
 metrics_enabled = true
 notifications_enabled = true
 debug_tools_enabled = true
@@ -347,7 +338,6 @@ analytics_dashboard_enabled = true
 # NLU ANALYSIS (full image — kept on)
 # ============================================================
 [nlu_analysis]
-enabled = true
 
 [nlu_analysis.conflict_detector]
 blocker_threshold = 0.8

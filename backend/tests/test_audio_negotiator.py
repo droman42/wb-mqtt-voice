@@ -48,8 +48,8 @@ def test_from_pipeline_uses_provider_declared_contracts():
     from locveil_voice.providers.vad.energy import EnergyVADProvider
     cfg = CoreConfig(**tomllib.load(open(CONFIG_DIR / "config-master.toml", "rb")))  # mic 44.1k
     # VAD provider declares 16 kHz; with asr/vt disabled the canonical comes purely from the provider.
-    cfg.asr.enabled = False
-    cfg.voice_trigger.enabled = False
+    cfg.components.asr = False
+    cfg.components.voice_trigger = False
     neg = AudioNegotiator.from_pipeline(cfg, vad_provider=EnergyVADProvider({}))
     assert neg.canonical.rate == 16000
 
@@ -57,8 +57,8 @@ def test_from_pipeline_uses_provider_declared_contracts():
 def test_provider_capability_used_when_config_rate_unset():
     cfg = CoreConfig(**tomllib.load(open(CONFIG_DIR / "config-master.toml", "rb")))  # mic 44.1k
     cfg.vad.enabled = False
-    cfg.asr.enabled = False
-    cfg.voice_trigger.enabled = True
+    cfg.components.asr = False
+    cfg.components.voice_trigger = True
     cfg.voice_trigger.sample_rate = None              # no operator override → use the provider's capability
     neg = AudioNegotiator.from_pipeline(cfg, wake_provider=_MockConsumer([8000]))
     assert neg.canonical.rate == 8000                 # the provider's declared rate, not a config number
@@ -67,8 +67,8 @@ def test_provider_capability_used_when_config_rate_unset():
 def test_authoritative_config_overrides_provider_capability():
     cfg = CoreConfig(**tomllib.load(open(CONFIG_DIR / "config-master.toml", "rb")))
     cfg.vad.enabled = False
-    cfg.asr.enabled = False
-    cfg.voice_trigger.enabled = True
+    cfg.components.asr = False
+    cfg.components.voice_trigger = True
     cfg.voice_trigger.sample_rate = 16000             # authoritative override
     neg = AudioNegotiator.from_pipeline(cfg, wake_provider=_MockConsumer([8000]))
     assert neg.canonical.rate == 16000                # operator pin wins over the provider's 8 kHz
@@ -154,7 +154,7 @@ def test_infeasible_config_is_fatal():
     from locveil_voice.utils.audio_negotiation import AudioNegotiationError
     cfg = CoreConfig(**tomllib.load(open(CONFIG_DIR / "standalone-x86_64.toml", "rb")))
     cfg.inputs.microphone_config.sample_rate = 16000
-    cfg.asr.enabled = True
+    cfg.components.asr = True
     cfg.asr.sample_rate = 48000          # would require upsampling from the 16 kHz mic
     with pytest.raises(AudioNegotiationError):
         AudioNegotiator.from_config(cfg)

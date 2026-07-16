@@ -96,8 +96,13 @@ class NLUAnalysisComponent(Component, WebAPIPlugin):
     
     @classmethod
     def get_python_dependencies(cls) -> List[str]:
-        """Return list of required Python modules"""
-        return ["nlu-spacy"]  # spaCy NLU extra (pydantic, rapidfuzz are base dependencies)
+        """Return list of required Python modules.
+
+        spaCy is deliberately NOT declared: analysis/spacy_analyzer.py treats it as optional
+        (degrades gracefully — the armv7 deployment runs this component without it). Profiles
+        that want full spaCy analysis get the extra via the spacy_nlu PROVIDER's own
+        metadata. Declaring it here forced the dep into every image (ARCH-54 finding)."""
+        return []  # pydantic, rapidfuzz are base dependencies
     
     def get_providers_info(self) -> str:
         """Get human-readable information about analysis capabilities"""
@@ -125,12 +130,13 @@ class NLUAnalysisComponent(Component, WebAPIPlugin):
         if core:
             config = getattr(core.config, 'nlu_analysis', None) or NLUAnalysisConfig()
             self.supported_languages = list(core.config.supported_languages)
+            # ARCH-54: [components] is the enablement authority (the manager normally gates
+            # initialization already; this keeps direct calls honest).
+            if not core.config.components.nlu_analysis:
+                self.logger.info("NLU Analysis component disabled")
+                return
         else:
             config = NLUAnalysisConfig()
-        
-        if not config.enabled:
-            self.logger.info("NLU Analysis component disabled")
-            return
         
         # Initialize concurrency control
         self._analysis_semaphore = asyncio.Semaphore(config.performance.max_concurrent_analyses)

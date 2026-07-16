@@ -36,7 +36,6 @@ numpy/librosa). `sounddevice` and `aplay` need a system library; `miniaudio` bri
 audio = true
 
 [audio]
-enabled = true
 default_provider = "sounddevice"
 fallback_providers = ["console"]
 concurrent_playback = false

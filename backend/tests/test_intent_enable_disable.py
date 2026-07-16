@@ -54,9 +54,9 @@ class TestIntentHandlerConfiguration:
     """Test configuration validation for intent handlers."""
     
     def test_valid_configuration(self):
-        """Test that valid configurations pass validation."""
+        """Test that valid configurations pass validation.
+        (IntentSystemConfig.enabled deleted at ARCH-54 — [components] is the enable authority.)"""
         config = IntentSystemConfig()
-        assert config.enabled is True
         assert len(config.handlers.enabled) > 0
         assert len(config.handlers.disabled) == 0
     

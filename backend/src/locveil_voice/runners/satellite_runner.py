@@ -113,7 +113,6 @@ with `esp32-provision approve <client_id>` on the controller) and connects over 
 
         config.components.audio = True  # reply-channel playback
         config.components.voice_trigger = config.satellite.wake_word_required
-        config.voice_trigger.enabled = config.satellite.wake_word_required
         # The controller owns understanding — never load these here.
         config.components.asr = False
         config.components.nlu = False
@@ -121,7 +120,6 @@ with `esp32-provision approve <client_id>` on the controller) and connects over 
         config.components.tts = False
         config.components.intent_system = False
         config.components.text_processor = False
-        config.asr.enabled = False
         return config
 
     async def _validate_runner_specific_config(self, config: CoreConfig, args: argparse.Namespace) -> List[str]:

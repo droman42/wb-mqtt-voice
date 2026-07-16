@@ -20,6 +20,23 @@ newest entries near the top of each dated section.
 
 ## Action journal
 
+- **2026-07-16 — ARCH-54 DONE: one enablement authority — and the analyzer had three latent bugs under
+  the old one.** Final leg of the four-task sweep. The per-section `enabled` flags are deleted from all
+  ten component configs and the silent parse-time force-sync with them; `[components]` is now the only
+  place a component turns on, for the runtime AND the build analyzer alike. Rewiring the analyzer to
+  that authority surfaced how much the dual-flag world had been hiding: its intent-handler analysis had
+  never executed once (the gate read a `[intents]` section no TOML ever had), VAD provider dependencies
+  never reached any image (the 8-name hand-list skipped `vad` — the standalone image has been silently
+  falling back to energy VAD because silero's onnx deps were never baked), and every profile's
+  validation was reporting phantom "provider not found" errors. All three are fixed; all six profiles
+  now analyze valid, the armv7 torch-free gate stays green (after correcting
+  `NLUAnalysisComponent`'s falsely-required `nlu-spacy` — spacy is optional there, as the running WB7
+  deployment proves). Also caught mid-leg: yesterday's ComponentLoader deletion had left one caller
+  alive inside `validate_entry_point_consistency`, masked by its own broad except — now it discovers via
+  the loader directly with no hand-list. Three guides' TOML examples updated to show `[components]`.
+  Suite 1411 green, contracts 11/11, config-ui check+build green. The unattended batch (ARCH-57 →
+  ARCH-52 → QUAL-83 → ARCH-54) is complete: four commits, each gate-verified.
+
 - **2026-07-16 — QUAL-83 DONE: ~30 fictional config fields and four dead code units, gone.** Third leg of
   the sweep, and the widest diff: every field ARCH-50 catalogued as declared-but-never-read is deleted
   from the models, the TOML template, all live TOMLs, and the config-ui contract — the AssetConfig

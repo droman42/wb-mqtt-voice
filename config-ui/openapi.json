@@ -4731,12 +4731,6 @@
     "schemas": {
       "ASRConfig": {
         "properties": {
-          "enabled": {
-            "type": "boolean",
-            "title": "Enabled",
-            "description": "Enable ASR component",
-            "default": false
-          },
           "default_provider": {
             "anyOf": [
               {
@@ -5047,12 +5041,6 @@
       },
       "AudioConfig": {
         "properties": {
-          "enabled": {
-            "type": "boolean",
-            "title": "Enabled",
-            "description": "Enable Audio component",
-            "default": false
-          },
           "default_provider": {
             "anyOf": [
               {
@@ -8034,12 +8022,6 @@
       },
       "IntentSystemConfig": {
         "properties": {
-          "enabled": {
-            "type": "boolean",
-            "title": "Enabled",
-            "description": "Enable intent system component",
-            "default": true
-          },
           "confidence_threshold": {
             "type": "number",
             "maximum": 1.0,
@@ -8341,12 +8323,6 @@
       },
       "LLMConfig": {
         "properties": {
-          "enabled": {
-            "type": "boolean",
-            "title": "Enabled",
-            "description": "Enable LLM component",
-            "default": false
-          },
           "default_provider": {
             "anyOf": [
               {
@@ -9290,12 +9266,6 @@
       },
       "MonitoringConfig": {
         "properties": {
-          "enabled": {
-            "type": "boolean",
-            "title": "Enabled",
-            "description": "Enable unified monitoring system",
-            "default": true
-          },
           "metrics_enabled": {
             "type": "boolean",
             "title": "Metrics Enabled",
@@ -9414,12 +9384,6 @@
       },
       "NLUAnalysisConfig": {
         "properties": {
-          "enabled": {
-            "type": "boolean",
-            "title": "Enabled",
-            "description": "Enable NLU analysis component",
-            "default": true
-          },
           "conflict_detector": {
             "$ref": "#/components/schemas/NLUAnalysisConflictDetectorConfig",
             "description": "Conflict detector configuration"
@@ -9733,12 +9697,6 @@
       },
       "NLUConfig": {
         "properties": {
-          "enabled": {
-            "type": "boolean",
-            "title": "Enabled",
-            "description": "Enable NLU component",
-            "default": false
-          },
           "default_provider": {
             "anyOf": [
               {
@@ -11676,12 +11634,6 @@
       },
       "TTSConfig": {
         "properties": {
-          "enabled": {
-            "type": "boolean",
-            "title": "Enabled",
-            "description": "Enable TTS component",
-            "default": false
-          },
           "default_provider": {
             "anyOf": [
               {
@@ -12492,12 +12444,6 @@
       },
       "TextProcessorConfig": {
         "properties": {
-          "enabled": {
-            "type": "boolean",
-            "title": "Enabled",
-            "description": "Enable text processing pipeline component",
-            "default": false
-          },
           "stages": {
             "items": {
               "type": "string"
@@ -13371,12 +13317,6 @@
       },
       "VoiceTriggerConfig": {
         "properties": {
-          "enabled": {
-            "type": "boolean",
-            "title": "Enabled",
-            "description": "Enable voice trigger component",
-            "default": false
-          },
           "default_provider": {
             "anyOf": [
               {

@@ -416,7 +416,6 @@ context_timeout_minutes = {config.context_timeout_minutes}
         """Generate TTS component configuration section"""
         return f"""
 [tts]
-enabled = {str(enabled).lower()}
 default_provider = "{tts_config.default_provider}"
 fallback_providers = {str(tts_config.fallback_providers)}
 
@@ -426,7 +425,6 @@ fallback_providers = {str(tts_config.fallback_providers)}
         """Generate Audio component configuration section"""
         return f"""
 [audio]
-enabled = {str(enabled).lower()}
 default_provider = "{audio_config.default_provider}"
 fallback_providers = {str(audio_config.fallback_providers)}
 concurrent_playback = {str(audio_config.concurrent_playback).lower()}
@@ -437,7 +435,6 @@ concurrent_playback = {str(audio_config.concurrent_playback).lower()}
         """Generate ASR component configuration section"""
         return f"""
 [asr]
-enabled = {str(enabled).lower()}
 default_provider = "{asr_config.default_provider}"
 fallback_providers = {str(asr_config.fallback_providers)}
 
@@ -447,7 +444,6 @@ fallback_providers = {str(asr_config.fallback_providers)}
         """Generate LLM component configuration section"""
         return f"""
 [llm]
-enabled = {str(enabled).lower()}
 default_provider = "{llm_config.default_provider}"
 fallback_providers = {str(llm_config.fallback_providers)}
 
@@ -457,7 +453,6 @@ fallback_providers = {str(llm_config.fallback_providers)}
         """Generate Voice Trigger component configuration section"""
         return f"""
 [voice_trigger]
-enabled = {str(enabled).lower()}
 default_provider = "{vt_config.default_provider}"
 wake_words = {str(vt_config.wake_words)}
 confidence_threshold = {vt_config.confidence_threshold}
@@ -469,7 +464,6 @@ timeout_seconds = {vt_config.timeout_seconds}
         """Generate NLU component configuration section"""
         return f"""
 [nlu]
-enabled = {str(enabled).lower()}
 default_provider = "{nlu_config.default_provider}"
 confidence_threshold = {nlu_config.confidence_threshold}
 fallback_intent = "{nlu_config.fallback_intent}"
@@ -485,7 +479,6 @@ cache_ttl_seconds = {nlu_config.cache_ttl_seconds}
         """Generate Text Processor component configuration section"""
         return f"""
 [text_processor]
-enabled = {str(enabled).lower()}
 stages = {str(tp_config.stages)}
 
 {self._generate_normalizer_sections("text_processor.normalizers", tp_config.normalizers)}"""

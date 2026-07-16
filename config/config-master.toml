@@ -121,7 +121,6 @@ nlu_analysis = true                # NLU analysis and conflict detection compone
 # TTS (TEXT-TO-SPEECH) COMPONENT CONFIGURATION
 # ============================================================
 [tts]
-enabled = true                      # Enable TTS component
 default_provider = "console"        # Default provider: "console", "elevenlabs", "silero", "pyttsx", "vosk"
 fallback_providers = ["console"]    # Fallback providers in order
 
@@ -202,7 +201,6 @@ use_dictionary = true              # Use RUAccent's stress dictionary
 # AUDIO (PLAYBACK) COMPONENT CONFIGURATION
 # ============================================================
 [audio]
-enabled = true                      # Enable audio component
 default_provider = "console"        # Default provider: "console", "sounddevice", "aplay", "miniaudio"
 fallback_providers = ["console"]    # Fallback providers in order
 concurrent_playback = false         # Allow multiple audio streams simultaneously
@@ -250,7 +248,6 @@ volume = 1.0                       # Playback volume (0.0-1.0)
 # ASR (AUTOMATIC SPEECH RECOGNITION) COMPONENT CONFIGURATION
 # ============================================================
 [asr]
-enabled = true                      # Enable ASR component
 default_provider = "vosk"          # Default provider: "whisper", "vosk", "google_cloud"
 fallback_providers = ["whisper"]   # Fallback providers in order
 sample_rate = 16000                # AUTHORITATIVE: Component sample rate (overrides provider preferences)
@@ -300,7 +297,6 @@ encoding = "LINEAR16"              # Audio encoding format
 # LLM (LARGE LANGUAGE MODEL) COMPONENT CONFIGURATION
 # ============================================================
 [llm]
-enabled = true                      # Enable LLM component
 default_provider = "deepseek"       # Default provider: "deepseek", "openai", "anthropic", "console"
 fallback_providers = ["console"]    # Runtime fallback chain (console = offline floor)
 
@@ -344,7 +340,6 @@ enabled = true                      # keep enabled — this is the offline fallb
 # VOICE TRIGGER (WAKE WORD) COMPONENT CONFIGURATION
 # ============================================================
 [voice_trigger]
-enabled = false                      # Enable voice trigger component
 default_provider = "openwakeword"   # Default provider: "openwakeword", "microwakeword"
 # Wake words are declared PER-PROVIDER below (QUAL-20). This component-level list is an optional
 # override: when non-empty it is injected into the active provider; normally leave it empty.
@@ -386,7 +381,6 @@ wake_words = [
 # NLU (NATURAL LANGUAGE UNDERSTANDING) COMPONENT CONFIGURATION
 # ============================================================
 [nlu]
-enabled = true                      # Enable NLU component
 default_provider = "hybrid_keyword_matcher"  # Default provider
 confidence_threshold = 0.7          # Global confidence threshold (0.0-1.0)
 fallback_intent = "conversation.general"    # Fallback intent name
@@ -493,7 +487,6 @@ bootstrap_url = ""                  # The provisioning zone, e.g. "http://wb7:80
 # QUAL-13: one config-driven processor. The live per-stage chains are the [normalizers] tables below
 # (each normalizer lists the stages it runs on); the unified provider applies them in a fixed order
 # (numbers -> prepare -> runorm). Two real stages: asr_output (before NLU), tts_input (before TTS).
-enabled = true
 stages = ["asr_output", "tts_input"]   # valid stages (informational)
 
 [text_processor.normalizers.numbers]
@@ -523,7 +516,6 @@ enabled = true
 # INTENT SYSTEM COMPONENT CONFIGURATION
 # ============================================================
 [intent_system]
-enabled = true                      # Enable intent system component (essential)
 confidence_threshold = 0.7          # Minimum confidence for intent recognition (0.0-1.0)
 fallback_intent = "conversation.general"  # Fallback intent when recognition fails
 
@@ -624,7 +616,6 @@ detection_latency_ms = 30          # Onset detection latency (ms) used to size t
 # MONITORING COMPONENT CONFIGURATION
 # ============================================================
 [monitoring]
-enabled = true                     # Enable unified monitoring system
 metrics_enabled = true            # Enable metrics collection
 notifications_enabled = true     # Enable notification system
 debug_tools_enabled = true       # Enable debug tools
@@ -654,7 +645,6 @@ analytics_refresh_interval = 30       # Dashboard refresh interval in seconds
 # NLU ANALYSIS - Real-time Conflict Detection (Phase 2)
 # ============================================================
 [nlu_analysis]
-enabled = true                       # Enable NLU analysis component
 
 # Analysis component configurations
 [nlu_analysis.conflict_detector]

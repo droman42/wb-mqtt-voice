@@ -90,7 +90,6 @@ nlu_analysis = false                # NLU conflict-analysis tooling (development
 # NLU — how text becomes an intent
 # ============================================================
 [nlu]
-enabled = true
 confidence_threshold = 0.7
 fallback_intent = "conversation.general"
 # One fast offline recognizer. Upgrade path: add "spacy_nlu" (linguistic
@@ -115,7 +114,6 @@ normalize_unicode = true
 # TEXT PROCESSOR — normalization stages
 # ============================================================
 [text_processor]
-enabled = true
 stages = ["asr_output", "tts_input"]
 
 # Both normalizers run on the TTS side only: converting digits to words or
@@ -147,7 +145,6 @@ capture_ttl_seconds = 90
 # INTENT SYSTEM — the handlers
 # ============================================================
 [intent_system]
-enabled = true
 confidence_threshold = 0.7
 fallback_intent = "conversation.general"
 

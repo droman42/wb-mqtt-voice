@@ -86,7 +86,6 @@ nlu_analysis = true             # kept for traces (see build-time lean-down)
 # ASR — sherpa-onnx + Whisper-small (4 GB fits it; the WB7 cannot)
 # ============================================================
 [asr]
-enabled = true
 default_provider = "sherpa_onnx"
 fallback_providers = []
 
@@ -104,7 +103,6 @@ preload_models = true              # pay the graph-init at boot, off the first-u
 # TTS — Piper + RUAccent (Russian stress); plain piper fallback
 # ============================================================
 [tts]
-enabled = true
 default_provider = "piper_ruaccent"
 fallback_providers = ["piper", "console"]   # degrade to plain Piper (no accent), then console
 
@@ -136,14 +134,12 @@ format = "txt"
 # AUDIO — DISABLED (no local speaker). TTS reply rides the output seam.
 # ============================================================
 [audio]
-enabled = false
 
 # ============================================================
 # LLM — deepseek (NLU classifier fallback + conversation); console floor
 # Requires DEEPSEEK_API_KEY at runtime; degrades gracefully offline.
 # ============================================================
 [llm]
-enabled = true
 default_provider = "deepseek"
 fallback_providers = ["console"]
 
@@ -163,7 +159,6 @@ enabled = true
 # VOICE TRIGGER — off (ESP32 wakes on-device)
 # ============================================================
 [voice_trigger]
-enabled = false
 confidence_threshold = 0.8
 timeout_seconds = 5.0
 
@@ -178,7 +173,6 @@ default_provider = "energy"
 # NLU — keyword → spaCy(small) → llm cascade
 # ============================================================
 [nlu]
-enabled = true
 default_provider = "hybrid_keyword_matcher"
 confidence_threshold = 0.7
 fallback_intent = "conversation.general"
@@ -220,7 +214,6 @@ max_phrases_per_intent = 3
 # TEXT PROCESSING
 # ============================================================
 [text_processor]
-enabled = true
 stages = ["asr_output", "tts_input"]     # the two real stages (informational; chains below)
 
 [text_processor.normalizers.numbers]
@@ -249,7 +242,6 @@ repo = "locveil/locveil-reports"         # PRIVATE triage home (bundles carry lo
 # INTENT SYSTEM (essential)
 # ============================================================
 [intent_system]
-enabled = true
 confidence_threshold = 0.7
 fallback_intent = "conversation.general"
 
@@ -290,7 +282,6 @@ info_detail_level = "basic"
 # MONITORING — kept for traces (disable at build time once stable; see header)
 # ============================================================
 [monitoring]
-enabled = true
 metrics_enabled = true
 notifications_enabled = false
 debug_tools_enabled = true
@@ -304,7 +295,6 @@ analytics_dashboard_enabled = false
 # NLU ANALYSIS — kept for traces (disable at build time once stable; see header)
 # ============================================================
 [nlu_analysis]
-enabled = true
 
 [nlu_analysis.conflict_detector]
 blocker_threshold = 0.8

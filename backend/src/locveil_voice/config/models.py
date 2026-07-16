@@ -192,7 +192,6 @@ class ComponentConfig(BaseModel):
 
 class TTSConfig(BaseModel):
     """TTS component configuration"""
-    enabled: bool = Field(default=False, description="Enable TTS component")
     default_provider: Optional[str] = Field(default=None, json_schema_extra={"widget": "provider_select"}, description="Default TTS provider")
     fallback_providers: List[str] = Field(default_factory=list, description="Fallback providers in order")
     providers: Dict[str, Dict[str, Any]] = Field(
@@ -203,7 +202,6 @@ class TTSConfig(BaseModel):
 
 class AudioConfig(BaseModel):
     """Audio component configuration"""
-    enabled: bool = Field(default=False, description="Enable Audio component")
     default_provider: Optional[str] = Field(default=None, json_schema_extra={"widget": "provider_select"}, description="Default audio provider")
     fallback_providers: List[str] = Field(default_factory=list, description="Fallback providers in order")
     concurrent_playback: bool = Field(default=False, description="Allow concurrent audio playback")
@@ -229,7 +227,6 @@ class AudioConfig(BaseModel):
 
 class ASRConfig(BaseModel):
     """ASR component configuration with Phase 5 audio enhancements"""
-    enabled: bool = Field(default=False, description="Enable ASR component")
     default_provider: Optional[str] = Field(default=None, json_schema_extra={"widget": "provider_select"}, description="Default ASR provider")
     fallback_providers: List[str] = Field(default_factory=list, description="Fallback providers in order")
     
@@ -268,7 +265,6 @@ class ASRConfig(BaseModel):
 
 class LLMConfig(BaseModel):
     """LLM component configuration"""
-    enabled: bool = Field(default=False, description="Enable LLM component")
     default_provider: Optional[str] = Field(default=None, json_schema_extra={"widget": "provider_select"}, description="Default LLM provider")
     fallback_providers: List[str] = Field(default_factory=list, description="Fallback providers in order")
     providers: Dict[str, Dict[str, Any]] = Field(
@@ -295,7 +291,6 @@ class WakeWordSpec(BaseModel):
 
 class VoiceTriggerConfig(BaseModel):
     """Voice trigger / wake word component configuration with Phase 5 audio enhancements"""
-    enabled: bool = Field(default=False, description="Enable voice trigger component")
     default_provider: Optional[str] = Field(default=None, json_schema_extra={"widget": "provider_select"}, description="Default voice trigger provider")
     wake_words: List[WakeWordSpec] = Field(
         default_factory=list,
@@ -341,7 +336,6 @@ class VoiceTriggerConfig(BaseModel):
 
 class NLUConfig(BaseModel):
     """NLU component configuration"""
-    enabled: bool = Field(default=False, description="Enable NLU component")
     default_provider: Optional[str] = Field(default=None, json_schema_extra={"widget": "provider_select"}, description="Default NLU provider")
     confidence_threshold: float = Field(default=0.7, description="Global confidence threshold")
     fallback_intent: str = Field(default="conversation.general", description="Fallback intent name")
@@ -378,7 +372,6 @@ class TextProcessorConfig(BaseModel):
     normalizers in a fixed order (numbers → prepare → runorm). The two real stages are `asr_output`
     (before NLU) and `tts_input` (before TTS synthesis).
     """
-    enabled: bool = Field(default=False, description="Enable text processing pipeline component")
     stages: List[str] = Field(
         default_factory=lambda: ["asr_output", "tts_input"],
         description="Valid processing stages (informational; the live chains live in `normalizers`)"
@@ -455,7 +448,6 @@ class VADConfig(BaseModel):
 
 class MonitoringConfig(BaseModel):
     """Monitoring component configuration (Phase 5 unified metrics system)"""
-    enabled: bool = Field(default=True, description="Enable unified monitoring system")
     metrics_enabled: bool = Field(default=True, description="Enable metrics collection")
     notifications_enabled: bool = Field(default=True, description="Enable notification system")
     debug_tools_enabled: bool = Field(default=True, description="Enable debug tools")
@@ -612,7 +604,6 @@ class NLUAnalysisPerformanceConfig(BaseModel):
 
 class NLUAnalysisConfig(BaseModel):
     """NLU Analysis component configuration (Phase 2)"""
-    enabled: bool = Field(default=True, description="Enable NLU analysis component")
     
     # Analysis component configurations
     conflict_detector: NLUAnalysisConflictDetectorConfig = Field(default_factory=NLUAnalysisConflictDetectorConfig, description="Conflict detector configuration")
@@ -757,7 +748,6 @@ class IntentHandlerListConfig(BaseModel):
 
 class IntentSystemConfig(BaseModel):
     """Intent system component configuration"""
-    enabled: bool = Field(default=True, description="Enable intent system component")
     confidence_threshold: float = Field(
         default=0.7,
         ge=0.0,
@@ -813,10 +803,11 @@ class IntentSystemConfig(BaseModel):
     
     @model_validator(mode='after')
     def validate_handler_configurations(self):
-        """Validate handler-specific configurations using metadata-driven discovery"""
-        if not self.enabled:
-            return self
-        
+        """Validate handler-specific configurations using metadata-driven discovery.
+
+        ARCH-54: no per-section `enabled` gate anymore — this validates structural coherence
+        of the declared handler config, which holds whether or not [components] enables the
+        intent system at runtime."""
         # Get enabled handlers list (considering disabled takes precedence)
         enabled_handlers = [h for h in self.handlers.enabled if h not in self.handlers.disabled]
         
@@ -1296,17 +1287,11 @@ class CoreConfig(BaseSettings):
         # Microphone hardware requires microphone input
         if self.system.microphone_enabled and not self.inputs.microphone:
             raise ValueError("Microphone hardware enabled but input source disabled")
-        
-        # Component-specific config sync
-        self.tts.enabled = self.components.tts
-        self.audio.enabled = self.components.audio
-        self.asr.enabled = self.components.asr
-        self.llm.enabled = self.components.llm
-        self.voice_trigger.enabled = self.components.voice_trigger
-        self.nlu.enabled = self.components.nlu
-        self.text_processor.enabled = self.components.text_processor
-        self.intent_system.enabled = self.components.intent_system
-        
+
+        # ARCH-54: the per-section `enabled` fields and their silent force-sync are gone —
+        # `[components]` is the ONE enablement authority (ARCH-50 F-C1: the sync overwrote
+        # the user's per-section value while the build analyzer read the raw TOML).
+
         # Validate default workflow is in enabled list
         if self.workflows.default not in self.workflows.enabled:
             raise ValueError(f"Default workflow '{self.workflows.default}' must be in enabled workflows list")
@@ -1317,12 +1302,15 @@ class CoreConfig(BaseSettings):
     def validate_entry_point_consistency(self):
         """Validate component names match entry-points"""
         try:
-            loader = ComponentLoader()
-            available_components = loader.get_available_components()
-            
+            # ARCH-54: use the loader directly (the old ComponentLoader indirection is deleted)
+            # and derive the component list from the ComponentConfig model — no hand-list.
+            from ..utils.loader import dynamic_loader
+            from ..utils.namespaces import COMPONENTS_NAMESPACE
+            available_components = dynamic_loader.discover_providers(COMPONENTS_NAMESPACE)
+
             # Check that all enabled components have corresponding entry-points
             enabled_components = []
-            for attr_name in ['tts', 'asr', 'audio', 'llm', 'voice_trigger', 'nlu', 'text_processor', 'intent_system']:
+            for attr_name in type(self.components).model_fields:
                 if getattr(self.components, attr_name, False):
                     enabled_components.append(attr_name)
             

@@ -100,7 +100,6 @@ nlu_analysis = true             # kept for traces (see build-time lean-down abov
 # ASR — sherpa-onnx (the only armv7 ASR; no torch, no Kaldi)
 # ============================================================
 [asr]
-enabled = true
 default_provider = "sherpa_moonshine"
 fallback_providers = []
 default_language = "en"
@@ -118,7 +117,6 @@ preload_models = true              # pay the graph-init at boot, off the first-u
 # TTS — Piper direct (VITS via sherpa-onnx; espeak-ng stress)
 # ============================================================
 [tts]
-enabled = true
 default_provider = "piper"
 fallback_providers = ["console"]
 
@@ -142,7 +140,6 @@ format = "txt"
 # output seam (RemoteAudioOutput); the workflow's local-playout path no-ops without it.
 # ============================================================
 [audio]
-enabled = false
 
 # ============================================================
 # LLM — deepseek (NLU classifier fallback + conversation); console floor
@@ -150,7 +147,6 @@ enabled = false
 # (keyword NLU still works; conversation falls to the console floor).
 # ============================================================
 [llm]
-enabled = true
 default_provider = "deepseek"
 fallback_providers = ["console"]
 
@@ -170,7 +166,6 @@ enabled = true                     # offline floor — never crashes when no net
 # VOICE TRIGGER — off (ESP32 wakes on-device, then streams; skip_wake_word)
 # ============================================================
 [voice_trigger]
-enabled = false
 confidence_threshold = 0.8
 timeout_seconds = 5.0
 
@@ -185,7 +180,6 @@ default_provider = "energy"
 # NLU — keyword → llm cascade (no spaCy on armv7)
 # ============================================================
 [nlu]
-enabled = true
 default_provider = "hybrid_keyword_matcher"
 confidence_threshold = 0.7
 fallback_intent = "conversation.general"
@@ -223,7 +217,6 @@ max_phrases_per_intent = 3
 # TEXT PROCESSING
 # ============================================================
 [text_processor]
-enabled = true
 stages = ["asr_output", "tts_input"]     # the two real stages (informational; chains below)
 
 [text_processor.normalizers.numbers]
@@ -256,7 +249,6 @@ repo = "locveil/locveil-reports"         # PRIVATE triage home (bundles carry lo
 # INTENT SYSTEM (essential)
 # ============================================================
 [intent_system]
-enabled = true
 confidence_threshold = 0.7
 fallback_intent = "conversation.general"
 
@@ -297,7 +289,6 @@ info_detail_level = "basic"
 # MONITORING — kept for traces (disable at build time once stable; see header)
 # ============================================================
 [monitoring]
-enabled = true
 metrics_enabled = true
 notifications_enabled = false
 debug_tools_enabled = true
@@ -311,7 +302,6 @@ analytics_dashboard_enabled = false
 # NLU ANALYSIS — kept for traces (disable at build time once stable; see header)
 # ============================================================
 [nlu_analysis]
-enabled = true
 
 [nlu_analysis.conflict_detector]
 blocker_threshold = 0.8

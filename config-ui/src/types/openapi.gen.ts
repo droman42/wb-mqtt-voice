@@ -2337,12 +2337,6 @@ export interface components {
          */
         ASRConfig: {
             /**
-             * Enabled
-             * @description Enable ASR component
-             * @default false
-             */
-            enabled: boolean;
-            /**
              * Default Provider
              * @description Default ASR provider
              */
@@ -2573,12 +2567,6 @@ export interface components {
          * @description Audio component configuration
          */
         AudioConfig: {
-            /**
-             * Enabled
-             * @description Enable Audio component
-             * @default false
-             */
-            enabled: boolean;
             /**
              * Default Provider
              * @description Default audio provider
@@ -4714,12 +4702,6 @@ export interface components {
          */
         IntentSystemConfig: {
             /**
-             * Enabled
-             * @description Enable intent system component
-             * @default true
-             */
-            enabled: boolean;
-            /**
              * Confidence Threshold
              * @description Minimum confidence threshold for intent recognition
              * @default 0.7
@@ -4928,12 +4910,6 @@ export interface components {
          * @description LLM component configuration
          */
         LLMConfig: {
-            /**
-             * Enabled
-             * @description Enable LLM component
-             * @default false
-             */
-            enabled: boolean;
             /**
              * Default Provider
              * @description Default LLM provider
@@ -5661,12 +5637,6 @@ export interface components {
          */
         MonitoringConfig: {
             /**
-             * Enabled
-             * @description Enable unified monitoring system
-             * @default true
-             */
-            enabled: boolean;
-            /**
              * Metrics Enabled
              * @description Enable metrics collection
              * @default true
@@ -5771,12 +5741,6 @@ export interface components {
          * @description NLU Analysis component configuration (Phase 2)
          */
         NLUAnalysisConfig: {
-            /**
-             * Enabled
-             * @description Enable NLU analysis component
-             * @default true
-             */
-            enabled: boolean;
             /** @description Conflict detector configuration */
             conflict_detector?: components["schemas"]["NLUAnalysisConflictDetectorConfig"];
             /** @description Scope analyzer configuration */
@@ -6036,12 +6000,6 @@ export interface components {
          * @description NLU component configuration
          */
         NLUConfig: {
-            /**
-             * Enabled
-             * @description Enable NLU component
-             * @default false
-             */
-            enabled: boolean;
             /**
              * Default Provider
              * @description Default NLU provider
@@ -7529,12 +7487,6 @@ export interface components {
          */
         TTSConfig: {
             /**
-             * Enabled
-             * @description Enable TTS component
-             * @default false
-             */
-            enabled: boolean;
-            /**
              * Default Provider
              * @description Default TTS provider
              */
@@ -8111,12 +8063,6 @@ export interface components {
          *     (before NLU) and `tts_input` (before TTS synthesis).
          */
         TextProcessorConfig: {
-            /**
-             * Enabled
-             * @description Enable text processing pipeline component
-             * @default false
-             */
-            enabled: boolean;
             /**
              * Stages
              * @description Valid processing stages (informational; the live chains live in `normalizers`)
@@ -8772,12 +8718,6 @@ export interface components {
          * @description Voice trigger / wake word component configuration with Phase 5 audio enhancements
          */
         VoiceTriggerConfig: {
-            /**
-             * Enabled
-             * @description Enable voice trigger component
-             * @default false
-             */
-            enabled: boolean;
             /**
              * Default Provider
              * @description Default voice trigger provider

@@ -629,14 +629,12 @@ export interface ComponentConfig {
 }
 
 export interface TTSConfig {
-  enabled: boolean;
   default_provider?: string;
   fallback_providers: string[];
   providers: Record<string, Record<string, any>>;
 }
 
 export interface AudioConfig {
-  enabled: boolean;
   default_provider?: string;
   fallback_providers: string[];
   concurrent_playback: boolean;
@@ -644,7 +642,6 @@ export interface AudioConfig {
 }
 
 export interface ASRConfig {
-  enabled: boolean;
   default_provider?: string;
   fallback_providers: string[];
   sample_rate?: number;
@@ -655,14 +652,12 @@ export interface ASRConfig {
 }
 
 export interface LLMConfig {
-  enabled: boolean;
   default_provider?: string;
   fallback_providers: string[];
   providers: Record<string, Record<string, any>>;
 }
 
 export interface VoiceTriggerConfig {
-  enabled: boolean;
   default_provider?: string;
   wake_words: WakeWordSpec[];
   confidence_threshold: number;
@@ -675,7 +670,6 @@ export interface VoiceTriggerConfig {
 }
 
 export interface NLUConfig {
-  enabled: boolean;
   default_provider?: string;
   confidence_threshold: number;
   fallback_intent: string;
@@ -691,14 +685,12 @@ export interface NLUConfig {
 }
 
 export interface TextProcessorConfig {
-  enabled: boolean;
   stages: string[];
   normalizers: Record<string, Record<string, any>>;
   providers: Record<string, Record<string, any>>;
 }
 
 export interface IntentSystemConfig {
-  enabled: boolean;
   confidence_threshold: number;
   fallback_intent: string;
   
@@ -738,7 +730,6 @@ export interface VADConfig {
 }
 
 export interface MonitoringConfig {
-  enabled: boolean;
   metrics_enabled: boolean;
   notifications_enabled: boolean;
   debug_tools_enabled: boolean;
@@ -753,7 +744,6 @@ export interface MonitoringConfig {
 }
 
 export interface NLUAnalysisConfig {
-  enabled: boolean;
   conflict_detector: {
     blocker_threshold: number;
     warning_threshold: number;

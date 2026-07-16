@@ -66,7 +66,6 @@ asr-myasr = ["my-asr-lib>=1.0"]
 asr = true
 
 [asr]
-enabled = true
 default_provider = "myasr"
 fallback_providers = ["whisper"]
 ```

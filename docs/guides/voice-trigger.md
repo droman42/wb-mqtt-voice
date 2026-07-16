@@ -19,11 +19,14 @@ alternatives, not a cascade.
 
 ## Configuration
 
-Wake words are declared **per provider**, as a list of entries with the same shape for both:
+Wake words are declared **per provider**, as a list of entries with the same shape for both.
+The component itself is switched on in the `[components]` block:
 
 ```toml
+[components]
+voice_trigger = true
+
 [voice_trigger]
-enabled = true
 default_provider = "microwakeword"
 
 [voice_trigger.providers.microwakeword]

@@ -105,6 +105,37 @@ rationale/chronology lives in [`RELEASE_JOURNAL.md`](./RELEASE_JOURNAL.md).
       startup (fail-hard ruling). Verified: full suite 1417 passed / 7 skipped, import contracts 11/11,
       config-ui `npm run check` + `build` green. docs: none — the deleted fields appear in no manifest
       node (config-file comments only); no user-visible behavior changed on the happy path.
+- [x] **ARCH-54** [ARCH][CONFIG] `[release]` — **✓ DONE 2026-07-16. `[components]` is the single enable
+      authority** (ARCH-50 F-C1). The per-section `enabled` field is deleted from ALL TEN component configs
+      (the 8 force-synced + `MonitoringConfig`/`NLUAnalysisConfig`, which had never even been synced) and
+      the silent parse-time force-sync (`models.py` `validate_system_dependencies`) is gone. Runtime
+      readers swapped to `components.*`: `audio_negotiator` (wake/asr contract gates), `voice_runner`
+      (redundant twin check dropped), `satellite_runner` (its runtime overrides now write the authority),
+      `nlu_analysis_component` (gate on `components.nlu_analysis`); `IntentSystemConfig`'s handler
+      validator lost its enabled gate (it validates structural coherence, which holds regardless of
+      runtime enablement — the non-empty-handlers rule was already enforced unconditionally by the field
+      validator). **Build analyzer reworked to the same authority** — and the rework surfaced/fixed three
+      latent analyzer bugs: (1) the intent-handler analysis had NEVER run (its gate read a phantom
+      `[intents]` section; now `[components].intent_system` + `[intent_system.handlers]`) — handler
+      modules + donation contract paths now reach requirements; (2) the provider-family loop's 8-name
+      hand-list silently skipped `vad`, so VAD provider deps never reached images (standalone now
+      correctly gains `vad-silero`+`asr-onnx` — the runtime had been falling back to energy VAD after a
+      silent init failure); (3) profile validation errors ("Provider 'asr' not found in namespace
+      components") cleared — all profiles now analyze `valid: true`. The ARCH-57-deferred
+      `component_names` hand-lists are retired by this rewrite. Also fixed en route:
+      `validate_entry_point_consistency` still called the QUAL-83-deleted `ComponentLoader` (masked by its
+      own broad except — now `dynamic_loader` + `model_fields`, no hand-list); and
+      `NLUAnalysisComponent.get_python_dependencies` falsely declared `nlu-spacy` REQUIRED (spacy is
+      optional-with-degrade there — the armv7 deployment proves it; the dep rides the `spacy_nlu`
+      provider's own metadata where enabled), keeping armv7's lean dep set intact + T3 arch gate green.
+      TOML template generators + 9 live TOMLs stripped ([vad]/[inputs.*]/[satellite*]/[trace]/[reports]
+      `enabled` fields survive — they're not components); openapi re-dumped, config-ui types regenerated +
+      `api.ts` trimmed (check+build green); old TOMLs with a stale per-section `enabled` still parse
+      (nested models ignore extras). Verified: full suite 1411 passed / 7 skipped,
+      `--validate-all-profiles` all valid, armv7l arch gate green, config-validator CI-mode all valid,
+      import contracts 11/11. docs: guides/audio, guides/voice-trigger, guides/howto-new-model — TOML
+      examples showing the retired per-section `enabled = true` now show the `[components]` block instead;
+      guides/satellite + guides/vad untouched (their `enabled` fields live on).
 - [x] **ARCH-57** [ARCH][QUAL][UI] `[release]` — **✓ DONE 2026-07-16. One canonical component→namespace
       map; analyzer module paths from entry-point values — the live config-ui VAD dropdown 404 fixed**
       (ARCH-50 F-E1/F-E2). New `utils/namespaces.py`: `PROVIDER_NAMESPACES` (8 families incl. `vad`) +
