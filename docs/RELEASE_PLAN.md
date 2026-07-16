@@ -422,30 +422,28 @@ _Apply to every remediation task below (from the 4 review docs + QUAL-25/26). So
       forbids. Also honest-UX: mode/fan are daily speech; vane is a set-once remote-in-hand tweak — no demand
       recorded yet. Ref: QUAL-81 (binding table), `docs/design/mqtt_integration.md` §14, bridge VWB-33.
 
-- [ ] **QUAL-83** [QUAL][CONFIG] `[release]` — **Dead config-field + dead-code sweep** (ARCH-50 §B/F-F3;
-      owner ruling: dead fields are DELETED, not implemented — `dead-code-remove-not-fix`). Config fields
-      (~30): the entire `AssetConfig` download/cache block (11 fields, `models.py:982-998`);
-      `DateTimeHandlerConfig` + `GreetingsHandlerConfig` deleted whole (handlers take no config);
-      4 of 5 `ContextualCommandsConfig`; 5 `MonitoringConfig` (incl. QUAL-28 MemoryManager leftovers);
-      3 `NLUAnalysisPerformanceConfig`; `NLUAnalysisLanguagesConfig` deleted whole AND the capabilities
-      endpoint stops hardcoding `["ru","en"]` (`nlu_analysis_component.py:990`) — reads the canonical
-      top-level language policy (QUAL-36 rule); scattered singles + passthrough-only fields per the review
-      doc's F-B4 list. TOMLs + config-ui types/editors in the same change (`config-ui-stays-functional`).
-      Dead code: `get_provider_capabilities` (`components/base.py:216`, PROD-8 delegation),
-      `EnhancedHandlerManager` (`intent_asset_loader.py:1627`), `ComponentLoader` (`models.py:1298`,
-      export-only), `add_handler`/`remove_handler` + the legacy `_get_handler_patterns` fallback
-      (`intents/manager.py:403-503`; `reload_handlers` stays — live ×3). **Orphan-TOML fold-in (owner,
-      2026-07-16):** delete `config/vad-development.toml`, `vad-production.toml`, `vad-testing.toml`,
-      `vosk-test.toml` — referenced nowhere outside frozen archives (verified); resolve `config/full.toml`
-      (live only as the `test_audio_negotiator.py` fixture): point the test at a live profile or keep it as
-      an explicitly test-owned fixture that must stay schema-current. The live TOML set for all config-surface
-      tasks is the NINE: config-master, config-example, 6 Docker profiles, satellite. Evidence:
-      `docs/review/dynamic_loading_hardcodings_review.md` §B + §F.
 - [ ] **QUAL-84** [QUAL] `[deferred]` — **Donation-driven classification heuristics** (ARCH-50 §G; owner:
       keep as named constants now, revisit later). `entity_resolver.py:290` device-domain list +
       `report_bundle.py:124` `smart_home` intent-prefix triage derive from donations (e.g. a
       `handler_domain` trait) instead of module-level literals. Not a loading violation — filed to record
       the coupling. Evidence: review doc §G.
+- [ ] **QUAL-85** [QUAL][CONFIG] `[deferred]` — **★ Discovered at QUAL-83 execution: the parallel schema
+      tree + residual dead resampling config.** Filed 2026-07-16 (unattended sweep; needs an owner
+      tag/scope ruling at intake). (a) `config/schemas.py` is a hand-maintained PARALLEL schema tree
+      (provider schemas + component schemas, e.g. `MonitoringComponentSchema` still declaring the
+      QUAL-83-deleted `dashboard_enabled`, `VoiceTriggerComponentSchema` with `buffer_seconds` and a
+      string-list `wake_words` shape that predates `WakeWordSpec`) — the exact models.py-drift pattern
+      ARCH-50 catalogued; audit which of it `AutoSchemaRegistry`/`SchemaValidator` actually need and
+      delete/derive the rest. (b) `ASRConfig.allow_resampling`/`resample_quality` +
+      `VoiceTriggerConfig.allow_resampling`/`resample_quality`: their ONLY reader is
+      `config/validator.py::resolve_audio_config` — which itself has ZERO callers (dead chain); the audio
+      negotiator resamples via `AudioTranscoder` without reading them. Decide honor (wire the negotiator)
+      vs delete (field + validator method + config-master lines + config-ui types). (c) config-ui
+      `api.ts` hand-interface drift beyond the generated types (e.g. `ComponentConfig` missing
+      `intent_system`/`monitoring`/`configuration`/`nlu_analysis`/`vad`... vs models.py's 11) — decide
+      whether api.ts config interfaces should derive from `openapi.gen.ts` instead of hand-maintenance.
+      Ref: `docs/review/dynamic_loading_hardcodings_review.md` (the finding classes; these are
+      post-review instances).
 
 ### Bugs (BUG)
 _Discrete functional defects (distinct from QUAL refactors/quality work). Surfaced from any source; filed before fixing._

@@ -57,13 +57,9 @@ chunk_size = 1024
 
 [inputs.web_config]
 enabled = true
-websocket_enabled = true
-rest_api_enabled = true
 
 [inputs.cli_config]
 enabled = true
-prompt_prefix = "irene> "
-history_enabled = true
 
 # ============================================================
 # OUTPUT CHANNELS (defaults made explicit; ARCH-8 bridge surface)
@@ -184,7 +180,6 @@ enabled = true
 enabled = true
 default_provider = "microwakeword"
 confidence_threshold = 0.8
-buffer_seconds = 1.0
 timeout_seconds = 5.0
 
 [voice_trigger.providers.microwakeword]
@@ -202,7 +197,6 @@ wake_words = [
 enabled = true
 default_provider = "silero"
 max_segment_duration_s = 8
-processing_timeout_ms = 50
 buffer_size_frames = 300
 normalize_for_asr = true
 asr_target_rms = 0.15
@@ -231,7 +225,6 @@ cache_recognition_results = false
 cache_ttl_seconds = 300
 auto_detect_language = false        # English-only deployment — language is fixed by config (I18N-4)
 language_detection_confidence_threshold = 0.8
-persist_language_preference = true
 
 [nlu.providers.hybrid_keyword_matcher]
 enabled = true
@@ -340,18 +333,13 @@ info_detail_level = "basic"
 [monitoring]
 enabled = true
 metrics_enabled = true
-dashboard_enabled = true
 notifications_enabled = true
 debug_tools_enabled = true
-memory_management_enabled = true
 notifications_default_channel = "log"
 notifications_tts_enabled = true
 notifications_web_enabled = true
 metrics_monitoring_interval = 300
 metrics_retention_hours = 24
-memory_cleanup_interval = 1800
-memory_aggressive_cleanup = false
-debug_auto_inspect_failures = true
 debug_max_history = 1000
 analytics_dashboard_enabled = true
 
@@ -388,18 +376,9 @@ entity_analysis_enabled = true
 pattern_validation_enabled = true
 
 [nlu_analysis.performance]
-max_analysis_time_ms = 5000.0
 max_concurrent_analyses = 3
-enable_caching = true
 cache_ttl_seconds = 300
 
-[nlu_analysis.languages]
-supported_languages = ["ru", "en"]
-language_detection_threshold = 0.8
-
-# ============================================================
-# WORKFLOWS — unified voice assistant (full pipeline)
-# ============================================================
 [workflows]
 enabled = ["unified_voice_assistant"]
 default = "unified_voice_assistant"
@@ -413,11 +392,9 @@ intent_execution_enabled = true
 llm_enabled = true
 tts_enabled = true
 audio_enabled = true
-monitoring_enabled = true
 sample_rate = 16000
 channels = 1
 validate_audio_compatibility = true
-enable_vad_processing = true       # local mic → segment the raw chunk stream
 default_source = "voice"
 default_language = "en"
 session_timeout_minutes = 30
@@ -440,4 +417,3 @@ capture_level = "utterance"
 # ============================================================
 [assets]
 auto_create_dirs = true
-cleanup_on_startup = false

@@ -91,14 +91,14 @@ def test_config_pin_is_honored_and_infeasible_pin_is_fatal():
     cfg.audio.canonical_rate = 16000                  # feasible pin
     assert AudioNegotiator.from_config(cfg).canonical.rate == 16000
 
-    cfg2 = CoreConfig(**tomllib.load(open(CONFIG_DIR / "full.toml", "rb")))   # mic 16k
+    cfg2 = CoreConfig(**tomllib.load(open(CONFIG_DIR / "standalone-x86_64.toml", "rb")))   # mic 16k
     cfg2.audio.canonical_rate = 48000                 # exceeds the capture → fatal
     with pytest.raises(AudioNegotiationError):
         AudioNegotiator.from_config(cfg2)
 
 
 async def test_to_canonical_downmixes_stereo_to_mono():
-    cfg = CoreConfig(**tomllib.load(open(CONFIG_DIR / "full.toml", "rb")))    # canonical 16k/mono
+    cfg = CoreConfig(**tomllib.load(open(CONFIG_DIR / "standalone-x86_64.toml", "rb")))    # canonical 16k/mono
     neg = AudioNegotiator.from_config(cfg)
     # 16 kHz stereo frame (interleaved int16, 2 ch) → downmixed to mono, rate already canonical
     stereo = b"\x10\x00\x20\x00" * 100                # 100 stereo frames -> 200 int16
@@ -108,14 +108,14 @@ async def test_to_canonical_downmixes_stereo_to_mono():
 
 
 def test_output_sink_defaults_to_cd():
-    cfg = CoreConfig(**tomllib.load(open(CONFIG_DIR / "full.toml", "rb")))
+    cfg = CoreConfig(**tomllib.load(open(CONFIG_DIR / "standalone-x86_64.toml", "rb")))
     neg = AudioNegotiator.from_config(cfg)                 # no audio_provider → CD default
     assert max(neg.output_sink.supported_rates) == 44100
     assert neg.output_sink.channels == 2
 
 
 def test_output_sink_audio_override():
-    cfg = CoreConfig(**tomllib.load(open(CONFIG_DIR / "full.toml", "rb")))
+    cfg = CoreConfig(**tomllib.load(open(CONFIG_DIR / "standalone-x86_64.toml", "rb")))
     cfg.audio.output_rate = 22050
     cfg.audio.output_channels = 1
     neg = AudioNegotiator.from_config(cfg)
@@ -124,7 +124,7 @@ def test_output_sink_audio_override():
 
 
 async def test_to_sink_passes_through_when_below_device():
-    cfg = CoreConfig(**tomllib.load(open(CONFIG_DIR / "full.toml", "rb")))
+    cfg = CoreConfig(**tomllib.load(open(CONFIG_DIR / "standalone-x86_64.toml", "rb")))
     neg = AudioNegotiator.from_config(cfg)                 # CD sink (44.1k/stereo)
     # a 22 kHz mono TTS frame is <= the sink → played as-is (any device plays lower)
     frame = AudioData(data=b"\x00\x00" * 220, timestamp=0.0, sample_rate=22050, channels=1)
@@ -132,7 +132,7 @@ async def test_to_sink_passes_through_when_below_device():
 
 
 async def test_to_sink_downsamples_when_above_device():
-    cfg = CoreConfig(**tomllib.load(open(CONFIG_DIR / "full.toml", "rb")))
+    cfg = CoreConfig(**tomllib.load(open(CONFIG_DIR / "standalone-x86_64.toml", "rb")))
     cfg.audio.output_rate = 16000                          # device max 16 kHz
     neg = AudioNegotiator.from_config(cfg)
     out = await neg.to_sink(AudioData(data=b"\x00\x00" * 480, timestamp=0.0, sample_rate=48000, channels=1))
@@ -141,7 +141,7 @@ async def test_to_sink_downsamples_when_above_device():
 
 async def test_to_sink_downmixes_stereo_for_mono_sink():
     from locveil_voice.utils.audio_negotiation import AudioContract
-    cfg = CoreConfig(**tomllib.load(open(CONFIG_DIR / "full.toml", "rb")))
+    cfg = CoreConfig(**tomllib.load(open(CONFIG_DIR / "standalone-x86_64.toml", "rb")))
     neg = AudioNegotiator.from_config(cfg)
     mono_sink = AudioContract([44100], 44100, ["pcm16"], "pcm16", 1)
     stereo = AudioData(data=b"\x10\x00\x20\x00" * 100, timestamp=0.0, sample_rate=44100, channels=2)
@@ -152,7 +152,7 @@ async def test_to_sink_downmixes_stereo_for_mono_sink():
 def test_infeasible_config_is_fatal():
     """A consumer needing a higher rate than the mic can deliver fails loudly at from_config."""
     from locveil_voice.utils.audio_negotiation import AudioNegotiationError
-    cfg = CoreConfig(**tomllib.load(open(CONFIG_DIR / "full.toml", "rb")))
+    cfg = CoreConfig(**tomllib.load(open(CONFIG_DIR / "standalone-x86_64.toml", "rb")))
     cfg.inputs.microphone_config.sample_rate = 16000
     cfg.asr.enabled = True
     cfg.asr.sample_rate = 48000          # would require upsampling from the 16 kHz mic

@@ -58,7 +58,6 @@ sensitivity = 0.5
 | `enabled` | true | — |
 | `default_provider` | `energy` | energy / silero / microvad |
 | `max_segment_duration_s` | 10 | 1–60 |
-| `processing_timeout_ms` | 50 | ≥1 |
 | `buffer_size_frames` | 100 | ≥10 |
 | `normalize_for_asr` | true | — |
 | `asr_target_rms` | 0.15 | 0.01–0.3 |

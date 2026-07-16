@@ -81,7 +81,7 @@ from .models import (
     VoiceTriggerConfig, NLUConfig, TextProcessorConfig, IntentSystemConfig,
     create_default_config, create_config_from_profile,
     create_voice_profile, create_api_profile, create_headless_profile,
-    EnvironmentVariableResolver, ComponentLoader, ComponentRegistry
+    EnvironmentVariableResolver
 )
 
 # Configuration management
@@ -117,7 +117,7 @@ __all__ = [
     "create_voice_profile", "create_api_profile", "create_headless_profile",
     
     # Environment and component utilities
-    "EnvironmentVariableResolver", "ComponentLoader", "ComponentRegistry",
+    "EnvironmentVariableResolver",
     
     # Configuration management
     "ConfigManager", "ConfigValidationError",

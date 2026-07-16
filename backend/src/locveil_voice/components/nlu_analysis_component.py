@@ -61,7 +61,11 @@ class NLUAnalysisComponent(Component, WebAPIPlugin):
         self.report_generator: Optional[NLUReportGenerator] = None
         self.hybrid_analyzer: Optional[HybridKeywordAnalyzer] = None
         self.spacy_analyzer: Optional[SpacyProviderAnalyzer] = None
-        
+
+        # QUAL-83: the capabilities endpoint reports the CANONICAL language policy
+        # (CoreConfig.supported_languages, QUAL-36) — set at initialize, never hardcoded.
+        self.supported_languages: List[str] = []
+
         # Component state
         self.analysis_cache: Dict[str, Any] = {}
         self.last_batch_analysis: Optional[BatchAnalysisResult] = None
@@ -120,6 +124,7 @@ class NLUAnalysisComponent(Component, WebAPIPlugin):
         # Get configuration
         if core:
             config = getattr(core.config, 'nlu_analysis', None) or NLUAnalysisConfig()
+            self.supported_languages = list(core.config.supported_languages)
         else:
             config = NLUAnalysisConfig()
         
@@ -988,7 +993,7 @@ class NLUAnalysisComponent(Component, WebAPIPlugin):
             try:
                 capabilities = {
                     "component_info": component.get_providers_info(),
-                    "supported_languages": ["ru", "en"],
+                    "supported_languages": component.supported_languages,
                     "analysis_types": [
                         "real_time_donation_analysis",
                         "change_impact_analysis", 

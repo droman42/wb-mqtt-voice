@@ -392,58 +392,15 @@ class IntentHandlerManager:
             
             # Also register domain wildcard for unspecified methods
             patterns.append(f"{domain}.*")
-            
+
             logger.debug(f"Handler {handler_name} patterns from donation: {patterns}")
             return patterns
-        
-        # Fallback to legacy pattern detection
-        return await self._get_handler_patterns(handler)
-    
-    async def _get_handler_patterns(self, handler: Any) -> List[str]:
-        """
-        Get registration patterns for a handler.
-        
-        Args:
-            handler: Handler instance
-            
-        Returns:
-            List of patterns this handler should be registered for
-        """
-        patterns = []
-        
-        # Check if handler provides its own patterns
-        if hasattr(handler, 'get_supported_patterns'):
-            try:
-                handler_patterns = await handler.get_supported_patterns()
-                if isinstance(handler_patterns, list):
-                    patterns.extend(handler_patterns)
-            except Exception as e:
-                logger.warning(f"Handler {handler.__class__.__name__} get_supported_patterns failed: {e}")
-        
-        # Fallback: derive patterns from domains and actions
-        if not patterns:
-            domains = getattr(handler, 'get_supported_domains', lambda: [])()
-            if domains:
-                # Register for domain wildcards (e.g., "timer.*")
-                patterns.extend([f"{domain}.*" for domain in domains])
-            else:
-                # Fallback: use handler class name
-                handler_name = handler.__class__.__name__.lower()
-                if handler_name.endswith('intenthandler'):
-                    base_name = handler_name[:-13]  # Remove 'intenthandler'
-                    patterns.append(f"{base_name}.*")
-        
-        # Ensure we have at least one pattern
-        if not patterns:
-            handler_name = handler.__class__.__name__.lower()
-            if handler_name.endswith('intenthandler'):
-                base_name = handler_name[:-13]
-                patterns.append(base_name)
-            else:
-                patterns.append(handler_name)
-        
-        return patterns
-    
+
+        # QUAL-83: the legacy class-name pattern derivation is gone — donations are mandatory
+        # (Phase 6: a handler without one is removed before registration), so this is unreachable
+        # for any handler that got here; make the contract explicit instead of guessing.
+        raise RuntimeError(f"Handler '{handler_name}' reached registration without a donation")
+
     def get_registry(self) -> IntentRegistry:
         """Get the intent registry."""
         return self._registry
@@ -461,46 +418,9 @@ class IntentHandlerManager:
         return self._donations.copy()
     
     
-    async def add_handler(self, name: str, handler: Any, patterns: Optional[List[str]] = None) -> None:
-        """
-        Dynamically add a handler instance.
-        
-        Args:
-            name: Handler name
-            handler: Handler instance
-            patterns: Optional explicit patterns, otherwise derived from handler
-        """
-        self._handler_instances[name] = handler
-        
-        if patterns is None:
-            patterns = await self._get_handler_patterns(handler)
-        
-        for pattern in patterns:
-            self._registry.register_handler(pattern, handler)
-            
-        logger.info(f"Added intent handler: {name} with patterns {patterns}")
-    
-    async def remove_handler(self, name: str) -> bool:
-        """
-        Remove a handler by name.
-        
-        Args:
-            name: Handler name to remove
-            
-        Returns:
-            True if handler was removed, False if not found
-        """
-        if name not in self._handler_instances:
-            return False
-        
-        # Remove from instances
-        del self._handler_instances[name]
-        
-        # Note: IntentRegistry doesn't currently support removing by handler instance
-        # This would need to be enhanced for full dynamic handler management
-        logger.info(f"Removed intent handler: {name}")
-        return True
-    
+    # QUAL-83: add_handler/remove_handler deleted — zero callers (ARCH-50 F-F3); handlers
+    # enter the system through entry-point discovery + reload_handlers only.
+
     async def reload_handlers(self, config: Optional[Dict[str, Any]] = None) -> None:
         """
         Reload all handlers with new configuration.

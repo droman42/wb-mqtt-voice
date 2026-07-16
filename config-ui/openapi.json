@@ -5039,72 +5039,6 @@
             "title": "Auto Create Dirs",
             "description": "Automatically create asset directories",
             "default": true
-          },
-          "cleanup_on_startup": {
-            "type": "boolean",
-            "title": "Cleanup On Startup",
-            "description": "Clean temporary files on startup",
-            "default": false
-          },
-          "auto_download": {
-            "type": "boolean",
-            "title": "Auto Download",
-            "description": "Automatically download missing models",
-            "default": true
-          },
-          "download_timeout_seconds": {
-            "type": "integer",
-            "title": "Download Timeout Seconds",
-            "description": "Download timeout in seconds",
-            "default": 300
-          },
-          "max_download_retries": {
-            "type": "integer",
-            "title": "Max Download Retries",
-            "description": "Maximum download retry attempts",
-            "default": 3
-          },
-          "verify_downloads": {
-            "type": "boolean",
-            "title": "Verify Downloads",
-            "description": "Verify downloaded file integrity",
-            "default": true
-          },
-          "cache_enabled": {
-            "type": "boolean",
-            "title": "Cache Enabled",
-            "description": "Enable model and file caching",
-            "default": true
-          },
-          "max_cache_size_mb": {
-            "type": "integer",
-            "title": "Max Cache Size Mb",
-            "description": "Maximum cache size in megabytes",
-            "default": 2048
-          },
-          "cache_ttl_hours": {
-            "type": "integer",
-            "title": "Cache Ttl Hours",
-            "description": "Cache time-to-live in hours",
-            "default": 24
-          },
-          "preload_essential_models": {
-            "type": "boolean",
-            "title": "Preload Essential Models",
-            "description": "Preload essential models on startup",
-            "default": false
-          },
-          "model_compression": {
-            "type": "boolean",
-            "title": "Model Compression",
-            "description": "Use compressed model formats when available",
-            "default": true
-          },
-          "concurrent_downloads": {
-            "type": "integer",
-            "title": "Concurrent Downloads",
-            "description": "Maximum concurrent model downloads",
-            "default": 2
           }
         },
         "type": "object",
@@ -5732,18 +5666,6 @@
             "type": "boolean",
             "title": "Enabled",
             "description": "Enable CLI input",
-            "default": true
-          },
-          "prompt_prefix": {
-            "type": "string",
-            "title": "Prompt Prefix",
-            "description": "CLI prompt prefix",
-            "default": "irene> "
-          },
-          "history_enabled": {
-            "type": "boolean",
-            "title": "History Enabled",
-            "description": "Enable command history",
             "default": true
           }
         },
@@ -6434,34 +6356,6 @@
       },
       "ContextualCommandsConfig": {
         "properties": {
-          "enable_pattern_caching": {
-            "type": "boolean",
-            "title": "Enable Pattern Caching",
-            "description": "Enable contextual command pattern caching",
-            "default": true
-          },
-          "cache_ttl_seconds": {
-            "type": "integer",
-            "maximum": 3600.0,
-            "minimum": 60.0,
-            "title": "Cache Ttl Seconds",
-            "description": "Cache time-to-live in seconds",
-            "default": 300
-          },
-          "max_cache_size_patterns": {
-            "type": "integer",
-            "maximum": 10000.0,
-            "minimum": 100.0,
-            "title": "Max Cache Size Patterns",
-            "description": "Maximum cached patterns per language",
-            "default": 1000
-          },
-          "performance_monitoring": {
-            "type": "boolean",
-            "title": "Performance Monitoring",
-            "description": "Monitor disambiguation latency",
-            "default": true
-          },
           "latency_threshold_ms": {
             "type": "number",
             "maximum": 100.0,
@@ -6473,7 +6367,7 @@
         },
         "type": "object",
         "title": "ContextualCommandsConfig",
-        "description": "Configuration for contextual command performance and caching (Phase 4 TODO16)"
+        "description": "Configuration for contextual command disambiguation monitoring (Phase 4 TODO16)"
       },
       "ContractValidationResponse": {
         "properties": {
@@ -7186,37 +7080,6 @@
         "title": "DashboardResponse",
         "description": "Response for analytics dashboard (moved from component)"
       },
-      "DateTimeHandlerConfig": {
-        "properties": {
-          "timezone": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Timezone",
-            "description": "Default timezone (None = system timezone)"
-          },
-          "date_format": {
-            "type": "string",
-            "title": "Date Format",
-            "description": "Default date format",
-            "default": "%Y-%m-%d"
-          },
-          "time_format": {
-            "type": "string",
-            "title": "Time Format",
-            "description": "Default time format",
-            "default": "%H:%M:%S"
-          }
-        },
-        "type": "object",
-        "title": "DateTimeHandlerConfig",
-        "description": "Configuration for datetime intent handler"
-      },
       "DebugResponse": {
         "properties": {
           "success": {
@@ -7693,25 +7556,6 @@
         ],
         "title": "ExecutionTrace",
         "description": "Complete pipeline execution trace"
-      },
-      "GreetingsHandlerConfig": {
-        "properties": {
-          "personalized": {
-            "type": "boolean",
-            "title": "Personalized",
-            "description": "Use personalized greetings",
-            "default": true
-          },
-          "context_aware": {
-            "type": "boolean",
-            "title": "Context Aware",
-            "description": "Consider time of day for greetings",
-            "default": true
-          }
-        },
-        "type": "object",
-        "title": "GreetingsHandlerConfig",
-        "description": "Configuration for greetings intent handler"
       },
       "HTTPValidationError": {
         "properties": {
@@ -8237,14 +8081,6 @@
           "random_handler": {
             "$ref": "#/components/schemas/RandomHandlerConfig",
             "description": "Random handler configuration"
-          },
-          "datetime": {
-            "$ref": "#/components/schemas/DateTimeHandlerConfig",
-            "description": "DateTime handler configuration"
-          },
-          "greetings": {
-            "$ref": "#/components/schemas/GreetingsHandlerConfig",
-            "description": "Greetings handler configuration"
           },
           "system": {
             "$ref": "#/components/schemas/SystemHandlerConfig",
@@ -9446,18 +9282,6 @@
             "title": "Buffer Queue Size",
             "description": "Audio buffer queue size for handling processing delays",
             "default": 50
-          },
-          "auto_resample": {
-            "type": "boolean",
-            "title": "Auto Resample",
-            "description": "Enable/disable resampling globally",
-            "default": true
-          },
-          "resample_quality": {
-            "type": "string",
-            "title": "Resample Quality",
-            "description": "Global resampling quality (fast/medium/high/best)",
-            "default": "medium"
           }
         },
         "type": "object",
@@ -9478,12 +9302,6 @@
             "description": "Enable metrics collection",
             "default": true
           },
-          "dashboard_enabled": {
-            "type": "boolean",
-            "title": "Dashboard Enabled",
-            "description": "Enable analytics dashboard",
-            "default": true
-          },
           "notifications_enabled": {
             "type": "boolean",
             "title": "Notifications Enabled",
@@ -9494,12 +9312,6 @@
             "type": "boolean",
             "title": "Debug Tools Enabled",
             "description": "Enable debug tools",
-            "default": true
-          },
-          "memory_management_enabled": {
-            "type": "boolean",
-            "title": "Memory Management Enabled",
-            "description": "Enable memory management",
             "default": true
           },
           "notifications_default_channel": {
@@ -9533,25 +9345,6 @@
             "title": "Metrics Retention Hours",
             "description": "Metrics retention period in hours",
             "default": 24
-          },
-          "memory_cleanup_interval": {
-            "type": "integer",
-            "minimum": 300.0,
-            "title": "Memory Cleanup Interval",
-            "description": "Memory cleanup interval in seconds",
-            "default": 1800
-          },
-          "memory_aggressive_cleanup": {
-            "type": "boolean",
-            "title": "Memory Aggressive Cleanup",
-            "description": "Enable aggressive memory cleanup",
-            "default": false
-          },
-          "debug_auto_inspect_failures": {
-            "type": "boolean",
-            "title": "Debug Auto Inspect Failures",
-            "description": "Automatically inspect failed actions",
-            "default": true
           },
           "debug_max_history": {
             "type": "integer",
@@ -9650,10 +9443,6 @@
           "performance": {
             "$ref": "#/components/schemas/NLUAnalysisPerformanceConfig",
             "description": "Performance settings"
-          },
-          "languages": {
-            "$ref": "#/components/schemas/NLUAnalysisLanguagesConfig",
-            "description": "Language settings"
           }
         },
         "type": "object",
@@ -9732,42 +9521,8 @@
         "title": "NLUAnalysisHybridAnalyzerConfig",
         "description": "Configuration for NLU analysis hybrid analyzer"
       },
-      "NLUAnalysisLanguagesConfig": {
-        "properties": {
-          "supported_languages": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array",
-            "title": "Supported Languages",
-            "description": "Supported languages for analysis",
-            "default": [
-              "ru",
-              "en"
-            ]
-          },
-          "language_detection_threshold": {
-            "type": "number",
-            "maximum": 1.0,
-            "minimum": 0.0,
-            "title": "Language Detection Threshold",
-            "description": "Language detection confidence threshold",
-            "default": 0.8
-          }
-        },
-        "type": "object",
-        "title": "NLUAnalysisLanguagesConfig",
-        "description": "Configuration for NLU analysis language settings"
-      },
       "NLUAnalysisPerformanceConfig": {
         "properties": {
-          "max_analysis_time_ms": {
-            "type": "number",
-            "exclusiveMinimum": 0.0,
-            "title": "Max Analysis Time Ms",
-            "description": "Maximum analysis time per request (milliseconds)",
-            "default": 5000.0
-          },
           "max_concurrent_analyses": {
             "type": "integer",
             "maximum": 10.0,
@@ -9775,19 +9530,6 @@
             "title": "Max Concurrent Analyses",
             "description": "Maximum concurrent analyses",
             "default": 3
-          },
-          "enable_caching": {
-            "type": "boolean",
-            "title": "Enable Caching",
-            "description": "Enable analysis result caching",
-            "default": true
-          },
-          "cache_ttl_seconds": {
-            "type": "integer",
-            "minimum": 60.0,
-            "title": "Cache Ttl Seconds",
-            "description": "Cache time-to-live (seconds)",
-            "default": 300
           }
         },
         "type": "object",
@@ -10065,12 +9807,6 @@
             "title": "Language Detection Confidence Threshold",
             "description": "Language detection confidence threshold",
             "default": 0.8
-          },
-          "persist_language_preference": {
-            "type": "boolean",
-            "title": "Persist Language Preference",
-            "description": "Persist language preference across conversation",
-            "default": true
           },
           "providers": {
             "additionalProperties": {
@@ -13390,18 +13126,6 @@
             "title": "Audio Enabled",
             "description": "Enable audio playback stage",
             "default": true
-          },
-          "monitoring_enabled": {
-            "type": "boolean",
-            "title": "Monitoring Enabled",
-            "description": "Enable monitoring and metrics stage",
-            "default": true
-          },
-          "enable_vad_processing": {
-            "type": "boolean",
-            "title": "Enable Vad Processing",
-            "description": "Enable Voice Activity Detection processing for audio pipeline",
-            "default": true
           }
         },
         "type": "object",
@@ -13430,13 +13154,6 @@
             "title": "Max Segment Duration S",
             "description": "Maximum voice segment duration in seconds",
             "default": 10
-          },
-          "processing_timeout_ms": {
-            "type": "integer",
-            "minimum": 1.0,
-            "title": "Processing Timeout Ms",
-            "description": "Maximum processing time per frame in milliseconds",
-            "default": 50
           },
           "buffer_size_frames": {
             "type": "integer",
@@ -13687,12 +13404,6 @@
             "description": "Detection confidence threshold",
             "default": 0.8
           },
-          "buffer_seconds": {
-            "type": "number",
-            "title": "Buffer Seconds",
-            "description": "Audio buffer duration in seconds",
-            "default": 1.0
-          },
           "timeout_seconds": {
             "type": "number",
             "title": "Timeout Seconds",
@@ -13729,12 +13440,6 @@
             "title": "Resample Quality",
             "description": "Optimized for low-latency real-time processing (fast/medium/high/best)",
             "default": "fast"
-          },
-          "strict_validation": {
-            "type": "boolean",
-            "title": "Strict Validation",
-            "description": "Fatal error on provider conflicts",
-            "default": true
           },
           "providers": {
             "additionalProperties": {
@@ -14014,18 +13719,6 @@
             "type": "boolean",
             "title": "Enabled",
             "description": "Enable web input",
-            "default": true
-          },
-          "websocket_enabled": {
-            "type": "boolean",
-            "title": "Websocket Enabled",
-            "description": "Enable WebSocket input",
-            "default": true
-          },
-          "rest_api_enabled": {
-            "type": "boolean",
-            "title": "Rest Api Enabled",
-            "description": "Enable REST API input",
             "default": true
           }
         },

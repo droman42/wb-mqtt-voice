@@ -358,14 +358,10 @@ chunk_size = {config.inputs.microphone_config.chunk_size}        # Audio buffer 
 # Web Input Configuration
 [inputs.web_config]
 enabled = {str(config.inputs.web_config.enabled).lower()}
-websocket_enabled = {str(config.inputs.web_config.websocket_enabled).lower()}
-rest_api_enabled = {str(config.inputs.web_config.rest_api_enabled).lower()}
 
 # CLI Input Configuration
 [inputs.cli_config]
 enabled = {str(config.inputs.cli_config.enabled).lower()}
-prompt_prefix = "{config.inputs.cli_config.prompt_prefix}"
-history_enabled = {str(config.inputs.cli_config.history_enabled).lower()}
 
 # ============================================================
 # COMPONENT CONFIGURATIONS - Provider Management
@@ -465,7 +461,6 @@ enabled = {str(enabled).lower()}
 default_provider = "{vt_config.default_provider}"
 wake_words = {str(vt_config.wake_words)}
 confidence_threshold = {vt_config.confidence_threshold}
-buffer_seconds = {vt_config.buffer_seconds}
 timeout_seconds = {vt_config.timeout_seconds}
 
 {self._generate_provider_sections("voice_trigger.providers", vt_config.providers)}"""

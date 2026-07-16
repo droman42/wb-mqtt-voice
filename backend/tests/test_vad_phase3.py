@@ -261,11 +261,10 @@ async def test_process_audio_stream_without_interface_yields_error_result():
 
 
 def test_workflow_config_defaults_enable_vad_and_stages():
-    """UnifiedVoiceAssistantWorkflowConfig defaults: VAD + every pipeline stage on."""
+    """UnifiedVoiceAssistantWorkflowConfig defaults: every pipeline stage on.
+    (enable_vad_processing deleted at QUAL-83 — VAD gating is VADConfig.enabled, see module docstring.)"""
     default = UnifiedVoiceAssistantWorkflowConfig()
 
-    # enable_vad_processing default flipped to True after the VAD-required refactor.
-    assert default.enable_vad_processing is True
     assert default.voice_trigger_enabled is True
     assert default.asr_enabled is True
     assert default.nlu_enabled is True

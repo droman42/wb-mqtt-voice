@@ -67,11 +67,9 @@ class MicrophoneInputConfig(BaseModel):
     channels: int = Field(default=1, json_schema_extra={"widget": "readonly"}, description="Number of audio channels")
     chunk_size: int = Field(default=1024, description="Audio buffer chunk size")
     buffer_queue_size: int = Field(default=50, description="Audio buffer queue size for handling processing delays")
-    
-    # Phase 5: Global audio configuration enhancements
-    auto_resample: bool = Field(default=True, description="Enable/disable resampling globally")
-    resample_quality: str = Field(default="medium", description="Global resampling quality (fast/medium/high/best)")
-    
+    # QUAL-83: auto_resample/resample_quality deleted — declared-but-never-read (ARCH-50 §B);
+    # resampling is the audio negotiator's job and it takes no per-field quality knobs.
+
     @field_validator('sample_rate')
     @classmethod
     def validate_sample_rate(cls, v):
@@ -85,13 +83,6 @@ class MicrophoneInputConfig(BaseModel):
     def validate_channels(cls, v):
         if v < 1 or v > 8:
             raise ValueError("Channels must be between 1 and 8")
-        return v
-    
-    @field_validator('resample_quality')
-    @classmethod
-    def validate_resample_quality(cls, v):
-        if v not in ['fast', 'medium', 'high', 'best']:
-            raise ValueError("Resample quality must be one of: fast, medium, high, best")
         return v
     
     @field_validator('chunk_size')
@@ -112,15 +103,14 @@ class MicrophoneInputConfig(BaseModel):
 class WebInputConfig(BaseModel):
     """Web input configuration"""
     enabled: bool = Field(default=True, description="Enable web input")
-    websocket_enabled: bool = Field(default=True, description="Enable WebSocket input")
-    rest_api_enabled: bool = Field(default=True, description="Enable REST API input")
+    # QUAL-83: websocket_enabled/rest_api_enabled deleted — passthrough-only (ARCH-50 F-B4)
 
 
 class CLIInputConfig(BaseModel):
     """CLI input configuration"""
     enabled: bool = Field(default=True, description="Enable CLI input")
-    prompt_prefix: str = Field(default="irene> ", description="CLI prompt prefix")
-    history_enabled: bool = Field(default=True, description="Enable command history")
+    # QUAL-83: prompt_prefix/history_enabled deleted — passthrough-only; the prompt actually
+    # rendered is OutputConfig.console_prefix (ARCH-50 F-B4)
 
 
 class InputConfig(BaseModel):
@@ -313,16 +303,15 @@ class VoiceTriggerConfig(BaseModel):
                     "active provider. Normally left empty — wake words are declared per-provider."
     )
     confidence_threshold: float = Field(default=0.8, description="Detection confidence threshold")
-    buffer_seconds: float = Field(default=1.0, description="Audio buffer duration in seconds")
+    # QUAL-83: buffer_seconds + strict_validation deleted — declared-but-never-read (ARCH-50 F-B4)
     timeout_seconds: float = Field(default=5.0, description="Detection timeout in seconds")
-    
+
     # Phase 5: Audio configuration enhancements
     sample_rate: Optional[int] = Field(default=16000, description="AUTHORITATIVE: Audio sample rate in Hz (overrides provider preferences)")
     channels: int = Field(default=1, description="AUTHORITATIVE: Number of audio channels")
     allow_resampling: bool = Field(default=True, description="Enable resampling for voice triggers")
     resample_quality: str = Field(default="fast", description="Optimized for low-latency real-time processing (fast/medium/high/best)")
-    strict_validation: bool = Field(default=True, description="Fatal error on provider conflicts")
-    
+
     providers: Dict[str, Dict[str, Any]] = Field(
         default_factory=dict,
         description="Provider-specific configurations"
@@ -373,7 +362,7 @@ class NLUConfig(BaseModel):
     # (QUAL-36 single source of truth); these flags only govern detection *behavior*, not the language policy.
     auto_detect_language: bool = Field(default=True, description="Enable automatic language detection")
     language_detection_confidence_threshold: float = Field(default=0.8, description="Language detection confidence threshold")
-    persist_language_preference: bool = Field(default=True, description="Persist language preference across conversation")
+    # QUAL-83: persist_language_preference deleted — declared-but-never-read (ARCH-50 F-B4)
 
     providers: Dict[str, Dict[str, Any]] = Field(
         default_factory=dict,
@@ -445,7 +434,9 @@ class VADConfig(BaseModel):
 
     # Segmentation / pipeline (component-level — not engine-specific)
     max_segment_duration_s: int = Field(default=10, description="Maximum voice segment duration in seconds", ge=1, le=60)
-    processing_timeout_ms: int = Field(default=50, description="Maximum processing time per frame in milliseconds", ge=1)
+    # QUAL-83: processing_timeout_ms deleted — declared-but-never-read (ARCH-50 F-B4); the
+    # segmenter enforces no per-frame deadline (the test that claimed to mirror it construed
+    # the field, never the behavior)
     buffer_size_frames: int = Field(default=100, description="Maximum frames to buffer in voice segments", ge=10)
 
     # Audio normalization for ASR
@@ -466,26 +457,23 @@ class MonitoringConfig(BaseModel):
     """Monitoring component configuration (Phase 5 unified metrics system)"""
     enabled: bool = Field(default=True, description="Enable unified monitoring system")
     metrics_enabled: bool = Field(default=True, description="Enable metrics collection")
-    dashboard_enabled: bool = Field(default=True, description="Enable analytics dashboard")
     notifications_enabled: bool = Field(default=True, description="Enable notification system")
     debug_tools_enabled: bool = Field(default=True, description="Enable debug tools")
-    memory_management_enabled: bool = Field(default=True, description="Enable memory management")
-    
+    # QUAL-83: dashboard_enabled (only analytics_dashboard_enabled is read),
+    # memory_management_enabled + memory_cleanup_interval + memory_aggressive_cleanup
+    # (QUAL-28 MemoryManager-deletion leftovers) and debug_auto_inspect_failures deleted —
+    # declared-but-never-read (ARCH-50 F-B3)
+
     # Notification system configuration
     notifications_default_channel: str = Field(default="log", description="Default notification channel")
     notifications_tts_enabled: bool = Field(default=True, description="Enable TTS notifications")
     notifications_web_enabled: bool = Field(default=True, description="Enable web notifications")
-    
+
     # Metrics collection configuration
     metrics_monitoring_interval: int = Field(default=300, ge=30, description="Metrics collection interval in seconds")
     metrics_retention_hours: int = Field(default=24, ge=1, description="Metrics retention period in hours")
-    
-    # Memory management configuration
-    memory_cleanup_interval: int = Field(default=1800, ge=300, description="Memory cleanup interval in seconds")
-    memory_aggressive_cleanup: bool = Field(default=False, description="Enable aggressive memory cleanup")
-    
+
     # Debug tools configuration
-    debug_auto_inspect_failures: bool = Field(default=True, description="Automatically inspect failed actions")
     debug_max_history: int = Field(default=1000, ge=100, description="Maximum debug history entries")
     
     # Analytics dashboard configuration
@@ -617,16 +605,9 @@ class NLUAnalysisSpacyAnalyzerConfig(BaseModel):
 
 class NLUAnalysisPerformanceConfig(BaseModel):
     """Configuration for NLU analysis performance settings"""
-    max_analysis_time_ms: float = Field(default=5000.0, gt=0, description="Maximum analysis time per request (milliseconds)")
+    # QUAL-83: max_analysis_time_ms/enable_caching/cache_ttl_seconds deleted —
+    # declared-but-never-read (ARCH-50 F-B3)
     max_concurrent_analyses: int = Field(default=3, ge=1, le=10, description="Maximum concurrent analyses")
-    enable_caching: bool = Field(default=True, description="Enable analysis result caching")
-    cache_ttl_seconds: int = Field(default=300, ge=60, description="Cache time-to-live (seconds)")
-
-
-class NLUAnalysisLanguagesConfig(BaseModel):
-    """Configuration for NLU analysis language settings"""
-    supported_languages: List[str] = Field(default=["ru", "en"], description="Supported languages for analysis")
-    language_detection_threshold: float = Field(default=0.8, ge=0.0, le=1.0, description="Language detection confidence threshold")
 
 
 class NLUAnalysisConfig(BaseModel):
@@ -640,7 +621,8 @@ class NLUAnalysisConfig(BaseModel):
     hybrid_analyzer: NLUAnalysisHybridAnalyzerConfig = Field(default_factory=NLUAnalysisHybridAnalyzerConfig, description="Hybrid analyzer configuration")
     spacy_analyzer: NLUAnalysisSpacyAnalyzerConfig = Field(default_factory=NLUAnalysisSpacyAnalyzerConfig, description="SpaCy analyzer configuration")
     performance: NLUAnalysisPerformanceConfig = Field(default_factory=NLUAnalysisPerformanceConfig, description="Performance settings")
-    languages: NLUAnalysisLanguagesConfig = Field(default_factory=NLUAnalysisLanguagesConfig, description="Language settings")
+    # QUAL-83: `languages` sub-config deleted — never accessed; the analysis endpoints report
+    # the CANONICAL top-level language policy (CoreConfig.supported_languages, QUAL-36 rule)
     
     # NOTE: NLU Analysis endpoints are accessible via unified web API at system.web_port
     # All functionality available through /nlu_analysis/* endpoints (WebAPIPlugin integration)
@@ -671,17 +653,9 @@ class RandomHandlerConfig(BaseModel):
     default_dice_sides: int = Field(default=6, ge=2, le=100, description="Default number of dice sides")
 
 
-class DateTimeHandlerConfig(BaseModel):
-    """Configuration for datetime intent handler"""
-    timezone: Optional[str] = Field(default=None, description="Default timezone (None = system timezone)")
-    date_format: str = Field(default="%Y-%m-%d", description="Default date format")
-    time_format: str = Field(default="%H:%M:%S", description="Default time format")
-
-
-class GreetingsHandlerConfig(BaseModel):
-    """Configuration for greetings intent handler"""
-    personalized: bool = Field(default=True, description="Use personalized greetings")
-    context_aware: bool = Field(default=True, description="Consider time of day for greetings")
+# QUAL-83: DateTimeHandlerConfig + GreetingsHandlerConfig deleted whole — both handlers take
+# no config (their __init__ has no config param, no requires_configuration()); the declared
+# fields were fiction (ARCH-50 F-B2). Re-add deliberately if a handler grows a real need.
 
 
 class SystemHandlerConfig(BaseModel):
@@ -692,11 +666,9 @@ class SystemHandlerConfig(BaseModel):
 
 
 class ContextualCommandsConfig(BaseModel):
-    """Configuration for contextual command performance and caching (Phase 4 TODO16)"""
-    enable_pattern_caching: bool = Field(default=True, description="Enable contextual command pattern caching")
-    cache_ttl_seconds: int = Field(default=300, ge=60, le=3600, description="Cache time-to-live in seconds")
-    max_cache_size_patterns: int = Field(default=1000, ge=100, le=10000, description="Maximum cached patterns per language")
-    performance_monitoring: bool = Field(default=True, description="Monitor disambiguation latency")
+    """Configuration for contextual command disambiguation monitoring (Phase 4 TODO16)"""
+    # QUAL-83: enable_pattern_caching/cache_ttl_seconds/max_cache_size_patterns/
+    # performance_monitoring deleted — only latency_threshold_ms is read (ARCH-50 F-B3)
     latency_threshold_ms: float = Field(default=5.0, ge=1.0, le=100.0, description="Alert threshold for disambiguation latency in milliseconds")
 
 
@@ -833,14 +805,7 @@ class IntentSystemConfig(BaseModel):
         default_factory=RandomHandlerConfig,
         description="Random handler configuration"
     )
-    datetime: DateTimeHandlerConfig = Field(
-        default_factory=DateTimeHandlerConfig,
-        description="DateTime handler configuration"
-    )
-    greetings: GreetingsHandlerConfig = Field(
-        default_factory=GreetingsHandlerConfig,
-        description="Greetings handler configuration"
-    )
+    # QUAL-83: datetime/greetings handler-config fields deleted with their dead models (F-B2)
     system: SystemHandlerConfig = Field(
         default_factory=SystemHandlerConfig,
         description="System handler configuration"
@@ -865,8 +830,6 @@ class IntentSystemConfig(BaseModel):
             "conversation": self.conversation,
             "timer": self.timer,
             "random_handler": self.random_handler,
-            "datetime": self.datetime,
-            "greetings": self.greetings,
             "system": self.system
         }
         
@@ -978,24 +941,12 @@ class AssetConfig(BaseModel):
     
     # Directory management
     auto_create_dirs: bool = Field(default=True, description="Automatically create asset directories")
-    cleanup_on_startup: bool = Field(default=False, description="Clean temporary files on startup")
-    
-    # Download configuration
-    auto_download: bool = Field(default=True, description="Automatically download missing models")
-    download_timeout_seconds: int = Field(default=300, description="Download timeout in seconds")
-    max_download_retries: int = Field(default=3, description="Maximum download retry attempts")
-    verify_downloads: bool = Field(default=True, description="Verify downloaded file integrity")
-    
-    # Cache configuration
-    cache_enabled: bool = Field(default=True, description="Enable model and file caching")
-    max_cache_size_mb: int = Field(default=2048, description="Maximum cache size in megabytes")
-    cache_ttl_hours: int = Field(default=24, description="Cache time-to-live in hours")
-    
-    # Model management
-    preload_essential_models: bool = Field(default=False, description="Preload essential models on startup")
-    model_compression: bool = Field(default=True, description="Use compressed model formats when available")
-    concurrent_downloads: int = Field(default=2, description="Maximum concurrent model downloads")
-    
+    # QUAL-83: the whole download/cache-management block deleted (11 fields: cleanup_on_startup,
+    # auto_download, download_timeout_seconds, max_download_retries, verify_downloads,
+    # cache_enabled, max_cache_size_mb, cache_ttl_hours, preload_essential_models,
+    # model_compression, concurrent_downloads) — declared-but-never-read (ARCH-50 F-B1):
+    # downloads were never throttled, verified, retried, or cache-bounded by any of them.
+
     # Subdirectories under assets root
     @property
     def models_root(self) -> Path:
@@ -1073,10 +1024,8 @@ class UnifiedVoiceAssistantWorkflowConfig(BaseModel):
     llm_enabled: bool = Field(default=True, description="Enable LLM processing stage")
     tts_enabled: bool = Field(default=True, description="Enable TTS output stage")
     audio_enabled: bool = Field(default=True, description="Enable audio playback stage")
-    monitoring_enabled: bool = Field(default=True, description="Enable monitoring and metrics stage")
-    
-    # VAD processing configuration
-    enable_vad_processing: bool = Field(default=True, description="Enable Voice Activity Detection processing for audio pipeline")
+    # QUAL-83: monitoring_enabled + enable_vad_processing deleted — never read; VAD gating
+    # actually comes from VADConfig.enabled (ARCH-50 F-B4)
 
 
 class WorkflowConfig(BaseModel):
@@ -1267,68 +1216,8 @@ class EnvironmentVariableResolver:
             raise ValueError(f"Missing required environment variables for enabled components: {missing_vars}")
 
 
-# ============================================================
-# COMPONENT LOADING SYSTEM
-# ============================================================
-
-class ComponentRegistry:
-    """Registry for initialized components"""
-    
-    def __init__(self):
-        self._components: Dict[str, Any] = {}
-    
-    def register(self, name: str, component: Any) -> None:
-        """Register a component"""
-        self._components[name] = component
-    
-    def get(self, name: str) -> Optional[Any]:
-        """Get a component by name"""
-        return self._components.get(name)
-    
-    def has(self, name: str) -> bool:
-        """Check if component is registered"""
-        return name in self._components
-    
-    def list_components(self) -> List[str]:
-        """List all registered component names"""
-        return list(self._components.keys())
-
-
-class ComponentLoader:
-    """Component loader using entry-point discovery"""
-    
-    def __init__(self):
-        from ..utils.loader import dynamic_loader
-        self.dynamic_loader = dynamic_loader
-    
-    def load_components(self, config: ComponentConfig) -> ComponentRegistry:
-        """Load components based on configuration using entry-point discovery"""
-        registry = ComponentRegistry()
-        
-        # Get available components via entry-points
-        available_components = self.dynamic_loader.discover_providers("locveil_voice.components")
-        
-        # Load enabled components
-        for component_name in available_components:
-            if self._is_component_enabled(component_name, config):
-                try:
-                    component_class = available_components[component_name]
-                    component_instance = component_class()
-                    registry.register(component_name, component_instance)
-                except Exception as e:
-                    # Log error but continue with other components
-                    import logging
-                    logging.getLogger(__name__).error(f"Failed to load component '{component_name}': {e}")
-        
-        return registry
-    
-    def _is_component_enabled(self, component_name: str, config: ComponentConfig) -> bool:
-        """Check if component is enabled in configuration"""
-        return getattr(config, component_name, False)
-    
-    def get_available_components(self) -> Dict[str, Type]:
-        """Get available components via entry-point discovery"""
-        return self.dynamic_loader.discover_providers("locveil_voice.components")
+# QUAL-83: ComponentRegistry + ComponentLoader deleted — export-only duplicates of the real
+# component loading in core/components.py (ARCH-50 F-F3); zero functional callers.
 
 
 # ============================================================

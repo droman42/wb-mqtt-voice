@@ -20,6 +20,24 @@ newest entries near the top of each dated section.
 
 ## Action journal
 
+- **2026-07-16 — QUAL-83 DONE: ~30 fictional config fields and four dead code units, gone.** Third leg of
+  the sweep, and the widest diff: every field ARCH-50 catalogued as declared-but-never-read is deleted
+  from the models, the TOML template, all live TOMLs, and the config-ui contract — the AssetConfig
+  download/cache block (none of whose eleven knobs ever throttled, verified, or retried a download), two
+  whole handler-config models whose handlers never took config, the MemoryManager leftovers, and the
+  scattered singles. The NLU-analysis capabilities endpoint now reports the canonical top-level language
+  policy instead of a hardcoded `["ru","en"]` (QUAL-36). Dead code out: `get_provider_capabilities` (the
+  PROD-8 delegation, discharged), `EnhancedHandlerManager` (with it dies the third, file-scan-based
+  handler-discovery mechanism), `ComponentLoader`/`ComponentRegistry`, and the manager's caller-less
+  `add_handler`/`remove_handler` + legacy name-derived patterns — a handler reaching registration without
+  a donation now raises instead of guessing. The four orphan TOMLs are deleted and `full.toml` with them
+  (its one test consumer repointed to a live profile). One over-strip — profile lines for a still-live
+  resample field — was caught by the master-completeness gate and restored: the gate earning its keep
+  mid-sweep. En route, a NEW instance of the ARCH-50 pattern surfaced and is filed as QUAL-85:
+  `config/schemas.py` is a whole parallel hand-maintained schema tree still declaring fields this sweep
+  deleted, and the ASR/VT resampling fields' only reader is itself caller-less. Suite 1411 green,
+  contracts 11/11, config-ui check+build green.
+
 - **2026-07-16 — ARCH-52 DONE: the seed finding is dead — intent-handler loading tells no more lies.**
   Second leg of the remediation sweep. The two config fields the BUILD-36 bounce exposed as pure fiction
   (`auto_discover`/`discovery_paths` — declared, plumbed, documented, skip-listed, never read) are

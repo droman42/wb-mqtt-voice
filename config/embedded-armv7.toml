@@ -56,8 +56,6 @@ default_input = "web"
 
 [inputs.web_config]
 enabled = true
-websocket_enabled = true
-rest_api_enabled = true
 
 # ============================================================
 # OUTPUT CHANNELS (defaults made explicit; ARCH-8 bridge surface)
@@ -166,7 +164,6 @@ enabled = true                     # offline floor — never crashes when no net
 [voice_trigger]
 enabled = false
 confidence_threshold = 0.8
-buffer_seconds = 1.0
 timeout_seconds = 5.0
 
 # ============================================================
@@ -191,7 +188,6 @@ cache_recognition_results = false
 cache_ttl_seconds = 300
 auto_detect_language = false        # Russian-only deployment — language is fixed by config
 language_detection_confidence_threshold = 0.8
-persist_language_preference = true
 
 [nlu.providers.hybrid_keyword_matcher]
 enabled = true
@@ -290,16 +286,11 @@ info_detail_level = "basic"
 [monitoring]
 enabled = true
 metrics_enabled = true
-dashboard_enabled = false          # headless satellite — no web dashboard
 notifications_enabled = false
 debug_tools_enabled = true
-memory_management_enabled = true
 notifications_default_channel = "log"
 metrics_monitoring_interval = 300
 metrics_retention_hours = 24
-memory_cleanup_interval = 1800
-memory_aggressive_cleanup = false
-debug_auto_inspect_failures = true
 debug_max_history = 1000
 analytics_dashboard_enabled = false
 
@@ -330,18 +321,9 @@ detect_pattern_explosion = true
 detect_performance_issues = true
 
 [nlu_analysis.performance]
-max_analysis_time_ms = 5000.0
 max_concurrent_analyses = 3
-enable_caching = true
 cache_ttl_seconds = 300
 
-[nlu_analysis.languages]
-supported_languages = ["ru", "en"]
-language_detection_threshold = 0.8
-
-# ============================================================
-# WORKFLOWS — unified voice assistant (back-half stages only)
-# ============================================================
 [workflows]
 enabled = ["unified_voice_assistant"]
 default = "unified_voice_assistant"
@@ -355,11 +337,9 @@ intent_execution_enabled = true
 llm_enabled = true
 tts_enabled = true
 audio_enabled = false              # no local playback — reply rides the output seam
-monitoring_enabled = true
 sample_rate = 16000
 channels = 1
 validate_audio_compatibility = true
-enable_vad_processing = false      # no server VAD — utterances arrive already segmented
 default_source = "voice"
 default_language = "ru"
 session_timeout_minutes = 30
@@ -385,5 +365,4 @@ capture_level = "utterance"        # "utterance" | "segmenter" | "raw" (raw = he
 # ============================================================
 [assets]
 auto_create_dirs = true
-cleanup_on_startup = false
 # Paths via env: LOCVEIL_VOICE_ASSETS_ROOT (default ~/.cache/irene)

@@ -49,13 +49,9 @@ default_input = "cli"
 
 [inputs.web_config]
 enabled = true
-websocket_enabled = true
-rest_api_enabled = true
 
 [inputs.cli_config]
 enabled = true
-prompt_prefix = "irene> "
-history_enabled = true
 
 # ============================================================
 # OUTPUTS — where answers go

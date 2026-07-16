@@ -2567,72 +2567,6 @@ export interface components {
              * @default true
              */
             auto_create_dirs: boolean;
-            /**
-             * Cleanup On Startup
-             * @description Clean temporary files on startup
-             * @default false
-             */
-            cleanup_on_startup: boolean;
-            /**
-             * Auto Download
-             * @description Automatically download missing models
-             * @default true
-             */
-            auto_download: boolean;
-            /**
-             * Download Timeout Seconds
-             * @description Download timeout in seconds
-             * @default 300
-             */
-            download_timeout_seconds: number;
-            /**
-             * Max Download Retries
-             * @description Maximum download retry attempts
-             * @default 3
-             */
-            max_download_retries: number;
-            /**
-             * Verify Downloads
-             * @description Verify downloaded file integrity
-             * @default true
-             */
-            verify_downloads: boolean;
-            /**
-             * Cache Enabled
-             * @description Enable model and file caching
-             * @default true
-             */
-            cache_enabled: boolean;
-            /**
-             * Max Cache Size Mb
-             * @description Maximum cache size in megabytes
-             * @default 2048
-             */
-            max_cache_size_mb: number;
-            /**
-             * Cache Ttl Hours
-             * @description Cache time-to-live in hours
-             * @default 24
-             */
-            cache_ttl_hours: number;
-            /**
-             * Preload Essential Models
-             * @description Preload essential models on startup
-             * @default false
-             */
-            preload_essential_models: boolean;
-            /**
-             * Model Compression
-             * @description Use compressed model formats when available
-             * @default true
-             */
-            model_compression: boolean;
-            /**
-             * Concurrent Downloads
-             * @description Maximum concurrent model downloads
-             * @default 2
-             */
-            concurrent_downloads: number;
         };
         /**
          * AudioConfig
@@ -3079,18 +3013,6 @@ export interface components {
              * @default true
              */
             enabled: boolean;
-            /**
-             * Prompt Prefix
-             * @description CLI prompt prefix
-             * @default irene>
-             */
-            prompt_prefix: string;
-            /**
-             * History Enabled
-             * @description Enable command history
-             * @default true
-             */
-            history_enabled: boolean;
         };
         /**
          * ChangeImpactAnalysisResponse
@@ -3570,33 +3492,9 @@ export interface components {
         };
         /**
          * ContextualCommandsConfig
-         * @description Configuration for contextual command performance and caching (Phase 4 TODO16)
+         * @description Configuration for contextual command disambiguation monitoring (Phase 4 TODO16)
          */
         ContextualCommandsConfig: {
-            /**
-             * Enable Pattern Caching
-             * @description Enable contextual command pattern caching
-             * @default true
-             */
-            enable_pattern_caching: boolean;
-            /**
-             * Cache Ttl Seconds
-             * @description Cache time-to-live in seconds
-             * @default 300
-             */
-            cache_ttl_seconds: number;
-            /**
-             * Max Cache Size Patterns
-             * @description Maximum cached patterns per language
-             * @default 1000
-             */
-            max_cache_size_patterns: number;
-            /**
-             * Performance Monitoring
-             * @description Monitor disambiguation latency
-             * @default true
-             */
-            performance_monitoring: boolean;
             /**
              * Latency Threshold Ms
              * @description Alert threshold for disambiguation latency in milliseconds
@@ -4099,29 +3997,6 @@ export interface components {
             };
         };
         /**
-         * DateTimeHandlerConfig
-         * @description Configuration for datetime intent handler
-         */
-        DateTimeHandlerConfig: {
-            /**
-             * Timezone
-             * @description Default timezone (None = system timezone)
-             */
-            timezone?: string | null;
-            /**
-             * Date Format
-             * @description Default date format
-             * @default %Y-%m-%d
-             */
-            date_format: string;
-            /**
-             * Time Format
-             * @description Default time format
-             * @default %H:%M:%S
-             */
-            time_format: string;
-        };
-        /**
          * DebugResponse
          * @description Response for debug operations (moved from component)
          */
@@ -4492,24 +4367,6 @@ export interface components {
              * @description Error message if trace collection failed
              */
             error?: string | null;
-        };
-        /**
-         * GreetingsHandlerConfig
-         * @description Configuration for greetings intent handler
-         */
-        GreetingsHandlerConfig: {
-            /**
-             * Personalized
-             * @description Use personalized greetings
-             * @default true
-             */
-            personalized: boolean;
-            /**
-             * Context Aware
-             * @description Consider time of day for greetings
-             * @default true
-             */
-            context_aware: boolean;
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -4891,10 +4748,6 @@ export interface components {
             timer?: components["schemas"]["TimerHandlerConfig"];
             /** @description Random handler configuration */
             random_handler?: components["schemas"]["RandomHandlerConfig"];
-            /** @description DateTime handler configuration */
-            datetime?: components["schemas"]["DateTimeHandlerConfig"];
-            /** @description Greetings handler configuration */
-            greetings?: components["schemas"]["GreetingsHandlerConfig"];
             /** @description System handler configuration */
             system?: components["schemas"]["SystemHandlerConfig"];
         };
@@ -5801,18 +5654,6 @@ export interface components {
              * @default 50
              */
             buffer_queue_size: number;
-            /**
-             * Auto Resample
-             * @description Enable/disable resampling globally
-             * @default true
-             */
-            auto_resample: boolean;
-            /**
-             * Resample Quality
-             * @description Global resampling quality (fast/medium/high/best)
-             * @default medium
-             */
-            resample_quality: string;
         };
         /**
          * MonitoringConfig
@@ -5832,12 +5673,6 @@ export interface components {
              */
             metrics_enabled: boolean;
             /**
-             * Dashboard Enabled
-             * @description Enable analytics dashboard
-             * @default true
-             */
-            dashboard_enabled: boolean;
-            /**
              * Notifications Enabled
              * @description Enable notification system
              * @default true
@@ -5849,12 +5684,6 @@ export interface components {
              * @default true
              */
             debug_tools_enabled: boolean;
-            /**
-             * Memory Management Enabled
-             * @description Enable memory management
-             * @default true
-             */
-            memory_management_enabled: boolean;
             /**
              * Notifications Default Channel
              * @description Default notification channel
@@ -5885,24 +5714,6 @@ export interface components {
              * @default 24
              */
             metrics_retention_hours: number;
-            /**
-             * Memory Cleanup Interval
-             * @description Memory cleanup interval in seconds
-             * @default 1800
-             */
-            memory_cleanup_interval: number;
-            /**
-             * Memory Aggressive Cleanup
-             * @description Enable aggressive memory cleanup
-             * @default false
-             */
-            memory_aggressive_cleanup: boolean;
-            /**
-             * Debug Auto Inspect Failures
-             * @description Automatically inspect failed actions
-             * @default true
-             */
-            debug_auto_inspect_failures: boolean;
             /**
              * Debug Max History
              * @description Maximum debug history entries
@@ -5978,8 +5789,6 @@ export interface components {
             spacy_analyzer?: components["schemas"]["NLUAnalysisSpacyAnalyzerConfig"];
             /** @description Performance settings */
             performance?: components["schemas"]["NLUAnalysisPerformanceConfig"];
-            /** @description Language settings */
-            languages?: components["schemas"]["NLUAnalysisLanguagesConfig"];
         };
         /**
          * NLUAnalysisConflictDetectorConfig
@@ -6042,55 +5851,16 @@ export interface components {
             detect_performance_issues: boolean;
         };
         /**
-         * NLUAnalysisLanguagesConfig
-         * @description Configuration for NLU analysis language settings
-         */
-        NLUAnalysisLanguagesConfig: {
-            /**
-             * Supported Languages
-             * @description Supported languages for analysis
-             * @default [
-             *       "ru",
-             *       "en"
-             *     ]
-             */
-            supported_languages: string[];
-            /**
-             * Language Detection Threshold
-             * @description Language detection confidence threshold
-             * @default 0.8
-             */
-            language_detection_threshold: number;
-        };
-        /**
          * NLUAnalysisPerformanceConfig
          * @description Configuration for NLU analysis performance settings
          */
         NLUAnalysisPerformanceConfig: {
-            /**
-             * Max Analysis Time Ms
-             * @description Maximum analysis time per request (milliseconds)
-             * @default 5000
-             */
-            max_analysis_time_ms: number;
             /**
              * Max Concurrent Analyses
              * @description Maximum concurrent analyses
              * @default 3
              */
             max_concurrent_analyses: number;
-            /**
-             * Enable Caching
-             * @description Enable analysis result caching
-             * @default true
-             */
-            enable_caching: boolean;
-            /**
-             * Cache Ttl Seconds
-             * @description Cache time-to-live (seconds)
-             * @default 300
-             */
-            cache_ttl_seconds: number;
         };
         /**
          * NLUAnalysisReportGeneratorConfig
@@ -6330,12 +6100,6 @@ export interface components {
              * @default 0.8
              */
             language_detection_confidence_threshold: number;
-            /**
-             * Persist Language Preference
-             * @description Persist language preference across conversation
-             * @default true
-             */
-            persist_language_preference: boolean;
             /**
              * Providers
              * @description NLU provider instance configurations
@@ -8837,18 +8601,6 @@ export interface components {
              * @default true
              */
             audio_enabled: boolean;
-            /**
-             * Monitoring Enabled
-             * @description Enable monitoring and metrics stage
-             * @default true
-             */
-            monitoring_enabled: boolean;
-            /**
-             * Enable Vad Processing
-             * @description Enable Voice Activity Detection processing for audio pipeline
-             * @default true
-             */
-            enable_vad_processing: boolean;
         };
         /**
          * VADConfig
@@ -8877,12 +8629,6 @@ export interface components {
              * @default 10
              */
             max_segment_duration_s: number;
-            /**
-             * Processing Timeout Ms
-             * @description Maximum processing time per frame in milliseconds
-             * @default 50
-             */
-            processing_timeout_ms: number;
             /**
              * Buffer Size Frames
              * @description Maximum frames to buffer in voice segments
@@ -9049,12 +8795,6 @@ export interface components {
              */
             confidence_threshold: number;
             /**
-             * Buffer Seconds
-             * @description Audio buffer duration in seconds
-             * @default 1
-             */
-            buffer_seconds: number;
-            /**
              * Timeout Seconds
              * @description Detection timeout in seconds
              * @default 5
@@ -9084,12 +8824,6 @@ export interface components {
              * @default fast
              */
             resample_quality: string;
-            /**
-             * Strict Validation
-             * @description Fatal error on provider conflicts
-             * @default true
-             */
-            strict_validation: boolean;
             /**
              * Providers
              * @description Provider-specific configurations
@@ -9300,18 +9034,6 @@ export interface components {
              * @default true
              */
             enabled: boolean;
-            /**
-             * Websocket Enabled
-             * @description Enable WebSocket input
-             * @default true
-             */
-            websocket_enabled: boolean;
-            /**
-             * Rest Api Enabled
-             * @description Enable REST API input
-             * @default true
-             */
-            rest_api_enabled: boolean;
         };
         /**
          * WorkflowConfig

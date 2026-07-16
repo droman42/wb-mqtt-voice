@@ -605,20 +605,14 @@ export interface MicrophoneInputConfig {
   channels: number;
   chunk_size: number;
   buffer_queue_size: number;
-  auto_resample: boolean;
-  resample_quality: string;
 }
 
 export interface WebInputConfig {
   enabled: boolean;
-  websocket_enabled: boolean;
-  rest_api_enabled: boolean;
 }
 
 export interface CLIInputConfig {
   enabled: boolean;
-  prompt_prefix: string;
-  history_enabled: boolean;
 }
 
 export interface ComponentConfig {
@@ -672,13 +666,11 @@ export interface VoiceTriggerConfig {
   default_provider?: string;
   wake_words: WakeWordSpec[];
   confidence_threshold: number;
-  buffer_seconds: number;
   timeout_seconds: number;
   sample_rate?: number;
   channels: number;
   allow_resampling: boolean;
   resample_quality: string;
-  strict_validation: boolean;
   providers: Record<string, Record<string, any>>;
 }
 
@@ -694,7 +686,6 @@ export interface NLUConfig {
   cache_ttl_seconds: number;
   auto_detect_language: boolean;
   language_detection_confidence_threshold: number;
-  persist_language_preference: boolean;
   // QUAL-36: default_language/supported_languages live on CoreConfig (the canonical source), NOT here.
   providers: Record<string, Record<string, any>>;
 }
@@ -723,10 +714,6 @@ export interface IntentSystemConfig {
 }
 
 export interface ContextualCommandsConfig {
-  enable_pattern_caching: boolean;
-  cache_ttl_seconds: number;
-  max_cache_size_patterns: number;
-  performance_monitoring: boolean;
   latency_threshold_ms: number;
 }
 
@@ -743,7 +730,6 @@ export interface VADConfig {
   enabled: boolean;
   default_provider: string;
   max_segment_duration_s: number;
-  processing_timeout_ms: number;
   buffer_size_frames: number;
   normalize_for_asr: boolean;
   asr_target_rms: number;
@@ -754,18 +740,13 @@ export interface VADConfig {
 export interface MonitoringConfig {
   enabled: boolean;
   metrics_enabled: boolean;
-  dashboard_enabled: boolean;
   notifications_enabled: boolean;
   debug_tools_enabled: boolean;
-  memory_management_enabled: boolean;
   notifications_default_channel: string;
   notifications_tts_enabled: boolean;
   notifications_web_enabled: boolean;
   metrics_monitoring_interval: number;
   metrics_retention_hours: number;
-  memory_cleanup_interval: number;
-  memory_aggressive_cleanup: boolean;
-  debug_auto_inspect_failures: boolean;
   debug_max_history: number;
   analytics_dashboard_enabled: boolean;
   analytics_refresh_interval: number;
@@ -800,31 +781,13 @@ export interface NLUAnalysisConfig {
     pattern_validation_enabled: boolean;
   };
   performance: {
-    max_analysis_time_ms: number;
     max_concurrent_analyses: number;
-    enable_caching: boolean;
-    cache_ttl_seconds: number;
-  };
-  languages: {
-    supported_languages: string[];
-    language_detection_threshold: number;
   };
 }
 
 export interface AssetConfig {
   assets_root: string;
   auto_create_dirs: boolean;
-  cleanup_on_startup: boolean;
-  auto_download: boolean;
-  download_timeout_seconds: number;
-  max_download_retries: number;
-  verify_downloads: boolean;
-  cache_enabled: boolean;
-  max_cache_size_mb: number;
-  cache_ttl_hours: number;
-  preload_essential_models: boolean;
-  model_compression: boolean;
-  concurrent_downloads: number;
 }
 
 export interface WorkflowConfig {
@@ -842,8 +805,6 @@ export interface UnifiedVoiceAssistantWorkflowConfig {
   llm_enabled: boolean;
   tts_enabled: boolean;
   audio_enabled: boolean;
-  monitoring_enabled: boolean;
-  enable_vad_processing: boolean;
 }
 
 // Configuration schema metadata (from Pydantic introspection)

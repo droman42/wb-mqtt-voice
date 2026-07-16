@@ -152,10 +152,11 @@ def test_engine_threshold_governs_detection():
 
 def test_per_frame_compute_cost_is_bounded():
     """Robustness rewrite of the old benchmark: assert on the VAD's OWN measured per-frame compute
-    time (microseconds for energy VAD on numpy), NOT wall-clock real-time-factor. The bound is the
-    component's processing_timeout_ms and is generous enough to never flap under CI load."""
+    time (microseconds for energy VAD on numpy), NOT wall-clock real-time-factor. The 50ms bound
+    is a generous literal that never flaps under CI load (the old processing_timeout_ms config
+    field it cited was never read by the segmenter — deleted at QUAL-83)."""
     chunks = _chunks([("silence", 5), ("speech_like", 80), ("silence", 5)])
-    seg = VoiceSegmenter(_vad_config(processing_timeout_ms=50))
+    seg = VoiceSegmenter(_vad_config())
     _, delta = _drive(seg, chunks)
 
     n = delta["total_chunks_processed"]
@@ -176,7 +177,7 @@ def test_disabled_config_is_constructible_and_off():
 
 
 def test_valid_config_round_trips():
-    cfg = _vad_config(max_segment_duration_s=15, processing_timeout_ms=40, buffer_size_frames=120,
+    cfg = _vad_config(max_segment_duration_s=15, buffer_size_frames=120,
                       asr_target_rms=0.2)
     assert cfg.max_segment_duration_s == 15
     assert cfg.asr_target_rms == pytest.approx(0.2)
@@ -186,7 +187,6 @@ def test_valid_config_round_trips():
 @pytest.mark.parametrize("kwargs", [
     {"max_segment_duration_s": 0},     # ge=1
     {"max_segment_duration_s": 61},    # le=60
-    {"processing_timeout_ms": 0},      # ge=1
     {"buffer_size_frames": 5},         # ge=10
     {"asr_target_rms": 0.0},           # ge=0.01
     {"asr_target_rms": 0.5},           # le=0.3

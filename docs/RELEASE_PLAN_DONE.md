@@ -1459,6 +1459,32 @@ rationale/chronology lives in [`RELEASE_JOURNAL.md`](./RELEASE_JOURNAL.md).
       `power.on`; a mode change → `mode.set` (dead firmware-side until DRV-26); «какая температура в детской» →
       `room_temperature`.
 
+- [x] **QUAL-83** [QUAL][CONFIG] `[release]` — **✓ DONE 2026-07-16. Dead config-field + dead-code sweep**
+      (ARCH-50 §B/F-F3; every deletion re-verified by grep before removal). **Config fields deleted (~30):**
+      the whole `AssetConfig` download/cache block (11); `DateTimeHandlerConfig` + `GreetingsHandlerConfig`
+      whole (+ their `IntentSystemConfig` fields + validator-map entries); 4 of 5 `ContextualCommandsConfig`
+      (`latency_threshold_ms` stays — the one read); 5 `MonitoringConfig` (`debug_tools_enabled` +
+      `notifications_default_channel` verified LIVE and kept); 3 `NLUAnalysisPerformanceConfig`;
+      `NLUAnalysisLanguagesConfig` whole — and the capabilities endpoint now reports the CANONICAL
+      top-level language policy set at initialize (QUAL-36) instead of a `["ru","en"]` literal; singles:
+      mic `auto_resample`/`resample_quality` (+ dead validator), `VoiceTriggerConfig.buffer_seconds`/
+      `strict_validation`, `NLUConfig.persist_language_preference`, `VADConfig.processing_timeout_ms`,
+      workflow `monitoring_enabled`/`enable_vad_processing`, web `websocket_enabled`/`rest_api_enabled`,
+      CLI `prompt_prefix`/`history_enabled`. **Dead code deleted:** `get_provider_capabilities` (PROD-8
+      delegation discharged), `EnhancedHandlerManager` (63 lines incl. the third file-scan discovery
+      mechanism), `ComponentRegistry`+`ComponentLoader` (+ config exports), `add_handler`/`remove_handler`
+      + the legacy `_get_handler_patterns` (donation-less registration now raises explicitly;
+      `reload_handlers` stays). **Orphan TOMLs deleted:** vad-development/vad-production/vad-testing/
+      vosk-test; `full.toml` deleted too — `test_audio_negotiator.py` repointed to
+      `standalone-x86_64.toml` (same mic-16k role; 22/22 green). TOML template generator + all live TOMLs
+      stripped (one over-strip — `[asr]`/`[voice_trigger]` `resample_quality`, still model-live — caught
+      by the master-completeness gate and restored); `config-ui/openapi.json` re-dumped, types
+      regenerated, `api.ts` trimmed; check + build green. Verified: full suite 1411 passed / 7 skipped,
+      config-validator CI-mode all valid, master-completeness valid, import contracts 11/11.
+      **Discovered en route → filed QUAL-85 [deferred]:** `config/schemas.py` parallel schema tree;
+      ASR/VT resampling fields whose only reader (`resolve_audio_config`) is itself caller-less; api.ts
+      hand-interface drift. docs: guides/vad — the `processing_timeout_ms` row removed from the [vad]
+      field table (the field is gone); no other manifest node describes deleted fields.
 ### Bugs (BUG)
 - [x] **BUG-42** [TEST] `[deferred]` — **Order-dependent flake:
       `test_arch36_satellite.py::test_recorder_declined_and_next_utterance_finalizes` fails in the full

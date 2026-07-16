@@ -212,26 +212,7 @@ class Component(ComponentPort):
             True if switch successful, False otherwise
         """
         return self.set_default_provider(provider_name)
-    
-    def get_provider_capabilities(self) -> Dict[str, Any]:
-        """
-        Get capabilities of all providers.
-        
-        Returns:
-            Dictionary mapping provider names to their capabilities
-        """
-        capabilities = {}
-        for name, provider in self.providers.items():
-            if hasattr(provider, 'get_capabilities'):
-                try:
-                    capabilities[name] = provider.get_capabilities()
-                except Exception as e:
-                    capabilities[name] = {"error": str(e)}
-            else:
-                capabilities[name] = {"available": True}
-        
-        return capabilities
-    
+
     def list_available_providers(self) -> List[str]:
         """Get list of available provider names."""
         return list(self.providers.keys())
