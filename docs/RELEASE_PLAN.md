@@ -529,6 +529,21 @@ size-matched to the Russian stack; language is a per-config/deployment choice (a
       board** (D-4/D-5), seeded when BUILD-21 lands, not decided unilaterally here. Scope for that design: which
       repo owns the unified compose, health-gated `depends_on` vs. tolerant clients, whether the units collapse
       into one, and how `update.sh` stays per-repo when the compose is not. Related: BUILD-18 (ops conformance).
+- [ ] **BUILD-44** `[deferred]` [CONTRACTS][SATELLITE] — **Wake-pack v1.x bump confirmation** *(not a voice
+      release-1 gate — tagged deferred at filing, voice retags at intake if the PROD-26 sweep pulls it sooner;
+      repo-to-repo filing by
+      locveil-satellite 2026-07-18 — HK-12 round-1 greenlight; answering it is listed in the voice PROD-26
+      delegation; reconcile per task-start-reconciliation at intake)*. The satellite's DES-7 owner rulings made
+      the wake pack **multi-model**: one wake model per unit — 1 today, **≥3 near-term** (three units on hand) —
+      with the WHOLE pack landing unmodified in every device's models partition (hash-verifiability) and the
+      per-unit active model selected at runtime from provisioning-time NVS. Ask voice to CONFIRM: when the
+      additional models are added, the multi-model pack ships as a tagged **`wake-pack` version bump** — v1.x if
+      the sidecar-STAMP shape extends compatibly (files enumerated with per-file sha256; whether a multi-word
+      STAMP reshape is major is voice's call), and never an out-of-band edit of published files — the satellite's
+      `publish_model_pack.py` refuses replacing published bytes until the pin bumps, and its flash-time
+      verification pins the STAMP hashes (the pack stays voice's UNMODIFIED artifact per its `consumer-pins`
+      invariant; satellite never retrains or modifies). On the cut: `re-pin owed: satellite` (it re-pins +
+      re-publishes; its `.repin.toml` watches the family so the staleness nag is automatic).
 
 ### Documentation (DOC)
 
