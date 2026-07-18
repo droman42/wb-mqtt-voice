@@ -114,7 +114,7 @@ jobs:
       # fetch carried no tag refspec). The explicit fetch is version-proof; shallow stays.
       - name: Fetch tags (checkout@v4 ignores fetch-tags on the shallow SHA path)
         run: git fetch --tags --depth=1 origin
-      - name: Contract coherence guard (contract-guard, vendored at contract-guard-v3; strict — no --relax-tags, the pushed tag must exist)
+      - name: Contract coherence guard (contract-guard, vendored at contract-guard-v3.1; strict — no --relax-tags, the pushed tag must exist)
         run: python3 scripts/contract_guard.py --check
 
   # ------------------------------------------------------------------ #

@@ -20,6 +20,18 @@ newest entries near the top of each dated section.
 
 ## Action journal
 
+- **2026-07-18 — BUILD-45 DONE: the first routine staleness sweep of the new era — checked, filed,
+  discharged in one pass.** An owner "check all pins" hours after the PROD-26 rollout found exactly
+  what the machinery predicted it would: the bridge's afternoon (VWB-43 catalog-v1.8, commons IMPL-8
+  contract-guard-v3.1) had moved two owners past voice's pins, and the `[[tool]]` manifest + the
+  bridge's `re-pin owed: voice, commons` verdict made both findings visible without any prose
+  archaeology. One task, one sweep: catalog re-pinned at both dests in one multi-dest run (STAMP-only
+  minor — the golden and openapi bytes didn't move), contract-guard re-vendored at v3.1 (ARTIFACTS-PATH
+  is a no-op on voice's stamps). One deliberate reading recorded: the owner's new `artifacts` list
+  enumerates its `contracts/catalog/README.md`, but the pin keeps the three-file set — the flat pin
+  layout's own README occupies that basename, and the owner README is version-pinned through the STAMP
+  and `owner_commit` anyway. Everything green: 8/8 staleness rows, 5+8 conformance tests, both guards.
+
 - **2026-07-18 — ARCH-58 DONE: the estate's first vendored runtime code is live — and the strict pin
   earned its keep on first contact.** The core-py migration ran exactly as designed two days ago:
   `.repin.toml` gained the `core-py` family (declared once, in the new format — the PROD-26 sequencing

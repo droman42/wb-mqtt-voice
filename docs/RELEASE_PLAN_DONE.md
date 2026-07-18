@@ -2317,6 +2317,28 @@ rationale/chronology lives in [`RELEASE_JOURNAL.md`](./RELEASE_JOURNAL.md).
       ASSET-6 cut
       contracts: none moved — this entry COMMITS the wake-pack v1.x versioning policy (owner-side
       promise); the actual `wake-pack-v1.x` cut with `re-pin owed: satellite` lands via ASSET-6
+- [x] **BUILD-45** `[release]` [PROCESS][CONTRACTS] — **DONE 2026-07-18 (filed + completed same
+      session; owner ask: "check all pins" → both findings as ONE task, one sweep).** The two
+      staleness findings from the first post-PROD-26 `repin --check` — both exhaust of the bridge's
+      same-day rollout afternoon — discharged in one pass. **(1) catalog re-pinned v1.7→v1.8 at BOTH
+      dests** (one multi-dest run; VWB-43's STAMP-only minor — `catalog.golden.json`/`openapi.json`
+      verified byte-identical across the tags; the STAMP's `artifacts` went repo-root-relative and the
+      repo-root-README false-drift trap was defused). Discharges the bridge's recorded
+      `re-pin owed: voice, commons` — the first owed-downstream verdict retired by its consumer. Pin
+      set deliberately stays `golden + openapi + STAMP` (matching commons' declared family): the
+      owner's `artifacts` now also enumerates `contracts/catalog/README.md`, but the consumer pin
+      folders carry their OWN README (basename collision in the flat pin layout) and the owner
+      README's version is already pinned via STAMP verbatim + `owner_commit` — recorded as the
+      deliberate pins-complete-and-verbatim reading for owner-side doc pointers. **(2) contract-guard
+      re-vendored v3→v3.1** (3.1.0 — IMPL-8's ARTIFACTS-PATH rule, repo-root-only `artifacts` entries;
+      a no-op on voice's own stamps — none carries an `artifacts` array); `[[tool]]` `pinned_tag`
+      bumped; registry/CLAUDE.md/CI version mentions moved v3→v3.1. **Verified:**
+      `repin --check --fail-on any` fully green (5 pins + 3 tools); catalog conformance 5 passed;
+      commons crossover conformance (`eval/tests/test_contracts_pin.py`) 8 passed; both guards green
+      at 1.4.0 / 3.1.0.
+      docs: none — pin metadata + enforcement tooling only; no manifest node's content changed
+      contracts: catalog pin bumped v1.7→v1.8 (both dests, one run — bridge's `re-pin owed`
+      discharged); contract-guard consumed-tool pin bumped v3→v3.1
 ### Models & Assets (ASSET)
 ### Documentation (DOC)
 - [x] **DOC-5b** (P2) — DONE 2026-06-08: regenerated `guides/DONATION_FILE_SPECIFICATION.md` for the v1.1
