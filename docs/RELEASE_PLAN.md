@@ -543,7 +543,15 @@ size-matched to the Russian stack; language is a per-config/deployment choice (a
       `publish_model_pack.py` refuses replacing published bytes until the pin bumps, and its flash-time
       verification pins the STAMP hashes (the pack stays voice's UNMODIFIED artifact per its `consumer-pins`
       invariant; satellite never retrains or modifies). On the cut: `re-pin owed: satellite` (it re-pins +
-      re-publishes; its `.repin.toml` watches the family so the staleness nag is automatic).
+      re-publishes; its `.repin.toml` watches the family so the staleness nag is automatic). **Addendum
+      (same day, found live by the satellite's OPS-13 smoke test): the published pack has ALREADY drifted
+      upstream** — fetching the STAMP's own URLs today yields an `irina.json` whose sha256 no longer matches
+      the pinned `fc8beb99…` (the `.tflite` still matches), because the STAMP's URLs point at HF
+      `/resolve/main/` — a MUTABLE ref — and the HF repo's main revision has moved. Consequence: the
+      satellite's publish-from-URLs path is correctly refused; only `--from DIR` with the original bytes can
+      publish. The bump should (a) reconcile/re-stamp the current upstream bytes (or restore the original)
+      and (b) switch the STAMP URLs to an immutable `/resolve/<revision>/` ref so a third-party main move can
+      never invalidate a pinned pack again.
 
 ### Documentation (DOC)
 
