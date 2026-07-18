@@ -2213,6 +2213,38 @@ rationale/chronology lives in [`RELEASE_JOURNAL.md`](./RELEASE_JOURNAL.md).
       is referenced, zero unreferenced warnings. **Verified after:** scope-guard 1.3.0 green (EXIT 0), the
       pre-commit hook path unchanged (`--check` only).
       docs: none — enforcement-tool re-pin; no manifest doc's content changed.
+- [x] **BUILD-41** `[release]` [PROCESS][CONTRACTS] — **DONE 2026-07-18 (PROD-26 / HK-12 sweep, filed +
+      completed same session; ONE commit with BUILD-42 — the keepers' one-sweep-per-repo condition).**
+      Vendored `scripts/contract_guard.py` re-pinned `contract-guard-v2`→`contract-guard-v3` (1.1.0→3.0.0 —
+      major now tracks the tag family): **ORPHAN-TAG** (registry-keyed reverse of TAG-MISSING),
+      **CONTENT-DRIFT** (STAMPs enumerating `artifacts` are byte-frozen at their tag; voice's existing
+      stamps carry no `artifacts` key and opt out unchanged), **VENDORABLE-UNREGISTERED** + `--relax-tags`
+      (mid-bump tolerance). Voice deliberately ships **no `.contract-guard.toml`** — absent config = empty
+      vendorable roots (the no-heuristic posture recorded at delegation). `hooks/pre-commit` contract-guard
+      line gains `--relax-tags` + the mid-bump comment; CI `contract-guard` step re-stamped v2→v3 with the
+      strict/no-relax posture spelled out; `contracts/README.md` guard paragraph v2→v3 + the §5
+      staleness-is-repin's-job pointer (BUILD-43); CLAUDE.md `cross-repo-source-of-truth` mention v2→v3.
+      **Verified:** contract-guard 3.0.0 green on the live tree in both hook (`--relax-tags`) and strict
+      modes, zero warnings — all four owned tags + three pins pass the new rules.
+      docs: none — enforcement tooling + process surfaces only; no manifest node's content changed.
+      contracts: contract-guard consumed-tool pin bumped v2→v3 (its `[[tool]]` manifest row lands with
+      BUILD-43's `.repin.toml`).
+- [x] **BUILD-42** `[release]` [PROCESS] — **DONE 2026-07-18 (PROD-26 / HK-12 sweep, filed + completed
+      same session; ONE commit with BUILD-41).** Vendored `scripts/scope_guard.py` re-pinned
+      `scope-v6`→`scope-v7.1` (1.3.0→1.4.0): **CONTRACTS-VERDICT** — `.scope-guard.toml` gains
+      `contracts_verdict_since = "2026-07-18"` (the sweep date; earlier completions frozen; spec
+      `../locveil-commons/process/ledger-discipline.md` §7) — plus **UNKNOWN-PREFIX**. The v7.1 blocks
+      release: the **`contract-triad`** pinned block pasted into CLAUDE.md between fresh
+      `locveil:begin/end contract-triad scope-v7.1` markers, sha256 registered as the third
+      `[[claude.blocks]]` entry. Intake reconciliation HELD: `shared-invariants` + `cross-repo-board`
+      block hashes verified current at scope-v7.1 — only the new third block lands, no re-pin of the
+      existing two. CI ledger-guard comment scope-v6→scope-v7.1; toml header re-stamped `per BUILD-42`.
+      **Verified:** scope-guard 1.4.0 green live — this entry and BUILD-41's are the first to carry the
+      verdict line the new rule enforces (retro on rollout day per the HK-6 precedent).
+      docs: none — process/guard surfaces only (CLAUDE.md, `.scope-guard.toml`, hook, CI are not
+      manifest nodes).
+      contracts: scope consumed-tool pin bumped v6→v7.1; contract-triad block FIRST CONSUMED (pinned
+      into CLAUDE.md between markers + hashed).
 ### Models & Assets (ASSET)
 ### Documentation (DOC)
 - [x] **DOC-5b** (P2) — DONE 2026-06-08: regenerated `guides/DONATION_FILE_SPECIFICATION.md` for the v1.1

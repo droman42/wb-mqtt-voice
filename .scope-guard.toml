@@ -1,4 +1,4 @@
-# scope-guard config for locveil-voice (BUILD-30; vendored scripts/scope_guard.py at scope-v6 per BUILD-40).
+# scope-guard config for locveil-voice (BUILD-30; vendored scripts/scope_guard.py at scope-v7.1 per BUILD-42).
 # Normative convention: ../locveil-commons/process/ledger-discipline.md (HK-1 / PROD-13).
 # Behavior changes happen in locveil-commons, never here — re-pin to move.
 
@@ -16,6 +16,7 @@ high_water = 3000
 low_water = 2000
 hard_ceiling = 4000
 docs_verdict_since = "2026-07-12"        # completions dated from here need a docs: verdict (process/user-docs.md §3)
+contracts_verdict_since = "2026-07-18"   # HK-12/BUILD-42: completions from the sweep date need a contracts: verdict (ledger-discipline.md §7; earlier entries frozen)
 
 [evidence]
 dirs = ["docs/review", "docs/design"]
@@ -41,3 +42,6 @@ sha256 = "71d1c3bb3a6de0626a4c9ab8709f2e31166c866cede31c345fc93a58e4345218"
 [[claude.blocks]]
 name = "cross-repo-board"
 sha256 = "0f5e8f63b55c752ddfd542e112f06dd1a6d615c38f1b6f1d57dbeaee7dbdb86a"
+[[claude.blocks]]
+name = "contract-triad"
+sha256 = "a3fe8d6b58d86fd997ef8e17bf8b8216aba09ad4f4978b0bb56fd05ce12d1fc2"

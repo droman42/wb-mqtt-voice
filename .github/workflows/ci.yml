@@ -95,7 +95,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Ledger discipline guard (scope-guard, vendored at scope-v6)
+      - name: Ledger discipline guard (scope-guard, vendored at scope-v7.1)
         run: python3 scripts/scope_guard.py --config .scope-guard.toml --check
 
   # ------------------------------------------------------------------ #
@@ -108,13 +108,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      # v2's TAG-MISSING rule resolves owned STAMP tags via `git tag -l`, and the
+      # The TAG-MISSING rule resolves owned STAMP tags via `git tag -l`, and the
       # default checkout is tag-less. `fetch-tags: true` is NOT enough: checkout@v4
       # ignores it on its shallow fetch-by-SHA path (run 29417879036 proved it — the
       # fetch carried no tag refspec). The explicit fetch is version-proof; shallow stays.
       - name: Fetch tags (checkout@v4 ignores fetch-tags on the shallow SHA path)
         run: git fetch --tags --depth=1 origin
-      - name: Contract coherence guard (contract-guard, vendored at contract-guard-v2)
+      - name: Contract coherence guard (contract-guard, vendored at contract-guard-v3; strict — no --relax-tags, the pushed tag must exist)
         run: python3 scripts/contract_guard.py --check
 
   # ------------------------------------------------------------------ #

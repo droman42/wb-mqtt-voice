@@ -533,25 +533,6 @@ size-matched to the Russian stack; language is a per-config/deployment choice (a
       board** (D-4/D-5), seeded when BUILD-21 lands, not decided unilaterally here. Scope for that design: which
       repo owns the unified compose, health-gated `depends_on` vs. tolerant clients, whether the units collapse
       into one, and how `update.sh` stays per-repo when the compose is not. Related: BUILD-18 (ops conformance).
-- [ ] **BUILD-41** `[release]` [PROCESS][CONTRACTS] — **Re-vendor `scripts/contract_guard.py` at
-      `contract-guard-v3`** (PROD-26 delegation / HK-12, filed 2026-07-18; executed with BUILD-42 as ONE
-      commit — the keepers' one-sweep-per-repo condition). v3 (script 3.0.0 — major tracks the tag family)
-      adds ORPHAN-TAG (registry-keyed reverse of TAG-MISSING), CONTENT-DRIFT (STAMPs enumerating
-      `artifacts` are byte-frozen at their tag; stamps without the key opt out), VENDORABLE-UNREGISTERED
-      (driven by `.contract-guard.toml` `vendorable_roots` — voice deliberately ships NO config: absent
-      config = empty roots, no vendorable heuristic wanted here) and `--relax-tags` (mid-bump tolerance:
-      the hook line gains it and warns; CI stays strict — a pushed tag satisfies it). Registry prose +
-      CLAUDE.md pinned-tag mentions move v2→v3. Accept: contract-guard green locally, hook and strict.
-- [ ] **BUILD-42** `[release]` [PROCESS] — **Re-vendor `scripts/scope_guard.py` at `scope-v7.1` + pin the
-      `contract-triad` block** (PROD-26 / HK-12; ONE commit with BUILD-41). scope-v7 (1.4.0) adds
-      CONTRACTS-VERDICT — completions dated from `contracts_verdict_since` (set to **2026-07-18**, the
-      sweep date; earlier entries frozen) carry `contracts: <what moved>` or `contracts: none — <why>`,
-      spec `../locveil-commons/process/ledger-discipline.md` §7 — plus UNKNOWN-PREFIX; v7.1 is the blocks
-      release: the `contract-triad` pinned block pasted into CLAUDE.md between fresh `locveil:begin/end`
-      markers + its sha256 in `.scope-guard.toml`. Intake reconciliation: `shared-invariants` +
-      `cross-repo-board` block hashes verified CURRENT at scope-v7.1 (commons block sources unchanged —
-      only the new third block lands, no re-pin of the existing two). Rollout-day completions carry retro
-      `contracts:` lines per the HK-6 precedent. Accept: scope-guard 1.4.0 green on the live tree.
 - [ ] **BUILD-43** `[release]` [PROCESS][CONTRACTS] — **Adopt the vendored repin tool at `repin-v1`**
       (PROD-26 / HK-12 — the org promotion of this repo's own BUILD-24 engine coming home; SEQUENCED
       BEFORE ARCH-58 so the core-py family is declared once, in the new format). Vendor `scripts/repin.py`

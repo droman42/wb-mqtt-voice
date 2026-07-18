@@ -20,6 +20,20 @@ newest entries near the top of each dated section.
 
 ## Action journal
 
+- **2026-07-18 — BUILD-41 + BUILD-42 DONE (one commit): the HK-12 enforcement sweep lands — voice now
+  runs contract-guard v3 and scope-guard v7.1, and carries the contract-triad block.** The PROD-26
+  delegation arrived with the commons build already complete (repin-v1 / contract-guard-v3 / scope-v7.1
+  all tagged same-day), so the sweep was pure adoption: both guards re-vendored at their new tags in a
+  single commit, the hook's contract-guard line now tolerates mid-bump commits (`--relax-tags`) while CI
+  stays strict, and `contracts_verdict_since` is set to today — from here every completion entry answers
+  the contracts question (`contracts: <what moved>` / `contracts: none — <why>`) the way it has answered
+  the docs question since HK-6. The third pinned block (contract-triad: surface-with-the-artifact,
+  pins-complete-and-verbatim, contracts-verdict, the §5 staleness ladder) sits in CLAUDE.md between
+  fresh markers with its hash registered; the two existing blocks verified current at scope-v7.1 and
+  did not move. Both guards green on the live tree before and after the ledger flip. Next in the sweep:
+  BUILD-43 (the repin engine this repo invented comes home as a vendored tool), DOC-14 (trace-format
+  stamp), the BUILD-44 answer to satellite.
+
 - **2026-07-16 — ARCH-42 DONE: the core-py loader extraction is designed — the council's sequencing
   lock is fully discharged.** Interactive session, two rounds, on top of a same-day foundation that
   didn't exist this morning: ARCH-50's inventory plus its remediation left the engine small and
