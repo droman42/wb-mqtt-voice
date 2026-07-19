@@ -1,4 +1,4 @@
-# scope-guard config for locveil-voice (BUILD-30; vendored scripts/scope_guard.py at scope-v7.1 per BUILD-42).
+# scope-guard config for locveil-voice (BUILD-30; vendored scripts/scope_guard.py at scope-v7.2 per BUILD-46).
 # Normative convention: ../locveil-commons/process/ledger-discipline.md (HK-1 / PROD-13).
 # Behavior changes happen in locveil-commons, never here — re-pin to move.
 

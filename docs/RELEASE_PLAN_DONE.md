@@ -2412,6 +2412,28 @@ rationale/chronology lives in [`RELEASE_JOURNAL.md`](./RELEASE_JOURNAL.md).
       docs: none — pin metadata + enforcement tooling only; no manifest node's content changed
       contracts: catalog pin bumped v1.7→v1.8 (both dests, one run — bridge's `re-pin owed`
       discharged); contract-guard consumed-tool pin bumped v3→v3.1
+- [x] **BUILD-46** `[deferred]` [PROCESS][CONTRACTS] — **✓ DONE 2026-07-19 (filed + completed same
+      session; owner: "file the scope-guard v7.2 re-vendor + other modified contracts repin task and
+      do it").** The second routine staleness sweep — two findings from `repin --check`, one pass.
+      **(1) scope_guard.py re-vendored scope-v7.1→v7.2** (commons IMPL-9: rotation-parser fix — the
+      DATED pattern demanded the date flush against the heading marks, so ##-style journals parsed as
+      zero sections and `--rotate` refused; self-reports 1.4.1). Byte copy from the tag; `[[tool]]`
+      `pinned_tag` bumped; version mentions re-stamped (.scope-guard.toml header, ci.yml step name).
+      The three CLAUDE.md pinned-block markers deliberately stay at their tags (scope-v5/v4/v7.1) —
+      markers record when each BLOCK's text last moved, and the v7.2 STAMP states block text is
+      unchanged from v7.1 (sha256s in .scope-guard.toml still match).
+      **(2) catalog re-pinned v1.8→v1.9 at BOTH dests in one multi-dest run** (bridge VWB-31). The
+      delta is a documentation-string-only refinement of the `/canonical` `device_unreachable` (503)
+      semantics — handler-reported reachability failures now surface as 503 alongside the echo
+      timeout; `catalog.golden.json` byte-untouched, no schema shapes moved, and voice already maps
+      `device_unreachable` → `err_device_unreachable`, so consumption needs no code change. The v1.9
+      STAMP's `artifacts` are now repo-root-relative (contract-guard v3.1 ARTIFACTS-PATH world) and
+      still enumerate the owner README — the BUILD-45 three-file-set reading stands.
+      Verified: `repin --check --fail-on any` fully green (5 pins + 3 tools); catalog conformance 5
+      passed; commons crossover conformance 8 passed; scope-guard 1.4.1 green on this ledger.
+      docs: none — enforcement tooling + pin metadata; no manifest node's content changed
+      contracts: catalog pin bumped v1.8→v1.9 (both dests, one run); scope-guard consumed-tool pin
+      bumped v7.1→v7.2
 ### Models & Assets (ASSET)
 ### Documentation (DOC)
 - [x] **DOC-5b** (P2) — DONE 2026-06-08: regenerated `guides/DONATION_FILE_SPECIFICATION.md` for the v1.1

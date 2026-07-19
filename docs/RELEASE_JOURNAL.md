@@ -20,6 +20,17 @@ newest entries near the top of each dated section.
 
 ## Action journal
 
+- **2026-07-19 — BUILD-46 DONE: staleness sweep #2 — the machinery is now routine.** Same shape as
+  BUILD-45, one day later: the nag surfaced two owner-side moves (commons cut scope-v7.2 fixing the
+  rotation parser that misread ##-style journals; the bridge cut catalog-v1.9 refining the
+  `device_unreachable` 503 semantics for handler-reported reachability failures), and one task
+  discharged both. The scope-guard re-vendor was a byte copy + tag bump — notably the CLAUDE.md block
+  markers did NOT move, because the v7.2 STAMP attests the pinned block text is unchanged; markers
+  track block provenance, not tool version. The catalog re-pin was doc-prose-only (golden untouched)
+  and voice's existing `err_device_unreachable` mapping already speaks the refined semantics.
+  Everything green on the first run: 8/8 staleness rows, 5+8 conformance, the new guard validating
+  the very ledger entry that records its own arrival.
+
 - **2026-07-19 — QUAL-85 DONE: the drift factory is closed — two schema copies stopped being copies.**
   The sweep's third task, and the deletions ran deeper than the filing knew. The hand-written component
   schema tree turned out to be pure fiction (nothing validated against its field content at runtime) —

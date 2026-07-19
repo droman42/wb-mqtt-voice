@@ -1,17 +1,17 @@
 {
   "contract": "catalog",
-  "version": "1.8",
-  "tag": "catalog-v1.8",
+  "version": "1.9",
+  "tag": "catalog-v1.9",
   "owner_repo": "locveil-bridge",
-  "owner_commit": "9c6bb8f0355e2a0a3512b83966cf48661d3ab4b7",
+  "owner_commit": "fa3eb109022d06baacb42e535112780c23fd0589",
   "pinned_by": "locveil-voice scripts/repin.py (BUILD-43)",
-  "pin_date": "2026-07-18",
-  "bridge_commit": "fab85057dcc876d3d192d98ebf4d2888b4f5f664",
+  "pin_date": "2026-07-19",
+  "bridge_commit": "56f1d376f8704073a44c396158baaa6e9b00307d",
   "catalog_version": "5622ba7a1a78102a",
   "files": {
     "catalog.golden.json": "241746041f8333dcf746f158da301441a0f135663fb3668bef35dd3726359030",
-    "openapi.json": "4a67e17a757179bd2de9a087f97ea9a47b701905d04860432aed778362a377bb",
-    "STAMP.json": "8c88ff311d6295eba2cbcc5d54cd003890310ff52c38f1be4fefa7ca4a622e63"
+    "openapi.json": "97d2ffdc28ea21ae3d2e8617be0e292e41081506b1be60559326dc02241cf4b0",
+    "STAMP.json": "f81ef37195b64de6b383b98b9455ebfdced43199fb64a7ce5cde277b14dd842c"
   },
   "conformance": "backend/tests/test_catalog_contract_conformance.py"
 }
