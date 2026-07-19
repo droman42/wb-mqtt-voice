@@ -1387,6 +1387,28 @@ rationale/chronology lives in [`RELEASE_JOURNAL.md`](./RELEASE_JOURNAL.md).
       regenerated** (endpoints removed → `scripts/dump_openapi.py` + config-ui `npm run gen:api-types`; apiClient
       never used the stubs). Gates: 1138 passed / 7 skipped; pyright clean on all 7 touched files; import-linter
       9/9 kept; config-ui `check` + `build` pass. Evidence: `docs/review/arch_memory_review_2026-07-02.md` §A6/A7.
+- [x] **QUAL-60** [INTENTS][LLM] (P3) `[deferred]` — **✓ DONE 2026-07-19. Summarize-then-truncate for the LLM
+      conversation window** (BUG-18 follow-up; the analysis session first established the two-layer budget
+      reality: the turn window is the binding constraint, tokens never are — so the trigger stays at window
+      overflow). Design executed: turns the BUG-18 window drops accumulate in a bounded pending buffer on the
+      handler context (`trim_handler_messages` now RETURNS what it dropped; mid-list system machinery
+      excluded); every `_SUMMARIZE_EVERY_MESSAGES` (=10, i.e. 5 turns) ONE LLM call folds them into a rolling
+      summary — never a call per turn; the summary lives on the handler context, NOT in the message list, so
+      neither the BUG-18 trim nor the QUAL-52 `fit_messages` layer can evict it, and it is injected at
+      prompt-build time as the first context message via a new localized `earlier_summary` context label.
+      Prompt: new `context_summary` asset in both languages (facts/names/decisions/open-threads brief, merge
+      with prior summary, ≤5 sentences); the call is capped at `_SUMMARY_MAX_TOKENS=600` and sent role=user
+      (the anthropic provider strips system messages). **Failure posture — degrade to BUG-18, never worse:**
+      unavailable LLM / raised call → buffer kept (bounded at 40 messages, oldest fall back to plain
+      windowing); and because the QUAL-15 chain never raises but returns the console floor's canned
+      "unavailable" text on total failure, that exact text (compared against the same
+      `assets/localization/llm` source the component seeds the floor from) is explicitly rejected as a
+      summary. Cadence decision recorded: every-K (constant, no new config surface). Tests: new
+      `test_conversation_summary.py` (6: trim-returns-dropped, one-call-per-K cadence, prompt injection with
+      localized label, failure-keeps-buffer, console-floor rejection, buffer bound); `test_conversation_window`
+      stub taught `is_available` (False — stays the pure BUG-18 test). Suite 1459 green; pyright 0 on both
+      touched files. docs: none — no manifest node describes conversation-memory behavior. contracts: none —
+      handler-internal; no wire surface moved.
 - [x] **QUAL-61** [QUAL][FAF] (P3) `[deferred]` — **DONE 2026-07-02.** Dead-capability removal, all three cuts per
       ARCH-27 D-7 (user preference: dead code removed). **(1)** Retry machinery: `_execute_with_retry` +
       `_is_transient_failure` deleted (−98 LOC), `max_retries`/`retry_delay` launch params removed from both F&F

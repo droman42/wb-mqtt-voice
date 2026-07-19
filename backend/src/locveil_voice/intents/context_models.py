@@ -193,22 +193,27 @@ class UnifiedConversationContext:
         else:
             context["messages"] = []
 
-    def trim_handler_messages(self, handler_name: str, max_messages: int) -> None:
+    def trim_handler_messages(self, handler_name: str, max_messages: int) -> List[Dict[str, Any]]:
         """Window a handler's LLM message list to the last ``max_messages`` entries (BUG-18).
 
         The seed system prompt at index 0 (the ``clear_handler_context(keep_system=True)``
         convention) is pinned and does not count toward the window. Without this bound the
         list grew per turn for the life of the session — for stable room-scoped sessions,
         effectively forever.
+
+        Returns the dropped messages (oldest first) so the caller can compress them into a
+        rolling summary instead of losing them outright (QUAL-60).
         """
         if max_messages <= 0:
-            return
+            return []
         context = self.get_handler_context(handler_name)
         messages = context.get("messages") or []
         pinned = messages[:1] if messages and messages[0].get("role") == "system" else []
         tail = messages[len(pinned):]
         if len(tail) > max_messages:
             context["messages"] = pinned + tail[-max_messages:]
+            return tail[:-max_messages]
+        return []
 
     def _restore_conversation_history_to_handler_context(self, handler_name: str):
         """Convert general conversation_history to LLM message format"""

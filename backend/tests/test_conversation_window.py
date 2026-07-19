@@ -70,6 +70,9 @@ class _LLMStub:
     def __init__(self):
         self.prompt_sizes = []
 
+    async def is_available(self):
+        return False  # keeps the QUAL-60 summarizer out — this test is the pure BUG-18 window
+
     async def generate_response(self, messages, trace_context=None, **kwargs):
         self.prompt_sizes.append(len(messages))
         return "ответ"

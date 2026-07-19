@@ -214,6 +214,7 @@ class ConversationIntentHandler(IntentHandler):
     # (same degradation pattern as the console floor) — the live values come from
     # assets/localization/conversation/<lang>.yaml.
     _CONTEXT_LABELS_FALLBACK = {
+        "earlier_summary": "Earlier in this conversation (summary): {summary}",
         "currently_active": "Currently active: {summary}",
         "recent_activity": "Recent activity: {summary}",
         "session": "Session: {room} ({device_count} devices)",
@@ -436,6 +437,9 @@ class ConversationIntentHandler(IntentHandler):
             # Add user message to handler context (LLM-specific conversation management)
             handler_context["messages"].append({"role": "user", "content": intent.raw_text})
             self._trim_llm_context(context)  # BUG-18: bound BEFORE the LLM call (caps prompt size too)
+            # QUAL-60: fold window-dropped turns into the rolling summary (fires every K
+            # dropped messages, so the freshly updated summary reaches THIS turn's prompt)
+            await self._maybe_summarize_context(context)
 
             # Prepare LLM context with smart contextual information injection
             messages = self._prepare_llm_context(intent, context, handler_context)
@@ -600,10 +604,88 @@ class ConversationIntentHandler(IntentHandler):
         on top of this by `trim_handler_messages`."""
         return self.max_context_length * 2
 
+    # QUAL-60: summarize-then-truncate. Turns the BUG-18 window drops accumulate in a pending
+    # buffer; every _SUMMARIZE_EVERY_MESSAGES dropped messages ONE LLM call folds them into the
+    # rolling summary (never a call per turn). The buffer is bounded: past _PENDING_SUMMARY_MAX
+    # the oldest pending turns fall back to plain windowing — behavior degrades to BUG-18,
+    # never worse. The summary is stored on the handler context (NOT in the message list, so
+    # neither trim layer can evict it) and injected at prompt-build time.
+    _SUMMARIZE_EVERY_MESSAGES = 10   # 5 turns per compression call
+    _PENDING_SUMMARY_MAX = 40
+    _SUMMARY_MAX_TOKENS = 600        # the summary is prompt fodder, not speech — cap it
+
     def _trim_llm_context(self, context: UnifiedConversationContext) -> None:
         """Enforce the rolling window on the LLM message store (BUG-18 — `max_context_length`
-        was config-read but never applied, so messages grew per turn for the session's life)."""
-        context.trim_handler_messages("conversation", self._max_context_messages())
+        was config-read but never applied, so messages grew per turn for the session's life).
+        QUAL-60: dropped turns are stashed for summarization instead of vanishing."""
+        dropped = context.trim_handler_messages("conversation", self._max_context_messages())
+        if not dropped:
+            return
+        handler_context = context.get_handler_context("conversation")
+        pending = handler_context.setdefault("pending_summary", [])
+        # mid-list system messages (per-turn fallback-context injections) are machinery,
+        # not conversation — they don't belong in the summary
+        pending.extend(m for m in dropped if m.get("role") != "system")
+        if len(pending) > self._PENDING_SUMMARY_MAX:
+            del pending[:len(pending) - self._PENDING_SUMMARY_MAX]
+
+    def _is_llm_unavailable_text(self, text: str) -> bool:
+        """True when `text` is one of the canned console-floor 'LLM unavailable' strings —
+        loaded from the same `assets/localization/llm` source the component seeds the floor
+        from, so the comparison can't drift."""
+        candidates = {"Sorry, a language model isn't available right now."}  # console _LAST_RESORT
+        loader = self.asset_loader
+        if loader is not None:
+            for lang in ("ru", "en"):
+                loc = loader.get_localization("llm", lang) or {}
+                msg = (loc.get("messages") or {}).get("unavailable")
+                if msg:
+                    candidates.add(msg.strip())
+        return text.strip() in candidates
+
+    async def _maybe_summarize_context(self, context: UnifiedConversationContext) -> None:
+        """QUAL-60: fold the pending dropped turns into the rolling summary via one LLM call.
+
+        Fires only when the buffer reaches the cadence threshold. On an unavailable LLM or a
+        failed call the buffer is simply kept (bounded) for the next attempt — the fallback
+        is plain BUG-18 windowing, and this must never fail the user's turn.
+        """
+        handler_context = context.get_handler_context("conversation")
+        pending = handler_context.get("pending_summary") or []
+        if len(pending) < self._SUMMARIZE_EVERY_MESSAGES:
+            return
+        llm_component = await self._get_llm_component()
+        if llm_component is None or not await llm_component.is_available():
+            return
+        language = context.language or "ru"
+        transcript = "\n".join(
+            f"{m.get('role', 'user')}: {m.get('content', '')}" for m in pending)
+        prompt = self._get_prompt("context_summary", language).format(
+            summary=handler_context.get("conversation_summary") or "—",
+            history=transcript)
+        try:
+            # role=user, not system: the anthropic provider extracts system messages and
+            # would be left with an empty message list; every provider accepts a user turn
+            summary = await llm_component.generate_response(
+                messages=[{"role": "user", "content": prompt}],
+                trace_context=self._trace_context,
+                max_tokens=self._SUMMARY_MAX_TOKENS)
+        except Exception as e:
+            logger.warning(f"QUAL-60: context summarization failed, keeping plain window: {e}")
+            return
+        if not summary or not summary.strip():
+            return
+        # the QUAL-15 chain never raises — total provider failure returns the localized
+        # console-floor "unavailable" text; that must not be stored as the summary
+        if self._is_llm_unavailable_text(summary):
+            logger.warning("QUAL-60: LLM chain fell to the console floor — keeping plain window")
+            return
+        handler_context["conversation_summary"] = summary.strip()
+        handler_context["pending_summary"] = []
+        trace_event("llm_call", {"method": "generate_response", "purpose": "context_summarization",
+                                 "compressed_messages": len(pending),
+                                 "chars_out": len(summary)},
+                    handler="conversation")
 
     def _prepare_llm_context(self, intent: Intent, context: UnifiedConversationContext, handler_context: Dict[str, Any]) -> List[Dict[str, str]]:
         """Prepare contextually appropriate information for LLM"""
@@ -619,7 +701,16 @@ class ConversationIntentHandler(IntentHandler):
         
         # Smart context injection - insert system messages before the user's current message
         context_messages = []
-        
+
+        # 0. QUAL-60: the rolling summary of turns the window dropped — earlier context the
+        # message list no longer holds
+        summary = handler_context.get("conversation_summary")
+        if summary:
+            context_messages.append({
+                "role": "system",
+                "content": self._context_label("earlier_summary", context.language, summary=summary)
+            })
+
         # 1. Inject active actions summary if present
         if context.active_actions:
             actions_summary = self._build_active_actions_summary(context.active_actions)

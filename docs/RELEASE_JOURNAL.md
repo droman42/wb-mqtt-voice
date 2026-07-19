@@ -20,6 +20,18 @@ newest entries near the top of each dated section.
 
 ## Action journal
 
+- **2026-07-19 — QUAL-60 DONE: long conversations stop forgetting — the window now compresses what it
+  drops.** The pre-work analysis mattered: it established that the turn window (10 turns), not the token
+  budget (57k+ effective), is what actually forgets — so summarization triggers on window overflow, and
+  the QUAL-52 token layer stays the untouched backstop. Shape: dropped turns pool in a bounded buffer;
+  every 5 dropped turns one LLM call merges them into a rolling summary that lives OUTSIDE the message
+  list (immune to both trim layers) and enters the prompt as a localized system context line. Two
+  failure modes were designed against, not just the obvious one: a raised call keeps the buffer for the
+  next attempt, and — subtler — the QUAL-15 never-raise chain's console-floor "unavailable" text is
+  explicitly recognized (from the same localization asset that seeds the floor) and refused as a
+  summary. Degradation target is exact: behave like BUG-18 plain windowing, never worse. One deliberate
+  non-decision: cadence is a named constant, not config — no new surface until someone needs the knob.
+
 - **2026-07-19 — BUG-44 DONE: the owner's "budget seems too tiny" question defused a five-day bomb.**
   What started as a QUAL-60 analysis question («we have DeepSeek v4 pro configured now, right?»)
   surfaced two facts: the configs pin `deepseek-chat`, which is a rolling alias now serving V4-Flash —

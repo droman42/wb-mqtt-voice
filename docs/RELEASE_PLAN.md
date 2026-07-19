@@ -310,16 +310,6 @@ _Apply to every remediation task below (from the 4 review docs + QUAL-25/26). So
       `spacy_provider.recognize` never consumes `token_patterns` — they're validated then stashed in
       `advanced_patterns` only. Reviving the spaCy tier therefore means BOTH halves: authoring smart-home patterns
       AND building the Matcher/EntityRuler recognition+slot-filling path the provider currently lacks.
-- [ ] **QUAL-60** [INTENTS][LLM] (P3) `[deferred]` — **Summarize-then-truncate for the LLM conversation window
-      (BUG-18 follow-up; user chose "window now + file summarization" 2026-07-02).** BUG-18 bounds the conversation
-      store with a plain rolling window (last `max_context_length` turns; seed system prompt pinned) — older context
-      is simply forgotten. This task adds continuity for long conversations: when the window overflows, compress the
-      dropped turns into a pinned summary message via one LLM call. Needs: a Russian-capable summarization prompt
-      (localized, prompt-asset-driven like the handler's other prompts), a fallback to plain windowing when the LLM
-      call fails/times out, and a decision on re-summarization cadence (every overflow vs. every K overflows). Seam:
-      `ConversationIntentHandler._trim_llm_context` / `UnifiedConversationContext.trim_handler_messages` — the trim
-      call is already the single choke point, so summarization slots in front of it without touching call sites.
-      _Filed 2026-07-02 from BUG-18._
 - [ ] **QUAL-63** `[deferred]` [PEX][MQTT] (P3) — **Priority rules for same-room capability ambiguity**
       (filed from TEST-18 Slice A; user 2026-07-05: clarify "for v1, but actually it can be done thru
       priorities — later release"). When one utterance matches several same-room devices on the same

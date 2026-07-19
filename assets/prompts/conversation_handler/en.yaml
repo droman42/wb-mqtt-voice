@@ -48,3 +48,19 @@ fallback_topic:
   prompt_type: "template"
   content: |
     It seems related to the {domain} topic.
+
+context_summary:
+  description: "Fold window-evicted turns into the cumulative summary (QUAL-60)."
+  usage_context: "Called on context-window overflow; the result is injected into the prompt as system context, never spoken."
+  variables:
+    - name: "{summary}"
+      description: "The previously accumulated summary (or '—' if none yet)"
+    - name: "{history}"
+      description: "The evicted turns (role: text, one line per message)"
+  prompt_type: "template"
+  content: |
+    Compress this dialogue fragment into a short summary — five sentences at most. Keep facts, names, numbers, decisions made and open threads; drop greetings and filler. Merge it with the previously accumulated summary into one coherent whole.
+    Accumulated summary: {summary}
+    New turns:
+    {history}
+    Reply with only the text of the new merged summary, no explanations or headers.

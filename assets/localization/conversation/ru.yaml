@@ -2,6 +2,7 @@
 # These label the session-state context injected into the LLM as system messages. They are keyed by the
 # USER's language so the model's working context matches the conversation language. Not spoken to the user.
 context_labels:
+  earlier_summary: "Ранее в разговоре (резюме): {summary}"
   currently_active: "Сейчас активно: {summary}"
   recent_activity: "Недавняя активность: {summary}"
   session: "Сессия: {room} (устройств: {device_count})"
