@@ -303,8 +303,9 @@ class SmartHomeIntentHandler(IntentHandler):
                     "candidates": [c.get("device_id") for c in candidates]}
 
         names = [name_of(c) for c in candidates]
-        rooms = [room_of(c) for c in candidates]
-        if len(set(names)) == 1 and all(rooms) and len(set(rooms)) == len(rooms):
+        rooms = [r for c in candidates if (r := room_of(c))]
+        if len(set(names)) == 1 and len(rooms) == len(candidates) \
+                and len(set(rooms)) == len(rooms):
             return IntentResult(
                 text=self._get_template("clarify_which_room", language,
                                         name=names[0], options=sep.join(rooms)),

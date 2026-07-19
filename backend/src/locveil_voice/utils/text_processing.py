@@ -204,7 +204,8 @@ def decimal_to_text_ru(
     # spoken path (BUG-37): proper mathematical fraction reading
     sign = 'минус ' if value < 0 else ''
     value = abs(value)
-    if -value.as_tuple().exponent > 3:
+    exponent = value.as_tuple().exponent  # non-int only for NaN/Inf markers
+    if isinstance(exponent, int) and exponent < -3:
         value = value.quantize(decimal.Decimal(10) ** -3)
     integral, _, frac = str(value).partition('.')
     frac = frac.rstrip('0')
