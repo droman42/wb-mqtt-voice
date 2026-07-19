@@ -474,14 +474,15 @@ async def test_f30_temperature_prefers_dedicated_sensor(harness):
     assert result.metadata["read"] == {"device_id": "shower_sauna_sensors",
                                        "capability": "sensor", "field": "temperature",
                                        "value": 23.5}
-    assert "23.5" in result.text
+    # BUG-37: speech rounds (a person says integers); metadata above keeps the raw reading
+    assert "24 градуса" in result.text and "23.5" not in result.text
 
 
 async def test_f31_humidity(harness):
     result, _ = await harness.run("read_state", "какая влажность в душевой",
                                   {"quantity": "humidity", "room": "душевой"})
     assert result.metadata["read"]["field"] == "humidity"
-    assert "41" in result.text
+    assert "41 процент" in result.text  # BUG-37: declined by the numeral (41 → «процент»)
 
 
 async def test_f32_room_temperature_not_setpoint(harness):
@@ -493,7 +494,7 @@ async def test_f32_room_temperature_not_setpoint(harness):
     read = result.metadata["read"]
     assert read["device_id"] in ("bedroom_heating", "bedroom_hvac")
     assert read["field"] == "room_temperature"
-    assert "22.4" in result.text
+    assert "22 градуса" in result.text and "22.4" not in result.text  # BUG-37 rounding
 
 
 async def test_read_no_sensor_speaks_miss(harness):

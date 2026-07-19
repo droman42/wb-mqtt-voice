@@ -38,6 +38,7 @@ from ...core.donations import MissingRequiredParameter
 # matched here behaves identically to a device name matched there
 from ...core.entity_resolver import _norm, _stem_match, _MORPH_FUZZ_THRESHOLD, _STEM_MATCH_SCORE
 from ...utils.text_normalizers import latin_to_cyrillic_hint
+from ...utils.text_processing import plural_form
 
 # «весь свет» / «все шторы» — the plural/total signal → scope: all (VWB-23)
 _ALL_SCOPE_RE = re.compile(r"\b(?:весь|все|всё|everywhere|all)\b", re.IGNORECASE)
@@ -51,6 +52,12 @@ _ALL_SCOPE_RE = re.compile(r"\b(?:весь|все|всё|everywhere|all)\b", re.
 _QUANTITY_FIELDS = {
     "temperature": ("temperature", "room_temperature"),
     "humidity": ("humidity",),
+}
+
+# BUG-37: the unit-forms template key each read speaks its value with
+_QUANTITY_UNIT_KEY = {
+    "temperature": "unit_degrees",
+    "humidity": "unit_percent",
 }
 
 # capability each method actuates, in preference order when a device carries several
@@ -107,6 +114,22 @@ class SmartHomeIntentHandler(IntentHandler):
 
     def _device_name(self, device: CatalogDevice, language: str) -> str:
         return device.names.get(language) or device.names.get("ru") or device.id
+
+    def _unit_form(self, key: str, n: Any, language: str) -> str:
+        """BUG-37: the declined unit for numeral `n`, picked from the template's |-separated
+        forms («градус|градуса|градусов») — templates carry the language, code picks the form."""
+        forms = [f.strip() for f in self._get_template(key, language).split("|")]
+        try:
+            return plural_form(float(n), forms, language)
+        except (TypeError, ValueError):
+            return forms[-1]
+
+    @staticmethod
+    def _speakable_number(n: Any) -> Any:
+        """Integral floats speak (and read) as integers: 22.0 → 22 (BUG-37)."""
+        if isinstance(n, float) and n == int(n):
+            return int(n)
+        return n
 
     def _room_spoken_name(self, catalog: DeviceCatalog, room_id: str, language: str) -> str:
         room = catalog.room(room_id)
@@ -584,7 +607,9 @@ class SmartHomeIntentHandler(IntentHandler):
         command = DeviceCommand(device_id=device.id, capability=cap_name,
                                 action=action_name, params={param_name: temp})
         delivery = await self._deliver(command, context)
-        ok_text = self._get_template("confirm_setpoint", language, temp=temp,
+        ok_text = self._get_template("confirm_setpoint", language,
+                                     temp=self._speakable_number(temp),
+                                     unit=self._unit_form("unit_degrees", temp, language),
                                      name=self._device_name(device, language))
         return await self._speak_outcome(delivery, ok_text, language, catalog,
                                    clarify_intent=intent, context=context)
@@ -601,7 +626,9 @@ class SmartHomeIntentHandler(IntentHandler):
         command = DeviceCommand(device_id=device.id, capability="brightness",
                                 action="set", params={"level": level})
         delivery = await self._deliver(command, context)
-        ok_text = self._get_template("confirm_brightness", language, level=level,
+        ok_text = self._get_template("confirm_brightness", language,
+                                     level=self._speakable_number(level),
+                                     unit=self._unit_form("unit_percent", level, language),
                                      name=self._device_name(device, language))
         return await self._speak_outcome(delivery, ok_text, language, self._catalog(),
                                    clarify_intent=intent, context=context)
@@ -753,8 +780,16 @@ class SmartHomeIntentHandler(IntentHandler):
                                 error=f"state read failed for {device.id}.{field_name}")
         if isinstance(value, float) and value == int(value):
             value = int(value)
+        # BUG-37: sensors report raw floats (24.125); a person says «двадцать четыре градуса».
+        # Integer rounding is language-agnostic and covers both quantities we read today; the
+        # machine-facing metadata below keeps the raw reading.
+        spoken = value
+        if isinstance(value, (int, float)) and not isinstance(value, bool):
+            spoken = round(float(value))
         return IntentResult(
-            text=self._get_template(f"read_{quantity}", language, value=value,
+            text=self._get_template(f"read_{quantity}", language, value=spoken,
+                                    unit=self._unit_form(_QUANTITY_UNIT_KEY[quantity],
+                                                         spoken, language),
                                     name=self._device_name(device, language)),
             should_speak=True,
             metadata={"read": {"device_id": device.id, "capability": capability_name,
@@ -1017,7 +1052,9 @@ class SmartHomeIntentHandler(IntentHandler):
             command = RoomGroupCommand(room_id=room_id, group="cover", action="set_position",
                                        scope=scope, params={"pct": pct})
             delivery = await self._deliver(command, context)
-            ok_text = self._get_template("confirm_position_room", language, pct=pct,
+            ok_text = self._get_template("confirm_position_room", language,
+                                         pct=self._speakable_number(pct),
+                                         unit=self._unit_form("unit_percent", pct, language),
                                          noun=self._group_noun_surface(intent, "cover", language))
             return await self._speak_outcome(delivery, ok_text, language, catalog,
                                              clarify_intent=intent, context=context)
@@ -1033,7 +1070,9 @@ class SmartHomeIntentHandler(IntentHandler):
         command = DeviceCommand(device_id=device.id, capability="cover",
                                 action="set_position", params={"pct": pct})
         delivery = await self._deliver(command, context)
-        ok_text = self._get_template("confirm_position", language, pct=pct,
+        ok_text = self._get_template("confirm_position", language,
+                                     pct=self._speakable_number(pct),
+                                     unit=self._unit_form("unit_percent", pct, language),
                                      name=self._device_name(device, language))
         return await self._speak_outcome(delivery, ok_text, language, catalog,
                                          clarify_intent=intent, context=context)
@@ -1122,7 +1161,9 @@ class SmartHomeIntentHandler(IntentHandler):
         command = DeviceCommand(device_id=device.id, capability="cleaning",
                                 action="set_delay", params={"minutes": minutes})
         delivery = await self._deliver(command, context)
-        ok_text = self._get_template("confirm_cleaning_delay", language, minutes=minutes)
+        ok_text = self._get_template("confirm_cleaning_delay", language,
+                                     minutes=self._speakable_number(minutes),
+                                     unit=self._unit_form("unit_minutes", minutes, language))
         return await self._speak_outcome(delivery, ok_text, language, self._catalog(),
                                          clarify_intent=intent, context=context)
 

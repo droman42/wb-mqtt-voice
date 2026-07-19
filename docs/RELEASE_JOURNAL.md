@@ -20,6 +20,16 @@ newest entries near the top of each dated section.
 
 ## Action journal
 
+- **2026-07-19 — BUG-37 DONE: the first sentence a user hears from the headline feature now sounds
+  like a person said it.** «Сейчас 24.125 градусов» is gone three ways at once. The handler rounds the
+  spoken value (metadata keeps the raw reading for machines); the Russian decimal path finally does
+  what its docstring promised for years — `decimal_to_text_ru` was a money formatter pressed into
+  general service, reading 24.5 as «двадцать четыре пятьдесят», and now reads «двадцать четыре целых
+  пять десятых» system-wide (every spoken Russian decimal went through it, not just temperatures);
+  and units decline by the numeral in both languages via template-side `|`-forms + a small
+  `plural_form` util — «один градус», «24 градуса», «пять градусов», "1 degree". The money path is
+  byte-untouched, verified by test. Suite grew to 1453 green.
+
 - **2026-07-19 — BUG-39 DONE: the unanswerable clarification, answered.** First of a three-task
   local-fruit sweep (BUG-39 → BUG-37 → QUAL-85, one commit each; owner intake rulings taken up front).
   Three same-named ACs used to produce «Какой именно: Кондиционер или Кондиционер или Кондиционер?» —

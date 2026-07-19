@@ -150,37 +150,93 @@ def num_to_text_ru(num: int, main_units: tuple[tuple[str, str, str], str] = ((''
     return ' '.join(name).strip()
 
 
+_EMPTY_UNITS = (('', '', ''), 'm')
+# BUG-37: the mathematical fraction reading — «целых» + denominator by decimal depth.
+# Speech never needs more than тысячных; deeper values are quantized to 3 places first.
+_INTEGRAL_UNITS = (('целая', 'целых', 'целых'), 'f')
+_FRACTION_UNITS = {
+    1: (('десятая', 'десятых', 'десятых'), 'f'),
+    2: (('сотая', 'сотых', 'сотых'), 'f'),
+    3: (('тысячная', 'тысячных', 'тысячных'), 'f'),
+}
+
+
 def decimal_to_text_ru(
-    value: Union[str, int, float, decimal.Decimal], 
+    value: Union[str, int, float, decimal.Decimal],
     places: int = 2,
     int_units: tuple[tuple[str, str, str], str] = (('', '', ''), 'm'),
     exp_units: tuple[tuple[str, str, str], str] = (('', '', ''), 'm')
 ) -> str:
     """
     Convert decimal number to Russian text representation.
-    
+
+    With units this is the money-style reading: quantize to `places` and read both parts as
+    integers with their units. Without units (the spoken-number path) the fraction is read
+    mathematically — the old behavior quantized to 2 places and read the remainder as a bare
+    integer (24.5 → «двадцать четыре пятьдесят»), which is how every spoken Russian decimal
+    came out mangled (BUG-37).
+
     Args:
         value: Decimal value to convert
-        places: Number of decimal places
+        places: Number of decimal places (money path only)
         int_units: Units for the integer part
         exp_units: Units for the decimal part
-        
+
     Returns:
         Russian text representation of the decimal number
-        
+
     Examples:
-        >>> decimal_to_text_ru("12.34", int_units=(('рубль', 'рубля', 'рублей'), 'm'), 
+        >>> decimal_to_text_ru("12.34", int_units=(('рубль', 'рубля', 'рублей'), 'm'),
         ...                   exp_units=(('копейка', 'копейки', 'копеек'), 'f'))
         'двенадцать рублей тридцать четыре копейки'
+        >>> decimal_to_text_ru("24.5")
+        'двадцать четыре целых пять десятых'
     """
     value = decimal.Decimal(str(value))
-    q = decimal.Decimal(10) ** -places
-    
-    integral, exp = str(value.quantize(q)).split('.')
-    return '{} {}'.format(
-        num_to_text_ru(int(integral), int_units),
-        num_to_text_ru(int(exp), exp_units)
+    if int_units != _EMPTY_UNITS or exp_units != _EMPTY_UNITS:
+        q = decimal.Decimal(10) ** -places
+        integral, exp = str(value.quantize(q)).split('.')
+        return '{} {}'.format(
+            num_to_text_ru(int(integral), int_units),
+            num_to_text_ru(int(exp), exp_units)
+        )
+
+    # spoken path (BUG-37): proper mathematical fraction reading
+    sign = 'минус ' if value < 0 else ''
+    value = abs(value)
+    if -value.as_tuple().exponent > 3:
+        value = value.quantize(decimal.Decimal(10) ** -3)
+    integral, _, frac = str(value).partition('.')
+    frac = frac.rstrip('0')
+    if not frac:
+        return sign + num_to_text_ru(int(integral))
+    return sign + '{} {}'.format(
+        num_to_text_ru(int(integral), _INTEGRAL_UNITS),
+        num_to_text_ru(int(frac), _FRACTION_UNITS[len(frac)])
     )
+
+
+def plural_form(n: Union[int, float], forms: "list[str]", language: str = "ru") -> str:
+    """Pick the grammatical form of a unit for numeral `n` (BUG-37).
+
+    Russian takes three forms (1 / 2–4 / 5–, with the 11–14 exception): «градус, градуса,
+    градусов». Other languages take singular|plural; a single form is invariant («percent»).
+    A non-integral `n` always takes the last (many/plural) form.
+    """
+    if not forms:
+        return ""
+    if len(forms) == 1:
+        return forms[0]
+    if float(n) != int(n):
+        return forms[-1]
+    n = abs(int(n))
+    if language == "ru":
+        if n % 10 == 1 and n % 100 != 11:
+            return forms[0]
+        if 2 <= n % 10 <= 4 and not (12 <= n % 100 <= 14):
+            return forms[1]
+        return forms[-1]
+    return forms[0] if n == 1 else forms[-1]
 
 
 # Text processing with lingua_franca integration
@@ -314,7 +370,7 @@ def all_num_to_text(text: str, language: str = "ru") -> str:
         
     Examples:
         >>> all_num_to_text("У меня 5 яблок и 2.5 кг груш")
-        'У меня пять яблок и два целых пять десятых кг груш'
+        'У меня пять яблок и две целых пять десятых кг груш'
         >>> all_num_to_text("Температура -10 градусов")
         'Температура минус десять градусов'
     """
@@ -401,7 +457,8 @@ def load_language(lang: str) -> None:
 # Export commonly used functions
 __all__ = [
     'num_to_text_ru',
-    'decimal_to_text_ru', 
+    'decimal_to_text_ru',
+    'plural_form',
     'all_num_to_text',
     'num_to_text_ru_async',
     'decimal_to_text_ru_async',

@@ -1628,6 +1628,29 @@ rationale/chronology lives in [`RELEASE_JOURNAL.md`](./RELEASE_JOURNAL.md).
       hand-interface drift. docs: guides/vad — the `processing_timeout_ms` row removed from the [vad]
       field table (the field is gone); no other manifest node describes deleted fields.
 ### Bugs (BUG)
+- [x] **BUG-37** [NLU][TTS][UX] `[deferred]` — **✓ DONE 2026-07-19. Spoken sensor readings were unrounded,
+      mis-vocalized and ungrammatical** («Сейчас 24.125 градусов — Тёплый пол»; latent until the bridge's
+      DRV-23 made `read_state` return values). All three compounding defects fixed:
+      **(a) rounding** — the read-state path now rounds the SPOKEN value to an integer (language-agnostic;
+      both quantities read today are integers in speech) while `metadata.read.value` keeps the raw sensor
+      reading for machine consumers.
+      **(b) the Russian decimal reading** — `decimal_to_text_ru` keeps its money path verbatim (units given)
+      and gains the real mathematical fraction reading when called bare (the TTS path): «двадцать четыре
+      целых пять десятых», denominator by decimal depth (десятых/сотых/тысячных, quantized at 3), trailing
+      zeros stripped, feminine agreement («две целых одна десятая»), docstring promise finally true. Fixes
+      EVERY spoken Russian decimal system-wide (`all_num_to_text` feeds the TTS text-processing stage and
+      silero), not just temperatures.
+      **(c) numeral-unit agreement, both languages** — new `plural_form` util (RU three forms + 11–14
+      exception; EN singular|plural; single form invariant) + `_unit_form`/`_speakable_number` handler
+      helpers; templates carry `|`-separated forms (`unit_degrees`/`unit_percent`/`unit_minutes`, minutes
+      accusative) and `{unit}` placeholders across read_temperature/read_humidity/confirm_setpoint/
+      confirm_brightness/confirm_position(_room)/confirm_cleaning_delay in BOTH template sets — «один
+      градус / 24 градуса / пять градусов», "1 degree / 24 degrees". Blast radius checked: the money path
+      and `normalize_numbers_to_digits` untouched; full suite 1453 green. Tests: new
+      `test_spoken_numbers.py` (decimal reading 10 cases, plural_form RU/EN, all_num_to_text integration);
+      F30/F31/F32 assertions moved to the rounded+declined speech. docs: none — the smart-home guide
+      describes sensor reads at a granularity the rounding doesn't alter (no doc shows raw decimals).
+      contracts: none — spoken-text only; `metadata.read.value` (the machine surface) unchanged.
 - [x] **BUG-39** [MQTT][UX] `[deferred]` — **✓ DONE 2026-07-19. The ambiguity clarification lists identical
       names, so it cannot be answered.** «включи кондиционер в гостиной» asked: *«Какой именно: Кондиционер
       или Кондиционер или Кондиционер?»* `_ambiguous_result` (`smart_home.py:253`) built the prompt from
