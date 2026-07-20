@@ -7,7 +7,7 @@ through multiple NLU providers with web API support.
 
 import logging
 import time
-from typing import Dict, Any, List, Optional, Type
+from typing import Dict, Any, List, Optional, Tuple, Type
 
 from pydantic import BaseModel
 from .base import Component
@@ -753,50 +753,69 @@ class NLUComponent(Component, NLUPlugin, WebAPIPlugin):
         # Fallback to global threshold
         return self.confidence_threshold
     
-    async def _try_provider_recognition(self, provider_name: str, text: str, 
-                                      context: UnifiedConversationContext) -> Optional[Intent]:
+    async def _try_provider_recognition(self, provider_name: str, text: str,
+                                      context: UnifiedConversationContext
+                                      ) -> Tuple[Optional[Intent], Dict[str, Any]]:
         """
         Try recognition with a single provider with timeout and error handling.
-        
+
         Args:
             provider_name: Name of the provider to try
             text: Input text to analyze
             context: Conversation context
-            
+
         Returns:
-            Intent if successful, None if failed or low confidence
+            (intent, attempt) — the Intent when recognition met the threshold (else None),
+            plus the per-attempt record (QUAL-86, the QUAL-53 prerequisite): which provider
+            tried, its ``outcome`` (recognized / low_confidence / no_intent / unavailable /
+            error), the confidence + threshold it was judged by, and — for low-confidence
+            abstentions — the intent it WOULD have guessed. This is what lets an offline
+            analyzer explain a fall-through instead of only seeing the final result.
         """
-        if provider_name not in self.providers:
-            logger.debug(f"Provider '{provider_name}' not available, skipping")
-            return None
-        
-        provider = self.providers[provider_name]
-        
+        attempt: Dict[str, Any] = {"provider": provider_name}
+        start = time.time()
         try:
+            if provider_name not in self.providers:
+                logger.debug(f"Provider '{provider_name}' not available, skipping")
+                attempt["outcome"] = "unavailable"
+                return None, attempt
+
+            provider = self.providers[provider_name]
+
             # PHASE 4: Use new integrated method for recognition with parameter extraction
             intent = await provider.recognize_with_parameters(text, context)
-            
+
             # Check if provider returned an intent
             if intent is None:
                 logger.debug(f"Provider {provider_name} returned no intent")
-                return None
-            
+                attempt["outcome"] = "no_intent"
+                return None, attempt
+
             # Get provider-specific confidence threshold
             provider_threshold = self._get_provider_confidence_threshold(provider_name)
-            
+            attempt["confidence"] = intent.confidence
+            attempt["threshold"] = provider_threshold
+            attempt["intent_name"] = intent.name
+
             # Check if confidence meets provider-specific threshold
             if intent.confidence >= provider_threshold:
                 logger.info(f"Intent recognized by {provider_name}: {intent.name} "
                            f"(confidence: {intent.confidence:.2f}, threshold: {provider_threshold:.2f})")
-                return intent
+                attempt["outcome"] = "recognized"
+                return intent, attempt
             else:
                 logger.debug(f"Provider {provider_name} low confidence "
                            f"({intent.confidence:.2f} < {provider_threshold:.2f}), trying next")
-                return None
-                
+                attempt["outcome"] = "low_confidence"
+                return None, attempt
+
         except Exception as e:
             logger.warning(f"Provider {provider_name} failed: {e}")
-            return None
+            attempt["outcome"] = "error"
+            attempt["error"] = str(e)
+            return None, attempt
+        finally:
+            attempt["duration_ms"] = round((time.time() - start) * 1000, 2)
     
     async def recognize(self, text: str, context: UnifiedConversationContext) -> Intent:
         """
@@ -835,15 +854,17 @@ class NLUComponent(Component, NLUPlugin, WebAPIPlugin):
         provider_order = self._get_provider_cascade_order()
         attempts = 0
         failed_attempts = []  # Track detailed information about failed attempts
-        
+        cascade_trace: List[Dict[str, Any]] = []  # QUAL-86: per-attempt records for the trace
+
         for provider_name in provider_order:
             if attempts >= self.max_cascade_attempts:
                 logger.debug(f"Max cascade attempts ({self.max_cascade_attempts}) reached")
                 break
-            
+
             attempts += 1
-            intent = await self._try_provider_recognition(provider_name, text, context)
-            
+            intent, attempt_record = await self._try_provider_recognition(provider_name, text, context)
+            cascade_trace.append(attempt_record)
+
             if intent:
                 # Cache successful recognition if enabled
                 if self.cache_recognition_results:
@@ -867,7 +888,10 @@ class NLUComponent(Component, NLUPlugin, WebAPIPlugin):
                 # Add provider metadata to intent
                 intent.entities["_recognition_provider"] = provider_name
                 intent.entities["_cascade_attempts"] = attempts
-                
+                # QUAL-86: transport for the per-attempt records — process()
+                # pops this into the nlu_cascade stage (its real home)
+                intent.entities["_cascade_trace"] = cascade_trace
+
                 return intent
             else:
                 # Track failed attempt with context for fallback enhancement
@@ -893,7 +917,8 @@ class NLUComponent(Component, NLUPlugin, WebAPIPlugin):
         fallback_intent = self._create_fallback_intent(text, failed_context)
         fallback_intent.entities["_recognition_provider"] = "fallback"
         fallback_intent.entities["_cascade_attempts"] = attempts
-        
+        fallback_intent.entities["_cascade_trace"] = cascade_trace  # QUAL-86: the fall-through story
+
         return fallback_intent
     
     def get_providers_info(self) -> str:
@@ -945,37 +970,38 @@ class NLUComponent(Component, NLUPlugin, WebAPIPlugin):
         if not trace_context or not trace_context.enabled:
             # Original implementation - calls recognize_with_context()
             result = await self.recognize_with_context(text, context)
+            result.entities.pop("_cascade_trace", None)  # QUAL-86: trace-only transport
             result.raw_text = effective_original
             return result
-        
+
         # Trace path - detailed provider cascade tracking
         stage_start = time.time()
-        cascade_attempts = []
-        
-        # Execute original recognition but with detailed provider tracking
+
         try:
-            # Call existing method and trace at higher level
             result = await self.recognize_with_context(text, context)
-            
-            cascade_attempts.append({
-                "final_result": {
-                    "intent_name": result.name,
-                    "domain": result.domain,
-                    "action": result.action,
-                    "confidence": result.confidence,
-                    "entities": result.entities
-                },
-                "success": True,
-                "confidence": result.confidence
-            })
-            
         except Exception as e:
-            cascade_attempts.append({
-                "error": str(e),
-                "success": False
-            })
+            trace_context.record_stage(
+                stage_name="nlu_cascade",
+                input_data=text,
+                output_data=None,
+                metadata={
+                    "cascade_attempts": [{"error": str(e), "outcome": "error"}],
+                    "providers_available": list(self.providers.keys()),
+                    "confidence_threshold": getattr(self, 'confidence_threshold', 0.0),
+                    "context_aware_processing": True,
+                    "component_name": self.__class__.__name__,
+                    "session_id": context.session_id
+                },
+                processing_time_ms=(time.time() - stage_start) * 1000
+            )
             raise
-        
+
+        # QUAL-86 (the QUAL-53 prerequisite): the REAL per-provider attempt records — which
+        # tier tried, each one's confidence vs its threshold, why it abstained — popped from
+        # the transport key into the stage, so a recorded trace can explain a fall-through
+        # instead of only showing the final result.
+        cascade_attempts = result.entities.pop("_cascade_trace", None) or []
+
         trace_context.record_stage(
             stage_name="nlu_cascade",
             input_data=text,
@@ -985,9 +1011,10 @@ class NLUComponent(Component, NLUPlugin, WebAPIPlugin):
                 "action": result.action,
                 "confidence": result.confidence,
                 "entities": result.entities
-            } if 'result' in locals() else None,
+            },
             metadata={
                 "cascade_attempts": cascade_attempts,
+                "final_provider": result.entities.get("_recognition_provider"),
                 "providers_available": list(self.providers.keys()),
                 "confidence_threshold": getattr(self, 'confidence_threshold', 0.0),
                 "context_aware_processing": True,

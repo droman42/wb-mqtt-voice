@@ -1177,6 +1177,27 @@ rationale/chronology lives in [`RELEASE_JOURNAL.md`](./RELEASE_JOURNAL.md).
       sentence — the knob no longer exists anywhere — replaced with "resampling is automatic").
       contracts: none — repo-internal config/schema surfaces; no stamped family moved (openapi.json is
       generated, not a contract pin).
+- [x] **QUAL-86** [NLU][TRACE] `[deferred]` — **✓ DONE 2026-07-20 (filed + completed same session; the
+      QUAL-53 prerequisite split out as its own task — owner ask).** **The NLU cascade trace now records
+      per-provider attempts, not just the final result.** The gap QUAL-53 named: `nlu_cascade`'s
+      `cascade_attempts` was a fake — one final-result entry appended around a black-box
+      `recognize_with_context` call, so a recorded trace could not explain WHY an utterance fell through
+      to the LLM tier. Now `_try_provider_recognition` returns `(intent, attempt_record)` — provider,
+      `outcome` (recognized / low_confidence / no_intent / unavailable / error), the confidence + the
+      per-provider threshold it was judged by, `duration_ms`, the error string, and — the QUAL-53 gold —
+      for low-confidence abstentions the `intent_name` the tier WOULD have guessed. `recognize()`
+      collects the records and ships them on the `entities["_cascade_trace"]` transport key (set on both
+      the winning intent and the fallback intent — the fall-through story is the whole point);
+      `process()` pops the key into the stage metadata (its real home; also `final_provider` added) on
+      the traced path and strips it on the fast path, so the message surface is unchanged either way.
+      Trace-format impact: additive metadata inside an existing stage — `trace-format-doc-canonical`'s
+      own rule (additive keys keep the version; the reference describes stage payloads generically) means
+      no doc edit, no version bump. QUAL-53's entry annotated: prerequisite discharged, the analyzer
+      remains data-gated. Tests: new `test_nlu_cascade_trace.py` (5: low-confidence guess recorded,
+      fall-through story on the fallback intent, unavailable-not-silent, traced-path pop, fast-path
+      strip; `test_cascading_nlu` harness reused). Suite 1464 green; pyright 0.
+      docs: none — tracing.md describes stage payloads generically and its additive-keys contract covers
+      this. contracts: none — trace-format additive, version stays 1 per the STAMP rule.
 ### Bugs (BUG)
 ### Tests (TEST)
 - [x] **TEST-0** (P0) — Minimal end-to-end smoke/integration harness (refactor safety net, Gate 0). **DONE

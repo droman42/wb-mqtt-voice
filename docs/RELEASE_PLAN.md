@@ -299,11 +299,11 @@ _Apply to every remediation task below (from the 4 review docs + QUAL-25/26). So
       2026-06-16). When an utterance falls through to the LLM classifier, that's a signal the cheap deterministic tiers
       (keyword matcher, spaCy) *should* have caught it. Build an **offline analysis process, integrated with trace
       playback**, that examines such fall-throughs and proposes concrete fixes — donation phrases/patterns, spaCy config,
-      keyword/fuzzy thresholds — so the cheap layers catch more and the LLM is reserved for genuine fuzz. **Prerequisite
-      (real gap found 2026-06-16):** the NLU cascade trace currently records only the **final** result
-      (`nlu_component.py` `record_stage("nlu_cascade")`), not each provider's attempt/confidence — so it can't yet explain
-      *why* a fall-through happened. First enrich the cascade trace to record per-provider attempts (which tried, each
-      one's confidence, why it abstained), then build the analyzer over recorded traces. Needs real usage data → deferred.
+      keyword/fuzzy thresholds — so the cheap layers catch more and the LLM is reserved for genuine fuzz.
+      **Prerequisite DISCHARGED 2026-07-20 → tracked as QUAL-86:** the cascade trace now records per-provider
+      attempts (provider, outcome, confidence vs threshold, the intent a low-confidence tier would have
+      guessed, duration) in the `nlu_cascade` stage's `cascade_attempts` — traces recorded from here on
+      carry what the analyzer needs. Remaining scope = the analyzer itself. Needs real usage data → deferred.
       **2026-07-06 addendum (QUAL-35 Slice 3 evidence — this task now owns the spaCy lane, user decision):** the
       spaCy T2 leg was DROPPED from Slice 3 on the scoreboard (no fixture uniquely needed it). Facts for whoever picks
       this up: `smart_home` has ZERO parked token/slot patterns (the handler postdates the parked authoring), and

@@ -21,6 +21,17 @@ newest entries near the top of each dated section.
 
 ## Action journal
 
+- **2026-07-20 — QUAL-86 DONE: the cascade trace stops lying by omission — QUAL-53's prerequisite
+  discharged four weeks after it was named.** The `nlu_cascade` stage's `cascade_attempts` had always
+  been a single final-result entry wrapped around a black-box call; the per-provider story (who tried,
+  at what confidence, against which threshold, and what a low-confidence tier WOULD have guessed — the
+  one datum an analyzer actually needs) died inside `Optional[Intent]`. Now every attempt is a record,
+  the fall-through case carries the full story on the fallback intent, and the transport key is popped
+  into the trace stage on traced runs and stripped on fast-path runs so no message surface changed.
+  Additive stage metadata — the trace-format contract's own additive-keys rule means version 1 stands,
+  no doc edit, no STAMP move. From today, every recorded trace accumulates exactly the evidence
+  QUAL-53's analyzer will mine; the analyzer itself stays parked until real usage data exists.
+
 - **2026-07-19 — QUAL-60 DONE: long conversations stop forgetting — the window now compresses what it
   drops.** The pre-work analysis mattered: it established that the turn window (10 turns), not the token
   budget (57k+ effective), is what actually forgets — so summarization triggers on window overflow, and
